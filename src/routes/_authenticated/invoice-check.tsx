@@ -38,10 +38,17 @@ function InvoiceCheck() {
 
   const checks = selected.invoice?.checks ?? [];
   const hasInvoice = checks.some((check) => check.invoiced !== 0);
+  // Headline variance should only sum top-level commission-invoice charge categories.
+  // Sales, collections and wallet detail checks are diagnostics and would otherwise double-count.
+  const headlineLabels = new Set([
+    "عمولة المبيعات",
+    "رسوم الدفع الإلكتروني",
+    "عمولات أخرى القابلة للتحقق من البيانات",
+  ]);
   const independentlyComparable = checks.filter(
     (check) =>
-      (check.evidence === "data" || check.evidence === "contract" || !check.evidence) &&
-      check.label !== "إجمالي الفاتورة (بدون ضريبة)",
+      headlineLabels.has(check.label) &&
+      (check.evidence === "data" || check.evidence === "contract" || !check.evidence),
   );
   const totalDiff = independentlyComparable.reduce(
     (sum, check) => sum + (check.invoiced - check.computed),
@@ -77,7 +84,7 @@ function InvoiceCheck() {
           )}
         >
           <p className="text-sm text-muted-foreground">
-            إجمالي الفرق في البنود القابلة للتحقق بشكل مستقل
+            فرق رسوم الفاتورة القابلة للتحقق بشكل مستقل
           </p>
           <p
             className={cn(
