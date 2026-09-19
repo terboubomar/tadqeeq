@@ -97,6 +97,8 @@ function emptyBranch(branch: string, branchId: string): BranchRow {
     netBankCards: 0,
     walletAmount: 0,
     riderWallet: 0,
+    walletFeeBase: 0,
+    walletFee: 0,
     rdfCampaigns: 0,
     freeDeliveryOrders: 0,
     compensation: 0,
@@ -161,6 +163,8 @@ export function analyzeHungerStation(
   const statusCounts: Record<string, number> = {};
   let periodStart: string | null = null;
   let periodEnd: string | null = null;
+  let rejectedOrders = 0;
+  let rejectedSales = 0;
 
   const branchOf = (name: string, id: string): BranchRow => {
     const key = name || id || "غير محدد";
@@ -201,7 +205,9 @@ export function analyzeHungerStation(
     // successful + failed after pickup + failed by vendor.
     if (isBillableOrder(cls)) {
       row.orders += 1;
-      row.grossSales += num(col(order, "Original Amount"));
+      // HungerStation's Sales Summary is based on Commissionable GMV, VAT inclusive.
+      // Original Amount is pre-discount and overstates invoice sales when offers exist.
+      row.grossSales += gmv * VAT;
       row.rdfCampaigns += num(col(order, "Restaurant delivery Discount"));
       row.jokerFees += num(col(order, "Flash Deals Fee Excluding Vat"));
       row.hsFoodDiscount += num(col(order, "HS Food Discount"));
@@ -212,8 +218,14 @@ export function analyzeHungerStation(
         // HS charges the successful bank fee on failed-by-vendor orders too.
         row.ccSuccess += ccAmount;
 
-        // Collections, however, exclude failed-by-vendor payments. This is visible
-        // in both July and August real invoices (card/rider balances are reversed).
+        // The wallet-payment fee is charged on both customer-wallet and rider/transmitter
+        // amounts for every billable order. This matched seven independent merchant invoices.
+        row.walletFeeBase =
+          (row.walletFeeBase ?? 0) +
+          num(col(order, "Wallet Amount")) +
+          num(col(order, "Transmitter Amount"));
+
+        // Collections, however, exclude failed-by-vendor payments.
         if (isCollectionOrder(cls)) {
           row.netBankCards = (row.netBankCards ?? 0) + ccAmount;
           row.walletAmount += num(col(order, "Wallet Amount"));
@@ -228,11 +240,16 @@ export function analyzeHungerStation(
           dailyMap.set(date, day);
         }
         day.orders += 1;
-        day.grossSales += num(col(order, "Original Amount"));
+        day.grossSales += gmv * VAT;
         day.netSales += gmv;
         day.commission += commission;
         if (isOnline) day.ccSuccess += ccAmount;
       }
+    }
+
+    if (cls === "rejected") {
+      rejectedOrders += 1;
+      rejectedSales += gmv;
     }
 
     // Refunded bank fee base: rejected + failed before pickup + failed
@@ -291,25 +308,25 @@ export function analyzeHungerStation(
   const totalCcSuccess = branchList.reduce((sum, r) => sum + r.ccSuccess, 0);
   const totalCcRejected = branchList.reduce((sum, r) => sum + r.ccRejected, 0);
   const totalNetBankCards = branchList.reduce((sum, r) => sum + (r.netBankCards ?? 0), 0);
+  const totalWalletFeeBase = branchList.reduce((sum, r) => sum + (r.walletFeeBase ?? 0), 0);
 
-  // Fixed charges that only exist on the invoice (wallet fee, printers, subscription…)
+  // Invoice extras that truly lack an order-export basis (printers, subscriptions,
+  // special fixed campaign charges, etc.). Wallet fees are independently calculable.
   const invoiceExtras = options.invoice?.extras ?? [];
-  const walletFeeExtra = invoiceExtras
+  const invoiceWalletFee = invoiceExtras
     .filter((e) => e.label.includes("محفظة"))
     .reduce((sum, e) => sum + e.amount, 0);
   const otherExtras = invoiceExtras
     .filter((e) => !e.label.includes("محفظة"))
     .reduce((sum, e) => sum + e.amount, 0);
-  const invoiceOnlyExtras = walletFeeExtra + otherExtras;
+  const invoiceOnlyExtras = otherExtras;
 
-  // The Excel export does not contain the contract bank-fee rate.
-  // Keep an invoice-implied rate for diagnostics, but prefer a user-supplied contract rate
-  // so the payment-fee audit is independent from the invoice being checked.
-  const invoicedCardFees = Math.max(0, (options.invoice?.paymentFees ?? 0) - walletFeeExtra);
-  const ccBase = totalCcSuccess + totalCcRejected;
+  // The Excel export contains every payment-fee base, but not the contract rate.
+  // Derive a diagnostic rate from the invoice summary only when no contract rate is entered.
+  const paymentFeeBase = totalCcSuccess + totalCcRejected + totalWalletFeeBase;
   const invoiceImpliedBankRate =
-    invoicedCardFees > 0 && ccBase > 0
-      ? Math.round((invoicedCardFees / ccBase) / 0.0005) * 0.0005
+    (options.invoice?.paymentFees ?? 0) > 0 && paymentFeeBase > 0
+      ? Math.round(((options.invoice?.paymentFees ?? 0) / paymentFeeBase) / 0.0005) * 0.0005
       : 0;
 
   let bankRate = 0;
@@ -325,10 +342,12 @@ export function analyzeHungerStation(
   for (const row of branchList) {
     row.bankFeeSuccess = row.ccSuccess * bankRate;
     row.bankFeeRefunded = row.ccRejected * bankRate;
+    row.walletFee = (row.walletFeeBase ?? 0) * bankRate;
     row.totalCharges =
       row.commission +
       row.bankFeeSuccess +
       row.bankFeeRefunded +
+      (row.walletFee ?? 0) +
       row.rdfCampaigns +
       row.compensation +
       row.jokerFees +
@@ -351,6 +370,8 @@ export function analyzeHungerStation(
     netBankCards: totalNetBankCards,
     walletAmount: sum((r) => r.walletAmount),
     riderWallet: sum((r) => r.riderWallet),
+    walletFeeBase: totalWalletFeeBase,
+    walletFee: sum((r) => r.walletFee ?? 0),
     rdfCampaigns: sum((r) => r.rdfCampaigns),
     compensation: sum((r) => r.compensation),
     jokerFees: sum((r) => r.jokerFees),
@@ -363,6 +384,8 @@ export function analyzeHungerStation(
     fulfillmentMods: sum((r) => r.fulfillmentMods),
     approvedRefunds: sum((r) => r.approvedRefunds),
     waitingTimeFees: sum((r) => r.waitingTimeFees),
+    rejectedOrders,
+    rejectedSales,
     totalCollections: 0,
     bankRate,
     invoiceImpliedBankRate,
@@ -394,7 +417,8 @@ export function analyzeHungerStation(
     summary.compensation +
     summary.jokerFees +
     summary.waitingTimeFees;
-  const cardFeesComputed = summary.bankFeeSuccess + summary.bankFeeRefunded;
+  const paymentFeesComputed =
+    summary.bankFeeSuccess + summary.bankFeeRefunded + (summary.walletFee ?? 0);
   const invoicedDataOnlyOthers = Math.max(0, (invoice.othersCommission ?? 0) - otherExtras);
   const cardFeeEvidence =
     bankRateSource === "manual"
@@ -412,14 +436,14 @@ export function analyzeHungerStation(
       hint: "مجموع عمود العمولة للطلبات الناجحة والفاشلة بعد الاستلام والمرفوضة.",
     },
     {
-      label: "رسوم الدفع الإلكتروني (البطاقات)",
-      computed: cardFeesComputed,
-      invoiced: invoicedCardFees,
+      label: "رسوم الدفع الإلكتروني",
+      computed: paymentFeesComputed,
+      invoiced: invoice.paymentFees ?? 0,
       evidence: cardFeeEvidence,
       hint:
         bankRateSource === "manual"
-          ? "نسبة العقد × (مدفوعات البطاقات الناجحة + المرتجعة). رسوم المحفظة تُفصل كبند فاتورة فقط."
-          : "تم استخدام نسبة مستنتجة من الفاتورة لعدم إدخال نسبة العقد؛ النتيجة مفيدة للتسوية لكنها ليست تحققاً مستقلاً.",
+          ? "نسبة العقد × (البطاقات الناجحة + المرتجعة + أساس رسوم المحافظ)."
+          : "تم استخدام نسبة مستنتجة من إجمالي رسوم الدفع لعدم إدخال نسبة العقد؛ النتيجة مفيدة للتسوية لكنها ليست تحققاً مستقلاً.",
     },
     {
       label: "عمولات أخرى القابلة للتحقق من البيانات",
@@ -431,7 +455,7 @@ export function analyzeHungerStation(
     {
       label: "إجمالي الفاتورة (بدون ضريبة)",
       computed:
-        summary.commission + cardFeesComputed + dataOnlyOthersComputed + invoiceOnlyExtras,
+        summary.commission + paymentFeesComputed + dataOnlyOthersComputed + invoiceOnlyExtras,
       invoiced: invoice.totalExVat ?? 0,
       evidence: invoiceOnlyExtras > 0 ? "mixed" : cardFeeEvidence,
       hint:
@@ -440,6 +464,36 @@ export function analyzeHungerStation(
           : undefined,
     },
   ];
+
+  if (invoice.creditSales !== undefined) {
+    checks.push({
+      label: "مبيعات الائتمان (بدون ضريبة)",
+      computed: summary.grossSales / VAT,
+      invoiced: invoice.creditSales,
+      evidence: "data",
+      hint: "Commissionable GMV للطلبات القابلة للفوترة، قبل ضريبة القيمة المضافة.",
+    });
+  }
+
+  if (invoice.rejectedSales !== undefined) {
+    checks.push({
+      label: "المبيعات المرفوضة (بدون ضريبة)",
+      computed: summary.rejectedSales ?? 0,
+      invoiced: invoice.rejectedSales,
+      evidence: "data",
+      hint: "Commissionable GMV للطلبات بحالة Rejected فقط.",
+    });
+  }
+
+  if (invoiceWalletFee > 0) {
+    checks.push({
+      label: "رسوم مدفوعات المحافظ",
+      computed: summary.walletFee ?? 0,
+      invoiced: invoiceWalletFee,
+      evidence: cardFeeEvidence,
+      hint: "نسبة الدفع × (Wallet Amount + Transmitter Amount) للطلبات القابلة للفوترة.",
+    });
+  }
 
   if (invoice.totalOnlineSales !== undefined) {
     checks.push({
@@ -453,7 +507,7 @@ export function analyzeHungerStation(
   }
 
   if (invoiceExtras.length) {
-    for (const extra of invoiceExtras) {
+    for (const extra of invoiceExtras.filter((e) => !e.label.includes("محفظة"))) {
       checks.push({
         label: `${extra.label} (فاتورة فقط)`,
         computed: 0,
