@@ -15,6 +15,10 @@ export interface BranchRow {
   netBankCards?: number;
   walletAmount: number;
   riderWallet: number;
+  /** Wallet + rider/transmitter amount charged the wallet-payment fee. */
+  walletFeeBase?: number;
+  /** Wallet-payment fee calculated from the contract/payment rate. */
+  walletFee?: number;
   rdfCampaigns: number;
   freeDeliveryOrders: number;
   compensation: number;
@@ -57,6 +61,10 @@ export interface Summary {
   netBankCards?: number;
   walletAmount: number;
   riderWallet: number;
+  /** Wallet + rider/transmitter amount charged the wallet-payment fee. */
+  walletFeeBase?: number;
+  /** Wallet-payment fee calculated from the contract/payment rate. */
+  walletFee?: number;
   rdfCampaigns: number;
   compensation: number;
   jokerFees: number;
@@ -70,6 +78,8 @@ export interface Summary {
   fulfillmentMods: number;
   approvedRefunds: number;
   waitingTimeFees: number;
+  rejectedOrders?: number;
+  rejectedSales?: number;
   /** Independently reconstructed Total Collections from the order export. */
   totalCollections?: number;
   bankRate: number;
@@ -102,6 +112,11 @@ export interface InvoiceFigures {
   netDue?: number;
   cpc?: number;
   creditSales?: number;
+  creditSalesOrders?: number;
+  creditSalesIncVat?: number;
+  rejectedSales?: number;
+  rejectedSalesOrders?: number;
+  rejectedSalesIncVat?: number;
   invoiceNo?: string;
 }
 

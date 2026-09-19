@@ -45,7 +45,10 @@ function BreakdownPage() {
   const s = selected.summary;
   const charges: Line[] = [
     { label: "عمولة المبيعات", amount: s.commission },
-    { label: "رسوم الدفع الإلكتروني", amount: s.bankFeeSuccess + s.bankFeeRefunded },
+    {
+      label: "رسوم الدفع الإلكتروني",
+      amount: s.bankFeeSuccess + s.bankFeeRefunded + (s.walletFee ?? 0),
+    },
     { label: "حملات التوصيل المجاني", amount: s.rdfCampaigns },
     { label: "تعويضات العملاء", amount: s.compensation },
     { label: "رسوم العروض السريعة", amount: s.jokerFees },
