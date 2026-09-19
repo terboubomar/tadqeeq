@@ -18,13 +18,13 @@ function buildWorkbook(): ArrayBuffer {
       Commission: 15,
       "Payment Type": "Online payment",
       "CC Amount": 120,
-      "Wallet Amount": 0,
-      "Transmitter Amount": 0,
+      "Wallet Amount": 10,
+      "Transmitter Amount": 5,
       "Restaurant delivery Discount": 11.5,
       "Flash Deals Fee Excluding Vat": 0,
-      "HS Food Discount": 0,
-      "Rewards Discounts": 0,
-      "Restaurant Food discount": 0,
+      "HS Food Discount": 2,
+      "Rewards Discounts": 3,
+      "Restaurant Food discount": 4,
       "CC Refund Amount": 0,
       "Wallet Refund": 0,
       "Operation Day": "2026-08-01",
@@ -39,13 +39,13 @@ function buildWorkbook(): ArrayBuffer {
       Commission: 7.5,
       "Payment Type": "Online payment",
       "CC Amount": 60,
-      "Wallet Amount": 0,
-      "Transmitter Amount": 0,
+      "Wallet Amount": 1,
+      "Transmitter Amount": 2,
       "Restaurant delivery Discount": 5.75,
       "Flash Deals Fee Excluding Vat": 0,
-      "HS Food Discount": 0,
-      "Rewards Discounts": 0,
-      "Restaurant Food discount": 0,
+      "HS Food Discount": 1,
+      "Rewards Discounts": 0.5,
+      "Restaurant Food discount": 1,
       "CC Refund Amount": 0,
       "Wallet Refund": 0,
       "Operation Day": "2026-08-01",
@@ -60,13 +60,13 @@ function buildWorkbook(): ArrayBuffer {
       Commission: 3.75,
       "Payment Type": "Online payment",
       "CC Amount": 30,
-      "Wallet Amount": 0,
-      "Transmitter Amount": 0,
+      "Wallet Amount": 7,
+      "Transmitter Amount": 25,
       "Restaurant delivery Discount": 2.875,
       "Flash Deals Fee Excluding Vat": 0,
-      "HS Food Discount": 0,
-      "Rewards Discounts": 0,
-      "Restaurant Food discount": 0,
+      "HS Food Discount": 4,
+      "Rewards Discounts": 6,
+      "Restaurant Food discount": 8,
       "CC Refund Amount": 0,
       "Wallet Refund": 0,
       "Operation Day": "2026-08-01",
@@ -168,6 +168,7 @@ describe("HungerStation audit rules", () => {
         paymentFees: 5.85,
         othersCommission: 517.5,
         totalExVat: 551.1,
+        totalOnlineSales: -214.5,
         extras: [{ label: "الطابعات", amount: 500 }],
       },
     });
@@ -176,8 +177,14 @@ describe("HungerStation audit rules", () => {
     expect(result.summary.netSales).toBeCloseTo(185, 6);
     expect(result.summary.commission).toBeCloseTo(27.75, 6);
     expect(result.summary.ccSuccess).toBeCloseTo(210, 6);
+    expect(result.summary.netBankCards).toBeCloseTo(180, 6);
     expect(result.summary.ccRejected).toBeCloseTo(24, 6);
+    expect(result.summary.walletAmount).toBeCloseTo(11, 6);
+    expect(result.summary.riderWallet).toBeCloseTo(7, 6);
     expect(result.summary.rdfCampaigns).toBeCloseTo(17.5, 6);
+    expect(result.summary.totalFoodDiscount).toBeCloseTo(20, 6);
+    expect(result.summary.netMarketingDiscount).toBeCloseTo(16.5, 6);
+    expect(result.summary.totalCollections).toBeCloseTo(214.5, 6);
     expect(result.branches[0]?.freeDeliveryOrders).toBe(3);
 
     const paymentCheck = result.checks.find(
@@ -185,6 +192,13 @@ describe("HungerStation audit rules", () => {
     );
     expect(paymentCheck?.computed).toBeCloseTo(5.85, 6);
     expect(paymentCheck?.evidence).toBe("contract");
+
+    const collectionsCheck = result.checks.find(
+      (check) => check.label === "إجمالي التحصيلات",
+    );
+    expect(collectionsCheck?.computed).toBeCloseTo(214.5, 6);
+    expect(collectionsCheck?.invoiced).toBeCloseTo(214.5, 6);
+    expect(collectionsCheck?.evidence).toBe("data");
 
     const printerCheck = result.checks.find((check) => check.label.includes("الطابعات"));
     expect(printerCheck?.computed).toBe(0);
@@ -245,5 +259,20 @@ describe("HungerStation CPC parser", () => {
     expect(figures.vat).toBeCloseTo(7138.08, 2);
     expect(figures.totalIncVat).toBeCloseTo(54725.31, 2);
     expect(figures.invoiceNo).toBe("HS-ADS-2026/8-4708457");
+  });
+
+  test("accepts the older HS-CPC invoice number format used in July 2026", () => {
+    const figures = parseCpcInvoice(
+      "Total Invoice Value Before VAT SAR 59441.01 " +
+        "VAT Value( 15.0 %) SAR 8916.15 " +
+        "Total Invoice Value After VAT SAR 68357.16 " +
+        "Total Invoice Net Value SAR 68357.16 " +
+        "HS-CPC-2026/7-4617261",
+    );
+
+    expect(figures.totalExVat).toBeCloseTo(59441.01, 2);
+    expect(figures.vat).toBeCloseTo(8916.15, 2);
+    expect(figures.totalIncVat).toBeCloseTo(68357.16, 2);
+    expect(figures.invoiceNo).toBe("HS-CPC-2026/7-4617261");
   });
 });
