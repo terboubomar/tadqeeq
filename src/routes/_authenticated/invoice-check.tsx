@@ -247,6 +247,8 @@ function InvoiceCheck() {
               }
             />
             <Row label="أساس رسوم البطاقات الناجحة" value={sar(selected.summary.ccSuccess)} />
+            <Row label="أساس رسوم المحافظ" value={sar(selected.summary.walletFeeBase ?? 0)} />
+            <Row label="رسوم المحافظ المحتسبة" value={sar(selected.summary.walletFee ?? 0)} />
             <Row
               label="صافي مدفوعات البطاقات المحصلة"
               value={sar(selected.summary.netBankCards ?? selected.summary.ccSuccess)}
