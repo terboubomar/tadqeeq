@@ -264,7 +264,9 @@ export function analyzeHungerStation(
   let bankRate = 0;
   let bankRateSource: "invoice" | "manual" = "manual";
   if (invoicedPaymentFees > 0 && ccBase > 0) {
-    bankRate = invoicedPaymentFees / ccBase;
+    // The invoiced fee also covers wallet payments, which are not in the order sheet,
+    // so snap the derived rate to the nearest contract step (0.05%).
+    bankRate = Math.round((invoicedPaymentFees / ccBase) / 0.0005) * 0.0005;
     bankRateSource = "invoice";
   } else if (options.manualBankRate && options.manualBankRate > 0) {
     bankRate = options.manualBankRate;
