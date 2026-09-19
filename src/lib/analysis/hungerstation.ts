@@ -440,9 +440,10 @@ export function analyzeHungerStation(
       computed: paymentFeesComputed,
       invoiced: invoice.paymentFees ?? 0,
       evidence: cardFeeEvidence,
+      tolerance: 0.1,
       hint:
         bankRateSource === "manual"
-          ? "نسبة العقد × (البطاقات الناجحة + المرتجعة + أساس رسوم المحافظ)."
+          ? "نسبة العقد × (البطاقات الناجحة + المرتجعة + أساس رسوم المحافظ). فروق حتى 0.10 ر.س تُعامل كتقريب هنقرستيشن لأن ملف Excel لا يكشف الدقة الداخلية المستخدمة لإصدار الفاتورة."
           : "تم استخدام نسبة مستنتجة من إجمالي رسوم الدفع لعدم إدخال نسبة العقد؛ النتيجة مفيدة للتسوية لكنها ليست تحققاً مستقلاً.",
     },
     {

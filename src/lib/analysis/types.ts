@@ -133,6 +133,8 @@ export interface CheckRow {
   invoiced: number;
   /** Describes whether the comparison is independently verifiable or relies on invoice/contract inputs. */
   evidence?: CheckEvidence;
+  /** Allowed absolute variance for platform rounding/precision on this check. */
+  tolerance?: number;
   hint?: string;
 }
 
