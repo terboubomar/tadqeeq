@@ -58,6 +58,8 @@ function classifyStatus(raw: string): StatusClass {
   const s = raw.toLowerCase();
   if (s.includes("successful")) return "successful";
   if (s.includes("after pick")) return "failedAfterPickup";
+  // HungerStation bills "failed by vendor" exactly like a delivered order.
+  if (s.includes("vendor")) return "failedAfterPickup";
   if (s.includes("reject")) return "rejected";
   if (s.includes("before pick")) return "failedBefore";
   if (s.includes("fail")) return "failedBefore";
