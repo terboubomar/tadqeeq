@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/invoice-check")({
   component: InvoiceCheck,
 });
 
-const TOLERANCE = 1; // ريال
+const DEFAULT_TOLERANCE = 1; // ريال
 
 function InvoiceCheck() {
   const { selected, isLoading } = useSelectedPeriod();
@@ -50,10 +50,11 @@ function InvoiceCheck() {
       headlineLabels.has(check.label) &&
       (check.evidence === "data" || check.evidence === "contract" || !check.evidence),
   );
-  const totalDiff = independentlyComparable.reduce(
-    (sum, check) => sum + (check.invoiced - check.computed),
-    0,
-  );
+  const totalDiff = independentlyComparable.reduce((sum, check) => {
+    const diff = check.invoiced - check.computed;
+    const tolerance = check.tolerance ?? DEFAULT_TOLERANCE;
+    return sum + (Math.abs(diff) <= tolerance ? 0 : diff);
+  }, 0);
 
   return (
     <div className="space-y-6">
@@ -80,7 +81,9 @@ function InvoiceCheck() {
         <div
           className={cn(
             "panel p-5",
-            Math.abs(totalDiff) > TOLERANCE ? "border-destructive/50" : "border-success/50",
+            Math.abs(totalDiff) > DEFAULT_TOLERANCE
+              ? "border-destructive/50"
+              : "border-success/50",
           )}
         >
           <p className="text-sm text-muted-foreground">
@@ -89,9 +92,9 @@ function InvoiceCheck() {
           <p
             className={cn(
               "mt-2 text-3xl font-black",
-              totalDiff > TOLERANCE
+              totalDiff > DEFAULT_TOLERANCE
                 ? "text-destructive"
-                : totalDiff < -TOLERANCE
+                : totalDiff < -DEFAULT_TOLERANCE
                   ? "text-success"
                   : "text-foreground",
             )}
@@ -99,9 +102,9 @@ function InvoiceCheck() {
             <span className="num">{money(totalDiff)}</span> ر.س
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
-            {totalDiff > TOLERANCE
+            {totalDiff > DEFAULT_TOLERANCE
               ? "المنصة طالبت بمبلغ أعلى من المحتسب — راجع البنود المعلَّمة بالأحمر."
-              : totalDiff < -TOLERANCE
+              : totalDiff < -DEFAULT_TOLERANCE
                 ? "المطالبة أقل من المحتسب."
                 : "البنود القابلة للتحقق مستقلاً مطابقة ضمن هامش التسامح."}
           </p>
@@ -136,9 +139,14 @@ function InvoiceCheck() {
               const invoiceDerived = evidence === "invoice_derived";
               const mixed = evidence === "mixed";
               const diff = check.invoiced - check.computed;
+              const tolerance = check.tolerance ?? DEFAULT_TOLERANCE;
+              const roundingMatch =
+                check.label === "رسوم الدفع الإلكتروني" &&
+                Math.abs(diff) > 0.005 &&
+                Math.abs(diff) <= tolerance;
               const missing = check.invoiced === 0 && !invoiceOnly;
-              const over = diff > TOLERANCE;
-              const under = diff < -TOLERANCE;
+              const over = diff > tolerance;
+              const under = diff < -tolerance;
               return (
                 <tr key={check.label} className="border-t border-border/60 align-top">
                   <td className="px-4 py-3">
@@ -185,6 +193,10 @@ function InvoiceCheck() {
                     ) : missing ? (
                       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <MinusCircle className="size-4" /> غير متاح
+                      </span>
+                    ) : roundingMatch ? (
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-success">
+                        <CheckCircle2 className="size-4" /> مطابق ضمن تقريب هنقرستيشن
                       </span>
                     ) : over ? (
                       <span className="flex items-center gap-1.5 text-xs font-semibold text-destructive">
