@@ -13,7 +13,7 @@ function buildWorkbook(): ArrayBuffer {
       Status: "Successful",
       "Branch Name": "Branch A",
       "HS Branch ID": 100,
-      "Original Amount": 115,
+      "Original Amount": 150,
       "Commissionable GMV (VAT Excluded)": 100,
       Commission: 15,
       "Payment Type": "Online payment",
@@ -165,15 +165,19 @@ describe("HungerStation audit rules", () => {
       invoice: {
         lines: [],
         salesCommission: 27.75,
-        paymentFees: 5.85,
+        paymentFees: 7.1,
         othersCommission: 517.5,
-        totalExVat: 551.1,
+        totalExVat: 552.35,
         totalOnlineSales: -214.5,
-        extras: [{ label: "الطابعات", amount: 500 }],
+        extras: [
+          { label: "رسوم محفظة العميل", amount: 1.25 },
+          { label: "الطابعات", amount: 500 },
+        ],
       },
     });
 
     expect(result.summary.orders).toBe(3);
+    expect(result.summary.grossSales).toBeCloseTo(201.25, 6);
     expect(result.summary.netSales).toBeCloseTo(185, 6);
     expect(result.summary.commission).toBeCloseTo(27.75, 6);
     expect(result.summary.ccSuccess).toBeCloseTo(210, 6);
@@ -181,6 +185,8 @@ describe("HungerStation audit rules", () => {
     expect(result.summary.ccRejected).toBeCloseTo(24, 6);
     expect(result.summary.walletAmount).toBeCloseTo(11, 6);
     expect(result.summary.riderWallet).toBeCloseTo(7, 6);
+    expect(result.summary.walletFeeBase).toBeCloseTo(50, 6);
+    expect(result.summary.walletFee).toBeCloseTo(1.25, 6);
     expect(result.summary.rdfCampaigns).toBeCloseTo(17.5, 6);
     expect(result.summary.totalFoodDiscount).toBeCloseTo(20, 6);
     expect(result.summary.netMarketingDiscount).toBeCloseTo(16.5, 6);
@@ -188,10 +194,17 @@ describe("HungerStation audit rules", () => {
     expect(result.branches[0]?.freeDeliveryOrders).toBe(3);
 
     const paymentCheck = result.checks.find(
-      (check) => check.label === "رسوم الدفع الإلكتروني (البطاقات)",
+      (check) => check.label === "رسوم الدفع الإلكتروني",
     );
-    expect(paymentCheck?.computed).toBeCloseTo(5.85, 6);
+    expect(paymentCheck?.computed).toBeCloseTo(7.1, 6);
     expect(paymentCheck?.evidence).toBe("contract");
+
+    const walletFeeCheck = result.checks.find(
+      (check) => check.label === "رسوم مدفوعات المحافظ",
+    );
+    expect(walletFeeCheck?.computed).toBeCloseTo(1.25, 6);
+    expect(walletFeeCheck?.invoiced).toBeCloseTo(1.25, 6);
+    expect(walletFeeCheck?.evidence).toBe("contract");
 
     const collectionsCheck = result.checks.find(
       (check) => check.label === "إجمالي التحصيلات",
@@ -217,12 +230,12 @@ describe("HungerStation audit rules", () => {
 
     expect(result.summary.bankRateSource).toBe("manual");
     expect(result.summary.bankRate).toBeCloseTo(0.025, 8);
-    expect(result.summary.invoiceImpliedBankRate).toBeCloseTo(0.1, 8);
+    expect(result.summary.invoiceImpliedBankRate).toBeCloseTo(0.0825, 8);
 
     const paymentCheck = result.checks.find(
-      (check) => check.label === "رسوم الدفع الإلكتروني (البطاقات)",
+      (check) => check.label === "رسوم الدفع الإلكتروني",
     );
-    expect(paymentCheck?.computed).toBeCloseTo(5.85, 6);
+    expect(paymentCheck?.computed).toBeCloseTo(7.1, 6);
     expect(paymentCheck?.invoiced).toBeCloseTo(23.4, 6);
     expect(paymentCheck?.evidence).toBe("contract");
   });
@@ -231,7 +244,7 @@ describe("HungerStation audit rules", () => {
     const result = analyzeHungerStation(buildWorkbook(), {
       invoice: {
         lines: [],
-        paymentFees: 5.85,
+        paymentFees: 7.1,
       },
     });
 
@@ -239,7 +252,7 @@ describe("HungerStation audit rules", () => {
     expect(result.summary.bankRate).toBeCloseTo(0.025, 8);
 
     const paymentCheck = result.checks.find(
-      (check) => check.label === "رسوم الدفع الإلكتروني (البطاقات)",
+      (check) => check.label === "رسوم الدفع الإلكتروني",
     );
     expect(paymentCheck?.evidence).toBe("invoice_derived");
   });
@@ -253,7 +266,9 @@ describe("HungerStation commission invoice parser", () => {
         "Others Commission 212,976.92 31,946.54 244,923.46 " +
         "Total Invoice 525,985.38 78,897.81 604,883.19 " +
         "Total Online Sales (1,957,570.23) " +
-        "Net Due Invoice (1,352,687.04)",
+        "Net Due Invoice (1,352,687.04) " +
+        "Credit Sales 30,036.0 1,702,828.6 1,958,252.89 " +
+        "Rejected sales 4.0 158.22 181.95",
     );
 
     expect(figures.salesCommission).toBeCloseTo(269792.2, 2);
@@ -261,6 +276,12 @@ describe("HungerStation commission invoice parser", () => {
     expect(figures.othersCommission).toBeCloseTo(212976.92, 2);
     expect(figures.totalExVat).toBeCloseTo(525985.38, 2);
     expect(figures.totalIncVat).toBeCloseTo(604883.19, 2);
+    expect(figures.creditSalesOrders).toBeCloseTo(30036, 2);
+    expect(figures.creditSales).toBeCloseTo(1702828.6, 2);
+    expect(figures.creditSalesIncVat).toBeCloseTo(1958252.89, 2);
+    expect(figures.rejectedSalesOrders).toBeCloseTo(4, 2);
+    expect(figures.rejectedSales).toBeCloseTo(158.22, 2);
+    expect(figures.rejectedSalesIncVat).toBeCloseTo(181.95, 2);
   });
 });
 
