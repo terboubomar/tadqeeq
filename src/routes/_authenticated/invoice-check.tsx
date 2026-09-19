@@ -246,8 +246,18 @@ function InvoiceCheck() {
                 selected.summary.bankRate > 0 ? percent(selected.summary.bankRate) : "غير محددة"
               }
             />
-            <Row label="مدفوعات بطاقات ناجحة" value={sar(selected.summary.ccSuccess)} />
+            <Row label="أساس رسوم البطاقات الناجحة" value={sar(selected.summary.ccSuccess)} />
+            <Row
+              label="صافي مدفوعات البطاقات المحصلة"
+              value={sar(selected.summary.netBankCards ?? selected.summary.ccSuccess)}
+            />
             <Row label="مدفوعات بطاقات مرتجعة" value={sar(selected.summary.ccRejected)} />
+            {(selected.summary.totalCollections ?? 0) > 0 ? (
+              <Row
+                label="إجمالي التحصيلات المعاد احتسابه"
+                value={sar(selected.summary.totalCollections ?? 0)}
+              />
+            ) : null}
             <Row label="حملات التوصيل المجاني" value={sar(selected.summary.rdfCampaigns)} />
             <Row label="تعويضات العملاء" value={sar(selected.summary.compensation)} />
             <Row label="رسوم العروض السريعة" value={sar(selected.summary.jokerFees)} />
