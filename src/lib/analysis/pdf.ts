@@ -138,7 +138,9 @@ export function parseCpcInvoice(raw: string): InvoiceFigures {
 
   // Real HungerStation advertising invoices use explicit "Value Before/After VAT" labels.
   // Avoid generic "Total Invoice" matching because it can capture the before-VAT value.
-  const vatValues = amountsAfter(source, 2, "VAT Value");
+  const vatMatch = source.match(
+    /VAT Value\s*\(\s*[\d.]+\s*%\s*\)\s*(?:SAR\s*)?(\(?-?[\d,]+\.\d{1,2}\)?)/i,
+  );
 
   return build({
     totalExVat: amountAfter(
@@ -147,10 +149,7 @@ export function parseCpcInvoice(raw: string): InvoiceFigures {
       "Total Excluding VAT",
       "Subtotal",
     ),
-    vat:
-      vatValues.length === 2
-        ? vatValues[1]
-        : amountAfter(source, "VAT Value", "VAT 15", "Total VAT"),
+    vat: vatMatch ? toNumber(vatMatch[1]!) : amountAfter(source, "VAT 15", "Total VAT"),
     totalIncVat: amountAfter(
       source,
       "Total Invoice Value After VAT",
