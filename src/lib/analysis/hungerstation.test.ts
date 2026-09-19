@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import * as XLSX from "xlsx";
 
 import { analyzeHungerStation } from "./hungerstation";
-import { parseCpcInvoice } from "./pdf";
+import { parseCpcInvoice, parseHungerInvoice } from "./pdf";
 
 function buildWorkbook(): ArrayBuffer {
   const workbook = XLSX.utils.book_new();
@@ -242,6 +242,25 @@ describe("HungerStation audit rules", () => {
       (check) => check.label === "رسوم الدفع الإلكتروني (البطاقات)",
     );
     expect(paymentCheck?.evidence).toBe("invoice_derived");
+  });
+});
+
+describe("HungerStation commission invoice parser", () => {
+  test("detects the real Online Payments Fees summary label", () => {
+    const figures = parseHungerInvoice(
+      "Sales Commission 269,792.2 40,468.83 310,261.03 " +
+        "Online Payments Fees 43,216.26 6,482.44 49,698.7 " +
+        "Others Commission 212,976.92 31,946.54 244,923.46 " +
+        "Total Invoice 525,985.38 78,897.81 604,883.19 " +
+        "Total Online Sales (1,957,570.23) " +
+        "Net Due Invoice (1,352,687.04)",
+    );
+
+    expect(figures.salesCommission).toBeCloseTo(269792.2, 2);
+    expect(figures.paymentFees).toBeCloseTo(43216.26, 2);
+    expect(figures.othersCommission).toBeCloseTo(212976.92, 2);
+    expect(figures.totalExVat).toBeCloseTo(525985.38, 2);
+    expect(figures.totalIncVat).toBeCloseTo(604883.19, 2);
   });
 });
 

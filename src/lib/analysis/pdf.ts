@@ -115,7 +115,7 @@ export function parseHungerInvoice(raw: string): InvoiceFigures {
   const total = amountsAfter(source, 3, "Total Invoice", "Invoice Total");
   const figures = build({
     salesCommission: amountAfter(source, "Sales Commission"),
-    paymentFees: amountAfter(source, "Payment Fees", "Payment Fee"),
+    paymentFees: amountAfter(source, "Online Payments Fees", "Online Payment Fees", "Payment Fees", "Payment Fee"),
     othersCommission: amountAfter(source, "Others Commission", "Other Commission"),
     totalExVat: total[0],
     vat: total[1],
