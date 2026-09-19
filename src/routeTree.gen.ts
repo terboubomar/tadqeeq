@@ -10,33 +10,143 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedBranchesRouteImport } from './routes/_authenticated/branches'
+import { Route as AuthenticatedBreakdownRouteImport } from './routes/_authenticated/breakdown'
+import { Route as AuthenticatedDailyRouteImport } from './routes/_authenticated/daily'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
+import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
+import { Route as AuthenticatedInvoiceCheckRouteImport } from './routes/_authenticated/invoice-check'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedBranchesRoute = AuthenticatedBranchesRouteImport.update({
+  id: '/branches',
+  path: '/branches',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBreakdownRoute = AuthenticatedBreakdownRouteImport.update({
+  id: '/breakdown',
+  path: '/breakdown',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDailyRoute = AuthenticatedDailyRouteImport.update({
+  id: '/daily',
+  path: '/daily',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHistoryRoute = AuthenticatedHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedInvoiceCheckRoute =
+  AuthenticatedInvoiceCheckRouteImport.update({
+    id: '/invoice-check',
+    path: '/invoice-check',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/branches': typeof AuthenticatedBranchesRoute
+  '/breakdown': typeof AuthenticatedBreakdownRoute
+  '/daily': typeof AuthenticatedDailyRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/history': typeof AuthenticatedHistoryRoute
+  '/import': typeof AuthenticatedImportRoute
+  '/invoice-check': typeof AuthenticatedInvoiceCheckRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/branches': typeof AuthenticatedBranchesRoute
+  '/breakdown': typeof AuthenticatedBreakdownRoute
+  '/daily': typeof AuthenticatedDailyRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/history': typeof AuthenticatedHistoryRoute
+  '/import': typeof AuthenticatedImportRoute
+  '/invoice-check': typeof AuthenticatedInvoiceCheckRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/branches': typeof AuthenticatedBranchesRoute
+  '/_authenticated/breakdown': typeof AuthenticatedBreakdownRoute
+  '/_authenticated/daily': typeof AuthenticatedDailyRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/history': typeof AuthenticatedHistoryRoute
+  '/_authenticated/import': typeof AuthenticatedImportRoute
+  '/_authenticated/invoice-check': typeof AuthenticatedInvoiceCheckRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/branches'
+    | '/breakdown'
+    | '/daily'
+    | '/dashboard'
+    | '/history'
+    | '/import'
+    | '/invoice-check'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/branches'
+    | '/breakdown'
+    | '/daily'
+    | '/dashboard'
+    | '/history'
+    | '/import'
+    | '/invoice-check'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/branches'
+    | '/_authenticated/breakdown'
+    | '/_authenticated/daily'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/history'
+    | '/_authenticated/import'
+    | '/_authenticated/invoice-check'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +158,99 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/branches': {
+      id: '/_authenticated/branches'
+      path: '/branches'
+      fullPath: '/branches'
+      preLoaderRoute: typeof AuthenticatedBranchesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/breakdown': {
+      id: '/_authenticated/breakdown'
+      path: '/breakdown'
+      fullPath: '/breakdown'
+      preLoaderRoute: typeof AuthenticatedBreakdownRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/daily': {
+      id: '/_authenticated/daily'
+      path: '/daily'
+      fullPath: '/daily'
+      preLoaderRoute: typeof AuthenticatedDailyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/history': {
+      id: '/_authenticated/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof AuthenticatedHistoryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/import': {
+      id: '/_authenticated/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof AuthenticatedImportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/invoice-check': {
+      id: '/_authenticated/invoice-check'
+      path: '/invoice-check'
+      fullPath: '/invoice-check'
+      preLoaderRoute: typeof AuthenticatedInvoiceCheckRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedBranchesRoute: typeof AuthenticatedBranchesRoute
+  AuthenticatedBreakdownRoute: typeof AuthenticatedBreakdownRoute
+  AuthenticatedDailyRoute: typeof AuthenticatedDailyRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedHistoryRoute: typeof AuthenticatedHistoryRoute
+  AuthenticatedImportRoute: typeof AuthenticatedImportRoute
+  AuthenticatedInvoiceCheckRoute: typeof AuthenticatedInvoiceCheckRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedBranchesRoute: AuthenticatedBranchesRoute,
+  AuthenticatedBreakdownRoute: AuthenticatedBreakdownRoute,
+  AuthenticatedDailyRoute: AuthenticatedDailyRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedHistoryRoute: AuthenticatedHistoryRoute,
+  AuthenticatedImportRoute: AuthenticatedImportRoute,
+  AuthenticatedInvoiceCheckRoute: AuthenticatedInvoiceCheckRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
