@@ -157,7 +157,9 @@ export function parseCpcInvoice(raw: string): InvoiceFigures {
       "Invoice Total",
       "Total Due",
     ),
-    invoiceNo: source.match(/HS-ADS-[A-Za-z0-9/\-]+/i)?.[0],
+    invoiceNo:
+      source.match(/HS-ADS-[A-Za-z0-9/\-]+/i)?.[0] ??
+      source.match(/HS-CPC-[A-Za-z0-9/\-]+/i)?.[0],
   });
 }
 
