@@ -81,13 +81,15 @@ function build(entries: Record<string, number | string | undefined>): InvoiceFig
 /** Parse a HungerStation commission invoice. */
 export function parseHungerInvoice(raw: string): InvoiceFigures {
   const source = raw.replace(/\s+/g, " ");
+  // The summary rows carry three numbers each: amount, VAT 15%, total with VAT.
+  const total = amountsAfter(source, 3, "Total Invoice", "Invoice Total");
   return build({
     salesCommission: amountAfter(source, "Sales Commission"),
     paymentFees: amountAfter(source, "Payment Fees", "Payment Fee"),
     othersCommission: amountAfter(source, "Others Commission", "Other Commission"),
-    totalExVat: amountAfter(source, "Total Excluding VAT", "Subtotal"),
-    vat: amountAfter(source, "VAT 15", "Total VAT"),
-    totalIncVat: amountAfter(source, "Total Invoice", "Invoice Total"),
+    totalExVat: total[0],
+    vat: total[1],
+    totalIncVat: total[2],
     totalOnlineSales: amountAfter(source, "Total Online Sales"),
     netDue: amountAfter(source, "Net Due Invoice", "Net Due"),
     invoiceNo: source.match(/Invoice\s*(?:No|Number)[^A-Za-z0-9]{0,10}([A-Za-z0-9\-/]+)/i)?.[1],
