@@ -1,0 +1,249 @@
+import { describe, expect, test } from "bun:test";
+import * as XLSX from "xlsx";
+
+import { analyzeHungerStation } from "./hungerstation";
+import { parseCpcInvoice } from "./pdf";
+
+function buildWorkbook(): ArrayBuffer {
+  const workbook = XLSX.utils.book_new();
+
+  const orders = [
+    {
+      "Order ID": 1,
+      Status: "Successful",
+      "Branch Name": "Branch A",
+      "HS Branch ID": 100,
+      "Original Amount": 115,
+      "Commissionable GMV (VAT Excluded)": 100,
+      Commission: 15,
+      "Payment Type": "Online payment",
+      "CC Amount": 120,
+      "Wallet Amount": 0,
+      "Transmitter Amount": 0,
+      "Restaurant delivery Discount": 11.5,
+      "Flash Deals Fee Excluding Vat": 0,
+      "HS Food Discount": 0,
+      "Rewards Discounts": 0,
+      "Restaurant Food discount": 0,
+      "CC Refund Amount": 0,
+      "Wallet Refund": 0,
+      "Operation Day": "2026-08-01",
+    },
+    {
+      "Order ID": 2,
+      Status: "Failed After Pick Up",
+      "Branch Name": "Branch A",
+      "HS Branch ID": 100,
+      "Original Amount": 57.5,
+      "Commissionable GMV (VAT Excluded)": 50,
+      Commission: 7.5,
+      "Payment Type": "Online payment",
+      "CC Amount": 60,
+      "Wallet Amount": 0,
+      "Transmitter Amount": 0,
+      "Restaurant delivery Discount": 5.75,
+      "Flash Deals Fee Excluding Vat": 0,
+      "HS Food Discount": 0,
+      "Rewards Discounts": 0,
+      "Restaurant Food discount": 0,
+      "CC Refund Amount": 0,
+      "Wallet Refund": 0,
+      "Operation Day": "2026-08-01",
+    },
+    {
+      "Order ID": 3,
+      Status: "Failed by vendor",
+      "Branch Name": "Branch A",
+      "HS Branch ID": 100,
+      "Original Amount": 28.75,
+      "Commissionable GMV (VAT Excluded)": 25,
+      Commission: 3.75,
+      "Payment Type": "Online payment",
+      "CC Amount": 30,
+      "Wallet Amount": 0,
+      "Transmitter Amount": 0,
+      "Restaurant delivery Discount": 2.875,
+      "Flash Deals Fee Excluding Vat": 0,
+      "HS Food Discount": 0,
+      "Rewards Discounts": 0,
+      "Restaurant Food discount": 0,
+      "CC Refund Amount": 0,
+      "Wallet Refund": 0,
+      "Operation Day": "2026-08-01",
+    },
+    {
+      "Order ID": 4,
+      Status: "Rejected",
+      "Branch Name": "Branch A",
+      "HS Branch ID": 100,
+      "Original Amount": 11.5,
+      "Commissionable GMV (VAT Excluded)": 10,
+      Commission: 1.5,
+      "Payment Type": "Online payment",
+      "CC Amount": 12,
+      "Wallet Amount": 0,
+      "Transmitter Amount": 0,
+      "Restaurant delivery Discount": 1.15,
+      "Flash Deals Fee Excluding Vat": 0,
+      "HS Food Discount": 0,
+      "Rewards Discounts": 0,
+      "Restaurant Food discount": 0,
+      "CC Refund Amount": 0,
+      "Wallet Refund": 0,
+      "Operation Day": "2026-08-01",
+    },
+    {
+      "Order ID": 5,
+      Status: "Failed Before Pick Up",
+      "Branch Name": "Branch A",
+      "HS Branch ID": 100,
+      "Original Amount": 0,
+      "Commissionable GMV (VAT Excluded)": 0,
+      Commission: 0,
+      "Payment Type": "Online payment",
+      "CC Amount": 8,
+      "Wallet Amount": 0,
+      "Transmitter Amount": 0,
+      "Restaurant delivery Discount": 0,
+      "Flash Deals Fee Excluding Vat": 0,
+      "HS Food Discount": 0,
+      "Rewards Discounts": 0,
+      "Restaurant Food discount": 0,
+      "CC Refund Amount": 0,
+      "Wallet Refund": 0,
+      "Operation Day": "2026-08-01",
+    },
+    {
+      "Order ID": 6,
+      Status: "Failed",
+      "Branch Name": "Branch A",
+      "HS Branch ID": 100,
+      "Original Amount": 0,
+      "Commissionable GMV (VAT Excluded)": 0,
+      Commission: 0,
+      "Payment Type": "Online payment",
+      "CC Amount": 4,
+      "Wallet Amount": 0,
+      "Transmitter Amount": 0,
+      "Restaurant delivery Discount": 0,
+      "Flash Deals Fee Excluding Vat": 0,
+      "HS Food Discount": 0,
+      "Rewards Discounts": 0,
+      "Restaurant Food discount": 0,
+      "CC Refund Amount": 0,
+      "Wallet Refund": 0,
+      "Operation Day": "2026-08-01",
+    },
+  ];
+
+  const freeDelivery = [
+    { ID: 1, "Branch Name": "Branch A", "HS Branch ID": 100, Status: "Successful" },
+    { ID: 2, "Branch Name": "Branch A", "HS Branch ID": 100, Status: "Failed After Pick Up" },
+    { ID: 3, "Branch Name": "Branch A", "HS Branch ID": 100, Status: "Failed by vendor" },
+    { ID: 4, "Branch Name": "Branch A", "HS Branch ID": 100, Status: "Rejected" },
+    { ID: 5, "Branch Name": "Branch A", "HS Branch ID": 100, Status: "Failed Before Pick Up" },
+  ];
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.json_to_sheet(orders),
+    "1 Commissionable GMV",
+  );
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.json_to_sheet(freeDelivery),
+    "2 Free Delivery Orders",
+  );
+
+  return XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+}
+
+describe("HungerStation audit rules", () => {
+  test("uses the validated status rules and counts only billable RDF orders", () => {
+    const result = analyzeHungerStation(buildWorkbook(), {
+      manualBankRate: 0.025,
+      invoice: {
+        lines: [],
+        salesCommission: 27.75,
+        paymentFees: 5.85,
+        othersCommission: 517.5,
+        totalExVat: 551.1,
+        extras: [{ label: "الطابعات", amount: 500 }],
+      },
+    });
+
+    expect(result.summary.orders).toBe(3);
+    expect(result.summary.netSales).toBeCloseTo(185, 6);
+    expect(result.summary.commission).toBeCloseTo(27.75, 6);
+    expect(result.summary.ccSuccess).toBeCloseTo(210, 6);
+    expect(result.summary.ccRejected).toBeCloseTo(24, 6);
+    expect(result.summary.rdfCampaigns).toBeCloseTo(17.5, 6);
+    expect(result.branches[0]?.freeDeliveryOrders).toBe(3);
+
+    const paymentCheck = result.checks.find(
+      (check) => check.label === "رسوم الدفع الإلكتروني (البطاقات)",
+    );
+    expect(paymentCheck?.computed).toBeCloseTo(5.85, 6);
+    expect(paymentCheck?.evidence).toBe("contract");
+
+    const printerCheck = result.checks.find((check) => check.label.includes("الطابعات"));
+    expect(printerCheck?.computed).toBe(0);
+    expect(printerCheck?.invoiced).toBe(500);
+    expect(printerCheck?.evidence).toBe("invoice_only");
+  });
+
+  test("contract rate takes precedence over the invoice-implied rate", () => {
+    const result = analyzeHungerStation(buildWorkbook(), {
+      manualBankRate: 0.025,
+      invoice: {
+        lines: [],
+        paymentFees: 23.4,
+      },
+    });
+
+    expect(result.summary.bankRateSource).toBe("manual");
+    expect(result.summary.bankRate).toBeCloseTo(0.025, 8);
+    expect(result.summary.invoiceImpliedBankRate).toBeCloseTo(0.1, 8);
+
+    const paymentCheck = result.checks.find(
+      (check) => check.label === "رسوم الدفع الإلكتروني (البطاقات)",
+    );
+    expect(paymentCheck?.computed).toBeCloseTo(5.85, 6);
+    expect(paymentCheck?.invoiced).toBeCloseTo(23.4, 6);
+    expect(paymentCheck?.evidence).toBe("contract");
+  });
+
+  test("marks invoice-implied bank rates as non-independent when no contract rate is provided", () => {
+    const result = analyzeHungerStation(buildWorkbook(), {
+      invoice: {
+        lines: [],
+        paymentFees: 5.85,
+      },
+    });
+
+    expect(result.summary.bankRateSource).toBe("invoice");
+    expect(result.summary.bankRate).toBeCloseTo(0.025, 8);
+
+    const paymentCheck = result.checks.find(
+      (check) => check.label === "رسوم الدفع الإلكتروني (البطاقات)",
+    );
+    expect(paymentCheck?.evidence).toBe("invoice_derived");
+  });
+});
+
+describe("HungerStation CPC parser", () => {
+  test("reads the real before-VAT, VAT and after-VAT labels without confusing them", () => {
+    const figures = parseCpcInvoice(
+      "Total Invoice Value Before VAT SAR 47587.23 " +
+        "VAT Value( 15.0 %) SAR 7138.08 " +
+        "Total Invoice Value After VAT SAR 54725.31 " +
+        "Total Invoice Net Value SAR 54725.31 " +
+        "HS-ADS-2026/8-4708457",
+    );
+
+    expect(figures.totalExVat).toBeCloseTo(47587.23, 2);
+    expect(figures.vat).toBeCloseTo(7138.08, 2);
+    expect(figures.totalIncVat).toBeCloseTo(54725.31, 2);
+    expect(figures.invoiceNo).toBe("HS-ADS-2026/8-4708457");
+  });
+});
