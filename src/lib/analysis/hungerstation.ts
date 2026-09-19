@@ -52,18 +52,35 @@ function col(row: Record<string, unknown>, ...candidates: string[]): unknown {
   return null;
 }
 
-type StatusClass = "successful" | "failedAfterPickup" | "rejected" | "failedBefore" | "other";
+type StatusClass =
+  | "successful"
+  | "failedAfterPickup"
+  | "failedByVendor"
+  | "rejected"
+  | "failedBefore"
+  | "other";
 
 function classifyStatus(raw: string): StatusClass {
   const s = raw.toLowerCase();
   if (s.includes("successful")) return "successful";
   if (s.includes("after pick")) return "failedAfterPickup";
-  // HungerStation bills "failed by vendor" exactly like a delivered order.
-  if (s.includes("vendor")) return "failedAfterPickup";
+  if (s.includes("vendor")) return "failedByVendor";
   if (s.includes("reject")) return "rejected";
   if (s.includes("before pick")) return "failedBefore";
   if (s.includes("fail")) return "failedBefore";
   return "other";
+}
+
+function isBillableOrder(cls: StatusClass): boolean {
+  return cls === "successful" || cls === "failedAfterPickup" || cls === "failedByVendor";
+}
+
+function isCollectionOrder(cls: StatusClass): boolean {
+  return cls === "successful" || cls === "failedAfterPickup";
+}
+
+function isCommissionableOrder(cls: StatusClass): boolean {
+  return isBillableOrder(cls) || cls === "rejected";
 }
 
 function emptyBranch(branch: string, branchId: string): BranchRow {
@@ -77,6 +94,7 @@ function emptyBranch(branch: string, branchId: string): BranchRow {
     commissionPct: 0,
     ccSuccess: 0,
     ccRejected: 0,
+    netBankCards: 0,
     walletAmount: 0,
     riderWallet: 0,
     rdfCampaigns: 0,
@@ -87,6 +105,7 @@ function emptyBranch(branch: string, branchId: string): BranchRow {
     rewardsDiscount: 0,
     restaurantFoodDiscount: 0,
     totalFoodDiscount: 0,
+    netMarketingDiscount: 0,
     partialRefund: 0,
     fulfillmentMods: 0,
     approvedRefunds: 0,
@@ -171,14 +190,16 @@ export function analyzeHungerStation(
     const ccAmount = num(col(order, "CC Amount"));
     const date = normalizeDate(col(order, "Operation Day", "Creation Time"));
 
-    // Commission base: successful + failed after pickup + rejected
-    if (cls === "successful" || cls === "failedAfterPickup" || cls === "rejected") {
+    // Commission base observed on real HS invoices:
+    // successful + failed after pickup + failed by vendor + rejected.
+    if (isCommissionableOrder(cls)) {
       row.netSales += gmv;
       row.commission += commission;
     }
 
-    // Operational base: successful + failed after pickup
-    if (cls === "successful" || cls === "failedAfterPickup") {
+    // Billable sales/RDF/discount base:
+    // successful + failed after pickup + failed by vendor.
+    if (isBillableOrder(cls)) {
       row.orders += 1;
       row.grossSales += num(col(order, "Original Amount"));
       row.rdfCampaigns += num(col(order, "Restaurant delivery Discount"));
@@ -188,9 +209,16 @@ export function analyzeHungerStation(
       row.restaurantFoodDiscount += num(col(order, "Restaurant Food discount"));
 
       if (isOnline) {
+        // HS charges the successful bank fee on failed-by-vendor orders too.
         row.ccSuccess += ccAmount;
-        row.walletAmount += num(col(order, "Wallet Amount"));
-        row.riderWallet += num(col(order, "Transmitter Amount"));
+
+        // Collections, however, exclude failed-by-vendor payments. This is visible
+        // in both July and August real invoices (card/rider balances are reversed).
+        if (isCollectionOrder(cls)) {
+          row.netBankCards = (row.netBankCards ?? 0) + ccAmount;
+          row.walletAmount += num(col(order, "Wallet Amount"));
+          row.riderWallet += num(col(order, "Transmitter Amount"));
+        }
       }
 
       if (date) {
@@ -220,11 +248,10 @@ export function analyzeHungerStation(
     }
   }
 
-  // HungerStation's guide bills RDF only for successful / failed-after-pickup orders.
-  // "Failed by vendor" is classified with failed-after-pickup above.
+  // Real invoices also bill failed-by-vendor RDF rows.
   for (const fd of rowsOf(wb, "free delivery")) {
     const cls = classifyStatus(text(col(fd, "Status")));
-    if (cls !== "successful" && cls !== "failedAfterPickup") continue;
+    if (!isBillableOrder(cls)) continue;
     const row = branchOf(text(col(fd, "Branch Name")), text(col(fd, "HS Branch ID")));
     row.freeDeliveryOrders += 1;
   }
@@ -256,13 +283,14 @@ export function analyzeHungerStation(
     row.rdfCampaigns = row.rdfCampaigns / VAT;
     row.compensation = row.compensation / VAT;
     row.waitingTimeFees = row.waitingTimeFees / VAT;
-    row.totalFoodDiscount =
-      row.hsFoodDiscount + row.rewardsDiscount + row.restaurantFoodDiscount;
+    row.totalFoodDiscount = row.hsFoodDiscount + row.restaurantFoodDiscount;
+    row.netMarketingDiscount = row.hsFoodDiscount + row.rewardsDiscount;
     row.commissionPct = row.netSales > 0 ? row.commission / row.netSales : 0;
   }
 
   const totalCcSuccess = branchList.reduce((sum, r) => sum + r.ccSuccess, 0);
   const totalCcRejected = branchList.reduce((sum, r) => sum + r.ccRejected, 0);
+  const totalNetBankCards = branchList.reduce((sum, r) => sum + (r.netBankCards ?? 0), 0);
 
   // Fixed charges that only exist on the invoice (wallet fee, printers, subscription…)
   const invoiceExtras = options.invoice?.extras ?? [];
@@ -320,6 +348,7 @@ export function analyzeHungerStation(
     commissionPct: 0,
     ccSuccess: totalCcSuccess,
     ccRejected: totalCcRejected,
+    netBankCards: totalNetBankCards,
     walletAmount: sum((r) => r.walletAmount),
     riderWallet: sum((r) => r.riderWallet),
     rdfCampaigns: sum((r) => r.rdfCampaigns),
@@ -329,10 +358,12 @@ export function analyzeHungerStation(
     rewardsDiscount: sum((r) => r.rewardsDiscount),
     restaurantFoodDiscount: sum((r) => r.restaurantFoodDiscount),
     totalFoodDiscount: sum((r) => r.totalFoodDiscount),
+    netMarketingDiscount: sum((r) => r.netMarketingDiscount ?? 0),
     partialRefund: sum((r) => r.partialRefund),
     fulfillmentMods: sum((r) => r.fulfillmentMods),
     approvedRefunds: sum((r) => r.approvedRefunds),
     waitingTimeFees: sum((r) => r.waitingTimeFees),
+    totalCollections: 0,
     bankRate,
     invoiceImpliedBankRate,
     bankRateSource,
@@ -346,6 +377,12 @@ export function analyzeHungerStation(
     periodEnd,
   };
   summary.commissionPct = summary.netSales > 0 ? summary.commission / summary.netSales : 0;
+  summary.totalCollections =
+    (summary.netBankCards ?? 0) +
+    summary.walletAmount +
+    summary.riderWallet +
+    (summary.netMarketingDiscount ?? 0) +
+    summary.approvedRefunds;
 
   const invoice = options.invoice ?? { lines: [] };
   if (options.cpcInvoice?.totalIncVat) invoice.cpc = options.cpcInvoice.totalIncVat;
@@ -404,6 +441,17 @@ export function analyzeHungerStation(
     },
   ];
 
+  if (invoice.totalOnlineSales !== undefined) {
+    checks.push({
+      label: "إجمالي التحصيلات",
+      computed: summary.totalCollections ?? 0,
+      invoiced: Math.abs(invoice.totalOnlineSales),
+      evidence: "data",
+      hint:
+        "صافي مدفوعات البطاقات + محافظ العملاء + محافظ المندوبين + صافي الخصومات التسويقية + الاعتراضات المعتمدة.",
+    });
+  }
+
   if (invoiceExtras.length) {
     for (const extra of invoiceExtras) {
       checks.push({
@@ -416,17 +464,14 @@ export function analyzeHungerStation(
     }
   }
 
-  if (
-    invoice.totalOnlineSales !== undefined &&
-    invoice.totalIncVat !== undefined &&
-    invoice.netDue !== undefined
-  ) {
+  if (invoice.totalIncVat !== undefined && invoice.netDue !== undefined) {
     checks.push({
-      label: "اتساق صافي المستحق داخل الفاتورة",
-      computed: Math.abs(invoice.totalOnlineSales) - invoice.totalIncVat,
+      label: "صافي المستحق بعد فاتورة العمولة",
+      computed: (summary.totalCollections ?? 0) - invoice.totalIncVat,
       invoiced: Math.abs(invoice.netDue),
-      evidence: "invoice_only",
-      hint: "فحص حسابي داخلي: إجمالي التحصيلات ناقص إجمالي فاتورة العمولة بعد الضريبة. لا يعتمد على مصدر مستقل.",
+      evidence: "mixed",
+      hint:
+        "التحصيلات معاد احتسابها من ملف الطلبات، ثم يُخصم منها إجمالي فاتورة العمولة بعد الضريبة كما ورد في الفاتورة.",
     });
   }
 
