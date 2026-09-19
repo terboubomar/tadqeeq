@@ -212,6 +212,12 @@ function InvoiceCheck() {
             <Row label="تعويضات العملاء" value={sar(selected.summary.compensation)} />
             <Row label="رسوم العروض السريعة" value={sar(selected.summary.jokerFees)} />
             <Row label="رسوم وقت الانتظار" value={sar(selected.summary.waitingTimeFees)} />
+            {selected.summary.invoiceOnlyExtras ? (
+              <Row
+                label="بنود مأخوذة من الفاتورة"
+                value={sar(selected.summary.invoiceOnlyExtras)}
+              />
+            ) : null}
             {selected.invoice?.cpc ? (
               <Row label="فاتورة الإعلانات CPC" value={sar(selected.invoice.cpc)} />
             ) : null}

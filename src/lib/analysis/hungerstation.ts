@@ -258,14 +258,23 @@ export function analyzeHungerStation(
   const totalCcSuccess = branchList.reduce((sum, r) => sum + r.ccSuccess, 0);
   const totalCcRejected = branchList.reduce((sum, r) => sum + r.ccRejected, 0);
 
-  // The contract rate is not in the data — back it out of the invoiced payment fees.
-  const invoicedPaymentFees = options.invoice?.paymentFees ?? 0;
+  // Fixed charges that only exist on the invoice (wallet fee, printers, subscription…)
+  const invoiceExtras = options.invoice?.extras ?? [];
+  const walletFeeExtra = invoiceExtras
+    .filter((e) => e.label.includes("محفظة"))
+    .reduce((sum, e) => sum + e.amount, 0);
+  const otherExtras = invoiceExtras
+    .filter((e) => !e.label.includes("محفظة"))
+    .reduce((sum, e) => sum + e.amount, 0);
+  const invoiceOnlyExtras = walletFeeExtra + otherExtras;
+
+  // The contract rate is not in the data — back it out of the invoiced card fees.
+  const invoicedPaymentFees = (options.invoice?.paymentFees ?? 0) - walletFeeExtra;
   const ccBase = totalCcSuccess + totalCcRejected;
   let bankRate = 0;
   let bankRateSource: "invoice" | "manual" = "manual";
   if (invoicedPaymentFees > 0 && ccBase > 0) {
-    // The invoiced fee also covers wallet payments, which are not in the order sheet,
-    // so snap the derived rate to the nearest contract step (0.05%).
+    // Snap the derived rate to the nearest contract step (0.05%).
     bankRate = Math.round((invoicedPaymentFees / ccBase) / 0.0005) * 0.0005;
     bankRateSource = "invoice";
   } else if (options.manualBankRate && options.manualBankRate > 0) {
@@ -315,7 +324,8 @@ export function analyzeHungerStation(
     bankRateSource,
     bankFeeSuccess: sum((r) => r.bankFeeSuccess),
     bankFeeRefunded: sum((r) => r.bankFeeRefunded),
-    totalCharges: sum((r) => r.totalCharges),
+    invoiceOnlyExtras,
+    totalCharges: sum((r) => r.totalCharges) + invoiceOnlyExtras,
     branchCount: branchList.length,
     statusCounts,
     periodStart,
@@ -327,7 +337,16 @@ export function analyzeHungerStation(
   if (options.cpcInvoice?.totalIncVat) invoice.cpc = options.cpcInvoice.totalIncVat;
 
   const othersComputed =
-    summary.rdfCampaigns + summary.compensation + summary.jokerFees + summary.waitingTimeFees;
+    summary.rdfCampaigns +
+    summary.compensation +
+    summary.jokerFees +
+    summary.waitingTimeFees +
+    otherExtras;
+  const paymentFeesComputed =
+    summary.bankFeeSuccess + summary.bankFeeRefunded + walletFeeExtra;
+  const extrasNote = invoiceExtras.length
+    ? ` أُضيفت من الفاتورة: ${invoiceExtras.map((e) => `${e.label} (${e.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`).join("، ")}.`
+    : "";
 
   const checks: CheckRow[] = [
     {
@@ -338,28 +357,35 @@ export function analyzeHungerStation(
     },
     {
       label: "رسوم الدفع الإلكتروني",
-      computed: summary.bankFeeSuccess + summary.bankFeeRefunded,
+      computed: paymentFeesComputed,
       invoiced: invoice.paymentFees ?? 0,
       hint:
-        "نسبة البنك × (مدفوعات البطاقات الناجحة + المرتجعة). رسوم محفظة العميل تظهر في الفاتورة فقط ولا توجد في ملف الطلبات.",
+        "نسبة البنك × (مدفوعات البطاقات الناجحة + المرتجعة)، مضافاً إليها رسوم محفظة العميل المأخوذة من الفاتورة لعدم وجودها في ملف الطلبات.",
     },
     {
       label: "عمولات أخرى",
       computed: othersComputed,
       invoiced: invoice.othersCommission ?? 0,
       hint:
-        "حملات التوصيل المجاني + التعويضات + رسوم العروض + وقت الانتظار (بدون ضريبة). الرسوم الثابتة مثل الطابعات والاشتراك الشهري تصدر في الفاتورة ولا توجد في البيانات.",
+        "حملات التوصيل المجاني + التعويضات + رسوم العروض + وقت الانتظار (بدون ضريبة)." + extrasNote,
     },
     {
       label: "إجمالي الفاتورة (بدون ضريبة)",
-      computed:
-        summary.commission +
-        summary.bankFeeSuccess +
-        summary.bankFeeRefunded +
-        othersComputed,
+      computed: summary.commission + paymentFeesComputed + othersComputed,
       invoiced: invoice.totalExVat ?? 0,
     },
   ];
+
+  if (invoiceExtras.length) {
+    for (const extra of invoiceExtras) {
+      checks.push({
+        label: `${extra.label} (من الفاتورة)`,
+        computed: extra.amount,
+        invoiced: extra.amount,
+        hint: "بند غير موجود في ملف الطلبات — أُخذ كما ورد في الفاتورة وأُدرج ضمن الإجمالي المحتسب.",
+      });
+    }
+  }
 
   const label =
     options.label ??

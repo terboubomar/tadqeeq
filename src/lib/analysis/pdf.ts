@@ -22,6 +22,9 @@ export async function extractPdfText(file: ArrayBuffer, maxPages = 3): Promise<s
 }
 
 const NUM = "\\(?-?[\\d,]+\\.\\d{1,2}\\)?";
+// Filler between a label and its amount: anything that is not the start of a number.
+// Bilingual invoices often garble the Arabic label into characters that include digits.
+const GAP = "(?:[^0-9(]|\\d(?![\\d,]*\\.\\d))";
 
 function toNumber(raw: string): number {
   const negative = raw.startsWith("(");
@@ -35,7 +38,8 @@ function amountsAfter(source: string, count: number, ...labels: string[]): numbe
   for (const label of labels) {
     const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const re = new RegExp(
-      `${escaped}[^0-9(\\-]{0,80}` + Array.from({ length: count }, () => `(${NUM})`).join("[^0-9(\\-]{0,40}"),
+      `${escaped}${GAP}{0,120}` +
+        Array.from({ length: count }, () => `(${NUM})`).join(`${GAP}{0,60}`),
       "i",
     );
     const match = source.match(re);
@@ -78,12 +82,38 @@ function build(entries: Record<string, number | string | undefined>): InvoiceFig
   return figures as unknown as InvoiceFigures;
 }
 
+/**
+ * Detail rows that exist only on the invoice (no equivalent in the order sheet).
+ * Each row reads: label, quantity, rate, amount — we keep the last number.
+ */
+const EXTRA_LINES: { label: string; keys: string[] }[] = [
+  { label: "رسوم محفظة العميل", keys: ["Wallet Payments Fee", "Wallet Payment Fee"] },
+  { label: "الطابعات", keys: ["Printers"] },
+  { label: "الاشتراك الشهري", keys: ["Monthly subscription fees", "Monthly Subscription"] },
+  {
+    label: "رسوم حملات التوصيل المجاني",
+    keys: ["Free Delivery fee campaign Charges", "Free Delivery fee campaign"],
+  },
+];
+
+function parseExtras(source: string): { label: string; amount: number }[] {
+  const extras: { label: string; amount: number }[] = [];
+  for (const item of EXTRA_LINES) {
+    const values = amountsAfter(source, 3, ...item.keys);
+    const amount = values.length === 3 ? values[2] : amountsAfter(source, 1, ...item.keys)[0];
+    if (typeof amount === "number" && Number.isFinite(amount) && amount !== 0) {
+      extras.push({ label: item.label, amount });
+    }
+  }
+  return extras;
+}
+
 /** Parse a HungerStation commission invoice. */
 export function parseHungerInvoice(raw: string): InvoiceFigures {
   const source = raw.replace(/\s+/g, " ");
   // The summary rows carry three numbers each: amount, VAT 15%, total with VAT.
   const total = amountsAfter(source, 3, "Total Invoice", "Invoice Total");
-  return build({
+  const figures = build({
     salesCommission: amountAfter(source, "Sales Commission"),
     paymentFees: amountAfter(source, "Payment Fees", "Payment Fee"),
     othersCommission: amountAfter(source, "Others Commission", "Other Commission"),
@@ -94,6 +124,12 @@ export function parseHungerInvoice(raw: string): InvoiceFigures {
     netDue: amountAfter(source, "Net Due Invoice", "Net Due"),
     invoiceNo: source.match(/Invoice\s*(?:No|Number)[^A-Za-z0-9]{0,10}([A-Za-z0-9\-/]+)/i)?.[1],
   });
+  const extras = parseExtras(source);
+  if (extras.length) {
+    figures.extras = extras;
+    figures.lines = [...figures.lines, ...extras];
+  }
+  return figures;
 }
 
 /** Parse a HungerStation CPC (paid ads) invoice. */
