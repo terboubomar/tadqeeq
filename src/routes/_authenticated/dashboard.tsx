@@ -133,17 +133,24 @@ function Dashboard() {
           />
           <StatCard
             label="رسوم الدفع الإلكتروني"
-            value={sar(s.bankFeeSuccess + s.bankFeeRefunded + (s.walletFee ?? 0))}
+            value={sar(
+              selected.invoice?.paymentFees ??
+                s.bankFeeSuccess + s.bankFeeRefunded + (s.walletFee ?? 0),
+            )}
             hint={
-              s.bankRate > 0
-                ? `النسبة المطبّقة ${percent(s.bankRate)} ${
-                    s.bankRateSource === "invoice"
-                      ? "(مستنتجة من الفاتورة — غير مستقلة)"
-                      : s.bankRateSource === "manual"
-                        ? "(نسبة العقد)"
-                        : ""
-                  }`
-                : "لم تُحدَّد نسبة — أدخل نسبة العقد أو أرفق الفاتورة للتسوية"
+              selected.invoice?.paymentFees !== undefined
+                ? `الفاتورة: ${sar(selected.invoice.paymentFees)} · المحتسب: ${sar(
+                    s.bankFeeSuccess + s.bankFeeRefunded + (s.walletFee ?? 0),
+                  )}`
+                : s.bankRate > 0
+                  ? `المحتسب بنسبة ${percent(s.bankRate)} ${
+                      s.bankRateSource === "invoice"
+                        ? "(مستنتجة من الفاتورة — غير مستقلة)"
+                        : s.bankRateSource === "manual"
+                          ? "(نسبة العقد)"
+                          : ""
+                    }`
+                  : "لم تُحدَّد نسبة — أدخل نسبة العقد أو أرفق الفاتورة للتسوية"
             }
             icon={Banknote}
             tone={s.bankRate > 0 ? "default" : "negative"}
