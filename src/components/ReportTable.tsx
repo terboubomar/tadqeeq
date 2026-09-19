@@ -1,0 +1,202 @@
+import { Download, FileSpreadsheet } from "lucide-react";
+import { useMemo, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { exportCsv, exportXlsx, type ExportColumn } from "@/lib/export";
+import { count, money, percent } from "@/lib/format";
+import { cn } from "@/lib/utils";
+
+export interface Column<T> {
+  key: keyof T & string;
+  header: string;
+  type?: "money" | "number" | "percent" | "text";
+  className?: string;
+}
+
+interface ReportTableProps<T> {
+  title: string;
+  rows: T[];
+  columns: Column<T>[];
+  filename: string;
+  searchKey?: keyof T & string;
+  totals?: boolean;
+  caption?: string;
+}
+
+function render<T>(row: T, column: Column<T>) {
+  const value = row[column.key];
+  if (typeof value === "number") {
+    if (column.type === "percent") return <span className="num">{percent(value)}</span>;
+    if (column.type === "number") return <span className="num">{count(value)}</span>;
+    return <span className="num">{money(value)}</span>;
+  }
+  return <span>{value === null || value === undefined ? "—" : String(value)}</span>;
+}
+
+export function ReportTable<T extends Record<string, unknown>>({
+  title,
+  rows,
+  columns,
+  filename,
+  searchKey,
+  totals = true,
+  caption,
+}: ReportTableProps<T>) {
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [desc, setDesc] = useState(true);
+
+  const filtered = useMemo(() => {
+    let list = rows;
+    if (searchKey && query.trim()) {
+      const needle = query.trim().toLowerCase();
+      list = list.filter((row) => String(row[searchKey] ?? "").toLowerCase().includes(needle));
+    }
+    if (sortKey) {
+      list = [...list].sort((a, b) => {
+        const left = a[sortKey];
+        const right = b[sortKey];
+        if (typeof left === "number" && typeof right === "number") {
+          return desc ? right - left : left - right;
+        }
+        return desc
+          ? String(right).localeCompare(String(left), "ar")
+          : String(left).localeCompare(String(right), "ar");
+      });
+    }
+    return list;
+  }, [rows, query, searchKey, sortKey, desc]);
+
+  const totalsRow = useMemo(() => {
+    if (!totals) return null;
+    const result: Record<string, number> = {};
+    for (const column of columns) {
+      if (column.type === "money" || column.type === "number" || !column.type) {
+        const sum = filtered.reduce((acc, row) => {
+          const value = row[column.key];
+          return acc + (typeof value === "number" ? value : 0);
+        }, 0);
+        if (sum !== 0) result[column.key] = sum;
+      }
+    }
+    return result;
+  }, [filtered, columns, totals]);
+
+  const exportColumns = columns.map(
+    (column) =>
+      ({ key: column.key, header: column.header, type: column.type }) as ExportColumn<T>,
+  );
+
+  return (
+    <section className="panel overflow-hidden">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <div>
+          <h2 className="text-base font-bold">{title}</h2>
+          {caption ? <p className="mt-1 text-xs text-muted-foreground">{caption}</p> : null}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {searchKey ? (
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="بحث…"
+              className="h-9 w-40"
+            />
+          ) : null}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportCsv(filtered, exportColumns, filename)}
+          >
+            <Download className="size-4" />
+            CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              exportXlsx([{ name: title, rows: filtered, columns: exportColumns }], filename)
+            }
+          >
+            <FileSpreadsheet className="size-4" />
+            Excel
+          </Button>
+        </div>
+      </header>
+
+      <div className="max-h-[70vh] overflow-auto">
+        <table className="w-full min-w-max border-collapse text-sm">
+          <thead className="sticky top-0 z-10 bg-surface-raised">
+            <tr>
+              {columns.map((column) => (
+                <th
+                  key={column.key}
+                  onClick={() => {
+                    if (sortKey === column.key) setDesc((value) => !value);
+                    else {
+                      setSortKey(column.key);
+                      setDesc(true);
+                    }
+                  }}
+                  className={cn(
+                    "cursor-pointer whitespace-nowrap px-4 py-3 text-start text-xs font-semibold text-muted-foreground transition-colors hover:text-primary",
+                    sortKey === column.key && "text-primary",
+                    column.className,
+                  )}
+                >
+                  {column.header}
+                  {sortKey === column.key ? (desc ? " ↓" : " ↑") : ""}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((row, index) => (
+              <tr
+                key={index}
+                className="border-t border-border/60 transition-colors hover:bg-secondary/50"
+              >
+                {columns.map((column) => (
+                  <td
+                    key={column.key}
+                    className={cn("whitespace-nowrap px-4 py-2.5", column.className)}
+                  >
+                    {render(row, column)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {filtered.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="px-4 py-10 text-center text-sm text-muted-foreground"
+                >
+                  لا توجد بيانات مطابقة
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+          {totalsRow && filtered.length > 0 ? (
+            <tfoot className="sticky bottom-0 bg-surface-raised">
+              <tr className="border-t-2 border-primary/40 font-bold">
+                {columns.map((column, index) => (
+                  <td key={column.key} className="whitespace-nowrap px-4 py-3">
+                    {index === 0 ? (
+                      "الإجمالي"
+                    ) : totalsRow[column.key] !== undefined ? (
+                      <span className="num text-primary">{money(totalsRow[column.key])}</span>
+                    ) : (
+                      ""
+                    )}
+                  </td>
+                ))}
+              </tr>
+            </tfoot>
+          ) : null}
+        </table>
+      </div>
+    </section>
+  );
+}
