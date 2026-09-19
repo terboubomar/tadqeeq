@@ -249,6 +249,7 @@ export function analyzeHungerStation(
   for (const row of branchList) {
     row.rdfCampaigns = row.rdfCampaigns / VAT;
     row.compensation = row.compensation / VAT;
+    row.waitingTimeFees = row.waitingTimeFees / VAT;
     row.totalFoodDiscount =
       row.hsFoodDiscount + row.rewardsDiscount + row.restaurantFoodDiscount;
     row.commissionPct = row.netSales > 0 ? row.commission / row.netSales : 0;
