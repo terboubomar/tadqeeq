@@ -64,6 +64,8 @@ export interface Summary {
   bankRateSource: "invoice" | "manual";
   bankFeeSuccess: number;
   bankFeeRefunded: number;
+  /** Charges taken from the invoice because they don't exist in the order data */
+  invoiceOnlyExtras: number;
   totalCharges: number;
   branchCount: number;
   statusCounts: Record<string, number>;
@@ -74,6 +76,8 @@ export interface Summary {
 export interface InvoiceFigures {
   /** Arabic label -> amount, in display order */
   lines: { label: string; amount: number }[];
+  /** Fixed/extra charges that exist only on the invoice, never in the order sheet */
+  extras?: { label: string; amount: number }[];
   salesCommission?: number;
   paymentFees?: number;
   othersCommission?: number;

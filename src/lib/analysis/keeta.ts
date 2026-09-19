@@ -172,6 +172,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     bankRateSource: "manual",
     bankFeeSuccess: 0,
     bankFeeRefunded: 0,
+    invoiceOnlyExtras: 0,
     totalCharges: sum((r) => r.totalCharges),
     branchCount: branchList.length,
     statusCounts,
