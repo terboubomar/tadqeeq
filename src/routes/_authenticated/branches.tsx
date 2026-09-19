@@ -26,6 +26,7 @@ const HUNGER_COLUMNS: Column<BranchRow>[] = [
   { key: "commissionPct", header: "نسبة العمولة", type: "percent" },
   { key: "bankFeeSuccess", header: "رسوم الدفع" },
   { key: "bankFeeRefunded", header: "رسوم دفع مرتجعة" },
+  { key: "walletFee", header: "رسوم المحافظ" },
   { key: "rdfCampaigns", header: "حملات التوصيل المجاني" },
   { key: "compensation", header: "تعويضات العملاء" },
   { key: "jokerFees", header: "رسوم العروض" },
