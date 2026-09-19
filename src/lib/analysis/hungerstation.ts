@@ -340,7 +340,8 @@ export function analyzeHungerStation(
       label: "رسوم الدفع الإلكتروني",
       computed: summary.bankFeeSuccess + summary.bankFeeRefunded,
       invoiced: invoice.paymentFees ?? 0,
-      hint: "نسبة البنك × (مدفوعات البطاقات الناجحة + المرتجعة)",
+      hint:
+        "نسبة البنك × (مدفوعات البطاقات الناجحة + المرتجعة). رسوم محفظة العميل تظهر في الفاتورة فقط ولا توجد في ملف الطلبات.",
     },
     {
       label: "عمولات أخرى",
