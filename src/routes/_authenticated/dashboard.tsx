@@ -133,7 +133,7 @@ function Dashboard() {
           />
           <StatCard
             label="رسوم الدفع الإلكتروني"
-            value={sar(s.bankFeeSuccess + s.bankFeeRefunded)}
+            value={sar(s.bankFeeSuccess + s.bankFeeRefunded + (s.walletFee ?? 0))}
             hint={
               s.bankRate > 0
                 ? `النسبة المطبّقة ${percent(s.bankRate)} ${
