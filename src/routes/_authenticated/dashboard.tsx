@@ -136,9 +136,13 @@ function Dashboard() {
             hint={
               s.bankRate > 0
                 ? `النسبة المطبّقة ${percent(s.bankRate)} ${
-                    s.bankRateSource === "invoice" ? "(مستخرجة من الفاتورة)" : "(يدوية)"
+                    s.bankRateSource === "invoice"
+                      ? "(مستنتجة من الفاتورة — غير مستقلة)"
+                      : s.bankRateSource === "manual"
+                        ? "(نسبة العقد)"
+                        : ""
                   }`
-                : "لم تُحدَّد نسبة — أرفق الفاتورة أو أدخل النسبة"
+                : "لم تُحدَّد نسبة — أدخل نسبة العقد أو أرفق الفاتورة للتسوية"
             }
             icon={Banknote}
             tone={s.bankRate > 0 ? "default" : "negative"}
