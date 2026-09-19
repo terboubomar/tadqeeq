@@ -61,6 +61,10 @@ export interface Summary {
   netBankCards?: number;
   walletAmount: number;
   riderWallet: number;
+  /** Wallet + rider/transmitter amount charged the wallet-payment fee. */
+  walletFeeBase?: number;
+  /** Wallet-payment fee calculated from the contract/payment rate. */
+  walletFee?: number;
   rdfCampaigns: number;
   compensation: number;
   jokerFees: number;
