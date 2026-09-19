@@ -61,7 +61,9 @@ export interface Summary {
   approvedRefunds: number;
   waitingTimeFees: number;
   bankRate: number;
-  bankRateSource: "invoice" | "manual";
+  /** Rate implied by the invoice payment-fee line. Useful for comparison, not independent evidence. */
+  invoiceImpliedBankRate?: number;
+  bankRateSource: "invoice" | "manual" | "none";
   bankFeeSuccess: number;
   bankFeeRefunded: number;
   /** Charges taken from the invoice because they don't exist in the order data */
@@ -91,10 +93,19 @@ export interface InvoiceFigures {
   invoiceNo?: string;
 }
 
+export type CheckEvidence =
+  | "data"
+  | "contract"
+  | "invoice_derived"
+  | "invoice_only"
+  | "mixed";
+
 export interface CheckRow {
   label: string;
   computed: number;
   invoiced: number;
+  /** Describes whether the comparison is independently verifiable or relies on invoice/contract inputs. */
+  evidence?: CheckEvidence;
   hint?: string;
 }
 
