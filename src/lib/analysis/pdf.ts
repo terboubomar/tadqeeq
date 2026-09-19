@@ -135,10 +135,30 @@ export function parseHungerInvoice(raw: string): InvoiceFigures {
 /** Parse a HungerStation CPC (paid ads) invoice. */
 export function parseCpcInvoice(raw: string): InvoiceFigures {
   const source = raw.replace(/\s+/g, " ");
+
+  // Real HungerStation advertising invoices use explicit "Value Before/After VAT" labels.
+  // Avoid generic "Total Invoice" matching because it can capture the before-VAT value.
+  const vatValues = amountsAfter(source, 2, "VAT Value");
+
   return build({
-    totalExVat: amountAfter(source, "Total Excluding VAT", "Subtotal", "Amount"),
-    vat: amountAfter(source, "VAT 15", "Total VAT"),
-    totalIncVat: amountAfter(source, "Total Invoice", "Invoice Total", "Total Due"),
+    totalExVat: amountAfter(
+      source,
+      "Total Invoice Value Before VAT",
+      "Total Excluding VAT",
+      "Subtotal",
+    ),
+    vat:
+      vatValues.length === 2
+        ? vatValues[1]
+        : amountAfter(source, "VAT Value", "VAT 15", "Total VAT"),
+    totalIncVat: amountAfter(
+      source,
+      "Total Invoice Value After VAT",
+      "Total Invoice Net Value",
+      "Invoice Total",
+      "Total Due",
+    ),
+    invoiceNo: source.match(/HS-ADS-[A-Za-z0-9/\-]+/i)?.[0],
   });
 }
 
