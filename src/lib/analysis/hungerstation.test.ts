@@ -259,6 +259,27 @@ describe("HungerStation audit rules", () => {
 });
 
 describe("HungerStation commission invoice parser", () => {
+  test("does not mistake the page-2 bank-fee base for the page-1 Payment Fees total", () => {
+    const figures = parseHungerInvoice(
+      "Sales Commission 177,350.53 26,602.58 203,953.11 " +
+        "Payment Fees 21,159.07 3,173.86 24,332.93 " +
+        "Others Commission 133,705.25 20,055.79 153,761.04 " +
+        "Total Invoice 332,214.85 49,832.23 382,047.08 " +
+        "Total Online Sales (881,878.98) Net Due Invoice (499,831.90) " +
+        "Credit Sales 14,173.0 769,843.17 885,319.64 " +
+        "Rejected sales 7.0 254.21 292.34" +
+        "\n" +
+        "Online Payments Fees Successful Bank Fee 731,716.81 2.5% 18,292.94 " +
+        "Refunded Bank Fee 1,816.65 2.5% 45.42 " +
+        "Wallet Payments Fee 112,827.41 2.5% 2,820.71",
+    );
+
+    expect(figures.paymentFees).toBeCloseTo(21159.07, 2);
+    expect(figures.salesCommission).toBeCloseTo(177350.53, 2);
+    expect(figures.totalExVat).toBeCloseTo(332214.85, 2);
+    expect(figures.creditSales).toBeCloseTo(769843.17, 2);
+  });
+
   test("detects the real Online Payments Fees summary label", () => {
     const figures = parseHungerInvoice(
       "Sales Commission 269,792.2 40,468.83 310,261.03 " +
