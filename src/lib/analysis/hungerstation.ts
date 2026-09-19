@@ -116,7 +116,10 @@ function normalizeDate(value: unknown): string {
 }
 
 export interface HungerOptions {
-  /** Bank card fee rate as a fraction, e.g. 0.022. Ignored when the invoice supplies one. */
+  /**
+   * Contract bank-card fee rate as a fraction, e.g. 0.025.
+   * When provided it is authoritative for the audit; the invoice-implied rate is kept only for comparison.
+   */
   manualBankRate?: number;
   invoice?: InvoiceFigures;
   cpcInvoice?: InvoiceFigures;
@@ -217,8 +220,11 @@ export function analyzeHungerStation(
     }
   }
 
-  // Free delivery campaign orders (count only — the amount comes from the order sheet)
+  // HungerStation's guide bills RDF only for successful / failed-after-pickup orders.
+  // "Failed by vendor" is classified with failed-after-pickup above.
   for (const fd of rowsOf(wb, "free delivery")) {
+    const cls = classifyStatus(text(col(fd, "Status")));
+    if (cls !== "successful" && cls !== "failedAfterPickup") continue;
     const row = branchOf(text(col(fd, "Branch Name")), text(col(fd, "HS Branch ID")));
     row.freeDeliveryOrders += 1;
   }
@@ -268,17 +274,24 @@ export function analyzeHungerStation(
     .reduce((sum, e) => sum + e.amount, 0);
   const invoiceOnlyExtras = walletFeeExtra + otherExtras;
 
-  // The contract rate is not in the data — back it out of the invoiced card fees.
-  const invoicedPaymentFees = (options.invoice?.paymentFees ?? 0) - walletFeeExtra;
+  // The Excel export does not contain the contract bank-fee rate.
+  // Keep an invoice-implied rate for diagnostics, but prefer a user-supplied contract rate
+  // so the payment-fee audit is independent from the invoice being checked.
+  const invoicedCardFees = Math.max(0, (options.invoice?.paymentFees ?? 0) - walletFeeExtra);
   const ccBase = totalCcSuccess + totalCcRejected;
+  const invoiceImpliedBankRate =
+    invoicedCardFees > 0 && ccBase > 0
+      ? Math.round((invoicedCardFees / ccBase) / 0.0005) * 0.0005
+      : 0;
+
   let bankRate = 0;
-  let bankRateSource: "invoice" | "manual" = "manual";
-  if (invoicedPaymentFees > 0 && ccBase > 0) {
-    // Snap the derived rate to the nearest contract step (0.05%).
-    bankRate = Math.round((invoicedPaymentFees / ccBase) / 0.0005) * 0.0005;
-    bankRateSource = "invoice";
-  } else if (options.manualBankRate && options.manualBankRate > 0) {
+  let bankRateSource: "invoice" | "manual" | "none" = "none";
+  if (options.manualBankRate && options.manualBankRate > 0) {
     bankRate = options.manualBankRate;
+    bankRateSource = "manual";
+  } else if (invoiceImpliedBankRate > 0) {
+    bankRate = invoiceImpliedBankRate;
+    bankRateSource = "invoice";
   }
 
   for (const row of branchList) {
@@ -321,6 +334,7 @@ export function analyzeHungerStation(
     approvedRefunds: sum((r) => r.approvedRefunds),
     waitingTimeFees: sum((r) => r.waitingTimeFees),
     bankRate,
+    invoiceImpliedBankRate,
     bankRateSource,
     bankFeeSuccess: sum((r) => r.bankFeeSuccess),
     bankFeeRefunded: sum((r) => r.bankFeeRefunded),
@@ -336,55 +350,84 @@ export function analyzeHungerStation(
   const invoice = options.invoice ?? { lines: [] };
   if (options.cpcInvoice?.totalIncVat) invoice.cpc = options.cpcInvoice.totalIncVat;
 
-  const othersComputed =
+  // Keep invoice-only charges separate from independently reconstructed charges.
+  // This prevents Tadqeeq from "verifying" an invoice line with the same value read from that invoice.
+  const dataOnlyOthersComputed =
     summary.rdfCampaigns +
     summary.compensation +
     summary.jokerFees +
-    summary.waitingTimeFees +
-    otherExtras;
-  const paymentFeesComputed =
-    summary.bankFeeSuccess + summary.bankFeeRefunded + walletFeeExtra;
-  const extrasNote = invoiceExtras.length
-    ? ` أُضيفت من الفاتورة: ${invoiceExtras.map((e) => `${e.label} (${e.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`).join("، ")}.`
-    : "";
+    summary.waitingTimeFees;
+  const cardFeesComputed = summary.bankFeeSuccess + summary.bankFeeRefunded;
+  const invoicedDataOnlyOthers = Math.max(0, (invoice.othersCommission ?? 0) - otherExtras);
+  const cardFeeEvidence =
+    bankRateSource === "manual"
+      ? "contract"
+      : bankRateSource === "invoice"
+        ? "invoice_derived"
+        : "data";
 
   const checks: CheckRow[] = [
     {
       label: "عمولة المبيعات",
       computed: summary.commission,
       invoiced: invoice.salesCommission ?? 0,
-      hint: "مجموع عمود العمولة للطلبات الناجحة والفاشلة بعد الاستلام والمرفوضة",
+      evidence: "data",
+      hint: "مجموع عمود العمولة للطلبات الناجحة والفاشلة بعد الاستلام والمرفوضة.",
     },
     {
-      label: "رسوم الدفع الإلكتروني",
-      computed: paymentFeesComputed,
-      invoiced: invoice.paymentFees ?? 0,
+      label: "رسوم الدفع الإلكتروني (البطاقات)",
+      computed: cardFeesComputed,
+      invoiced: invoicedCardFees,
+      evidence: cardFeeEvidence,
       hint:
-        "نسبة البنك × (مدفوعات البطاقات الناجحة + المرتجعة)، مضافاً إليها رسوم محفظة العميل المأخوذة من الفاتورة لعدم وجودها في ملف الطلبات.",
+        bankRateSource === "manual"
+          ? "نسبة العقد × (مدفوعات البطاقات الناجحة + المرتجعة). رسوم المحفظة تُفصل كبند فاتورة فقط."
+          : "تم استخدام نسبة مستنتجة من الفاتورة لعدم إدخال نسبة العقد؛ النتيجة مفيدة للتسوية لكنها ليست تحققاً مستقلاً.",
     },
     {
-      label: "عمولات أخرى",
-      computed: othersComputed,
-      invoiced: invoice.othersCommission ?? 0,
-      hint:
-        "حملات التوصيل المجاني + التعويضات + رسوم العروض + وقت الانتظار (بدون ضريبة)." + extrasNote,
+      label: "عمولات أخرى القابلة للتحقق من البيانات",
+      computed: dataOnlyOthersComputed,
+      invoiced: invoicedDataOnlyOthers,
+      evidence: "data",
+      hint: "RDF + تعويضات العملاء + رسوم العروض + وقت الانتظار (بدون ضريبة)، بعد استبعاد البنود الموجودة في الفاتورة فقط.",
     },
     {
       label: "إجمالي الفاتورة (بدون ضريبة)",
-      computed: summary.commission + paymentFeesComputed + othersComputed,
+      computed:
+        summary.commission + cardFeesComputed + dataOnlyOthersComputed + invoiceOnlyExtras,
       invoiced: invoice.totalExVat ?? 0,
+      evidence: invoiceOnlyExtras > 0 ? "mixed" : cardFeeEvidence,
+      hint:
+        invoiceOnlyExtras > 0
+          ? "إجمالي تسوية يجمع البنود المحتسبة مع بنود لا توجد إلا في الفاتورة؛ لا يُعد تحققاً مستقلاً لكل مكوّن."
+          : undefined,
     },
   ];
 
   if (invoiceExtras.length) {
     for (const extra of invoiceExtras) {
       checks.push({
-        label: `${extra.label} (من الفاتورة)`,
-        computed: extra.amount,
+        label: `${extra.label} (فاتورة فقط)`,
+        computed: 0,
         invoiced: extra.amount,
-        hint: "بند غير موجود في ملف الطلبات — أُخذ كما ورد في الفاتورة وأُدرج ضمن الإجمالي المحتسب.",
+        evidence: "invoice_only",
+        hint: "لا يوجد أساس مستقل لهذا البند في ملف الطلبات؛ يحتاج إلى عقد أو مستند تشغيلي للتحقق منه.",
       });
     }
+  }
+
+  if (
+    invoice.totalOnlineSales !== undefined &&
+    invoice.totalIncVat !== undefined &&
+    invoice.netDue !== undefined
+  ) {
+    checks.push({
+      label: "اتساق صافي المستحق داخل الفاتورة",
+      computed: Math.abs(invoice.totalOnlineSales) - invoice.totalIncVat,
+      invoiced: Math.abs(invoice.netDue),
+      evidence: "invoice_only",
+      hint: "فحص حسابي داخلي: إجمالي التحصيلات ناقص إجمالي فاتورة العمولة بعد الضريبة. لا يعتمد على مصدر مستقل.",
+    });
   }
 
   const label =
