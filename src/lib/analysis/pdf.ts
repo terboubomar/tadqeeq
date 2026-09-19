@@ -110,28 +110,39 @@ function parseExtras(source: string): { label: string; amount: number }[] {
 
 /** Parse a HungerStation commission invoice. */
 export function parseHungerInvoice(raw: string): InvoiceFigures {
+  // extractPdfText preserves page boundaries with newlines. Headline invoice values belong
+  // to page 1; later pages reuse labels such as "Online Payments Fees" for detail sections
+  // where the first number is a fee base, not the summary fee amount.
+  const firstPage = (raw.split(/\n+/)[0] ?? raw).replace(/\s+/g, " ");
   const source = raw.replace(/\s+/g, " ");
+
   // Summary rows carry three values. Sales Summary rows are:
   // order count, amount excluding VAT, amount including VAT.
-  const total = amountsAfter(source, 3, "Total Invoice", "Invoice Total");
-  const creditSales = amountsAfter(source, 3, "Credit Sales");
-  const rejectedSales = amountsAfter(source, 3, "Rejected sales", "Rejected Sales");
+  const total = amountsAfter(firstPage, 3, "Total Invoice", "Invoice Total");
+  const creditSales = amountsAfter(firstPage, 3, "Credit Sales");
+  const rejectedSales = amountsAfter(firstPage, 3, "Rejected sales", "Rejected Sales");
   const figures = build({
-    salesCommission: amountAfter(source, "Sales Commission"),
-    paymentFees: amountAfter(source, "Online Payments Fees", "Online Payment Fees", "Payment Fees", "Payment Fee"),
-    othersCommission: amountAfter(source, "Others Commission", "Other Commission"),
+    salesCommission: amountAfter(firstPage, "Sales Commission"),
+    paymentFees: amountAfter(
+      firstPage,
+      "Payment Fees",
+      "Payment Fee",
+      "Online Payments Fees",
+      "Online Payment Fees",
+    ),
+    othersCommission: amountAfter(firstPage, "Others Commission", "Other Commission"),
     totalExVat: total[0],
     vat: total[1],
     totalIncVat: total[2],
-    totalOnlineSales: amountAfter(source, "Total Online Sales"),
-    netDue: amountAfter(source, "Net Due Invoice", "Net Due"),
+    totalOnlineSales: amountAfter(firstPage, "Total Online Sales"),
+    netDue: amountAfter(firstPage, "Net Due Invoice", "Net Due"),
     creditSalesOrders: creditSales[0],
     creditSales: creditSales[1],
     creditSalesIncVat: creditSales[2],
     rejectedSalesOrders: rejectedSales[0],
     rejectedSales: rejectedSales[1],
     rejectedSalesIncVat: rejectedSales[2],
-    invoiceNo: source.match(/Invoice\s*(?:No|Number)[^A-Za-z0-9]{0,10}([A-Za-z0-9\-/]+)/i)?.[1],
+    invoiceNo: firstPage.match(/Invoice\s*(?:No|Number)[^A-Za-z0-9]{0,10}([A-Za-z0-9\-/]+)/i)?.[1],
   });
   const extras = parseExtras(source);
   if (extras.length) {
