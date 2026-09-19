@@ -8,8 +8,11 @@ export interface BranchRow {
   netSales: number;
   commission: number;
   commissionPct: number;
+  /** Card-payment base charged the successful bank fee (includes failed-by-vendor when HS bills it). */
   ccSuccess: number;
   ccRejected: number;
+  /** Net card collections; excludes failed-by-vendor payments that HS reverses from collections. */
+  netBankCards?: number;
   walletAmount: number;
   riderWallet: number;
   rdfCampaigns: number;
@@ -20,6 +23,8 @@ export interface BranchRow {
   rewardsDiscount: number;
   restaurantFoodDiscount: number;
   totalFoodDiscount: number;
+  /** HS-funded food discount plus Rewards, matching Net Marketing Discounts on the invoice. */
+  netMarketingDiscount?: number;
   partialRefund: number;
   fulfillmentMods: number;
   approvedRefunds: number;
@@ -45,8 +50,11 @@ export interface Summary {
   netSales: number;
   commission: number;
   commissionPct: number;
+  /** Card-payment base charged the successful bank fee (includes failed-by-vendor when HS bills it). */
   ccSuccess: number;
   ccRejected: number;
+  /** Net card collections; excludes failed-by-vendor payments that HS reverses from collections. */
+  netBankCards?: number;
   walletAmount: number;
   riderWallet: number;
   rdfCampaigns: number;
@@ -56,10 +64,14 @@ export interface Summary {
   rewardsDiscount: number;
   restaurantFoodDiscount: number;
   totalFoodDiscount: number;
+  /** HS-funded food discount plus Rewards, matching Net Marketing Discounts on the invoice. */
+  netMarketingDiscount?: number;
   partialRefund: number;
   fulfillmentMods: number;
   approvedRefunds: number;
   waitingTimeFees: number;
+  /** Independently reconstructed Total Collections from the order export. */
+  totalCollections?: number;
   bankRate: number;
   /** Rate implied by the invoice payment-fee line. Useful for comparison, not independent evidence. */
   invoiceImpliedBankRate?: number;
