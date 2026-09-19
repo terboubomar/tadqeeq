@@ -38,9 +38,15 @@ function InvoiceCheck() {
 
   const checks = selected.invoice?.checks ?? [];
   const hasInvoice = checks.some((check) => check.invoiced !== 0);
-  const totalDiff = checks
-    .filter((check) => check.label !== "إجمالي الفاتورة (بدون ضريبة)")
-    .reduce((sum, check) => sum + (check.invoiced - check.computed), 0);
+  const independentlyComparable = checks.filter(
+    (check) =>
+      (check.evidence === "data" || check.evidence === "contract" || !check.evidence) &&
+      check.label !== "إجمالي الفاتورة (بدون ضريبة)",
+  );
+  const totalDiff = independentlyComparable.reduce(
+    (sum, check) => sum + (check.invoiced - check.computed),
+    0,
+  );
 
   return (
     <div className="space-y-6">
@@ -70,7 +76,9 @@ function InvoiceCheck() {
             Math.abs(totalDiff) > TOLERANCE ? "border-destructive/50" : "border-success/50",
           )}
         >
-          <p className="text-sm text-muted-foreground">إجمالي الفرق بين المطالبة والمحتسب</p>
+          <p className="text-sm text-muted-foreground">
+            إجمالي الفرق في البنود القابلة للتحقق بشكل مستقل
+          </p>
           <p
             className={cn(
               "mt-2 text-3xl font-black",
@@ -88,7 +96,7 @@ function InvoiceCheck() {
               ? "المنصة طالبت بمبلغ أعلى من المحتسب — راجع البنود المعلَّمة بالأحمر."
               : totalDiff < -TOLERANCE
                 ? "المطالبة أقل من المحتسب."
-                : "المطالبة مطابقة للمحتسب."}
+                : "البنود القابلة للتحقق مستقلاً مطابقة ضمن هامش التسامح."}
           </p>
         </div>
       )}
@@ -116,8 +124,12 @@ function InvoiceCheck() {
           </thead>
           <tbody>
             {checks.map((check) => {
+              const evidence = check.evidence ?? "data";
+              const invoiceOnly = evidence === "invoice_only";
+              const invoiceDerived = evidence === "invoice_derived";
+              const mixed = evidence === "mixed";
               const diff = check.invoiced - check.computed;
-              const missing = check.invoiced === 0;
+              const missing = check.invoiced === 0 && !invoiceOnly;
               const over = diff > TOLERANCE;
               const under = diff < -TOLERANCE;
               return (
@@ -131,13 +143,13 @@ function InvoiceCheck() {
                     ) : null}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
-                    <span className="num">{money(check.computed)}</span>
+                    <span className="num">{invoiceOnly ? "—" : money(check.computed)}</span>
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
                     <span className="num">{missing ? "—" : money(check.invoiced)}</span>
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
-                    {missing ? (
+                    {missing || invoiceOnly ? (
                       "—"
                     ) : (
                       <span
@@ -151,7 +163,19 @@ function InvoiceCheck() {
                     )}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
-                    {missing ? (
+                    {invoiceOnly ? (
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-warning">
+                        <AlertTriangle className="size-4" /> فاتورة فقط — يحتاج تحقق
+                      </span>
+                    ) : invoiceDerived ? (
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-warning">
+                        <AlertTriangle className="size-4" /> نسبة مستنتجة من الفاتورة
+                      </span>
+                    ) : mixed ? (
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-warning">
+                        <AlertTriangle className="size-4" /> تسوية تشمل بنوداً غير مستقلة
+                      </span>
+                    ) : missing ? (
                       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <MinusCircle className="size-4" /> غير متاح
                       </span>
@@ -201,7 +225,23 @@ function InvoiceCheck() {
           <dl className="mt-3 space-y-2 text-sm">
             <Row label="نسبة العمولة الفعلية" value={percent(selected.summary.commissionPct)} />
             <Row
-              label="نسبة رسوم الدفع"
+              label="نسبة العقد المستخدمة"
+              value={
+                selected.summary.bankRateSource === "manual" && selected.summary.bankRate > 0
+                  ? percent(selected.summary.bankRate)
+                  : "لم تُدخل"
+              }
+            />
+            <Row
+              label="النسبة المستنتجة من الفاتورة"
+              value={
+                (selected.summary.invoiceImpliedBankRate ?? 0) > 0
+                  ? percent(selected.summary.invoiceImpliedBankRate ?? 0)
+                  : "غير متاحة"
+              }
+            />
+            <Row
+              label="النسبة المطبّقة بالحساب"
               value={
                 selected.summary.bankRate > 0 ? percent(selected.summary.bankRate) : "غير محددة"
               }
@@ -219,7 +259,7 @@ function InvoiceCheck() {
               />
             ) : null}
             {selected.invoice?.cpc ? (
-              <Row label="فاتورة الإعلانات CPC" value={sar(selected.invoice.cpc)} />
+              <Row label="فاتورة الإعلانات CPC (شامل الضريبة)" value={sar(selected.invoice.cpc)} />
             ) : null}
           </dl>
         </div>
