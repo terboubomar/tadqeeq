@@ -58,6 +58,8 @@ function classifyStatus(raw: string): StatusClass {
   const s = raw.toLowerCase();
   if (s.includes("successful")) return "successful";
   if (s.includes("after pick")) return "failedAfterPickup";
+  // HungerStation bills "failed by vendor" exactly like a delivered order.
+  if (s.includes("vendor")) return "failedAfterPickup";
   if (s.includes("reject")) return "rejected";
   if (s.includes("before pick")) return "failedBefore";
   if (s.includes("fail")) return "failedBefore";
@@ -247,6 +249,7 @@ export function analyzeHungerStation(
   for (const row of branchList) {
     row.rdfCampaigns = row.rdfCampaigns / VAT;
     row.compensation = row.compensation / VAT;
+    row.waitingTimeFees = row.waitingTimeFees / VAT;
     row.totalFoodDiscount =
       row.hsFoodDiscount + row.rewardsDiscount + row.restaurantFoodDiscount;
     row.commissionPct = row.netSales > 0 ? row.commission / row.netSales : 0;
@@ -261,7 +264,9 @@ export function analyzeHungerStation(
   let bankRate = 0;
   let bankRateSource: "invoice" | "manual" = "manual";
   if (invoicedPaymentFees > 0 && ccBase > 0) {
-    bankRate = invoicedPaymentFees / ccBase;
+    // The invoiced fee also covers wallet payments, which are not in the order sheet,
+    // so snap the derived rate to the nearest contract step (0.05%).
+    bankRate = Math.round((invoicedPaymentFees / ccBase) / 0.0005) * 0.0005;
     bankRateSource = "invoice";
   } else if (options.manualBankRate && options.manualBankRate > 0) {
     bankRate = options.manualBankRate;
@@ -335,13 +340,15 @@ export function analyzeHungerStation(
       label: "رسوم الدفع الإلكتروني",
       computed: summary.bankFeeSuccess + summary.bankFeeRefunded,
       invoiced: invoice.paymentFees ?? 0,
-      hint: "نسبة البنك × (مدفوعات البطاقات الناجحة + المرتجعة)",
+      hint:
+        "نسبة البنك × (مدفوعات البطاقات الناجحة + المرتجعة). رسوم محفظة العميل تظهر في الفاتورة فقط ولا توجد في ملف الطلبات.",
     },
     {
       label: "عمولات أخرى",
       computed: othersComputed,
       invoiced: invoice.othersCommission ?? 0,
-      hint: "حملات التوصيل المجاني + التعويضات + رسوم العروض + وقت الانتظار",
+      hint:
+        "حملات التوصيل المجاني + التعويضات + رسوم العروض + وقت الانتظار (بدون ضريبة). الرسوم الثابتة مثل الطابعات والاشتراك الشهري تصدر في الفاتورة ولا توجد في البيانات.",
     },
     {
       label: "إجمالي الفاتورة (بدون ضريبة)",

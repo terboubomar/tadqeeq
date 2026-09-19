@@ -21,17 +21,35 @@ export async function extractPdfText(file: ArrayBuffer, maxPages = 3): Promise<s
   return chunks.join("\n");
 }
 
-function amountAfter(source: string, ...labels: string[]): number | undefined {
+const NUM = "\\(?-?[\\d,]+\\.\\d{1,2}\\)?";
+
+function toNumber(raw: string): number {
+  const negative = raw.startsWith("(");
+  const value = Number.parseFloat(raw.replace(/[(),]/g, ""));
+  if (!Number.isFinite(value)) return Number.NaN;
+  return negative ? -value : value;
+}
+
+/** Numbers that follow a label, in document order. */
+function amountsAfter(source: string, count: number, ...labels: string[]): number[] {
   for (const label of labels) {
     const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`${escaped}[^0-9\\-]{0,80}(-?[\\d,]+\\.\\d{2})`, "i");
+    const re = new RegExp(
+      `${escaped}[^0-9(\\-]{0,80}` + Array.from({ length: count }, () => `(${NUM})`).join("[^0-9(\\-]{0,40}"),
+      "i",
+    );
     const match = source.match(re);
-    if (match?.[1]) {
-      const value = Number.parseFloat(match[1].replace(/,/g, ""));
-      if (Number.isFinite(value)) return value;
+    if (match) {
+      const values = match.slice(1, count + 1).map(toNumber);
+      if (values.every((v) => Number.isFinite(v))) return values;
     }
   }
-  return undefined;
+  return [];
+}
+
+function amountAfter(source: string, ...labels: string[]): number | undefined {
+  const [value] = amountsAfter(source, 1, ...labels);
+  return value;
 }
 
 const AR_LABELS: Record<string, string> = {
@@ -63,13 +81,15 @@ function build(entries: Record<string, number | string | undefined>): InvoiceFig
 /** Parse a HungerStation commission invoice. */
 export function parseHungerInvoice(raw: string): InvoiceFigures {
   const source = raw.replace(/\s+/g, " ");
+  // The summary rows carry three numbers each: amount, VAT 15%, total with VAT.
+  const total = amountsAfter(source, 3, "Total Invoice", "Invoice Total");
   return build({
     salesCommission: amountAfter(source, "Sales Commission"),
     paymentFees: amountAfter(source, "Payment Fees", "Payment Fee"),
     othersCommission: amountAfter(source, "Others Commission", "Other Commission"),
-    totalExVat: amountAfter(source, "Total Excluding VAT", "Subtotal"),
-    vat: amountAfter(source, "VAT 15", "Total VAT"),
-    totalIncVat: amountAfter(source, "Total Invoice", "Invoice Total"),
+    totalExVat: total[0],
+    vat: total[1],
+    totalIncVat: total[2],
     totalOnlineSales: amountAfter(source, "Total Online Sales"),
     netDue: amountAfter(source, "Net Due Invoice", "Net Due"),
     invoiceNo: source.match(/Invoice\s*(?:No|Number)[^A-Za-z0-9]{0,10}([A-Za-z0-9\-/]+)/i)?.[1],
