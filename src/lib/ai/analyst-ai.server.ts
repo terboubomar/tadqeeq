@@ -236,7 +236,7 @@ async function callAnalyst(
           factIds: {
             type: "array",
             items: { type: "string", pattern: "^F[0-9]{3}$" },
-            maxItems: 12,
+            maxItems: 40,
           },
         },
         required: ["type", "title", "factIds"],
