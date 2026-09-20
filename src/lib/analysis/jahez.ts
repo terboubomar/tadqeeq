@@ -521,6 +521,20 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
   const invoiceVatComputed = round2(invoiceExVatComputed * 0.15);
   const invoiceInclVatComputed = round2(invoiceExVatComputed + invoiceVatComputed);
   const range = periodRange(summary["Date"] ?? "");
+  if (compensationReport?.periodLabel) {
+    const compensationRange = periodRange(compensationReport.periodLabel);
+    if (
+      range.start &&
+      range.end &&
+      compensationRange.start &&
+      compensationRange.end &&
+      (range.start !== compensationRange.start || range.end !== compensationRange.end)
+    ) {
+      throw new Error(
+        "ملف تعويضات جاهز لا يطابق فترة Restaurant Financial Report. تحقق من الشهر قبل التحليل.",
+      );
+    }
+  }
 
   const resultSummary: Summary = {
     platform: "jahez",
