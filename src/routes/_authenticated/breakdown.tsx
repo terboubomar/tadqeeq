@@ -43,6 +43,7 @@ function BreakdownPage() {
 
   const s = selected.summary;
   const isHunger = selected.platform === "hungerstation";
+  const isJahez = selected.platform === "jahez";
   const charges: Line[] = (
     isHunger
       ? [
@@ -56,7 +57,13 @@ function BreakdownPage() {
           { label: "رسوم العروض السريعة", amount: s.jokerFees },
           { label: "رسوم وقت الانتظار", amount: s.waitingTimeFees },
         ]
-      : [
+      : isJahez
+        ? [
+            { label: "عمولة جاهز", amount: s.jahezCommissionInvoiceExVat ?? 0 },
+            { label: "رسوم المدفوعات", amount: s.jahezPaymentFeesExVat ?? 0 },
+            { label: "عروض التوصيل للفوترة", amount: s.jahezDeliveryOfferInvoiceExVat ?? 0 },
+          ]
+        : [
           { label: "عمولة الطلبات", amount: s.keetaCommissionExVat ?? 0 },
           { label: "رسوم البنك", amount: s.keetaBankFeesExVat ?? 0 },
           { label: "التوصيل / الحملات", amount: s.keetaDeliveryCampaignExVat ?? 0 },
@@ -76,7 +83,16 @@ function BreakdownPage() {
           { label: "مرتجعات معتمدة", amount: s.approvedRefunds },
           { label: "مرتجعات جزئية", amount: s.partialRefund },
         ]
-      : [
+      : isJahez
+        ? [
+            { label: "Restaurant Amount", amount: s.jahezReportedRestaurantAmount ?? 0 },
+            { label: "Payment Fees VAT", amount: s.jahezPaymentFeesVat ?? 0 },
+            { label: "Delivery Offer المخصوم", amount: s.jahezDeliveryOfferInclVat ?? 0 },
+            { label: "Offer Amount", amount: s.jahezOfferAmount ?? 0 },
+            { label: "Delivery Coupon", amount: s.jahezDeliveryCoupon ?? 0 },
+            { label: "Delivery Charge", amount: s.jahezDeliveryCharge ?? 0 },
+          ]
+        : [
           { label: "المبيعات بدون الضريبة", amount: s.keetaSalesExVat ?? 0 },
           { label: "ضريبة المبيعات", amount: s.keetaSalesVat ?? 0 },
           { label: "ضريبة مدخلات تكاليف المنصة", amount: s.keetaInputVat ?? 0 },
@@ -121,7 +137,11 @@ function BreakdownPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold">
-              {isHunger ? "تكوين خصومات المنصة" : "تكوين تكلفة كيتا بدون الضريبة"}
+              {isHunger
+                ? "تكوين خصومات المنصة"
+                : isJahez
+                  ? "تكوين فاتورة جاهز بدون الضريبة"
+                  : "تكوين تكلفة كيتا بدون الضريبة"}
             </h2>
             <p className="mt-1 text-[11.5px] text-muted-foreground">
               توزيع البنود كنسبة من إجمالي تكلفة المنصة في الفترة المحددة.
@@ -177,7 +197,11 @@ function BreakdownPage() {
       <div className="grid gap-3 lg:grid-cols-2">
         <section className="panel p-4">
           <h2 className="text-sm font-semibold">
-            {isHunger ? "الخصومات التسويقية والمرتجعات" : "مؤشرات التسوية"}
+            {isHunger
+              ? "الخصومات التسويقية والمرتجعات"
+              : isJahez
+                ? "بنود تسوية جاهز"
+                : "مؤشرات التسوية"}
           </h2>
           {discounts.length ? (
             <dl className="mt-3">
