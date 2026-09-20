@@ -1,14 +1,10 @@
 import {
   Bot,
-  Database,
   Loader2,
   Maximize2,
-  MessageCircleQuestion,
   Minimize2,
   RotateCcw,
   Send,
-  ShieldCheck,
-  Sparkles,
   UserRound,
   X,
 } from "lucide-react";
@@ -173,13 +169,6 @@ function WidgetHeader({
         </div>
       </div>
 
-      {selected ? (
-        <div className="mt-3 grid grid-cols-3 gap-1.5">
-          <TrustPill icon={Database} label="حقائق Tadqeeq" />
-          <TrustPill icon={ShieldCheck} label="لا يغيّر التدقيق" />
-          <TrustPill icon={Sparkles} label="تفسير موثّق" />
-        </div>
-      ) : null}
     </header>
   );
 }
@@ -269,10 +258,7 @@ function AskTadqeeqConversation({ period }: { period: StoredPeriod }) {
             <EmptyConversation onAsk={sendQuestion} />
           ) : (
             <div className="space-y-4">
-              <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3">
-                <p className="text-[10.5px] text-muted-foreground">
-                  مبني على نتائج الفترة الحالية والأدلة الموثقة.
-                </p>
+              <div className="flex justify-end border-b border-border/60 pb-3">
                 <Button
                   type="button"
                   variant="ghost"
@@ -359,17 +345,8 @@ function AskTadqeeqConversation({ period }: { period: StoredPeriod }) {
 
 function EmptyConversation({ onAsk }: { onAsk: (question: string) => void }) {
   return (
-    <div className="mx-auto flex min-h-[420px] max-w-xl flex-col items-center justify-center text-center sm:min-h-[500px]">
-      <div className="grid size-14 place-items-center rounded-2xl bg-secondary text-primary">
-        <MessageCircleQuestion className="size-7" />
-      </div>
-      <h3 className="mt-4 text-base font-bold">اسأل عن نتائج التدقيق</h3>
-      <p className="mt-2 max-w-md text-xs leading-6 text-muted-foreground">
-        يجيب من سجل الحقائق الذي بناه Tadqeeq للفترة المختارة. إذا لم توجد أدلة كافية، سيقول ذلك
-        بدلاً من افتراض رقم أو سبب.
-      </p>
-
-      <div className="mt-5 grid w-full gap-2 sm:grid-cols-2">
+    <div className="mx-auto flex min-h-[420px] max-w-xl items-center justify-center sm:min-h-[500px]">
+      <div className="grid w-full gap-2 sm:grid-cols-2">
         {SUGGESTIONS.map((suggestion) => (
           <button
             key={suggestion}
@@ -510,21 +487,6 @@ function ResponseMeta({ result }: { result: AnalystChatResult }) {
           </ul>
         </details>
       ) : null}
-    </div>
-  );
-}
-
-function TrustPill({
-  icon: Icon,
-  label,
-}: {
-  icon: typeof Database;
-  label: string;
-}) {
-  return (
-    <div className="flex min-w-0 items-center justify-center gap-1.5 rounded-lg border border-border/70 bg-white/70 px-2 py-1.5 text-[9.5px] text-muted-foreground">
-      <Icon className="size-3 shrink-0 text-primary" />
-      <span className="truncate">{label}</span>
     </div>
   );
 }
