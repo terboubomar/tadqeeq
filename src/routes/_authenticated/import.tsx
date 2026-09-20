@@ -218,10 +218,10 @@ function ImportPage() {
   }
 
   return (
-    <div className="max-w-[820px] space-y-5">
+    <div className="w-full space-y-6">
       <header>
-        <h1 className="audit-heading">رفع بيانات فترة جديدة</h1>
-        <p className="mt-1 text-[13px] leading-7 text-muted-foreground">
+        <h1 className="audit-heading text-2xl sm:text-[28px]">رفع بيانات فترة جديدة</h1>
+        <p className="mt-1.5 text-[14px] leading-7 text-muted-foreground">
           أكمل كل خطوة على حدة. لن ينتقل تدقيق للمرحلة التالية قبل اكتمال البيانات المطلوبة.
         </p>
       </header>

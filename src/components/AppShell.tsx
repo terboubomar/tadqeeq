@@ -21,9 +21,9 @@ const NAV_GROUPS = [
   {
     title: "التدقيق",
     items: [
+      { to: "/dashboard", label: "اللوحة التنفيذية" },
       { to: "/invoice-check", label: "مطابقة الفاتورة" },
       { to: "/exceptions", label: "مركز الاستثناءات" },
-      { to: "/dashboard", label: "اللوحة التنفيذية" },
     ],
   },
   {
