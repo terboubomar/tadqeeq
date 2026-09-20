@@ -262,7 +262,13 @@ function Dashboard() {
           <StatCard
             label="تعويضات مخصومة"
             value={sar(s.jahezCompensationDebit ?? 0)}
-            hint={(s.jahezCompensationTransactions ?? 0) + " حركة تعويض"}
+            hint={
+              (s.jahezCompensationTransactions ?? 0) +
+              " حركة" +
+              ((s.jahezCompensationMatchedHistorical ?? 0) > 0
+                ? " · " + (s.jahezCompensationMatchedHistorical ?? 0) + " مرتبطة بفترة سابقة"
+                : "")
+            }
             icon={Receipt}
             tone="negative"
           />
