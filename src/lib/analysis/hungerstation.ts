@@ -471,6 +471,7 @@ export function analyzeHungerStation(
     if (bestIndex < 0 || bestScore > 1.25) {
       if (invoiceBranches.length) {
         row.branchAuditStatus = "unmatched";
+        row.branchAuditLabel = "غير مطابق";
         row.branchAuditNote = "لم يتم العثور على فرع مطابق في صفحات تفاصيل فاتورة هنقرستيشن.";
       }
       continue;
@@ -525,6 +526,7 @@ export function analyzeHungerStation(
 
     if (commissionBad || paymentBad || otherBad || collectionsBad || salesBad || missingBranchSales) {
       row.branchAuditStatus = "warning";
+      row.branchAuditLabel = "يحتاج مراجعة";
       row.branchAuditNote = missingBranchSales
         ? "الفرع موجود في تفاصيل العمولة والتحصيلات لكن ملخص مبيعات الفرع مفقود من فاتورة هنقرستيشن."
         : "يوجد فرق يتجاوز هامش التقريب في واحد أو أكثر من بنود الفرع.";
@@ -536,6 +538,7 @@ export function analyzeHungerStation(
         Math.abs(row.collectionsVariance ?? 0) > 0.005 ||
         Math.abs(row.creditSalesVariance ?? 0) > 0.005;
       row.branchAuditStatus = hasRounding ? "rounding" : "matched";
+      row.branchAuditLabel = hasRounding ? "مطابق ضمن التقريب" : "مطابق";
       row.branchAuditNote = hasRounding ? "مطابق ضمن فروق التقريب المعتادة." : "مطابق.";
     }
   }
@@ -553,6 +556,7 @@ export function analyzeHungerStation(
     row.invoiceCollections = unmatched.totalCollections;
     row.invoiceCreditSales = unmatched.creditSales;
     row.branchAuditStatus = "invoice_only";
+    row.branchAuditLabel = "في الفاتورة فقط";
     row.branchAuditNote =
       (unmatched.totalExVat ?? 0) === 0 && (unmatched.totalCollections ?? 0) === 0
         ? "الفرع موجود في الفاتورة فقط ولا توجد عليه حركة مالية."
