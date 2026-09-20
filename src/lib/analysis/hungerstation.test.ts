@@ -324,6 +324,50 @@ describe("HungerStation branch reconciliation", () => {
     expect(branch?.invoiceOnlyBranchCharges).toBeCloseTo(500, 2);
   });
 
+  test("does not charge wallet collections when the branch invoice has no Wallet Payments Fee", () => {
+    const invoice = parseHungerInvoice(
+      "Sales Commission 27.75 4.16 31.91 " +
+        "Payment Fees 5.85 0.88 6.73 " +
+        "Others Commission 17.50 2.63 20.13 " +
+        "Total Invoice 51.10 7.67 58.77 " +
+        "Total Online Sales (214.50) Net Due Invoice (155.73) " +
+        "Credit Sales 3.0 175.00 201.25 Rejected sales 1.0 10.00 11.50" +
+        "\n" +
+        "Invoice Details Branch A Commissions " +
+        "HS delivery commission 185.00 15.0% 27.75 " +
+        "Successful Bank Fee 210.00 2.5% 5.25 " +
+        "Refunded Bank Fee 24.00 2.5% 0.60 " +
+        "RDF campaigns 3.0 5.83 17.50 " +
+        "Total Commission 51.10" +
+        "\n" +
+        "Online Payments for branch Branch A " +
+        "Net Bank Cards Payments (180.00) " +
+        "User wallets payments (11.00) " +
+        "Rider wallets payments (7.00) " +
+        "Total food discounts (20.00) " +
+        "Restaurant food discounts 13.00 " +
+        "Rewards Discounts (9.50) " +
+        "Net Marketing Discounts (16.50) " +
+        "Total Approved Claims 0.00 " +
+        "Total Collections (214.50) " +
+        "Credit Sales 3.0 175.00 201.25 " +
+        "Rejected sales 1.0 10.00 11.50",
+    );
+
+    const result = analyzeHungerStation(buildWorkbook(), {
+      manualBankRate: 0.025,
+      invoice,
+    });
+    const branch = result.branches.find((row) => row.branch === "Branch A");
+
+    expect(branch?.walletAmount).toBeCloseTo(11, 6);
+    expect(branch?.riderWallet).toBeCloseTo(7, 6);
+    expect(branch?.invoiceWalletFee).toBeCloseTo(0, 6);
+    expect(branch?.invoiceCardPaymentFees).toBeCloseTo(5.85, 6);
+    expect(branch?.paymentFeeVariance).toBeCloseTo(0, 6);
+    expect(branch?.branchAuditStatus).toBe("matched");
+  });
+
   test("reads Sales Summary from page two without using page-two fee-detail headings", () => {
     const figures = parseHungerInvoice(
       "Sales Commission 5,568.20 835.23 6,403.43 " +
