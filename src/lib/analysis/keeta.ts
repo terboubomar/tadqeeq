@@ -108,32 +108,26 @@ function normalizeDate(value: unknown): string {
   return raw.slice(0, 10);
 }
 
-function findOrderSheet(wb: XLSX.WorkBook): string | undefined {
+function findSheet(wb: XLSX.WorkBook, name: string): string | undefined {
+  const target = name.toLowerCase();
   return (
-    wb.SheetNames.find((name) => name.toLowerCase() === "order summary") ??
-    wb.SheetNames.find((name) => name.toLowerCase().includes("order summary"))
+    wb.SheetNames.find((sheetName) => sheetName.toLowerCase() === target) ??
+    wb.SheetNames.find((sheetName) => sheetName.toLowerCase().includes(target))
   );
 }
 
-function rowObjects(sheet: XLSX.WorkSheet): Record<string, unknown>[] {
+function rowsFromSheet(
+  sheet: XLSX.WorkSheet,
+  headerMatcher: (headers: string[]) => boolean,
+): Record<string, unknown>[] {
   const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
     header: 1,
     defval: null,
     raw: true,
   });
 
-  const headerIndex = matrix.findIndex((row) => {
-    const headers = row.map(normalizeHeader);
-    return (
-      headers.includes("brand name") &&
-      (headers.includes("store name") || headers.includes("restaurant name")) &&
-      (headers.includes("payable to merchant") || headers.includes("payable to restaurant"))
-    );
-  });
-
-  if (headerIndex < 0) {
-    throw new Error("تعذّر تحديد صف عناوين Order Summary في ملف كيتا.");
-  }
+  const headerIndex = matrix.findIndex((row) => headerMatcher(row.map(normalizeHeader)));
+  if (headerIndex < 0) return [];
 
   const headers = matrix[headerIndex]!.map((value) => text(value));
   const rows: Record<string, unknown>[] = [];
@@ -147,6 +141,19 @@ function rowObjects(sheet: XLSX.WorkSheet): Record<string, unknown>[] {
     rows.push(row);
   }
 
+  return rows;
+}
+
+function orderRows(sheet: XLSX.WorkSheet): Record<string, unknown>[] {
+  const rows = rowsFromSheet(sheet, (headers) =>
+    headers.includes("brand name") &&
+    (headers.includes("store name") || headers.includes("restaurant name")) &&
+    (headers.includes("payable to merchant") || headers.includes("payable to restaurant")),
+  );
+
+  if (!rows.length) {
+    throw new Error("تعذّر تحديد صف عناوين Order Summary في ملف كيتا.");
+  }
   return rows;
 }
 
@@ -178,6 +185,105 @@ function sumColumns(row: Record<string, unknown>, columns: string[]): number {
     const key = findKey(row, column);
     return sum + (key ? num(row[key]) : 0);
   }, 0);
+}
+
+function isOrderTransaction(row: Record<string, unknown>): boolean {
+  const transactionType = normalizeHeader(valueOf(row, "Transaction type"));
+  return transactionType === "delivery order" || transactionType === "pickup order";
+}
+
+interface KeetaExcelBranchControl {
+  restaurantId: string;
+  branch: string;
+  invoiceAmount: number;
+  payable: number;
+  days: number;
+}
+
+interface KeetaExcelControls {
+  branches: Map<string, KeetaExcelBranchControl>;
+  invoiceAmount?: number;
+  payable?: number;
+  invoiceDetailRows: number;
+  billingInvoiceAmount?: number;
+  billingPayable?: number;
+  billingRows: number;
+}
+
+function parseExcelControls(wb: XLSX.WorkBook): KeetaExcelControls {
+  const controls: KeetaExcelControls = {
+    branches: new Map(),
+    invoiceDetailRows: 0,
+    billingRows: 0,
+  };
+
+  const invoiceSheetName = findSheet(wb, "Invoice Details");
+  if (invoiceSheetName && wb.Sheets[invoiceSheetName]) {
+    const rows = rowsFromSheet(wb.Sheets[invoiceSheetName]!, (headers) =>
+      headers.includes("restaurant id") &&
+      headers.includes("transaction date") &&
+      headers.includes("invoice amount") &&
+      headers.includes("payable to restaurant"),
+    );
+
+    let invoiceAmount = 0;
+    let payable = 0;
+    for (const row of rows) {
+      const restaurantId = text(valueOf(row, "Restaurant ID"));
+      if (!restaurantId) continue;
+      const branchName =
+        text(valueOf(row, "shop code")) ||
+        text(valueOf(row, "Restaurant Name")) ||
+        "Restaurant ID " + restaurantId;
+      let branch = controls.branches.get(restaurantId);
+      if (!branch) {
+        branch = { restaurantId, branch: branchName, invoiceAmount: 0, payable: 0, days: 0 };
+        controls.branches.set(restaurantId, branch);
+      }
+      branch.invoiceAmount += num(valueOf(row, "Invoice amount"));
+      branch.payable += num(valueOf(row, "Payable to Restaurant"));
+      branch.days += 1;
+      invoiceAmount += num(valueOf(row, "Invoice amount"));
+      payable += num(valueOf(row, "Payable to Restaurant"));
+    }
+
+    controls.invoiceDetailRows = rows.length;
+    if (rows.length) {
+      controls.invoiceAmount = invoiceAmount;
+      controls.payable = payable;
+    }
+  }
+
+  const billingSheetName = findSheet(wb, "Billing data summary");
+  if (billingSheetName && wb.Sheets[billingSheetName]) {
+    const rows = rowsFromSheet(wb.Sheets[billingSheetName]!, (headers) =>
+      headers.includes("transaction date") &&
+      headers.includes("total payable to restaurant") &&
+      headers.includes("total commission(vat included)"),
+    );
+
+    let invoiceAmount = 0;
+    let payable = 0;
+    for (const row of rows) {
+      invoiceAmount += -(
+        num(valueOf(row, "Total Commission(VAT included)")) +
+        num(valueOf(row, "Total Bank Fee(VAT included)")) +
+        num(valueOf(row, "Delivery subsidies (Keeta delivery) covered by merchant")) +
+        num(valueOf(row, "Photography Service Fee(VAT included)")) +
+        num(valueOf(row, "Adjustment (including invoice)")) +
+        num(valueOf(row, "Merchant ad spend (including VAT)"))
+      );
+      payable += num(valueOf(row, "Total Payable to Restaurant"));
+    }
+
+    controls.billingRows = rows.length;
+    if (rows.length) {
+      controls.billingInvoiceAmount = invoiceAmount;
+      controls.billingPayable = payable;
+    }
+  }
+
+  return controls;
 }
 
 function emptyBranch(branch: string, branchId: string): BranchRow {
