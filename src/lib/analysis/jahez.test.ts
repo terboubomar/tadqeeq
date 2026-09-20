@@ -104,6 +104,10 @@ describe("Jahez CSV audit engine", () => {
     expect(branchA?.jahezCompensationDebit).toBeCloseTo(20, 6);
     expect(branchA?.jahezCompensationDuplicateAmount).toBeCloseTo(10, 6);
 
+    const augFirst = result.daily.find((row) => row.date === "2026-08-01");
+    expect(augFirst?.jahezCompensationDebit).toBeCloseTo(20, 6);
+    expect(result.daily.some((row) => row.date === "2026-01-08")).toBe(false);
+
     const compDebitCheck = result.checks.find(
       (check) => check.label === "تعويضات جاهز: إجمالي الخصم",
     );
