@@ -173,24 +173,10 @@ async function recordUsage(
   }
 }
 
-function extractOutputText(response: OpenAiResponse): string {
-  for (const item of response.output ?? []) {
-    if (item.type !== "message") continue;
-    for (const content of item.content ?? []) {
-      if (content.type === "output_text" && content.text) return content.text;
-      if (content.type === "refusal" && content.refusal) {
-        throw new Error("تعذّر إنشاء الملخص الذكي لهذه الفترة.");
-      }
-    }
-  }
-  throw new Error("لم يرجع نموذج الذكاء الاصطناعي ملخصاً قابلاً للقراءة.");
-}
-
 async function callOpenAi(
   packet: ReturnType<typeof buildPeriodSummaryAiPacket>,
 ): Promise<{ explanation: PeriodSummaryAiExplanation; model: string }> {
-  const apiKey = requiredEnv("OPENAI_API_KEY");
-  const model = process.env["TADQEEQ_AI_MODEL"]?.trim() || DEFAULT_MODEL;
+
 
   const systemPrompt = [
     "أنت Tadqeeq AI Analyst داخل نظام تدقيق مالي لمنصات التوصيل.",
