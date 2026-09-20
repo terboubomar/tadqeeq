@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  buildExceptionEvidence,
   buildPeriodExceptions,
   summarizeExceptions,
   type ExceptionWorkflowEntry,
@@ -242,6 +243,62 @@ describe("Exception Center", () => {
     } as StoredPeriod;
 
     expect(buildPeriodExceptions(period)).toHaveLength(0);
+  });
+
+  test("builds a branch evidence trail with source fields and formula", () => {
+    const period = hungerPeriod();
+    const exception = buildPeriodExceptions(period).find(
+      (item) => item.category === "commission",
+    );
+    expect(exception).toBeDefined();
+
+    const evidence = buildExceptionEvidence(period, exception!);
+    expect(evidence.formula).toContain("عمولة");
+    expect(evidence.evidenceLabel).toBe("بيانات مستقلة");
+    expect(
+      evidence.calculatedSources.some((row) => row.source.includes("Commissionable GMV")),
+    ).toBe(true);
+    expect(
+      evidence.platformSources.some((row) => row.source.includes("Sales Commission")),
+    ).toBe(true);
+    expect(evidence.conclusion).toContain("يتجاوز هامش المطابقة");
+  });
+
+  test("uses stored workflow history in the evidence trail", () => {
+    const base = hungerPeriod();
+    const exception = buildPeriodExceptions(base).find(
+      (item) => item.category === "commission",
+    );
+    expect(exception).toBeDefined();
+
+    const period = hungerPeriod({
+      [exception!.id]: {
+        status: "disputed",
+        note: "تم إرسال الاعتراض",
+        updatedAt: "2026-09-20T02:00:00.000Z",
+        history: [
+          {
+            at: "2026-09-20T01:00:00.000Z",
+            status: "reviewing",
+          },
+          {
+            at: "2026-09-20T02:00:00.000Z",
+            status: "disputed",
+            note: "تم إرسال الاعتراض",
+          },
+        ],
+      },
+    });
+
+    const updated = buildPeriodExceptions(period).find(
+      (item) => item.id === exception!.id,
+    );
+    expect(updated).toBeDefined();
+
+    const evidence = buildExceptionEvidence(period, updated!);
+    expect(evidence.workflow).toHaveLength(2);
+    expect(evidence.workflow[1]?.status).toBe("disputed");
+    expect(evidence.workflow[1]?.note).toBe("تم إرسال الاعتراض");
   });
 
   test("applies persisted workflow without changing audit evidence", () => {

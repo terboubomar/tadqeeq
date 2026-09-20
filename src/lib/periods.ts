@@ -75,10 +75,23 @@ export async function updateExceptionWorkflow(
 
   const currentWorkflow = period.invoice?.exceptionWorkflow ?? {};
   const current = currentWorkflow[exceptionId] ?? { status: "new" as const };
-  const next: ExceptionWorkflowEntry = {
+  const updatedAt = new Date().toISOString();
+  const merged = {
     ...current,
     ...patch,
-    updatedAt: new Date().toISOString(),
+  };
+  const next: ExceptionWorkflowEntry = {
+    ...merged,
+    updatedAt,
+    history: [
+      ...(current.history ?? []),
+      {
+        at: updatedAt,
+        status: merged.status,
+        note: merged.note,
+        recoveredAmount: merged.recoveredAmount,
+      },
+    ],
   };
 
   const invoice = {
