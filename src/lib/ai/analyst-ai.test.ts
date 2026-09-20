@@ -422,6 +422,73 @@ describe("Ask Tadqeeq structured presentation", () => {
   });
 });
 
+describe("Ask Tadqeeq app-wide presentations", () => {
+  test("renders invoice checks as a deterministic table", () => {
+    const current = period({
+      id: "sep",
+      start: "2026-09-01",
+      end: "2026-09-30",
+      grossSales: 12000,
+      commissionPct: 0.19,
+      totalCharges: 3000,
+      check: true,
+    });
+    const context = buildAnalystContext(current, [current], "/invoice-check");
+    const check = context.facts.find((fact) => fact.kind === "invoice_check");
+    if (!check) throw new Error("expected invoice check");
+
+    const response: AnalystAiResponse = {
+      answerability: "grounded",
+      answer: "يوجد بند يحتاج مراجعة.",
+      usedFactIds: [check.id],
+      presentation: {
+        type: "invoice_table",
+        title: "مطابقة الفاتورة",
+        factIds: [check.id],
+      },
+      limitations: [],
+      followUpSuggestions: [],
+      confidence: "high",
+    };
+
+    const presentation = buildAnalystPresentation(context, response);
+    expect(presentation?.rows[0]?.label).toBe("عمولة جاهز");
+    expect(presentation?.rows[0]?.difference).toBe("25.00 ر.س");
+  });
+
+  test("renders exact daily facts without model-side arithmetic", () => {
+    const current = period({
+      id: "sep",
+      start: "2026-09-01",
+      end: "2026-09-30",
+      grossSales: 12000,
+      commissionPct: 0.19,
+      totalCharges: 3000,
+    });
+    const context = buildAnalystContext(current, [current], "/daily");
+    const dailyFacts = context.facts.filter((fact) => fact.kind === "daily");
+
+    const response: AnalystAiResponse = {
+      answerability: "grounded",
+      answer: "هذه الحركة اليومية المسجلة.",
+      usedFactIds: dailyFacts.map((fact) => fact.id),
+      presentation: {
+        type: "daily_table",
+        title: "التقرير اليومي",
+        factIds: dailyFacts.map((fact) => fact.id),
+      },
+      limitations: [],
+      followUpSuggestions: [],
+      confidence: "high",
+    };
+
+    const presentation = buildAnalystPresentation(context, response);
+    expect(presentation?.rows).toHaveLength(2);
+    expect(presentation?.rows[0]?.date).toBe("2026-09-01");
+    expect(presentation?.rows[0]?.orders).toBe("40");
+  });
+});
+
 describe("Ask Tadqeeq structured response", () => {
   test("validates grounded answers with explicit fact references", () => {
     const result = analystAiResponseSchema.parse({
