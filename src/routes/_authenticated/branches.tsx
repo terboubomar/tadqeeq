@@ -50,11 +50,25 @@ const HUNGER_COLUMNS: Column<BranchRow>[] = [
 
 const KEETA_COLUMNS: Column<BranchRow>[] = [
   { key: "branch", header: "المتجر", type: "text" },
-  { key: "orders", header: "عدد الفواتير", type: "number" },
-  { key: "grossSales", header: "قيمة الفواتير" },
-  { key: "netSales", header: "المستحق للتاجر" },
-  { key: "commission", header: "خصومات المنصة" },
-  { key: "commissionPct", header: "نسبة الخصم", type: "percent" },
+  { key: "branchId", header: "Store ID", type: "text" },
+  { key: "orders", header: "الطلبات", type: "number" },
+  { key: "grossSales", header: "المبيعات شامل الضريبة" },
+  { key: "keetaSalesExVat", header: "المبيعات بدون الضريبة" },
+  { key: "commission", header: "العمولة بدون الضريبة" },
+  { key: "commissionPct", header: "نسبة العمولة الفعلية", type: "percent" },
+  { key: "keetaBankFeesExVat", header: "رسوم البنك بدون الضريبة" },
+  { key: "keetaDeliveryCampaignExVat", header: "التوصيل / الحملات" },
+  { key: "keetaAdvertisingExVat", header: "الإعلانات" },
+  { key: "keetaCompensationExVat", header: "تعويضات / خصومات المنصة" },
+  { key: "keetaOtherExpensesExVat", header: "مصروفات أخرى" },
+  { key: "keetaTotalCostExVat", header: "إجمالي تكلفة المنصة بدون الضريبة" },
+  { key: "keetaInputVat", header: "ضريبة المدخلات" },
+  { key: "keetaTotalCostInclVat", header: "تكلفة المنصة شامل الضريبة" },
+  { key: "netSales", header: "صافي التسوية المحتسب" },
+  { key: "keetaSourcePayable", header: "Payable حسب كيتا" },
+  { key: "keetaSettlementVariance", header: "فرق التسوية" },
+  { key: "keetaPlatformCostPct", header: "تكلفة المنصة %", type: "percent" },
+  { key: "keetaAvgOrderValueInclVat", header: "متوسط الطلب شامل الضريبة" },
 ];
 
 function BranchesPage() {
@@ -88,7 +102,7 @@ function BranchesPage() {
         caption={
           selected.platform === "hungerstation"
             ? "حالة المطابقة تقارن كل فرع في ملف الطلبات مع صفحات تفاصيل فاتورة هنقرستيشن. الفروق الصغيرة قد تكون تقريباً من المنصة."
-            : undefined
+            : "الأرقام معاد احتسابها من Order Summary. فرق التسوية يقارن صافي التسوية المحتسب مع Payable to merchant من ملف كيتا."
         }
       />
     </div>
