@@ -1,18 +1,7 @@
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  BarChart3,
-  Building2,
-  CalendarDays,
-  FileSpreadsheet,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  ReceiptText,
-  ShieldAlert,
-  Upload,
-} from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { LogOut, Upload } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,26 +12,44 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { buildPeriodExceptions, summarizeExceptions } from "@/lib/exceptions";
+import { arabicDate } from "@/lib/format";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { to: "/dashboard", label: "اللوحة التنفيذية", icon: LayoutDashboard },
-  { to: "/invoice-check", label: "مطابقة الفاتورة", icon: ReceiptText },
-  { to: "/exceptions", label: "مركز الاستثناءات", icon: ShieldAlert },
-  { to: "/branches", label: "تقرير الفروع", icon: Building2 },
-  { to: "/daily", label: "التقرير اليومي", icon: CalendarDays },
-  { to: "/breakdown", label: "تفصيل البنود", icon: BarChart3 },
-  { to: "/import", label: "رفع البيانات", icon: Upload },
-  { to: "/history", label: "الفترات السابقة", icon: FileSpreadsheet },
+const NAV_GROUPS = [
+  {
+    title: "التدقيق",
+    items: [
+      { to: "/invoice-check", label: "مطابقة الفاتورة" },
+      { to: "/exceptions", label: "مركز الاستثناءات" },
+      { to: "/dashboard", label: "اللوحة التنفيذية" },
+    ],
+  },
+  {
+    title: "التقارير",
+    items: [
+      { to: "/branches", label: "تقرير الفروع" },
+      { to: "/daily", label: "التقرير اليومي" },
+      { to: "/breakdown", label: "تفصيل البنود" },
+      { to: "/history", label: "الفترات السابقة" },
+    ],
+  },
+  {
+    title: "الإعداد",
+    items: [{ to: "/import", label: "رفع البيانات" }],
+  },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { periods, selected, select } = useSelectedPeriod();
+
+  const exceptionSummary = selected
+    ? summarizeExceptions(buildPeriodExceptions(selected))
+    : null;
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -51,109 +58,165 @@ export function AppShell({ children }: { children: ReactNode }) {
     navigate({ to: "/auth", replace: true });
   }
 
+  const badgeFor = (to: string) =>
+    to === "/exceptions" && (exceptionSummary?.openCount ?? 0) > 0
+      ? String(exceptionSummary?.openCount ?? 0)
+      : "";
+
   return (
-    <div className="grain-bg min-h-screen bg-background">
-      <div className="mx-auto flex max-w-[1600px]">
+    <div className="min-h-screen bg-background" dir="rtl">
+      <div className="flex min-h-screen">
         <aside
-          className={cn(
-            "fixed inset-y-0 right-0 z-40 w-64 shrink-0 border-l border-border bg-surface p-4 transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
-            open ? "translate-x-0" : "translate-x-full",
-          )}
+          data-noprint
+          className="sticky top-0 hidden h-screen w-[246px] shrink-0 overflow-y-auto border-s border-border bg-white px-3.5 pb-4 pt-5 min-[881px]:block"
         >
-          <Link to="/dashboard" className="flex items-center gap-2.5 px-2 py-3">
-            <span className="grid size-9 place-items-center rounded-xl bg-primary text-lg font-black text-primary-foreground">
-              ت
-            </span>
-            <span>
-              <span className="block font-display text-lg font-black leading-none gold-text">
-                تدقيق
+          <div className="flex min-h-full flex-col">
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-2.5 border-b border-border/80 px-1.5 pb-4"
+            >
+              <span className="grid size-[30px] place-items-center rounded-lg bg-primary text-[15px] font-bold text-primary-foreground">
+                ت
               </span>
-              <span className="block text-[11px] text-muted-foreground">مراجعة فواتير التوصيل</span>
-            </span>
-          </Link>
+              <span>
+                <span className="block text-[15px] font-bold leading-tight">تدقيق</span>
+                <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                  مراجعة فواتير التوصيل
+                </span>
+              </span>
+            </Link>
 
-          <nav className="mt-5 space-y-1">
-            {NAV.map((item) => {
-              const active = pathname === item.to;
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-                  )}
-                >
-                  <item.icon className="size-4 shrink-0" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+            <nav className="pb-5">
+              {NAV_GROUPS.map((group) => (
+                <div key={group.title} className="mt-[18px]">
+                  <p className="mx-1.5 mb-1.5 text-[10.5px] font-semibold tracking-[0.08em] text-muted-foreground">
+                    {group.title}
+                  </p>
+                  <div className="flex flex-col gap-px">
+                    {group.items.map((item) => {
+                      const active = pathname === item.to;
+                      const badge = badgeFor(item.to);
+                      return (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          className={cn(
+                            "flex w-full items-center justify-between gap-2 rounded-[7px] border px-2.5 py-[7px] text-[13px] transition-colors",
+                            active
+                              ? "border-primary/15 bg-secondary font-semibold text-secondary-foreground"
+                              : "border-transparent text-foreground/80 hover:bg-muted",
+                          )}
+                        >
+                          <span>{item.label}</span>
+                          {badge ? (
+                            <span className="num inline-grid min-w-[18px] place-items-center rounded-full bg-destructive px-1.5 py-0.5 text-[10.5px] font-semibold text-white">
+                              {badge}
+                            </span>
+                          ) : null}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </nav>
 
-          <Button
-            variant="ghost"
-            onClick={signOut}
-            className="absolute bottom-4 start-4 end-4 justify-start gap-3 text-muted-foreground hover:text-destructive"
-          >
-            <LogOut className="size-4" />
-            تسجيل الخروج
-          </Button>
+            <div className="mt-auto border-t border-border/80 px-2 pt-3">
+              <p className="text-[11px] leading-5 text-muted-foreground">
+                كل الحسابات تتم داخل المتصفح. الملفات نفسها لا تُرفع؛ تُحفظ نتائج التدقيق فقط.
+              </p>
+              <button
+                type="button"
+                onClick={signOut}
+                className="mt-3 flex w-full items-center gap-2 rounded-[7px] px-2 py-2 text-start text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+              >
+                <LogOut className="size-3.5" />
+                تسجيل الخروج
+              </button>
+            </div>
+          </div>
         </aside>
 
-        {open ? (
-          <button
-            aria-label="إغلاق القائمة"
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-30 bg-background/70 lg:hidden"
-          />
-        ) : null}
-
         <main className="min-w-0 flex-1">
-          <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-md sm:px-6">
-            <Button
-              variant="outline"
-              size="icon"
-              className="lg:hidden"
-              onClick={() => setOpen((value) => !value)}
-              aria-label="القائمة"
-            >
-              <Menu className="size-4" />
-            </Button>
+          <header
+            data-noprint
+            className="sticky top-0 z-20 flex flex-wrap items-center gap-2.5 border-b border-border bg-background/90 px-4 py-2.5 backdrop-blur-md sm:px-5"
+          >
+            {selected ? (
+              <>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>المنصة</span>
+                  <span className="rounded-[7px] border border-input bg-white px-2.5 py-1.5 text-[13px] text-foreground">
+                    {selected.platform === "hungerstation" ? "هنقرستيشن" : "كيتا"}
+                  </span>
+                </div>
 
-            <div className="min-w-0 flex-1">
-              {periods.length > 0 ? (
-                <Select value={selected?.id ?? ""} onValueChange={select}>
-                  <SelectTrigger className="h-10 w-full max-w-sm">
-                    <SelectValue placeholder="اختر الفترة" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {periods.map((period) => (
-                      <SelectItem key={period.id} value={period.id}>
-                        {period.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  لا توجد بيانات بعد — ابدأ من صفحة رفع البيانات.
-                </p>
-              )}
-            </div>
+                <label className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                  <span>الفترة</span>
+                  <Select value={selected.id} onValueChange={select}>
+                    <SelectTrigger className="h-8 min-w-[170px] max-w-[260px] bg-white text-[13px]">
+                      <SelectValue placeholder="اختر الفترة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {periods.map((period) => (
+                        <SelectItem key={period.id} value={period.id}>
+                          {period.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </label>
+
+                <span className="num rounded-[7px] border border-input bg-white px-2.5 py-1.5 text-[12px] text-foreground/80">
+                  {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)}
+                </span>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                لا توجد بيانات بعد — ابدأ من صفحة رفع البيانات.
+              </p>
+            )}
+
+            <span className="flex-1" />
 
             <Button asChild size="sm">
               <Link to="/import">
-                <Upload className="size-4" />
+                <Upload className="size-3.5" />
                 رفع بيانات
               </Link>
             </Button>
           </header>
 
-          <div className="px-4 py-6 sm:px-6">{children}</div>
+          <div
+            data-noprint
+            className="flex gap-1 overflow-x-auto border-b border-border bg-white px-3.5 py-2 min-[881px]:hidden"
+          >
+            {NAV_GROUPS.flatMap((group) => group.items).map((item) => {
+              const active = pathname === item.to;
+              const badge = badgeFor(item.to);
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={cn(
+                    "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-[12.5px]",
+                    active
+                      ? "border-primary bg-primary font-semibold text-primary-foreground"
+                      : "border-border bg-white text-foreground/80",
+                  )}
+                >
+                  {item.label}
+                  {badge ? (
+                    <span className="num rounded-full bg-white/90 px-1.5 text-[10px] text-destructive">
+                      {badge}
+                    </span>
+                  ) : null}
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="max-w-[1360px] px-4 pb-14 pt-[22px] sm:px-5">{children}</div>
         </main>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { Download, FileSpreadsheet } from "lucide-react";
+import { Download, FileSpreadsheet, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -89,20 +89,23 @@ export function ReportTable<T extends Record<string, unknown>>({
   );
 
   return (
-    <section className="panel overflow-hidden">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+    <section className="overflow-hidden rounded-[10px] border border-border bg-white">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 px-4 py-3">
         <div>
-          <h2 className="text-base font-bold">{title}</h2>
+          <h2 className="text-sm font-semibold">{title}</h2>
           {caption ? <p className="mt-1 text-xs text-muted-foreground">{caption}</p> : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {searchKey ? (
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="بحث…"
-              className="h-9 w-40"
-            />
+            <div className="relative">
+              <Search className="absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="بحث…"
+                className="h-8 w-44 ps-8 text-xs"
+              />
+            </div>
           ) : null}
           <Button
             variant="outline"
@@ -125,8 +128,8 @@ export function ReportTable<T extends Record<string, unknown>>({
         </div>
       </header>
 
-      <div className="max-h-[70vh] overflow-auto">
-        <table className="w-full min-w-max border-collapse text-sm">
+      <div data-scroll className="max-h-[70vh] overflow-auto">
+        <table className="w-full min-w-max border-collapse text-[13.5px]">
           <thead className="sticky top-0 z-10 bg-surface-raised">
             <tr>
               {columns.map((column) => (
@@ -140,7 +143,7 @@ export function ReportTable<T extends Record<string, unknown>>({
                     }
                   }}
                   className={cn(
-                    "cursor-pointer whitespace-nowrap px-4 py-3 text-start text-xs font-semibold text-muted-foreground transition-colors hover:text-primary",
+                    "cursor-pointer whitespace-nowrap border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground transition-colors hover:text-foreground",
                     sortKey === column.key && "text-primary",
                     column.className,
                   )}
@@ -155,12 +158,16 @@ export function ReportTable<T extends Record<string, unknown>>({
             {filtered.map((row, index) => (
               <tr
                 key={index}
-                className="border-t border-border/60 transition-colors hover:bg-secondary/50"
+                className={cn("transition-colors hover:bg-secondary/45", index % 2 ? "bg-background/55" : "bg-white")}
               >
                 {columns.map((column) => (
                   <td
                     key={column.key}
-                    className={cn("whitespace-nowrap px-4 py-2.5", column.className)}
+                    className={cn(
+                      "whitespace-nowrap border-b border-border/60 px-3.5 py-2.5",
+                      typeof row[column.key] === "number" && "font-mono",
+                      column.className,
+                    )}
                   >
                     {render(row, column)}
                   </td>
@@ -180,9 +187,9 @@ export function ReportTable<T extends Record<string, unknown>>({
           </tbody>
           {totalsRow && filtered.length > 0 ? (
             <tfoot className="sticky bottom-0 bg-surface-raised">
-              <tr className="border-t-2 border-primary/40 font-bold">
+              <tr className="border-t-2 border-input font-semibold">
                 {columns.map((column, index) => (
-                  <td key={column.key} className="whitespace-nowrap px-4 py-3">
+                  <td key={column.key} className="whitespace-nowrap px-3.5 py-2.5">
                     {index === 0 ? (
                       "الإجمالي"
                     ) : totalsRow[column.key] !== undefined ? (

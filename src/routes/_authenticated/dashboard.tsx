@@ -84,21 +84,16 @@ function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-black">{selected.label}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)} ·{" "}
-            {isHunger ? "هنقرستيشن" : "كيتا"}
-          </p>
-        </div>
-        <span className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs text-muted-foreground">
-          <span className="num">{count(s.branchCount)}</span> فرع ·{" "}
+      <header>
+        <h1 className="audit-heading">اللوحة التنفيذية</h1>
+        <p className="audit-subtitle">
+          {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)} ·{" "}
+          {isHunger ? "هنقرستيشن" : "كيتا"} · <span className="num">{count(s.branchCount)}</span> فرع ·{" "}
           <span className="num">{count(s.orders)}</span> طلب
-        </span>
+        </p>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="audit-kpi-strip grid gap-0 sm:grid-cols-2 xl:grid-cols-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0">
         <StatCard
           label={isHunger ? "المبيعات الإجمالية (شامل الضريبة)" : "المبيعات الإجمالية (شامل الضريبة)"}
           value={sar(s.grossSales)}
@@ -131,7 +126,7 @@ function Dashboard() {
       </section>
 
       {isHunger ? (
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="audit-kpi-strip grid gap-0 sm:grid-cols-2 xl:grid-cols-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0">
           <StatCard
             label="صافي مدفوعات البطاقات"
             value={sar(s.netBankCards ?? s.ccSuccess)}
@@ -166,7 +161,7 @@ function Dashboard() {
           <StatCard label="محافظ المندوبين" value={sar(s.riderWallet)} icon={Store} />
         </section>
       ) : (
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="audit-kpi-strip grid gap-0 sm:grid-cols-2 xl:grid-cols-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0">
           <StatCard
             label="Payable حسب كيتا"
             value={sar(s.keetaSourcePayable ?? 0)}
@@ -194,8 +189,8 @@ function Dashboard() {
       )}
 
       <div className="grid gap-5 xl:grid-cols-5">
-        <section className="panel p-5 xl:col-span-3">
-          <h2 className="text-base font-bold">
+        <section className="panel p-4 xl:col-span-3">
+          <h2 className="text-sm font-semibold">
             {isHunger ? "المبيعات والعمولة يومياً" : "المبيعات وتكلفة المنصة يومياً"}
           </h2>
           <div className="mt-4 h-72" dir="ltr">
@@ -238,8 +233,8 @@ function Dashboard() {
           </div>
         </section>
 
-        <section className="panel p-5 xl:col-span-2">
-          <h2 className="text-base font-bold">
+        <section className="panel p-4 xl:col-span-2">
+          <h2 className="text-sm font-semibold">
             {isHunger ? "أعلى الفروع عمولةً" : "أعلى الفروع تكلفة منصة"}
           </h2>
           <div className="mt-4 h-72" dir="ltr">

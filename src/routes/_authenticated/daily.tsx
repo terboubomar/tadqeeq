@@ -39,8 +39,8 @@ function DailyPage() {
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-2xl font-black">التقرير اليومي</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="audit-heading">التقرير اليومي</h1>
+        <p className="audit-subtitle">
           يعتمد على يوم التشغيل للطلبات الناجحة والفاشلة بعد الاستلام.
         </p>
       </header>

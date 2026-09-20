@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/AppShell";
@@ -45,69 +46,102 @@ function HistoryPage() {
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-2xl font-black">الفترات السابقة</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          اضغط على أي فترة لعرضها في باقي التقارير.
-        </p>
+        <h1 className="audit-heading">الفترات السابقة</h1>
+        <p className="audit-subtitle">اضغط على أي فترة لعرضها في باقي التقارير.</p>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {periods.map((period) => {
-          const active = selected?.id === period.id;
-          return (
-            <article
-              key={period.id}
-              className={cn(
-                "panel cursor-pointer p-5 transition-colors",
-                active ? "border-primary/60" : "hover:border-primary/30",
-              )}
-              onClick={() => setSelectedPeriodId(period.id)}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <h2 className="truncate text-base font-bold">{period.label}</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {arabicDate(period.period_start)} — {arabicDate(period.period_end)}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    remove.mutate(period.id);
-                  }}
-                  aria-label="حذف"
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-
-              <dl className="mt-4 space-y-2 text-sm">
-                <Row label="الطلبات" value={count(period.summary?.orders ?? 0)} />
-                <Row label="المبيعات" value={money(period.summary?.grossSales ?? 0)} />
-                <Row label="العمولة" value={money(period.summary?.commission ?? 0)} />
-                <Row label="نسبة العمولة" value={percent(period.summary?.commissionPct ?? 0)} />
-                <Row label="إجمالي الخصومات" value={money(period.summary?.totalCharges ?? 0)} />
-              </dl>
-
-              {active ? (
-                <p className="mt-4 text-xs font-semibold text-primary">الفترة المعروضة حالياً</p>
-              ) : null}
-            </article>
-          );
-        })}
-      </div>
+      <section className="overflow-hidden rounded-[10px] border border-border bg-white">
+        <div data-scroll className="overflow-x-auto">
+          <table className="w-full min-w-[980px] border-collapse text-[13.5px]">
+            <thead className="bg-surface-raised">
+              <tr className="text-[11.5px] font-semibold text-muted-foreground">
+                <Th>الفترة</Th>
+                <Th>المدة</Th>
+                <Th>المنصة</Th>
+                <Th>الطلبات</Th>
+                <Th>المبيعات</Th>
+                <Th>العمولة</Th>
+                <Th>نسبة العمولة</Th>
+                <Th>إجمالي الخصومات</Th>
+                <Th>إجراء</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {periods.map((period, index) => {
+                const active = selected?.id === period.id;
+                return (
+                  <tr
+                    key={period.id}
+                    onClick={() => setSelectedPeriodId(period.id)}
+                    className={cn(
+                      "cursor-pointer transition-colors hover:bg-secondary/55",
+                      active ? "bg-secondary" : index % 2 ? "bg-background/55" : "bg-white",
+                    )}
+                  >
+                    <Td className={cn("font-semibold", active && "text-secondary-foreground")}>
+                      {period.label}
+                      {active ? (
+                        <span className="me-2 rounded-[5px] bg-white px-1.5 py-0.5 text-[10px] text-primary">
+                          معروضة
+                        </span>
+                      ) : null}
+                    </Td>
+                    <Td mono>
+                      {arabicDate(period.period_start)} — {arabicDate(period.period_end)}
+                    </Td>
+                    <Td>{period.platform === "hungerstation" ? "هنقرستيشن" : "كيتا"}</Td>
+                    <Td mono>{count(period.summary?.orders ?? 0)}</Td>
+                    <Td mono>{money(period.summary?.grossSales ?? 0)}</Td>
+                    <Td mono>{money(period.summary?.commission ?? 0)}</Td>
+                    <Td mono>{percent(period.summary?.commissionPct ?? 0)}</Td>
+                    <Td mono>{money(period.summary?.totalCharges ?? 0)}</Td>
+                    <Td>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-muted-foreground hover:text-destructive"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          remove.mutate(period.id);
+                        }}
+                        aria-label="حذف"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Th({ children }: { children: ReactNode }) {
+  return <th className="whitespace-nowrap border-b border-border px-3.5 py-2.5 text-start">{children}</th>;
+}
+
+function Td({
+  children,
+  mono = false,
+  className,
+}: {
+  children: ReactNode;
+  mono?: boolean;
+  className?: string;
+}) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-border/50 pb-1.5">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="num font-semibold">{value}</dd>
-    </div>
+    <td
+      className={cn(
+        "whitespace-nowrap border-b border-border/60 px-3.5 py-2.5",
+        mono && "num",
+        className,
+      )}
+    >
+      {children}
+    </td>
   );
 }

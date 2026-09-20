@@ -76,19 +76,19 @@ function AuthPage() {
   }
 
   return (
-    <div className="grain-bg flex min-h-screen items-center justify-center bg-background px-4 py-10">
-      <div className="panel w-full max-w-md p-8">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+      <div className="panel w-full max-w-[420px] p-7">
         <div className="flex items-center gap-3">
-          <span className="grid size-11 place-items-center rounded-xl bg-primary text-xl font-black text-primary-foreground">
+          <span className="grid size-11 place-items-center rounded-[8px] bg-primary text-xl font-bold text-primary-foreground">
             ت
           </span>
           <div>
-            <h1 className="font-display text-2xl font-black gold-text">تدقيق</h1>
+            <h1 className="text-xl font-bold">تدقيق</h1>
             <p className="text-xs text-muted-foreground">مراجعة فواتير تطبيقات التوصيل</p>
           </div>
         </div>
 
-        <h2 className="mt-7 text-lg font-bold">
+        <h2 className="mt-7 text-base font-semibold">
           {mode === "signin" ? "تسجيل الدخول" : "إنشاء حساب جديد"}
         </h2>
 

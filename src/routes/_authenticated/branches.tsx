@@ -94,8 +94,8 @@ function BranchesPage() {
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-2xl font-black">تقرير الفروع</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="audit-heading">تقرير الفروع</h1>
+        <p className="audit-subtitle">
           اضغط على عنوان أي عمود للترتيب تصاعدياً أو تنازلياً.
         </p>
       </header>
