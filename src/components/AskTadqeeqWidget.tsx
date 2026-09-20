@@ -49,6 +49,7 @@ export function AskTadqeeqWidget({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [expanded, setExpanded] = useState(false);
+  const [structuredMode, setStructuredMode] = useState(false);
 
   useEffect(() => {
     if (defaultOpen) setOpen(true);
@@ -77,8 +78,10 @@ export function AskTadqeeqWidget({
             "fixed z-50 overflow-hidden border border-border bg-white shadow-2xl",
             "inset-3 rounded-2xl sm:inset-auto sm:bottom-5 sm:left-5",
             expanded
-              ? "sm:h-[calc(100vh-2.5rem)] sm:w-[min(920px,calc(100vw-2.5rem))]"
-              : "sm:h-[min(780px,calc(100vh-2.5rem))] sm:w-[min(620px,calc(100vw-2.5rem))]",
+              ? "sm:h-[calc(100vh-2.5rem)] sm:w-[min(1180px,calc(100vw-2.5rem))]"
+              : structuredMode
+                ? "sm:h-[min(840px,calc(100vh-2.5rem))] sm:w-[min(1040px,calc(100vw-2.5rem))]"
+                : "sm:h-[min(780px,calc(100vh-2.5rem))] sm:w-[min(620px,calc(100vw-2.5rem))]",
           )}
           aria-label="اسأل تدقيق"
         >
@@ -91,7 +94,11 @@ export function AskTadqeeqWidget({
             />
 
             {selected ? (
-              <AskTadqeeqConversation key={selected.id} period={selected} />
+              <AskTadqeeqConversation
+                key={selected.id}
+                period={selected}
+                onStructuredModeChange={setStructuredMode}
+              />
             ) : (
               <NoPeriodState onClose={() => setOpen(false)} />
             )}
@@ -177,7 +184,13 @@ function WidgetHeader({
   );
 }
 
-function AskTadqeeqConversation({ period }: { period: StoredPeriod }) {
+function AskTadqeeqConversation({
+  period,
+  onStructuredModeChange,
+}: {
+  period: StoredPeriod;
+  onStructuredModeChange: (active: boolean) => void;
+}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
@@ -226,6 +239,10 @@ function AskTadqeeqConversation({ period }: { period: StoredPeriod }) {
         },
       });
 
+      if (result.presentation?.type === "table") {
+        onStructuredModeChange(true);
+      }
+
       setMessages((current) => [
         ...current,
         {
@@ -268,7 +285,10 @@ function AskTadqeeqConversation({ period }: { period: StoredPeriod }) {
                   variant="ghost"
                   size="sm"
                   className="h-7 px-2 text-[10.5px]"
-                  onClick={() => setMessages([])}
+                  onClick={() => {
+                    setMessages([]);
+                    onStructuredModeChange(false);
+                  }}
                   disabled={loading}
                 >
                   <RotateCcw className="size-3" />
@@ -376,6 +396,38 @@ function ChatBubble({
   showFollowUps: boolean;
 }) {
   const isUser = message.role === "user";
+  const structured = !isUser && Boolean(message.result?.presentation);
+
+  if (structured && message.result) {
+    return (
+      <div className="w-full space-y-3">
+        <div className="rounded-xl border border-primary/15 bg-secondary/15 px-4 py-3">
+          <p className="text-sm leading-7 text-foreground">{message.content}</p>
+        </div>
+
+        {message.result.presentation ? (
+          <AnalystPresentationTable presentation={message.result.presentation} />
+        ) : null}
+
+        <ResponseMeta result={message.result} />
+
+        {showFollowUps && message.result.response.followUpSuggestions.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {message.result.response.followUpSuggestions.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => onFollowUp(suggestion)}
+                className="rounded-full border border-border bg-white px-2.5 py-1 text-[10.5px] text-muted-foreground transition-colors hover:border-primary/25 hover:text-foreground"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className={cn("flex items-start gap-2.5", isUser && "flex-row-reverse")}>
@@ -407,9 +459,6 @@ function ChatBubble({
 
         {message.result ? (
           <>
-            {message.result.presentation ? (
-              <AnalystPresentationTable presentation={message.result.presentation} />
-            ) : null}
             <ResponseMeta result={message.result} />
             {showFollowUps && message.result.response.followUpSuggestions.length ? (
               <div className="flex flex-wrap gap-1.5">
@@ -438,23 +487,25 @@ function AnalystPresentationTable({
   presentation: AnalystTablePresentation;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-white">
+    <div className="overflow-hidden rounded-xl border border-border bg-white shadow-sm">
       {presentation.title ? (
-        <div className="border-b border-border bg-secondary/25 px-3 py-2.5">
-          <p className="text-[11px] font-bold text-foreground">{presentation.title}</p>
+        <div className="border-b border-border bg-secondary/20 px-4 py-3">
+          <p className="text-xs font-bold text-foreground">{presentation.title}</p>
         </div>
       ) : null}
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse text-[11px]">
-          <thead className="bg-secondary/10 text-muted-foreground">
+      <div className="max-h-[430px] overflow-auto">
+        <table className="w-full min-w-[900px] border-separate border-spacing-0 text-[11px]">
+          <thead className="sticky top-0 z-20 bg-background text-muted-foreground shadow-[0_1px_0_0_var(--color-border)]">
             <tr>
               {presentation.columns.map((column) => (
                 <th
                   key={column.key}
                   className={cn(
-                    "whitespace-nowrap border-b border-border px-3 py-2 font-semibold",
+                    "whitespace-nowrap bg-background px-4 py-2.5 font-semibold",
                     column.align === "number" ? "text-end" : "text-start",
+                    column.key === "branch" &&
+                      "sticky right-0 z-30 min-w-[180px] border-l border-border bg-background",
                   )}
                 >
                   {column.label}
@@ -466,17 +517,20 @@ function AnalystPresentationTable({
             {presentation.rows.map((row, rowIndex) => (
               <tr
                 key={rowIndex}
-                className="border-b border-border/60 last:border-b-0 hover:bg-secondary/10"
+                className="group border-b border-border/60 last:border-b-0 hover:bg-secondary/10"
               >
                 {presentation.columns.map((column) => (
                   <td
                     key={column.key}
+                    dir={column.align === "number" ? "ltr" : undefined}
                     className={cn(
-                      "whitespace-nowrap px-3 py-2.5",
+                      "whitespace-nowrap border-b border-border/60 px-4 py-3 last:border-b-0",
                       column.align === "number"
-                        ? "num text-end font-medium"
+                        ? "num text-end font-medium tabular-nums"
                         : "text-start",
-                      column.key === "branch" && "font-semibold text-foreground",
+                      column.key === "branch" &&
+                        "sticky right-0 z-10 min-w-[180px] border-l border-border bg-white font-semibold text-foreground group-hover:bg-secondary/10",
+                      column.key === "rank" && "w-10 text-center text-muted-foreground",
                     )}
                   >
                     {row[column.key] ?? "—"}
