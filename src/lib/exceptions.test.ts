@@ -245,6 +245,87 @@ describe("Exception Center", () => {
     expect(buildPeriodExceptions(period)).toHaveLength(0);
   });
 
+  test("uses Keeta Excel Payable as the actionable branch exception without double-counting Invoice amount", () => {
+    const period = {
+      id: "keeta-excel-mismatch",
+      label: "Keeta Excel",
+      platform: "keeta",
+      period_start: "2026-08-01",
+      period_end: "2026-08-31",
+      created_at: "2026-09-01T00:00:00Z",
+      summary: {} as StoredPeriod["summary"],
+      daily: [],
+      branches: [
+        {
+          branch: "Branch A",
+          branchId: "1001",
+          orders: 2,
+          grossSales: 120,
+          netSales: 90,
+          commission: 10,
+          commissionPct: 0.1,
+          ccSuccess: 0,
+          ccRejected: 0,
+          walletAmount: 0,
+          riderWallet: 0,
+          rdfCampaigns: 0,
+          freeDeliveryOrders: 0,
+          compensation: 0,
+          jokerFees: 0,
+          hsFoodDiscount: 0,
+          rewardsDiscount: 0,
+          restaurantFoodDiscount: 0,
+          totalFoodDiscount: 0,
+          partialRefund: 0,
+          fulfillmentMods: 0,
+          approvedRefunds: 0,
+          waitingTimeFees: 0,
+          bankFeeSuccess: 0,
+          bankFeeRefunded: 0,
+          totalCharges: 30,
+          branchAuditStatus: "warning",
+          branchAuditLabel: "يحتاج مراجعة",
+          branchAuditNote: "يوجد فرق بين Order Summary وInvoice Details في Excel.",
+          keetaCommissionInvoiceInclVat: 20,
+          keetaMerchantAdExVat: 0,
+          keetaExcelInvoiceAmount: 30,
+          keetaExcelInvoiceVariance: -10,
+          keetaExcelPayable: 80,
+          keetaExcelPayableVariance: 10,
+        },
+      ],
+      invoice: {
+        lines: [],
+        checks: [
+          {
+            label: "Invoice amount مقابل Invoice Details",
+            computed: 20,
+            invoiced: 30,
+            evidence: "data",
+            tolerance: 0.05,
+          },
+          {
+            label: "صافي المستحق مقابل Invoice Details",
+            computed: 90,
+            invoiced: 80,
+            evidence: "data",
+            tolerance: 0.05,
+          },
+        ],
+      },
+    } as StoredPeriod;
+
+    const exceptions = buildPeriodExceptions(period);
+    expect(exceptions).toHaveLength(1);
+    expect(exceptions[0]?.category).toBe("settlement");
+    expect(exceptions[0]?.label).toBe("فرق Payable للفرع");
+    expect(exceptions[0]?.reviewAmount).toBeCloseTo(10, 6);
+    expect(exceptions[0]?.potentialRecovery).toBeCloseTo(10, 6);
+
+    const evidence = buildExceptionEvidence(period, exceptions[0]!);
+    expect(evidence.platformSources[0]?.source).toContain("Invoice Details");
+  });
+
   test("builds a branch evidence trail with source fields and formula", () => {
     const period = hungerPeriod();
     const exception = buildPeriodExceptions(period).find(
