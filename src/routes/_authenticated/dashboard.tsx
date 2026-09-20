@@ -257,6 +257,46 @@ function Dashboard() {
         </section>
       )}
 
+      {isJahez && s.jahezCompensationTransactions !== undefined ? (
+        <section className="audit-kpi-strip grid gap-0 sm:grid-cols-2 xl:grid-cols-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0">
+          <StatCard
+            label="تعويضات مخصومة"
+            value={sar(s.jahezCompensationDebit ?? 0)}
+            hint={(s.jahezCompensationTransactions ?? 0) + " حركة تعويض"}
+            icon={Receipt}
+            tone="negative"
+          />
+          <StatCard
+            label="تعويضات مضافة"
+            value={sar(s.jahezCompensationCredit ?? 0)}
+            hint="Credit في تقرير التعويضات"
+            icon={Banknote}
+            tone="positive"
+          />
+          <StatCard
+            label="صافي أثر التعويضات"
+            value={sar(s.jahezCompensationNetImpact ?? 0)}
+            hint={
+              (s.jahezCompensationDuplicateCandidates ?? 0) > 0
+                ? (s.jahezCompensationDuplicateCandidates ?? 0) + " حالة تكرار مشتبه بها"
+                : "Debit ناقص Credit"
+            }
+            icon={Receipt}
+            tone={(s.jahezCompensationNetImpact ?? 0) > 0 ? "negative" : "default"}
+          />
+          <StatCard
+            label="صافي المطعم بعد التعويضات"
+            value={sar(s.jahezAdjustedRestaurantAmount ?? s.netSales)}
+            hint={
+              (s.jahezCompensationUnknownOrders ?? 0) > 0
+                ? (s.jahezCompensationUnknownOrders ?? 0) + " طلب تعويض بدون مصدر متاح"
+                : "Restaurant Amount ناقص صافي التعويضات"
+            }
+            icon={Banknote}
+          />
+        </section>
+      ) : null}
+
       <div className="grid gap-5 xl:grid-cols-5">
         <section className="panel p-4 xl:col-span-3">
           <h2 className="text-sm font-semibold">
