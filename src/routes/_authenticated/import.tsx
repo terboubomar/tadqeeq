@@ -28,7 +28,7 @@ import {
 } from "@/lib/analysis/pdf";
 import type { Platform } from "@/lib/analysis/types";
 import { savePeriod } from "@/lib/periods";
-import { setSelectedPeriodId } from "@/lib/use-period";
+import { setSelectedPeriodId, usePeriods } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/import")({
@@ -132,6 +132,7 @@ function FileField({
 function ImportPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { data: periods = [] } = usePeriods();
 
   const [step, setStep] = useState(0);
   const [maxStepReached, setMaxStepReached] = useState(0);
@@ -139,6 +140,7 @@ function ImportPage() {
   const [dataFile, setDataFile] = useState<File | null>(null);
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [cpcFile, setCpcFile] = useState<File | null>(null);
+  const [compensationFile, setCompensationFile] = useState<File | null>(null);
   const [bankRate, setBankRate] = useState("");
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
@@ -150,6 +152,7 @@ function ImportPage() {
     setDataFile(null);
     setInvoiceFile(null);
     setCpcFile(null);
+    setCompensationFile(null);
     setBankRate("");
     setMaxStepReached(0);
     setStep(0);
@@ -206,6 +209,24 @@ function ImportPage() {
         cpcInvoice = parseCpcInvoice(await extractPdfText(await cpcFile.arrayBuffer(), 3));
       }
 
+      const compensationBuffer =
+        platform === "jahez" && compensationFile
+          ? await compensationFile.arrayBuffer()
+          : undefined;
+      const historicalOrders =
+        platform === "jahez"
+          ? Object.fromEntries(
+              periods
+                .filter((period) => period.platform === "jahez")
+                .flatMap((period) =>
+                  Object.entries(period.invoice?.jahezOrderIndex ?? {}).map(([orderId, ref]) => [
+                    orderId,
+                    { ...ref, periodLabel: period.label },
+                  ]),
+                ),
+            )
+          : {};
+
       const manualRate = Number.parseFloat(bankRate.replace(",", "."));
       const result =
         platform === "hungerstation"
@@ -224,6 +245,8 @@ function ImportPage() {
               })
             : analyzeJahez(dataBuffer, {
                 ...(invoice ? { invoice } : {}),
+                ...(compensationBuffer ? { compensationFile: compensationBuffer } : {}),
+                historicalOrders,
                 ...(label.trim() ? { label: label.trim() } : {}),
               });
 
@@ -287,9 +310,11 @@ function ImportPage() {
               platform={platform}
               invoiceFile={invoiceFile}
               cpcFile={cpcFile}
+              compensationFile={compensationFile}
               bankRate={bankRate}
               onInvoiceChange={setInvoiceFile}
               onCpcChange={setCpcFile}
+              onCompensationChange={setCompensationFile}
               onBankRateChange={setBankRate}
             />
           ) : null}
@@ -301,6 +326,7 @@ function ImportPage() {
               dataFile={dataFile}
               invoiceFile={invoiceFile}
               cpcFile={cpcFile}
+              compensationFile={compensationFile}
               bankRate={bankRate}
               onEdit={setStep}
             />
@@ -339,7 +365,7 @@ function ImportPage() {
       </section>
 
       <p className="px-1 text-[11.5px] leading-6 text-muted-foreground">
-        كل الحسابات تتم داخل متصفحك ثم تُحفظ النتائج في حسابك. ملفات Excel وPDF نفسها لا تُرفع
+        كل الحسابات تتم داخل متصفحك ثم تُحفظ النتائج في حسابك. ملفات Excel وCSV وPDF نفسها لا تُرفع
         إلى قاعدة البيانات.
       </p>
     </div>
@@ -541,17 +567,21 @@ function DocumentsStep({
   platform,
   invoiceFile,
   cpcFile,
+  compensationFile,
   bankRate,
   onInvoiceChange,
   onCpcChange,
+  onCompensationChange,
   onBankRateChange,
 }: {
   platform: Platform;
   invoiceFile: File | null;
   cpcFile: File | null;
+  compensationFile: File | null;
   bankRate: string;
   onInvoiceChange: (file: File | null) => void;
   onCpcChange: (file: File | null) => void;
+  onCompensationChange: (file: File | null) => void;
   onBankRateChange: (value: string) => void;
 }) {
   return (
@@ -571,6 +601,18 @@ function DocumentsStep({
         file={invoiceFile}
         onChange={onInvoiceChange}
       />
+
+      {platform === "jahez" ? (
+        <FileField
+          id="compensation"
+          label="ملف التعويضات (Compensation Report CSV)"
+          hint="أرفق تقرير تعويضات جاهز لمطابقة الخصومات والإضافات مع الطلبات، كشف التكرار، وتحديد الطلبات غير المعروفة أو المرتبطة بفترات سابقة."
+          accept=".csv"
+          tag="موصى به"
+          file={compensationFile}
+          onChange={onCompensationChange}
+        />
+      ) : null}
 
       {platform === "hungerstation" ? (
         <>
@@ -626,6 +668,7 @@ function ReviewStep({
   dataFile,
   invoiceFile,
   cpcFile,
+  compensationFile,
   bankRate,
   onEdit,
 }: {
@@ -634,6 +677,7 @@ function ReviewStep({
   dataFile: File | null;
   invoiceFile: File | null;
   cpcFile: File | null;
+  compensationFile: File | null;
   bankRate: string;
   onEdit: (step: number) => void;
 }) {
@@ -687,6 +731,13 @@ function ReviewStep({
           }
           ready={Boolean(invoiceFile)}
         />
+        {platform === "jahez" ? (
+          <ReviewRow
+            label="ملف التعويضات"
+            value={compensationFile?.name ?? "غير مرفق — لن يتم تدقيق التعويضات"}
+            ready={Boolean(compensationFile)}
+          />
+        ) : null}
         {platform === "hungerstation" ? (
           <>
             <ReviewRow label="فاتورة CPC" value={cpcFile?.name ?? "غير مرفقة"} ready={Boolean(cpcFile)} />

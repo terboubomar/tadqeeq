@@ -17,6 +17,21 @@ Past - باست,01/08/2026 12:00:00 AM - 31/08/2026 11:59:59 PM,150.00,27.00000,
 `);
 }
 
+function buildJahezCompensationCsv(): ArrayBuffer {
+  return buffer(`Restaurant,Date,Transaction_Type,ReasonId,OrderId,BranchId,Sequence_Number,Restaurant_Total_Transactions,Restaurant_Total_Debit_Amount,Restaurant_Total_Credit_Amount
+Past - باست,01‏/08‏/2026 - 31‏/08‏/2026,All,All,All,All,0,5,30,5
+
+
+
+#,Branch,Order #,Transaction Type,Reason,Creation Date,Amount,Free,Comments,Missing Item Name
+1,Branch A,10001,debit,Adjustment,8‏/1‏/2026 2:13,10,false,On restaurant,
+2,Branch A,10001,debit,Adjustment,8‏/1‏/2026 2:13,10,false,On restaurant,
+3,Branch B,10002,credit,Adjustment,8‏/2‏/2026 2:46,5,false,Correction,
+4,Old Branch,99999,debit,Missing Item(s),8‏/3‏/2026 3:54,7,false,Historical order,Item A
+5,Unknown Branch,88888,debit,Adjustment,8‏/4‏/2026 4:10,3,false,Unknown order,
+`);
+}
+
 describe("Jahez CSV audit engine", () => {
   test("reconstructs settlement and invoice lines from the merchant report", () => {
     const result = analyzeJahez(buildJahezCsv());
@@ -39,6 +54,62 @@ describe("Jahez CSV audit engine", () => {
     expect(result.branches[0]?.branch.includes("  ")).toBe(false);
     expect(result.branches.every((row) => row.branchAuditStatus === "matched")).toBe(true);
     expect(result.daily[0]?.orders).toBe(2);
+  });
+
+  test("audits Jahez compensation reports, duplicates and historical orders", () => {
+    const result = analyzeJahez(buildJahezCsv(), {
+      compensationFile: buildJahezCompensationCsv(),
+      historicalOrders: {
+        "99999": {
+          branch: "Old Branch",
+          date: "2026-07-31",
+          periodLabel: "Jahez Jul",
+        },
+      },
+    });
+
+    expect(result.summary.compensation).toBeCloseTo(25, 6);
+    expect(result.summary.jahezCompensationTransactions).toBe(5);
+    expect(result.summary.jahezCompensationDebit).toBeCloseTo(30, 6);
+    expect(result.summary.jahezCompensationCredit).toBeCloseTo(5, 6);
+    expect(result.summary.jahezCompensationNetImpact).toBeCloseTo(25, 6);
+    expect(result.summary.jahezAdjustedRestaurantAmount).toBeCloseTo(80.85, 6);
+    expect(result.summary.jahezCompensationMatchedCurrent).toBe(3);
+    expect(result.summary.jahezCompensationMatchedHistorical).toBe(1);
+    expect(result.summary.jahezCompensationUnknownOrders).toBe(1);
+    expect(result.summary.jahezCompensationDuplicateCandidates).toBe(1);
+    expect(result.summary.jahezCompensationDuplicateAmount).toBeCloseTo(10, 6);
+
+    const compensation = result.invoice.jahezCompensation;
+    expect(compensation?.summaryTransactions).toBe(5);
+    expect(compensation?.detailTransactions).toBe(5);
+    expect(compensation?.summaryDebit).toBeCloseTo(30, 6);
+    expect(compensation?.detailDebit).toBeCloseTo(30, 6);
+    expect(compensation?.summaryCredit).toBeCloseTo(5, 6);
+    expect(compensation?.detailCredit).toBeCloseTo(5, 6);
+
+    const duplicate = compensation?.transactions.find((row) => row.duplicateCandidate);
+    expect(duplicate?.orderId).toBe("10001");
+    expect(duplicate?.amount).toBeCloseTo(10, 6);
+
+    const historical = compensation?.transactions.find((row) => row.orderId === "99999");
+    expect(historical?.match).toBe("historical");
+    expect(historical?.matchedPeriodLabel).toBe("Jahez Jul");
+
+    const unknown = compensation?.transactions.find((row) => row.orderId === "88888");
+    expect(unknown?.match).toBe("unknown");
+
+    const branchA = result.branches.find((row) => row.branch === "Branch A");
+    expect(branchA?.jahezCompensationTransactions).toBe(2);
+    expect(branchA?.jahezCompensationDebit).toBeCloseTo(20, 6);
+    expect(branchA?.jahezCompensationDuplicateAmount).toBeCloseTo(10, 6);
+
+    const compDebitCheck = result.checks.find(
+      (check) => check.label === "تعويضات جاهز: إجمالي الخصم",
+    );
+    expect(compDebitCheck?.computed).toBeCloseTo(30, 6);
+    expect(compDebitCheck?.invoiced).toBeCloseTo(30, 6);
+    expect(compDebitCheck?.evidence).toBe("mixed");
   });
 
   test("compares reconstructed invoice totals to the official Jahez PDF", () => {
