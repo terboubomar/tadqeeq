@@ -10,6 +10,7 @@ import {
   type ExceptionAiExplanation,
   type ExceptionAiResult,
 } from "./exception-ai";
+import { callTadqeeqAi } from "./gateway.server";
 
 const FEATURE = "exception_explainer";
 const PROMPT_VERSION = "exception-explainer-v1";
