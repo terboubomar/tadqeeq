@@ -16,6 +16,7 @@ import { Route as AuthenticatedBranchesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedBreakdownRouteImport } from './routes/_authenticated/breakdown'
 import { Route as AuthenticatedDailyRouteImport } from './routes/_authenticated/daily'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedExceptionsRouteImport } from './routes/_authenticated/exceptions'
 import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
 import { Route as AuthenticatedInvoiceCheckRouteImport } from './routes/_authenticated/invoice-check'
@@ -54,6 +55,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedExceptionsRoute = AuthenticatedExceptionsRouteImport.update({
+  id: '/exceptions',
+  path: '/exceptions',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedHistoryRoute = AuthenticatedHistoryRouteImport.update({
   id: '/history',
   path: '/history',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/breakdown': typeof AuthenticatedBreakdownRoute
   '/daily': typeof AuthenticatedDailyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/exceptions': typeof AuthenticatedExceptionsRoute
   '/history': typeof AuthenticatedHistoryRoute
   '/import': typeof AuthenticatedImportRoute
   '/invoice-check': typeof AuthenticatedInvoiceCheckRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/breakdown': typeof AuthenticatedBreakdownRoute
   '/daily': typeof AuthenticatedDailyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/exceptions': typeof AuthenticatedExceptionsRoute
   '/history': typeof AuthenticatedHistoryRoute
   '/import': typeof AuthenticatedImportRoute
   '/invoice-check': typeof AuthenticatedInvoiceCheckRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/_authenticated/breakdown': typeof AuthenticatedBreakdownRoute
   '/_authenticated/daily': typeof AuthenticatedDailyRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/exceptions': typeof AuthenticatedExceptionsRoute
   '/_authenticated/history': typeof AuthenticatedHistoryRoute
   '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/invoice-check': typeof AuthenticatedInvoiceCheckRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/breakdown'
     | '/daily'
     | '/dashboard'
+    | '/exceptions'
     | '/history'
     | '/import'
     | '/invoice-check'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/breakdown'
     | '/daily'
     | '/dashboard'
+    | '/exceptions'
     | '/history'
     | '/import'
     | '/invoice-check'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/_authenticated/breakdown'
     | '/_authenticated/daily'
     | '/_authenticated/dashboard'
+    | '/_authenticated/exceptions'
     | '/_authenticated/history'
     | '/_authenticated/import'
     | '/_authenticated/invoice-check'
@@ -200,6 +212,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/exceptions': {
+      id: '/_authenticated/exceptions'
+      path: '/exceptions'
+      fullPath: '/exceptions'
+      preLoaderRoute: typeof AuthenticatedExceptionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/history': {
       id: '/_authenticated/history'
       path: '/history'
@@ -229,6 +248,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBreakdownRoute: typeof AuthenticatedBreakdownRoute
   AuthenticatedDailyRoute: typeof AuthenticatedDailyRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedExceptionsRoute: typeof AuthenticatedExceptionsRoute
   AuthenticatedHistoryRoute: typeof AuthenticatedHistoryRoute
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedInvoiceCheckRoute: typeof AuthenticatedInvoiceCheckRoute
@@ -239,6 +259,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBreakdownRoute: AuthenticatedBreakdownRoute,
   AuthenticatedDailyRoute: AuthenticatedDailyRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedExceptionsRoute: AuthenticatedExceptionsRoute,
   AuthenticatedHistoryRoute: AuthenticatedHistoryRoute,
   AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedInvoiceCheckRoute: AuthenticatedInvoiceCheckRoute,
