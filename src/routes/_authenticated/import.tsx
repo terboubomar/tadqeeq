@@ -365,7 +365,7 @@ function ImportPage() {
       </section>
 
       <p className="px-1 text-[11.5px] leading-6 text-muted-foreground">
-        كل الحسابات تتم داخل متصفحك ثم تُحفظ النتائج في حسابك. ملفات Excel وPDF نفسها لا تُرفع
+        كل الحسابات تتم داخل متصفحك ثم تُحفظ النتائج في حسابك. ملفات Excel وCSV وPDF نفسها لا تُرفع
         إلى قاعدة البيانات.
       </p>
     </div>
