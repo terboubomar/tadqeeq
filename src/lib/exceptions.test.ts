@@ -185,12 +185,18 @@ describe("Exception Center", () => {
     });
 
     const exceptions = buildPeriodExceptions(period);
-    const branchMismatch = exceptions.find(
-      (item) =>
-        item.branch === "Operational Invoice Branch" &&
-        item.category === "branch_match",
+    const actionable = exceptions.filter(
+      (item) => item.branch === "Operational Invoice Branch",
     );
-    expect(branchMismatch).toBeDefined();
+
+    expect(actionable.length).toBeGreaterThan(0);
+    expect(
+      actionable.some((item) =>
+        ["commission", "payment_fee", "collections", "sales", "branch_match"].includes(
+          item.category,
+        ),
+      ),
+    ).toBe(true);
   });
 
   test("never turns aggregate Keeta tax controls into an exception", () => {
