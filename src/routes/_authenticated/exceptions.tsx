@@ -138,7 +138,7 @@ function ExceptionsPage() {
           <h1 className="audit-heading">مركز الاستثناءات</h1>
           <p className="audit-subtitle">
             {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)} ·{" "}
-            {selected.platform === "hungerstation" ? "هنقرستيشن" : "كيتا"}
+            {selected.platform === "hungerstation" ? "هنقرستيشن" : selected.platform === "keeta" ? "كيتا" : "جاهز"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             يعرض فقط الفروقات المستقلة القابلة للإجراء في الملف المحدد؛ المجاميع الرقابية والبنود غير القابلة للتحقق تبقى في مطابقة الفاتورة.
@@ -329,7 +329,7 @@ function ExceptionRow({
           </p>
         </div>
       </Td>
-      <Td>{item.platform === "hungerstation" ? "هنقرستيشن" : "كيتا"}</Td>
+      <Td>{item.platform === "hungerstation" ? "هنقرستيشن" : item.platform === "keeta" ? "كيتا" : "جاهز"}</Td>
       <Td>
         {item.branch ? (
           <div className="max-w-48">
