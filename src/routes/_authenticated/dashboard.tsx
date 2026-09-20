@@ -27,6 +27,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/AppShell";
+import { PeriodIntelligencePanel } from "@/components/PeriodIntelligencePanel";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { summarizePeriodWithAi } from "@/lib/ai/period-summary-ai.functions";
@@ -59,7 +60,7 @@ const chartStyle = {
 };
 
 function Dashboard() {
-  const { selected, isLoading } = useSelectedPeriod();
+  const { periods, selected, isLoading } = useSelectedPeriod();
 
   if (isLoading) {
     return <p className="py-20 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>;
@@ -117,6 +118,8 @@ function Dashboard() {
           <span className="num">{count(s.orders)}</span> طلب
         </p>
       </header>
+
+      <PeriodIntelligencePanel current={selected} periods={periods} />
 
       <AiPeriodSummaryPanel key={selected.id} periodId={selected.id} />
 
