@@ -135,8 +135,8 @@ function ExceptionsPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black">مركز الاستثناءات</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="audit-heading">مركز الاستثناءات</h1>
+          <p className="audit-subtitle">
             {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)} ·{" "}
             {selected.platform === "hungerstation" ? "هنقرستيشن" : "كيتا"}
           </p>
@@ -144,12 +144,12 @@ function ExceptionsPage() {
             يعرض فقط الفروقات المستقلة القابلة للإجراء في الملف المحدد؛ المجاميع الرقابية والبنود غير القابلة للتحقق تبقى في مطابقة الفاتورة.
           </p>
         </div>
-        <span className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs text-muted-foreground">
+        <span className="rounded-[6px] border border-border bg-white px-2.5 py-1 text-[11.5px] text-muted-foreground">
           {exceptions.length} استثناء في الملف المحدد
         </span>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="audit-kpi-strip grid gap-0 sm:grid-cols-2 xl:grid-cols-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0">
         <StatCard
           label="الاستثناءات المفتوحة"
           value={String(summary.openCount)}
@@ -179,7 +179,7 @@ function ExceptionsPage() {
         />
       </section>
 
-      <section className="panel p-4">
+      <section className="rounded-[10px] border border-border bg-white p-3.5">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <div className="relative xl:col-span-2">
             <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -231,9 +231,9 @@ function ExceptionsPage() {
           </p>
         </section>
       ) : (
-      <section className="panel overflow-hidden">
-        <div className="max-h-[72vh] overflow-auto">
-          <table className="w-full min-w-[1600px] border-collapse text-sm">
+      <section className="overflow-hidden rounded-[10px] border border-border bg-white">
+        <div data-scroll className="max-h-[72vh] overflow-auto">
+          <table className="w-full min-w-[1600px] border-collapse text-[13px]">
             <thead className="sticky top-0 z-10 bg-surface-raised">
               <tr className="text-xs text-muted-foreground">
                 <Th>الأهمية</Th>
@@ -317,7 +317,7 @@ function ExceptionRow({
   }, [item.id, item.note, item.recoveredAmount]);
 
   return (
-    <tr className="border-t border-border/60 align-top hover:bg-secondary/30">
+    <tr className="align-top hover:bg-secondary/35">
       <Td>
         <SeverityBadge severity={item.severity} />
       </Td>
@@ -678,11 +678,15 @@ function SeverityBadge({ severity }: { severity: ExceptionSeverity }) {
 }
 
 function Th({ children }: { children: ReactNode }) {
-  return <th className="whitespace-nowrap px-4 py-3 text-start font-semibold">{children}</th>;
+  return (
+    <th className="whitespace-nowrap border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold">
+      {children}
+    </th>
+  );
 }
 
 function Td({ children }: { children: ReactNode }) {
-  return <td className="whitespace-nowrap px-4 py-3">{children}</td>;
+  return <td className="whitespace-nowrap border-b border-border/60 px-3.5 py-2.5">{children}</td>;
 }
 
 function MoneyCell({ value, signed = false }: { value?: number; signed?: boolean }) {
