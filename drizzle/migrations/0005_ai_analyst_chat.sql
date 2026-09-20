@@ -1,0 +1,8 @@
+-- Allow the AI usage ledger to track Ask Tadqeeq V1.
+-- Metadata only: no chat messages, prompts, responses, raw files, or fact packets are stored.
+ALTER TABLE public.ai_usage
+  DROP CONSTRAINT IF EXISTS ai_usage_feature_check;
+
+ALTER TABLE public.ai_usage
+  ADD CONSTRAINT ai_usage_feature_check
+  CHECK (feature IN ('exception_explainer', 'period_summary', 'period_intelligence', 'analyst_chat'));
