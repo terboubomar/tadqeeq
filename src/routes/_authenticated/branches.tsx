@@ -103,6 +103,12 @@ const JAHEZ_COLUMNS: Column<BranchRow>[] = [
   { key: "jahezOfferAmount", header: "Offer Amount" },
   { key: "jahezDeliveryCoupon", header: "Delivery Coupon" },
   { key: "jahezDeliveryCharge", header: "Delivery Charge" },
+  { key: "jahezCompensationTransactions", header: "حركات التعويض", type: "number" },
+  { key: "jahezCompensationDebit", header: "تعويضات مخصومة" },
+  { key: "jahezCompensationCredit", header: "تعويضات مضافة" },
+  { key: "jahezCompensationNetImpact", header: "صافي أثر التعويضات" },
+  { key: "jahezCompensationDuplicateAmount", header: "تكرار مشتبه" },
+  { key: "jahezCompensationUnknownAmount", header: "تعويضات بدون طلب مصدر" },
   { key: "totalCharges", header: "تكلفة الفاتورة المحتسبة بدون الضريبة" },
 ];
 
@@ -141,7 +147,7 @@ function BranchesPage() {
             ? "حالة المطابقة تقارن كل فرع في ملف الطلبات مع صفحات تفاصيل فاتورة هنقرستيشن. الفروق الصغيرة قد تكون تقريباً من المنصة."
             : selected.platform === "keeta"
               ? "المطابقة تعتمد على Store ID. إذا كان ملف كيتا يحتوي Invoice Details تتم مقارنة Invoice amount وPayable لكل فرع مباشرةً من Excel؛ وعند إرفاق PDF تُضاف مطابقة عمولة الطلب ورسوم البنك والتوصيل وCredit Sales وNet Due."
-              : "جاهز لا يوفّر تفاصيل فاتورة حسب الفرع في الملفات الحالية؛ يتم التحقق لكل فرع من معادلة Restaurant Amount، بينما مطابقة الفاتورة الرسمية تتم على إجمالي التاجر."
+              : "جاهز لا يوفّر تفاصيل فاتورة حسب الفرع في الملفات الحالية؛ يتم التحقق من Restaurant Amount لكل فرع، ويُضاف تقرير التعويضات حسب الفرع مع كشف التكرار والطلبات غير المعروفة. مطابقة الفاتورة الضريبية تبقى على إجمالي التاجر."
         }
       />
     </div>
