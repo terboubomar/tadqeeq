@@ -163,6 +163,7 @@ describe("Keeta PDF parser", () => {
   test("parses the August simple invoice, credit sales and branch pages", () => {
     const invoice = parseKeetaInvoice(
       "Tax Invoice Invoice Number 2094621624693301315001 " +
+        "Description Quantity Unit Price Taxable Amount VAT Rate VAT Amount Total(Including VAT) " +
         "Promotion service fee 1.00 29190.83 29190.83 15.00 4378.63 33569.46 " +
         "Commission fee 1.00 530063.13 530063.13 15.00 79509.47 609572.60 " +
         "Total Taxable Amount (Excluding VAT) SAR 559253.96 " +
@@ -207,6 +208,8 @@ describe("Keeta PDF parser", () => {
     expect(invoice.netDue).toBeCloseTo(1139692.48, 2);
     expect(invoice.keetaPromotionServiceFeeExVat).toBeCloseTo(29190.83, 2);
     expect(invoice.keetaTaxInvoiceExVat).toBeCloseTo(559253.96, 2);
+    expect(invoice.keetaTaxInvoiceVat).toBeCloseTo(83888.1, 2);
+    expect(invoice.keetaTaxInvoiceInclVat).toBeCloseTo(643142.06, 2);
     expect(invoice.keetaAdvertisingCosts).toBeCloseTo(-33569.46, 2);
     expect(invoice.keetaBranches).toHaveLength(1);
     expect(invoice.keetaBranches?.[0]?.restaurantId).toBe("1001");

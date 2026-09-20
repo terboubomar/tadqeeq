@@ -336,6 +336,27 @@ function keetaAmountAfter(source: string, ...labels: string[]): number | undefin
   return value;
 }
 
+/**
+ * Keeta tax pages use labels such as "Total(Including VAT)" both as a table
+ * column header and again in the actual totals block. Requiring the SAR marker
+ * prevents the column header from being paired with the first row quantity (1.00).
+ */
+function keetaSarSummaryAmount(source: string, ...labels: string[]): number | undefined {
+  for (const label of labels) {
+    const escaped = label.replace(/[.*+?^$(){}|[\]\\]/g, "\\$&");
+    const re = new RegExp(
+      escaped + "\\s*(?:SAR\\s*)(" + NUM + ")",
+      "i",
+    );
+    const match = source.match(re);
+    if (match?.[1]) {
+      const value = toNumber(match[1]);
+      if (Number.isFinite(value)) return value;
+    }
+  }
+  return undefined;
+}
+
 function restaurantId(page: string): string | undefined {
   return page.match(/Restaurant\s*ID\s*:\s*(\d+)/i)?.[1];
 }
@@ -429,26 +450,37 @@ export function parseKeetaInvoice(raw: string): InvoiceFigures {
   const totalIncVat = keetaAmountAfter(simplePage, "Total invoice (including VAT)");
   const promotionRow = taxPage ? keetaAmountsAfter(taxPage, 6, "Promotion service fee") : [];
   const taxTotalExVat = taxPage
-    ? keetaAmountAfter(taxPage, "Total Taxable Amount (Excluding VAT)", "Total Taxable Amount")
+    ? keetaSarSummaryAmount(
+        taxPage,
+        "Total Taxable Amount (Excluding VAT)",
+        "Total Taxable Amount",
+      )
     : undefined;
-  const taxTotalVat = taxPage ? keetaAmountAfter(taxPage, "Total VAT Amount") : undefined;
+  const taxTotalVat = taxPage
+    ? keetaSarSummaryAmount(taxPage, "Total VAT Amount")
+    : undefined;
   const taxTotalInclVat = taxPage
-    ? keetaAmountAfter(taxPage, "Total(Including VAT)", "Total (Including VAT)")
+    ? keetaSarSummaryAmount(taxPage, "Total(Including VAT)", "Total (Including VAT)")
     : undefined;
 
   const creditNoteExVat = creditNotes.reduce(
     (sum, page) =>
       sum +
-      (keetaAmountAfter(page, "Total Taxable Amount (Excluding VAT)", "Total Taxable Amount") ?? 0),
+      (keetaSarSummaryAmount(
+        page,
+        "Total Taxable Amount (Excluding VAT)",
+        "Total Taxable Amount",
+      ) ?? 0),
     0,
   );
   const creditNoteVat = creditNotes.reduce(
-    (sum, page) => sum + (keetaAmountAfter(page, "Total VAT Amount") ?? 0),
+    (sum, page) => sum + (keetaSarSummaryAmount(page, "Total VAT Amount") ?? 0),
     0,
   );
   const creditNoteInclVat = creditNotes.reduce(
     (sum, page) =>
-      sum + (keetaAmountAfter(page, "Total(Including VAT)", "Total (Including VAT)") ?? 0),
+      sum +
+      (keetaSarSummaryAmount(page, "Total(Including VAT)", "Total (Including VAT)") ?? 0),
     0,
   );
 

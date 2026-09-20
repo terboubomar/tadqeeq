@@ -93,6 +93,38 @@ describe("Exception Center", () => {
     ).toBe(0);
   });
 
+
+
+  test("does not surface the legacy Keeta 1.00 tax-header parser artifact", () => {
+    const period = {
+      id: "keeta-old",
+      label: "Keeta Aug",
+      platform: "keeta",
+      period_start: "2026-08-01",
+      period_end: "2026-08-31",
+      created_at: "2026-09-01T00:00:00Z",
+      summary: {} as StoredPeriod["summary"],
+      daily: [],
+      branches: [],
+      invoice: {
+        lines: [],
+        checks: [
+          {
+            label: "صافي الفاتورة الضريبية شامل الضريبة",
+            computed: 643142.06,
+            invoiced: 1,
+            evidence: "data",
+            tolerance: 0.05,
+          },
+        ],
+      },
+    } as StoredPeriod;
+
+    const exceptions = buildPeriodExceptions(period);
+    expect(exceptions).toHaveLength(0);
+    expect(summarizeExceptions(exceptions).openCount).toBe(0);
+  });
+
   test("applies persisted workflow without changing audit evidence", () => {
     const initial = buildPeriodExceptions(hungerPeriod());
     const commission = initial.find((item) => item.category === "commission");
