@@ -251,6 +251,89 @@ describe("Ask Tadqeeq deterministic context", () => {
     expect(context.coverage.comparisonIncluded).toBe(true);
   });
 
+  test("understands the current app screen from app knowledge facts", () => {
+    const current = period({
+      id: "sep",
+      start: "2026-09-01",
+      end: "2026-09-30",
+      grossSales: 12000,
+      commissionPct: 0.19,
+      totalCharges: 3000,
+    });
+
+    const context = buildAnalystContext(current, [current], "/invoice-check");
+    const screen = context.facts.find(
+      (fact) =>
+        fact.kind === "app" &&
+        fact.data.currentScreen === true,
+    );
+
+    expect(context.currentRoute).toBe("/invoice-check");
+    expect(screen?.data.route).toBe("/invoice-check");
+    expect(screen?.label).toContain("مطابقة الفاتورة");
+  });
+
+  test("includes invoice-check rows and exact daily rows in the grounded registry", () => {
+    const current = period({
+      id: "sep",
+      start: "2026-09-01",
+      end: "2026-09-30",
+      grossSales: 12000,
+      commissionPct: 0.19,
+      totalCharges: 3000,
+      check: true,
+    });
+
+    const context = buildAnalystContext(current, [current], "/daily");
+    const invoiceCheck = context.facts.find(
+      (fact) => fact.kind === "invoice_check" && fact.data.label === "عمولة جاهز",
+    );
+    const daily = context.facts.find(
+      (fact) => fact.kind === "daily" && fact.data.date === "2026-09-01",
+    );
+
+    expect(invoiceCheck?.data.computed).toBe(100);
+    expect(invoiceCheck?.data.invoiced).toBe(125);
+    expect(invoiceCheck?.data.difference).toBe(25);
+    expect(daily?.data.orders).toBe(40);
+    expect(daily?.data.grossSales).toBe(4200);
+    expect(context.coverage.invoiceChecksIncluded).toBe(1);
+    expect(context.coverage.dailyRowsIncluded).toBe(2);
+  });
+
+  test("includes multiple owned periods as archive facts without leaking period labels", () => {
+    const current = period({
+      id: "sep-secret",
+      label: "September private label",
+      start: "2026-09-01",
+      end: "2026-09-30",
+      grossSales: 12000,
+      commissionPct: 0.19,
+      totalCharges: 3000,
+    });
+    const previous = period({
+      id: "aug-secret",
+      label: "August private label",
+      start: "2026-08-01",
+      end: "2026-08-31",
+      grossSales: 10000,
+      commissionPct: 0.18,
+      totalCharges: 2400,
+    });
+
+    const context = buildAnalystContext(current, [current, previous], "/history");
+    const history = context.facts.filter((fact) => fact.kind === "history");
+    const serialized = JSON.stringify(history);
+
+    expect(history).toHaveLength(2);
+    expect(context.coverage.historyPeriodsIncluded).toBe(2);
+    expect(serialized).toContain("2026-08-01");
+    expect(serialized).not.toContain("September private label");
+    expect(serialized).not.toContain("August private label");
+    expect(serialized).not.toContain("sep-secret");
+    expect(serialized).not.toContain("aug-secret");
+  });
+
   test("resolves only fact IDs that exist in the current server-built registry", () => {
     const current = period({
       id: "sep",
@@ -336,6 +419,73 @@ describe("Ask Tadqeeq structured presentation", () => {
     };
 
     expect(buildAnalystPresentation(context, response)).toBeNull();
+  });
+});
+
+describe("Ask Tadqeeq app-wide presentations", () => {
+  test("renders invoice checks as a deterministic table", () => {
+    const current = period({
+      id: "sep",
+      start: "2026-09-01",
+      end: "2026-09-30",
+      grossSales: 12000,
+      commissionPct: 0.19,
+      totalCharges: 3000,
+      check: true,
+    });
+    const context = buildAnalystContext(current, [current], "/invoice-check");
+    const check = context.facts.find((fact) => fact.kind === "invoice_check");
+    if (!check) throw new Error("expected invoice check");
+
+    const response: AnalystAiResponse = {
+      answerability: "grounded",
+      answer: "يوجد بند يحتاج مراجعة.",
+      usedFactIds: [check.id],
+      presentation: {
+        type: "invoice_table",
+        title: "مطابقة الفاتورة",
+        factIds: [check.id],
+      },
+      limitations: [],
+      followUpSuggestions: [],
+      confidence: "high",
+    };
+
+    const presentation = buildAnalystPresentation(context, response);
+    expect(presentation?.rows[0]?.label).toBe("عمولة جاهز");
+    expect(presentation?.rows[0]?.difference).toBe("25.00 ر.س");
+  });
+
+  test("renders exact daily facts without model-side arithmetic", () => {
+    const current = period({
+      id: "sep",
+      start: "2026-09-01",
+      end: "2026-09-30",
+      grossSales: 12000,
+      commissionPct: 0.19,
+      totalCharges: 3000,
+    });
+    const context = buildAnalystContext(current, [current], "/daily");
+    const dailyFacts = context.facts.filter((fact) => fact.kind === "daily");
+
+    const response: AnalystAiResponse = {
+      answerability: "grounded",
+      answer: "هذه الحركة اليومية المسجلة.",
+      usedFactIds: dailyFacts.map((fact) => fact.id),
+      presentation: {
+        type: "daily_table",
+        title: "التقرير اليومي",
+        factIds: dailyFacts.map((fact) => fact.id),
+      },
+      limitations: [],
+      followUpSuggestions: [],
+      confidence: "high",
+    };
+
+    const presentation = buildAnalystPresentation(context, response);
+    expect(presentation?.rows).toHaveLength(2);
+    expect(presentation?.rows[0]?.date).toBe("2026-09-01");
+    expect(presentation?.rows[0]?.orders).toBe("40");
   });
 });
 

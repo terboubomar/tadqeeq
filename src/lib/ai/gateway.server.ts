@@ -7,6 +7,8 @@ interface GatewayCallInput {
   schemaName: string;
   schema: Record<string, unknown>;
   maxOutputTokens?: number;
+  model?: string;
+  reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh" | "max";
 }
 
 interface OpenAiResponse {
@@ -53,7 +55,10 @@ export async function callTadqeeqAi(
     );
   }
 
-  const model = process.env["TADQEEQ_AI_MODEL"]?.trim() || DEFAULT_MODEL;
+  const model =
+    input.model?.trim() ||
+    process.env["TADQEEQ_AI_MODEL"]?.trim() ||
+    DEFAULT_MODEL;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
 
@@ -68,7 +73,7 @@ export async function callTadqeeqAi(
       body: JSON.stringify({
         model,
         store: false,
-        reasoning: { effort: "low" },
+        reasoning: { effort: input.reasoningEffort ?? "low" },
         max_output_tokens: input.maxOutputTokens ?? 1500,
         input: [
           {

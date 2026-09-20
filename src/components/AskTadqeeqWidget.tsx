@@ -44,9 +44,11 @@ const SUGGESTIONS = [
 
 export function AskTadqeeqWidget({
   selected,
+  currentRoute,
   defaultOpen = false,
 }: {
   selected: StoredPeriod | null;
+  currentRoute: string;
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -99,6 +101,7 @@ export function AskTadqeeqWidget({
               <AskTadqeeqConversation
                 key={selected.id}
                 period={selected}
+                currentRoute={currentRoute}
                 onStructuredModeChange={setStructuredMode}
               />
             ) : (
@@ -188,9 +191,11 @@ function WidgetHeader({
 
 function AskTadqeeqConversation({
   period,
+  currentRoute,
   onStructuredModeChange,
 }: {
   period: StoredPeriod;
+  currentRoute: string;
   onStructuredModeChange: (active: boolean) => void;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -230,6 +235,7 @@ function AskTadqeeqConversation({
         data: {
           periodId: period.id,
           question,
+          currentRoute,
           history: previousHistory,
           accessToken,
         },

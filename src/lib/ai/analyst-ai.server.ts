@@ -11,12 +11,14 @@ import { buildAnalystPresentation } from "./analyst-presentation";
 import { callTadqeeqAi } from "./gateway.server";
 
 const FEATURE = "analyst_chat";
-const PROMPT_VERSION = "ask-tadqeeq-v2-structured";
+const PROMPT_VERSION = "ask-tadqeeq-v3-app-intelligence";
 const DEFAULT_HOURLY_LIMIT = 30;
+const DEFAULT_ANALYST_MODEL = "gpt-5.6-terra";
 
 interface AskTadqeeqInput {
   periodId: string;
   question: string;
+  currentRoute: string;
   history: AnalystHistoryMessage[];
   accessToken: string;
 }
@@ -181,7 +183,9 @@ async function callAnalyst(
   const systemPrompt = [
     "أنت Ask Tadqeeq، محلل مساعد داخل نظام تدقيق مالي لمنصات التوصيل.",
     "وظيفتك شرح واسترجاع النتائج التي حسبها Tadqeeq مسبقاً، وليس إنشاء نتيجة محاسبية جديدة.",
-    "FACT_REGISTRY هو المصدر الوحيد المسموح للحقائق المالية والتشغيلية.",
+    "FACT_REGISTRY هو المصدر الوحيد المسموح للحقائق المالية والتشغيلية ومعرفة واجهات Tadqeeq.",
+    "حقائق kind=app تشرح الشاشات، معنى كل صفحة، مصدرها، وحدودها. إذا قال المستخدم هذه الصفحة أو هنا، استخدم currentScreen=true وCURRENT_ROUTE لفهم المقصود.",
+    "حقائق kind=invoice_check تمثل دفتر مطابقة الفاتورة، kind=daily تمثل الصفوف اليومية الفعلية، kind=breakdown/status تمثل تفصيل البنود وحالات الطلبات، وkind=history تمثل الفترات المحفوظة.",
     "لا تستخدم معرفتك العامة أو رسائل المحادثة السابقة كمصدر لرقم أو حقيقة تخص هذا التدقيق.",
     "CHAT_HISTORY مخصص فقط لفهم الضمائر والمتابعة والسياق اللغوي.",
     "لا تقم بحساب نسبة أو فرق أو ترتيب أو مجموع جديد. استخدم فقط القيم والترتيبات والدلتا المحسوبة الموجودة في FACT_REGISTRY.",
@@ -191,7 +195,7 @@ async function callAnalyst(
     "إذا كان السؤال يطلب سبباً ولم توجد حقيقة موثقة تدعم السبب، قل إن السبب غير متاح ولا تخمّن.",
     "إذا كان السؤال خارج البيانات المتاحة أو عن عقد/سياسة غير موجودة في FACT_REGISTRY، استخدم answerability=not_available.",
     "عند الإجابة grounded أو partial يجب إرجاع usedFactIds التي تدعم الإجابة مباشرة.",
-    "اختر presentation.type حسب طبيعة السؤال: branch_table عند السؤال عن أعلى/أقل فرع، ترتيب الفروع، Top branches، أو مقارنة عدة فروع؛ exception_table عند عرض عدة استثناءات؛ comparison_table عند مقارنة عدة مؤشرات بين الفترات؛ وtext لباقي الحالات.",
+    "اختر presentation.type حسب طبيعة السؤال: branch_table للفروع؛ exception_table للاستثناءات؛ comparison_table لمقارنة فترتين؛ invoice_table لمطابقة الفاتورة؛ daily_table للتقرير اليومي؛ breakdown_table لتفصيل البنود؛ history_table للفترات السابقة؛ وtext لباقي الحالات.",
     "في presentation.factIds أرسل فقط معرفات الحقائق التي يحتاجها العرض. عند branch_table يمكن إرسال حقيقة ranking المناسبة، وسيبني الخادم تفاصيل الصفوف من حقائق الفروع الموثقة.",
     "لا تكتب جدول Markdown أو تسرد كل صف داخل answer. اجعل answer خلاصة قصيرة، لأن الخادم سيبني الجدول من البيانات الحتمية.",
     "لا تذكر Fact IDs داخل نص answer؛ الواجهة ستعرض الأدلة بشكل منفصل.",
@@ -217,13 +221,22 @@ async function callAnalyst(
         properties: {
           type: {
             type: "string",
-            enum: ["text", "branch_table", "exception_table", "comparison_table"],
+            enum: [
+              "text",
+              "branch_table",
+              "exception_table",
+              "comparison_table",
+              "invoice_table",
+              "daily_table",
+              "breakdown_table",
+              "history_table",
+            ],
           },
           title: { type: "string", maxLength: 160 },
           factIds: {
             type: "array",
             items: { type: "string", pattern: "^F[0-9]{3}$" },
-            maxItems: 12,
+            maxItems: 40,
           },
         },
         required: ["type", "title", "factIds"],
@@ -261,6 +274,7 @@ async function callAnalyst(
     CHAT_HISTORY: input.history.slice(-8),
     SCOPE: {
       platform: context.platform,
+      currentRoute: context.currentRoute,
       period: context.period,
       hasPreviousPeriod: context.hasPreviousPeriod,
       coverage: context.coverage,
@@ -273,7 +287,11 @@ async function callAnalyst(
     userText: JSON.stringify(payload),
     schemaName: "ask_tadqeeq_answer",
     schema,
-    maxOutputTokens: 2000,
+    maxOutputTokens: 2400,
+    model:
+      process.env["TADQEEQ_ANALYST_MODEL"]?.trim() ||
+      DEFAULT_ANALYST_MODEL,
+    reasoningEffort: "medium",
   });
 
   const parsed = analystAiResponseSchema.parse(JSON.parse(text) as unknown);
@@ -320,7 +338,7 @@ export async function askTadqeeqOnServer(input: AskTadqeeqInput): Promise<Analys
   await enforceRateLimit(input, user, supabaseUrl, supabaseKey);
 
   const { current, periods } = await fetchOwnedPeriods(input, user, supabaseUrl, supabaseKey);
-  const context = buildAnalystContext(current, periods);
+  const context = buildAnalystContext(current, periods, input.currentRoute);
   const { response, model } = await callAnalyst(input, context);
   const factsUsed = resolveAnalystFacts(context, response.usedFactIds).map(
     ({ id, kind, label, displayValue }) => ({ id, kind, label, displayValue }),
