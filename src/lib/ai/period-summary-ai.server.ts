@@ -2,6 +2,8 @@ import type { StoredPeriod } from "@/lib/periods";
 
 import { buildPeriodExceptions } from "@/lib/exceptions";
 
+import { callTadqeeqAi } from "./gateway.server";
+
 import {
   buildPeriodSummaryAiPacket,
   periodSummaryAiExplanationSchema,
