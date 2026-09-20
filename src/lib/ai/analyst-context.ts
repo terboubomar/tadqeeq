@@ -79,6 +79,53 @@ function signedPct(value: number | null): string {
   return sign + (Math.abs(value) * 100).toFixed(2) + "%";
 }
 
+function safeExceptionLabel(value: string): string {
+  return value.replace(/طلب\s+\d+/g, "طلب محجوب");
+}
+
+function safeEvidenceFields(
+  fields: Array<{ label: string; source: string; value?: number | string }>,
+) {
+  return fields
+    .filter(
+      (field) =>
+        !/\bID\b/i.test(field.label) &&
+        !field.label.includes("رقم الطلب"),
+    )
+    .map((field) => ({
+      label: field.label,
+      source: field.source,
+      value:
+        field.label === "مطابقة الطلب" &&
+        typeof field.value === "string" &&
+        field.value.startsWith("مطابق عبر فترة سابقة")
+          ? "مطابق عبر فترة سابقة"
+          : (field.value ?? null),
+    }));
+}
+
+function redactPrivateTokens(value: unknown, tokens: string[]): unknown {
+  if (typeof value === "string") {
+    let result = value;
+    for (const token of tokens) {
+      if (token && token.length >= 3) result = result.split(token).join("[محجوب]");
+    }
+    return result;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => redactPrivateTokens(item, tokens));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+        key,
+        redactPrivateTokens(item, tokens),
+      ]),
+    );
+  }
+  return value;
+}
+
 function branchPlatformCost(period: StoredPeriod, branch: BranchRow): number {
   return period.platform === "keeta"
     ? (branch.keetaTotalCostExVat ?? branch.totalCharges)
@@ -368,11 +415,11 @@ function addExceptionFacts(
   for (const item of included) {
     builder.add(
       "exception",
-      item.label + (item.branch ? " · " + item.branch : ""),
+      safeExceptionLabel(item.label) + (item.branch ? " · " + item.branch : ""),
       money(item.reviewAmount),
       {
         category: item.categoryLabel,
-        label: item.label,
+        label: safeExceptionLabel(item.label),
         branch: item.branch ?? null,
         severity: item.severity,
         status: item.status,
@@ -392,24 +439,16 @@ function addExceptionFacts(
     const evidence = buildExceptionEvidence(period, item);
     builder.add(
       "evidence",
-      "مسار الدليل · " + item.label + (item.branch ? " · " + item.branch : ""),
+      "مسار الدليل · " + safeExceptionLabel(item.label) + (item.branch ? " · " + item.branch : ""),
       evidence.conclusion,
       {
-        exceptionLabel: item.label,
+        exceptionLabel: safeExceptionLabel(item.label),
         branch: item.branch ?? null,
         reason: evidence.reason,
         formula: evidence.formula,
         evidenceLabel: evidence.evidenceLabel,
-        calculatedSources: evidence.calculatedSources.map((field) => ({
-          label: field.label,
-          source: field.source,
-          value: field.value ?? null,
-        })),
-        platformSources: evidence.platformSources.map((field) => ({
-          label: field.label,
-          source: field.source,
-          value: field.value ?? null,
-        })),
+        calculatedSources: safeEvidenceFields(evidence.calculatedSources),
+        platformSources: safeEvidenceFields(evidence.platformSources),
         conclusion: evidence.conclusion,
       },
     );
@@ -533,6 +572,20 @@ export function buildAnalystContext(
     }
   }
 
+  const privateTokens = [
+    ...ownedPeriods.flatMap((period) => [period.id, period.label]),
+    ...ownedPeriods.flatMap((period) =>
+      (period.branches ?? []).map((branch) => branch.branchId),
+    ),
+  ].filter((token): token is string => Boolean(token));
+
+  const safeFacts = builder.facts.map((fact) => ({
+    ...fact,
+    label: redactPrivateTokens(fact.label, privateTokens) as string,
+    displayValue: redactPrivateTokens(fact.displayValue, privateTokens) as string,
+    data: redactPrivateTokens(fact.data, privateTokens) as AnalystFact["data"],
+  }));
+
   return {
     platform: current.platform,
     period: {
@@ -540,7 +593,7 @@ export function buildAnalystContext(
       end: current.period_end,
     },
     hasPreviousPeriod: Boolean(previous),
-    facts: builder.facts,
+    facts: safeFacts,
     coverage: {
       branchCount: current.branches?.length ?? 0,
       openExceptionCount: open.length,
