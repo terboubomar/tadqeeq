@@ -49,7 +49,7 @@ function BreakdownPage() {
       ? [
           { label: "عمولة المبيعات", amount: s.commission },
           {
-            label: "رسوم الدفع الإلكتروني",
+            label: "رسوم الدفع (بطاقات + محفظة الفاتورة)",
             amount: s.bankFeeSuccess + s.bankFeeRefunded + (s.walletFee ?? 0),
           },
           { label: "حملات التوصيل المجاني", amount: s.rdfCampaigns },
