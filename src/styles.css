@@ -5,21 +5,21 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * تدقيق — Aggregator invoice audit workspace.
- * Warm charcoal + amber design system, Arabic-first (RTL).
- * All colours are oklch tokens. Never hardcode colours in components.
+ * تدقيق — Claude Design handoff
+ * Warm paper background, white work surfaces, muted amber accent,
+ * compact Arabic-first financial workspace.
  */
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 3px);
+  --radius-md: calc(var(--radius) - 1px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-xl: calc(var(--radius) + 2px);
+  --radius-2xl: calc(var(--radius) + 6px);
+  --radius-3xl: calc(var(--radius) + 10px);
 
   --font-sans: "IBM Plex Sans Arabic", system-ui, sans-serif;
-  --font-display: "Cairo", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-display: "IBM Plex Sans Arabic", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
   --color-background: var(--background);
@@ -53,71 +53,83 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  --shadow-panel: 0 1px 2px oklch(0 0 0 / 0.28), 0 12px 32px -18px oklch(0 0 0 / 0.55);
-  --shadow-glow: 0 0 0 1px oklch(0.78 0.16 72 / 0.22), 0 18px 48px -24px oklch(0.78 0.16 72 / 0.5);
+  --shadow-panel: 0 1px 2px oklch(0.24 0.012 70 / 0.035);
+  --shadow-glow: none;
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.5rem;
 
-  --background: oklch(0.18 0.012 60);
-  --foreground: oklch(0.96 0.008 80);
+  --background: oklch(0.985 0.004 85);
+  --foreground: oklch(0.24 0.012 70);
 
-  --surface: oklch(0.216 0.014 62);
-  --surface-raised: oklch(0.255 0.016 64);
+  --surface: oklch(1 0 0);
+  --surface-raised: oklch(0.975 0.004 80);
 
-  --card: oklch(0.225 0.014 62);
-  --card-foreground: oklch(0.96 0.008 80);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.24 0.012 70);
 
-  --popover: oklch(0.24 0.015 62);
-  --popover-foreground: oklch(0.96 0.008 80);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.24 0.012 70);
 
-  --primary: oklch(0.79 0.155 72);
-  --primary-foreground: oklch(0.2 0.03 60);
+  --primary: oklch(0.60 0.13 62);
+  --primary-foreground: oklch(1 0 0);
 
-  --secondary: oklch(0.3 0.018 64);
-  --secondary-foreground: oklch(0.94 0.01 80);
+  --secondary: oklch(0.965 0.016 78);
+  --secondary-foreground: oklch(0.32 0.05 62);
 
-  --muted: oklch(0.28 0.014 62);
-  --muted-foreground: oklch(0.72 0.016 75);
+  --muted: oklch(0.965 0.006 80);
+  --muted-foreground: oklch(0.55 0.012 70);
 
-  --accent: oklch(0.32 0.03 70);
-  --accent-foreground: oklch(0.95 0.01 80);
+  --accent: oklch(0.968 0.014 78);
+  --accent-foreground: oklch(0.32 0.05 62);
 
-  --destructive: oklch(0.63 0.2 24);
-  --destructive-foreground: oklch(0.98 0.005 80);
+  --destructive: oklch(0.50 0.18 25);
+  --destructive-foreground: oklch(1 0 0);
 
-  --success: oklch(0.7 0.14 158);
-  --success-foreground: oklch(0.18 0.02 160);
+  --success: oklch(0.44 0.11 155);
+  --success-foreground: oklch(1 0 0);
 
-  --warning: oklch(0.8 0.15 85);
-  --warning-foreground: oklch(0.22 0.03 70);
+  --warning: oklch(0.52 0.15 55);
+  --warning-foreground: oklch(1 0 0);
 
-  --border: oklch(0.32 0.014 64);
-  --input: oklch(0.31 0.014 64);
-  --ring: oklch(0.79 0.155 72);
+  --border: oklch(0.91 0.006 80);
+  --input: oklch(0.88 0.008 80);
+  --ring: oklch(0.60 0.13 62);
 
-  --chart-1: oklch(0.79 0.155 72);
-  --chart-2: oklch(0.7 0.14 158);
-  --chart-3: oklch(0.67 0.15 250);
-  --chart-4: oklch(0.72 0.17 20);
-  --chart-5: oklch(0.75 0.12 300);
+  --chart-1: oklch(0.60 0.13 62);
+  --chart-2: oklch(0.42 0.06 250);
+  --chart-3: oklch(0.52 0.10 155);
+  --chart-4: oklch(0.55 0.14 25);
+  --chart-5: oklch(0.55 0.09 300);
 }
 
 @layer base {
   * {
     border-color: var(--color-border);
+    box-sizing: border-box;
   }
 
   html {
     font-feature-settings: "ss01";
+    background: var(--color-background);
   }
 
   body {
+    margin: 0;
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font-family: inherit;
   }
 
   h1,
@@ -126,53 +138,97 @@
   h4 {
     font-family: var(--font-display);
     font-weight: 700;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
   }
 
-  /* Latin numerals stay LTR inside Arabic text */
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
   .num {
-    font-variant-numeric: tabular-nums;
-    direction: ltr;
-    unicode-bidi: isolate;
     display: inline-block;
+    direction: ltr;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    unicode-bidi: isolate;
   }
 }
 
 @utility panel {
   background-color: var(--color-card);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
+  border-radius: 10px;
   box-shadow: var(--shadow-panel);
 }
 
 @utility gold-text {
-  background-image: linear-gradient(
-    100deg,
-    oklch(0.88 0.13 82),
-    oklch(0.79 0.155 72) 55%,
-    oklch(0.7 0.14 60)
-  );
-  background-clip: text;
-  color: transparent;
+  color: var(--color-foreground);
+  background: none;
 }
 
 @utility grain-bg {
-  background-image:
-    radial-gradient(ellipse 80% 60% at 80% -10%, oklch(0.79 0.155 72 / 0.14), transparent 60%),
-    radial-gradient(ellipse 70% 50% at 10% 0%, oklch(0.67 0.15 250 / 0.1), transparent 55%);
+  background-image: none;
+}
+
+@utility audit-heading {
+  font-size: 1.375rem;
+  line-height: 1.45;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+@utility audit-subtitle {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--color-muted-foreground);
+}
+
+@utility audit-kpi-strip {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-card);
+}
+
+@utility audit-table-head {
+  background: var(--color-surface-raised);
+  color: var(--color-muted-foreground);
+}
+
+@media print {
+  [data-noprint] {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  [data-scroll] {
+    overflow: visible !important;
+  }
+
+  .panel {
+    box-shadow: none !important;
+  }
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
 }
+
 ::-webkit-scrollbar-track {
   background: var(--color-background);
 }
+
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 8px;
+  background: oklch(0.82 0.008 80);
+  border-radius: 999px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-muted-foreground);
+  background: oklch(0.72 0.01 80);
 }
