@@ -340,6 +340,7 @@ function emptyBranch(branch: string, branchId: string): BranchRow {
 
 interface RawKeetaBranch {
   row: BranchRow;
+  orderNumbers: Set<string>;
   salesRaw: number;
   originalItemPriceRaw: number;
   topUpRaw: number;
@@ -367,40 +368,45 @@ function absVariance(value: number | undefined): number {
   return Math.abs(value ?? 0);
 }
 
-function auditState(maxVariance: number): Pick<BranchRow, "branchAuditStatus" | "branchAuditLabel" | "branchAuditNote"> {
+function auditState(
+  maxVariance: number,
+  sourceLabel: string,
+): Pick<BranchRow, "branchAuditStatus" | "branchAuditLabel" | "branchAuditNote"> {
   if (maxVariance <= BRANCH_MATCH_TOLERANCE) {
     return {
       branchAuditStatus: "matched",
       branchAuditLabel: "مطابق",
-      branchAuditNote: "مطابقة كاملة مع صفحات الفرع في فاتورة كيتا.",
+      branchAuditNote: "مطابقة كاملة مع " + sourceLabel + ".",
     };
   }
   if (maxVariance <= BRANCH_ROUNDING_TOLERANCE) {
     return {
       branchAuditStatus: "rounding",
       branchAuditLabel: "مطابق ضمن التقريب",
-      branchAuditNote: "الفروق ضمن تقريب كيتا المعتاد.",
+      branchAuditNote: "الفروق مع " + sourceLabel + " ضمن تقريب كيتا المعتاد.",
     };
   }
   return {
     branchAuditStatus: "warning",
     branchAuditLabel: "يحتاج مراجعة",
-    branchAuditNote: "يوجد فرق بين Order Summary وصفحات الفرع في فاتورة كيتا.",
+    branchAuditNote: "يوجد فرق بين Order Summary و" + sourceLabel + ".",
   };
 }
 
 export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): AnalysisResult {
   const wb = XLSX.read(file, { type: "array" });
-  const sheetName = findOrderSheet(wb);
+  const sheetName = findSheet(wb, "Order Summary");
 
   if (!sheetName || !wb.Sheets[sheetName]) {
     throw new Error("لم يتم العثور على ورقة Order Summary في ملف كيتا.");
   }
 
-  const rows = rowObjects(wb.Sheets[sheetName]!);
+  const rows = orderRows(wb.Sheets[sheetName]!);
+  const excelControls = parseExcelControls(wb);
   const branches = new Map<string, RawKeetaBranch>();
   const dailyMap = new Map<string, DailyRow>();
-  const statusCounts: Record<string, number> = {};
+  const dailyOrderNumbers = new Map<string, Set<string>>();
+  const orderStatuses = new Map<string, string>();
   let periodStart: string | null = null;
   let periodEnd: string | null = null;
 
@@ -417,6 +423,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     if (!branch) {
       branch = {
         row: emptyBranch(store, storeId || shopCode),
+        orderNumbers: new Set<string>(),
         salesRaw: 0,
         originalItemPriceRaw: 0,
         topUpRaw: 0,
@@ -466,7 +473,14 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     const posRaw = num(valueOf(sourceRow, "POS Machine Fee(VAT included)"));
     const payableRaw = num(valueOf(sourceRow, "Payable to merchant", "Payable to Restaurant"));
 
-    branch.row.orders += 1;
+    const orderNumber = text(valueOf(sourceRow, "Order Number"));
+    const orderTransaction = isOrderTransaction(sourceRow);
+    if (orderTransaction && orderNumber) {
+      branch.orderNumbers.add(orderNumber);
+      const status = text(valueOf(sourceRow, "Status")) || "غير محدد";
+      orderStatuses.set(orderNumber, status);
+    }
+
     branch.salesRaw += salesRaw;
     branch.originalItemPriceRaw += originalItemPriceRaw;
     branch.topUpRaw += topUpRaw;
@@ -483,9 +497,6 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     branch.creditOtherRaw += creditOtherRaw;
     branch.posRaw += posRaw;
     branch.payableRaw += payableRaw;
-
-    const status = text(valueOf(sourceRow, "Status")) || "غير محدد";
-    statusCounts[status] = (statusCounts[status] ?? 0) + 1;
 
     const date = normalizeDate(valueOf(sourceRow, "Transaction date"));
     if (date) {
@@ -506,7 +517,14 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
         day = { date, orders: 0, grossSales: 0, netSales: 0, commission: 0, ccSuccess: 0 };
         dailyMap.set(date, day);
       }
-      day.orders += 1;
+      if (orderTransaction && orderNumber) {
+        let orderSet = dailyOrderNumbers.get(date);
+        if (!orderSet) {
+          orderSet = new Set<string>();
+          dailyOrderNumbers.set(date, orderSet);
+        }
+        orderSet.add(orderNumber);
+      }
       day.grossSales += salesRaw;
       day.netSales += salesRaw / VAT_FACTOR;
       day.commission += totalCostExVat;
@@ -516,11 +534,60 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     }
   }
 
-  const invoice = options.invoice ?? { lines: [] };
+  for (const [date, day] of dailyMap) {
+    day.orders = dailyOrderNumbers.get(date)?.size ?? 0;
+  }
+
+  const statusCounts: Record<string, number> = {};
+  for (const status of orderStatuses.values()) {
+    statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+  }
+
+  const pdfInvoice = options.invoice ?? { lines: [] };
+  const excelLines =
+    excelControls.invoiceAmount !== undefined || excelControls.payable !== undefined
+      ? [
+          ...(excelControls.invoiceAmount !== undefined
+            ? [{ label: "Invoice Details · Invoice amount", amount: excelControls.invoiceAmount }]
+            : []),
+          ...(excelControls.payable !== undefined
+            ? [{ label: "Invoice Details · Payable to Restaurant", amount: excelControls.payable }]
+            : []),
+          ...(excelControls.billingInvoiceAmount !== undefined
+            ? [
+                {
+                  label: "Billing data summary · Invoice amount",
+                  amount: excelControls.billingInvoiceAmount,
+                },
+              ]
+            : []),
+          ...(excelControls.billingPayable !== undefined
+            ? [
+                {
+                  label: "Billing data summary · Payable to Restaurant",
+                  amount: excelControls.billingPayable,
+                },
+              ]
+            : []),
+        ]
+      : [];
+
+  const invoice: InvoiceFigures = {
+    ...pdfInvoice,
+    lines: pdfInvoice.lines?.length ? pdfInvoice.lines : excelLines,
+    keetaExcelInvoiceAmount: excelControls.invoiceAmount,
+    keetaExcelPayable: excelControls.payable,
+    keetaExcelInvoiceDetailRows: excelControls.invoiceDetailRows || undefined,
+    keetaBillingInvoiceAmount: excelControls.billingInvoiceAmount,
+    keetaBillingPayable: excelControls.billingPayable,
+    keetaBillingRows: excelControls.billingRows || undefined,
+  };
+
   const invoiceBranches = new Map(
     (invoice.keetaBranches ?? []).map((branch) => [branch.restaurantId, branch]),
   );
   const matchedInvoiceIds = new Set<string>();
+  const matchedExcelIds = new Set<string>();
 
   const branchList = [...branches.values()].map((source) => {
     const row = source.row;
