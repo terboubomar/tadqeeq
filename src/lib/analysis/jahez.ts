@@ -66,7 +66,7 @@ function emptyBranch(branch: string): BranchRow {
     riderWallet: 0,
     rdfCampaigns: 0,
     freeDeliveryOrders: 0,
-    compensation: 0,
+    compensation: compensationReport?.netImpact ?? 0,
     jokerFees: 0,
     hsFoodDiscount: 0,
     rewardsDiscount: 0,
@@ -302,6 +302,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
   const branches = new Map<string, JahezAccumulator>();
   const daily = new Map<string, DailyRow>();
   const deliveryTiers = new Map<number, number>();
+  const orderIndex: Record<string, JahezOrderReference> = {};
 
   let detailGrossSales = 0;
   let detailCommissionInclVat = 0;
@@ -332,6 +333,12 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
         calculatedRestaurantAmount: 0,
       };
       branches.set(branchName, branch);
+    }
+
+    const orderId = (source["Order #"] || "").trim();
+    const orderDate = dateKey(source["Date"] ?? "") ?? "";
+    if (orderId) {
+      orderIndex[orderId] = { branch: branchName, date: orderDate };
     }
 
     const orderAmount = num(source["Order Amount"]);
@@ -375,7 +382,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
     detailDeliveryCharge += deliveryCharge;
     detailCalculatedSettlement += calculatedRestaurant;
 
-    const date = dateKey(source["Date"] ?? "");
+    const date = orderDate || dateKey(source["Date"] ?? "");
     if (date) {
       let day = daily.get(date);
       if (!day) {
@@ -386,6 +393,66 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       day.grossSales += orderAmount;
       day.netSales += reportedRestaurant;
       day.commission += commissionInclVat / VAT_FACTOR;
+    }
+  }
+
+  const compensationReport = options.compensationFile
+    ? parseJahezCompensation(
+        options.compensationFile,
+        orderIndex,
+        options.historicalOrders ?? {},
+      )
+    : undefined;
+
+  const compensationByBranch = new Map<
+    string,
+    {
+      transactions: number;
+      debit: number;
+      credit: number;
+      duplicateAmount: number;
+      unknownAmount: number;
+    }
+  >();
+
+  for (const transaction of compensationReport?.transactions ?? []) {
+    const current =
+      compensationByBranch.get(transaction.branch) ?? {
+        transactions: 0,
+        debit: 0,
+        credit: 0,
+        duplicateAmount: 0,
+        unknownAmount: 0,
+      };
+    current.transactions += 1;
+    if (transaction.transactionType === "debit") current.debit += transaction.amount;
+    if (transaction.transactionType === "credit") current.credit += transaction.amount;
+    if (transaction.duplicateCandidate) current.duplicateAmount += transaction.amount;
+    if (transaction.match === "unknown") current.unknownAmount += transaction.amount;
+    compensationByBranch.set(transaction.branch, current);
+
+    const compensationDate = dateKey(transaction.creationDate);
+    if (compensationDate) {
+      let day = daily.get(compensationDate);
+      if (!day) {
+        day = {
+          date: compensationDate,
+          orders: 0,
+          grossSales: 0,
+          netSales: 0,
+          commission: 0,
+          ccSuccess: 0,
+        };
+        daily.set(compensationDate, day);
+      }
+      if (transaction.transactionType === "debit") {
+        day.jahezCompensationDebit = (day.jahezCompensationDebit ?? 0) + transaction.amount;
+      }
+      if (transaction.transactionType === "credit") {
+        day.jahezCompensationCredit = (day.jahezCompensationCredit ?? 0) + transaction.amount;
+      }
+      day.jahezCompensationNetImpact =
+        (day.jahezCompensationDebit ?? 0) - (day.jahezCompensationCredit ?? 0);
     }
   }
 
@@ -408,6 +475,17 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
     row.jahezReportedRestaurantAmount = source.reportedRestaurantAmount;
     row.jahezSettlementVariance =
       source.calculatedRestaurantAmount - source.reportedRestaurantAmount;
+
+    const branchCompensation = compensationByBranch.get(row.branch);
+    if (branchCompensation) {
+      row.jahezCompensationTransactions = branchCompensation.transactions;
+      row.jahezCompensationDebit = branchCompensation.debit;
+      row.jahezCompensationCredit = branchCompensation.credit;
+      row.jahezCompensationNetImpact =
+        branchCompensation.debit - branchCompensation.credit;
+      row.jahezCompensationDuplicateAmount = branchCompensation.duplicateAmount;
+      row.jahezCompensationUnknownAmount = branchCompensation.unknownAmount;
+    }
 
     if (Math.abs(row.jahezSettlementVariance) <= 0.01) {
       row.branchAuditStatus = "matched";
@@ -495,9 +573,26 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
         .sort((left, right) => right[0] - left[0])
         .map(([amount, quantity]) => [amount.toFixed(2), quantity]),
     ),
+    jahezCompensationTransactions: compensationReport?.detailTransactions,
+    jahezCompensationDebit: compensationReport?.detailDebit,
+    jahezCompensationCredit: compensationReport?.detailCredit,
+    jahezCompensationNetImpact: compensationReport?.netImpact,
+    jahezAdjustedRestaurantAmount:
+      compensationReport !== undefined
+        ? merchantRestaurantAmount - compensationReport.netImpact
+        : undefined,
+    jahezCompensationMatchedCurrent: compensationReport?.matchedCurrent,
+    jahezCompensationMatchedHistorical: compensationReport?.matchedHistorical,
+    jahezCompensationUnknownOrders: compensationReport?.unknownOrders,
+    jahezCompensationDuplicateCandidates: compensationReport?.duplicateCandidates,
+    jahezCompensationDuplicateAmount: compensationReport?.duplicateAmount,
   };
 
-  const invoice = options.invoice ?? { lines: [] };
+  const invoice: InvoiceFigures = {
+    ...(options.invoice ?? { lines: [] }),
+    jahezCompensation: compensationReport,
+    jahezOrderIndex: orderIndex,
+  };
   const checks: CheckRow[] = [
     {
       label: "إجمالي الطلبات مقابل ملخص جاهز",
@@ -525,6 +620,27 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       hint: "فحص رقابي داخلي داخل CSV: مجموع العمولة المقربة لكل طلب مقابل عمولة التاجر الدقيقة في رأس التقرير.",
     },
   ];
+
+  if (compensationReport) {
+    checks.push(
+      {
+        label: "تعويضات جاهز: إجمالي الخصم",
+        computed: compensationReport.detailDebit,
+        invoiced: compensationReport.summaryDebit,
+        evidence: "mixed",
+        tolerance: 0.01,
+        hint: "فحص داخلي لملف التعويضات: مجموع معاملات debit مقابل إجمالي الخصم في رأس الملف.",
+      },
+      {
+        label: "تعويضات جاهز: إجمالي الإضافة",
+        computed: compensationReport.detailCredit,
+        invoiced: compensationReport.summaryCredit,
+        evidence: "mixed",
+        tolerance: 0.01,
+        hint: "فحص داخلي لملف التعويضات: مجموع معاملات credit مقابل إجمالي الإضافة في رأس الملف.",
+      },
+    );
+  }
 
   if (invoice.jahezCommissionExVat !== undefined) {
     checks.push({
