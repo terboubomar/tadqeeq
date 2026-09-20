@@ -54,6 +54,7 @@ export interface BranchRow {
   creditSalesVariance?: number;
   invoiceOnlyBranchCharges?: number;
   branchAuditStatus?: "matched" | "rounding" | "warning" | "invoice_only" | "unmatched";
+  branchAuditLabel?: string;
   branchAuditNote?: string;
 }
 
