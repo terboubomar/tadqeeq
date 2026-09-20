@@ -23,7 +23,7 @@ export const analystAiResponseSchema = z.object({
       "history_table",
     ]),
     title: z.string().max(160),
-    factIds: z.array(z.string().regex(/^F\d{3}$/)).max(12),
+    factIds: z.array(z.string().regex(/^F\d{3}$/)).max(40),
   }),
   limitations: z.array(z.string().min(1).max(500)).max(5),
   followUpSuggestions: z.array(z.string().min(1).max(250)).max(3),
