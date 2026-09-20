@@ -310,7 +310,7 @@ export function parseCpcInvoice(raw: string): InvoiceFigures {
   });
 }
 
-const KEETA_GAP = "(?:[^0-9]|\\d(?![\\d,]*\\.\\d))";
+const KEETA_GAP = "(?:[^0-9-]|-(?![\\d,]+\\.\\d)|\\d(?![\\d,]*\\.\\d))";
 
 function keetaAmountsAfter(source: string, count: number, ...labels: string[]): number[] {
   for (const label of labels) {
