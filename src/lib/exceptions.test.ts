@@ -326,6 +326,107 @@ describe("Exception Center", () => {
     expect(evidence.platformSources[0]?.source).toContain("Invoice Details");
   });
 
+  test("creates actionable Jahez compensation cases without treating cross-period matches as errors", () => {
+    const period = {
+      id: "jahez-comp",
+      label: "Jahez Aug",
+      platform: "jahez",
+      period_start: "2026-08-01",
+      period_end: "2026-08-31",
+      created_at: "2026-09-01T00:00:00Z",
+      summary: {} as StoredPeriod["summary"],
+      daily: [],
+      branches: [],
+      invoice: {
+        lines: [],
+        checks: [],
+        jahezCompensation: {
+          summaryTransactions: 4,
+          summaryDebit: 139,
+          summaryCredit: 0,
+          detailTransactions: 4,
+          detailDebit: 139,
+          detailCredit: 0,
+          netImpact: 139,
+          matchedCurrent: 1,
+          matchedHistorical: 1,
+          unknownOrders: 1,
+          duplicateCandidates: 1,
+          duplicateAmount: 43,
+          transactions: [
+            {
+              sequence: "1",
+              branch: "Al Doha",
+              orderId: "8437233319",
+              transactionType: "debit",
+              reason: "Adjustment",
+              creationDate: "8/20/2026 13:52",
+              amount: 43,
+              free: false,
+              match: "current",
+              matchedBranch: "Al Doha",
+            },
+            {
+              sequence: "2",
+              branch: "Al Doha",
+              orderId: "8437233319",
+              transactionType: "debit",
+              reason: "Adjustment",
+              creationDate: "8/20/2026 13:52",
+              amount: 43,
+              free: false,
+              match: "current",
+              matchedBranch: "Al Doha",
+              duplicateCandidate: true,
+            },
+            {
+              sequence: "3",
+              branch: "Uhud",
+              orderId: "5789809338",
+              transactionType: "debit",
+              reason: "Adjustment",
+              creationDate: "8/2/2026 2:53",
+              amount: 43,
+              free: false,
+              match: "historical",
+              matchedBranch: "Uhud",
+              matchedPeriodLabel: "Jahez Jul",
+            },
+            {
+              sequence: "4",
+              branch: "Unknown",
+              orderId: "999",
+              transactionType: "debit",
+              reason: "Adjustment",
+              creationDate: "8/4/2026 1:00",
+              amount: 10,
+              free: false,
+              match: "unknown",
+            },
+          ],
+        },
+      },
+    } as StoredPeriod;
+
+    const exceptions = buildPeriodExceptions(period);
+    expect(exceptions).toHaveLength(2);
+
+    const duplicate = exceptions.find((item) => item.label.includes("تكرار"));
+    expect(duplicate?.category).toBe("compensation");
+    expect(duplicate?.reviewAmount).toBeCloseTo(43, 6);
+    expect(duplicate?.potentialRecovery).toBeCloseTo(43, 6);
+
+    const unknown = exceptions.find((item) => item.label.includes("بدون طلب"));
+    expect(unknown?.reviewAmount).toBeCloseTo(10, 6);
+    expect(unknown?.potentialRecovery).toBeCloseTo(0, 6);
+
+    expect(exceptions.some((item) => item.label.includes("5789809338"))).toBe(false);
+
+    const evidence = buildExceptionEvidence(period, duplicate!);
+    expect(evidence.formula).toContain("تعويض جاهز");
+    expect(evidence.calculatedSources.some((row) => row.label === "رقم الطلب")).toBe(true);
+  });
+
   test("builds a branch evidence trail with source fields and formula", () => {
     const period = hungerPeriod();
     const exception = buildPeriodExceptions(period).find(
