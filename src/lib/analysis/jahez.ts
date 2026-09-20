@@ -4,6 +4,9 @@ import type {
   CheckRow,
   DailyRow,
   InvoiceFigures,
+  JahezCompensationReport,
+  JahezCompensationTransaction,
+  JahezOrderReference,
   Summary,
 } from "./types";
 
@@ -31,6 +34,8 @@ interface JahezAccumulator {
 export interface JahezOptions {
   invoice?: InvoiceFigures;
   label?: string;
+  compensationFile?: ArrayBuffer;
+  historicalOrders?: Record<string, JahezOrderReference>;
 }
 
 function num(value: string | undefined): number {
