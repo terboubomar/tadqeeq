@@ -443,75 +443,70 @@ function ChatBubble({
 function AnalystPresentationTable({ presentation }: { presentation: AnalystTablePresentation }) {
   const hasBranch = presentation.columns.some((column) => column.key === "branch");
   const hasRank = presentation.columns.some((column) => column.key === "rank");
+  const gridClass = hasBranch
+    ? hasRank
+      ? "min-w-[960px] grid-cols-[44px_minmax(240px,1.65fr)_repeat(5,minmax(120px,1fr))]"
+      : "min-w-[980px] grid-cols-[minmax(220px,1.4fr)_minmax(210px,1.4fr)_repeat(4,minmax(130px,1fr))]"
+    : "min-w-[760px] grid-cols-[minmax(190px,1.4fr)_repeat(4,minmax(130px,1fr))]";
 
   return (
     <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-white shadow-sm">
       {presentation.title ? (
-        <div className="border-b border-border bg-secondary/20 px-4 py-3">
-          <p className="text-xs font-bold text-foreground">{presentation.title}</p>
+        <div className="border-b border-border bg-secondary/20 px-4 py-3.5">
+          <p className="text-sm font-bold text-foreground">{presentation.title}</p>
         </div>
       ) : null}
 
-      <div className="max-h-[min(430px,52vh)] w-full overflow-auto overscroll-contain" dir="rtl">
-        <table className="w-max min-w-full border-separate border-spacing-0 text-[11px]">
-          <thead className="sticky top-0 z-20 bg-background text-muted-foreground shadow-[0_1px_0_0_var(--color-border)]">
-            <tr>
+      <div
+        className="max-h-[min(430px,52vh)] w-full overflow-auto overscroll-contain"
+        dir="rtl"
+        role="region"
+        aria-label={presentation.title || "جدول النتائج"}
+      >
+        <div className={cn("grid w-full text-xs", gridClass)} role="table">
+          <div className="sticky top-0 z-20 col-span-full grid grid-cols-subgrid bg-secondary shadow-[0_1px_0_0_var(--color-border)]" role="row">
+            {presentation.columns.map((column) => (
+              <div
+                key={column.key}
+                role="columnheader"
+                className={cn(
+                  "flex min-h-11 items-center whitespace-nowrap border-l border-border/60 px-3 font-bold text-muted-foreground last:border-l-0 sm:px-4",
+                  column.align === "number" ? "justify-end" : "justify-start",
+                  column.key === "rank" && "justify-center",
+                )}
+              >
+                {column.label}
+              </div>
+            ))}
+          </div>
+
+          {presentation.rows.map((row, rowIndex) => (
+            <div
+              key={rowIndex}
+              role="row"
+              className="group col-span-full grid grid-cols-subgrid border-b border-border/60 bg-white last:border-b-0 even:bg-secondary/10 hover:bg-secondary/20"
+            >
               {presentation.columns.map((column) => (
-                <th
+                <div
                   key={column.key}
+                  role="cell"
+                  dir={column.align === "number" ? "ltr" : undefined}
                   className={cn(
-                    "whitespace-nowrap bg-background px-3 py-2.5 font-semibold sm:px-4",
-                    column.align === "number" ? "text-end" : "text-start",
-                    column.key === "branch" &&
-                      cn(
-                        "min-w-36 border-l border-border bg-background sm:sticky sm:z-30 sm:min-w-44",
-                        hasRank ? "sm:right-10" : "sm:right-0",
-                      ),
+                    "flex min-h-12 items-center whitespace-nowrap border-l border-border/40 px-3 last:border-l-0 sm:px-4",
+                    column.align === "number"
+                      ? "num justify-end text-end font-semibold tabular-nums"
+                      : "justify-start text-start",
+                    column.key === "branch" && "font-bold text-foreground",
                     column.key === "rank" &&
-                      hasBranch &&
-                      "w-10 min-w-10 text-center sm:sticky sm:right-0 sm:z-30 sm:bg-background",
+                      "justify-center text-center font-medium text-muted-foreground",
                   )}
                 >
-                  {column.label}
-                </th>
+                  {row[column.key] ?? "—"}
+                </div>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {presentation.rows.map((row, rowIndex) => (
-              <tr
-                key={rowIndex}
-                className="group border-b border-border/60 last:border-b-0 hover:bg-secondary/10"
-              >
-                {presentation.columns.map((column) => (
-                  <td
-                    key={column.key}
-                    dir={column.align === "number" ? "ltr" : undefined}
-                    className={cn(
-                      "whitespace-nowrap border-b border-border/60 px-3 py-3 sm:px-4",
-                      column.align === "number"
-                        ? "num text-end font-medium tabular-nums"
-                        : "text-start",
-                      column.key === "branch" &&
-                        cn(
-                          "min-w-36 border-l border-border bg-white font-semibold text-foreground group-hover:bg-secondary/10 sm:sticky sm:z-10 sm:min-w-44",
-                          hasRank ? "sm:right-10" : "sm:right-0",
-                        ),
-                      column.key === "rank" &&
-                        cn(
-                          "w-10 min-w-10 text-center text-muted-foreground",
-                          hasBranch &&
-                            "sm:sticky sm:right-0 sm:z-10 sm:bg-white sm:group-hover:bg-secondary/10",
-                        ),
-                    )}
-                  >
-                    {row[column.key] ?? "—"}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
