@@ -10,13 +10,19 @@ import {
   Eye,
   FileSearch,
   History,
+  Loader2,
+  RefreshCw,
   Search,
   ShieldAlert,
+  Sparkles,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/AppShell";
+import { supabase } from "@/integrations/supabase/client";
+import { explainExceptionWithAi } from "@/lib/ai/exception-ai.functions";
+import type { ExceptionAiResult } from "@/lib/ai/exception-ai";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -523,6 +529,8 @@ function EvidenceSheet({
             </div>
           </section>
 
+          <AiExplanationPanel key={item.id} item={item} />
+
           <section className="rounded-xl border border-border p-4">
             <div className="flex items-center gap-2">
               <History className="size-4 text-primary" />
@@ -580,6 +588,171 @@ function EvidenceSheet({
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function AiExplanationPanel({ item }: { item: AuditException }) {
+  const [result, setResult] = useState<ExceptionAiResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function explain() {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const accessToken = data.session?.access_token;
+      if (!accessToken) {
+        throw new Error("الجلسة منتهية، سجّل الدخول مرة أخرى لاستخدام Tadqeeq AI.");
+      }
+
+      const response = await explainExceptionWithAi({
+        data: {
+          periodId: item.periodId,
+          exceptionId: item.id,
+          accessToken,
+        },
+      });
+      setResult(response);
+    } catch (cause) {
+      const message =
+        cause instanceof Error
+          ? cause.message
+          : "تعذّر إنشاء شرح Tadqeeq AI لهذا الاستثناء.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const confidenceLabel =
+    result?.explanation.confidence === "high"
+      ? "ثقة عالية"
+      : result?.explanation.confidence === "medium"
+        ? "ثقة متوسطة"
+        : "ثقة منخفضة";
+
+  return (
+    <section className="rounded-xl border border-primary/20 bg-secondary/35 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-4 text-primary" />
+            <h3 className="font-bold">Tadqeeq AI</h3>
+            <span className="rounded-full border border-primary/15 bg-white px-2 py-0.5 text-[10px] font-semibold text-primary">
+              شرح فقط
+            </span>
+          </div>
+          <p className="mt-1.5 max-w-xl text-xs leading-6 text-muted-foreground">
+            يفسّر الاستثناء اعتماداً على الأدلة المنظمة التي حسبها Tadqeeq. لا يغيّر الأرقام أو
+            حالة التدقيق، ولا تُرسل ملفات Excel أو CSV أو PDF الخام.
+          </p>
+        </div>
+
+        <Button
+          type="button"
+          size="sm"
+          variant={result ? "outline" : "default"}
+          onClick={explain}
+          disabled={loading}
+          className="shrink-0"
+        >
+          {loading ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : result ? (
+            <RefreshCw className="size-3.5" />
+          ) : (
+            <Sparkles className="size-3.5" />
+          )}
+          {loading ? "جارٍ التفسير…" : result ? "إعادة التفسير" : "فسّر هذا الاستثناء"}
+        </Button>
+      </div>
+
+      {error && !result ? (
+        <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/[0.04] px-3 py-2.5 text-xs leading-6 text-destructive">
+          {error}
+        </div>
+      ) : null}
+
+      {result ? (
+        <div className="mt-4 space-y-4 border-t border-primary/10 pt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                "rounded-full px-2 py-1 text-[10.5px] font-semibold",
+                result.explanation.confidence === "high" && "bg-success/10 text-success",
+                result.explanation.confidence === "medium" && "bg-warning/10 text-warning",
+                result.explanation.confidence === "low" && "bg-destructive/10 text-destructive",
+              )}
+            >
+              {confidenceLabel}
+            </span>
+            <span className="text-[10.5px] text-muted-foreground">
+              تحليل مساعد — نتيجة Tadqeeq الأصلية تبقى المرجع
+            </span>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground">الخلاصة</p>
+            <p className="mt-1 text-sm font-medium leading-7">{result.explanation.summary}</p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <AiTextBlock title="لماذا يهم؟" text={result.explanation.whyItMatters} />
+            <AiTextBlock
+              title="القراءة المالية"
+              text={result.explanation.financialInterpretation}
+            />
+          </div>
+
+          <AiList title="الأدلة التي اعتمد عليها الشرح" items={result.explanation.evidence} />
+          <AiList title="الخطوات المقترحة للمراجعة" items={result.explanation.nextSteps} />
+
+          {result.explanation.limitations.length ? (
+            <AiList
+              title="حدود هذا التفسير"
+              items={result.explanation.limitations}
+              muted
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function AiTextBlock({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-lg border border-border/70 bg-white/70 p-3">
+      <p className="text-[11px] font-semibold text-muted-foreground">{title}</p>
+      <p className="mt-1.5 text-xs leading-6 text-foreground/90">{text}</p>
+    </div>
+  );
+}
+
+function AiList({
+  title,
+  items,
+  muted = false,
+}: {
+  title: string;
+  items: string[];
+  muted?: boolean;
+}) {
+  return (
+    <div className={cn("rounded-lg border p-3", muted ? "border-border bg-background/50" : "border-border/70 bg-white/70")}>
+      <p className="text-[11px] font-semibold text-muted-foreground">{title}</p>
+      <ul className="mt-2 list-disc space-y-1.5 ps-5 text-xs leading-6">
+        {items.map((item, index) => (
+          <li key={index} className={muted ? "text-muted-foreground" : "text-foreground/90"}>
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
