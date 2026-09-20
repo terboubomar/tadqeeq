@@ -78,9 +78,10 @@ function platformSpecificMetrics(period: StoredPeriod): Record<string, number> {
   const values: Record<string, number | undefined> =
     period.platform === "hungerstation"
       ? {
-          paymentFeesComputed: finite(
-            (s.bankFeeSuccess ?? 0) + (s.bankFeeRefunded ?? 0) + (s.walletFee ?? 0),
+          cardPaymentFeesAudited: finite(
+            (s.bankFeeSuccess ?? 0) + (s.bankFeeRefunded ?? 0),
           ),
+          walletPaymentFeeInvoice: finite(s.walletFee),
           totalCollections: finite(s.totalCollections),
           compensation: finite(s.compensation),
           invoiceOnlyExtras: finite(s.invoiceOnlyExtras),
