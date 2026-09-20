@@ -614,7 +614,11 @@ export function analyzeHungerStation(
   summary.totalCharges =
     branchList
       .filter((row) => row.branchAuditStatus !== "invoice_only")
-      .reduce((total, row) => total + row.totalCharges, 0) +
+      .reduce(
+        (total, row) => total + row.totalCharges - (row.walletFee ?? 0),
+        0,
+      ) +
+    invoiceWalletFee +
     invoiceOnlyExtras;
 
   // Keep invoice-only charges separate from independently reconstructed charges.
