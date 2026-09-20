@@ -244,20 +244,20 @@ function ImportPage() {
         onStepClick={goToStep}
       />
 
-      <section className="rounded-[10px] border border-border bg-white">
-        <div className="border-b border-border/80 px-5 py-4">
+      <section className="rounded-[12px] border border-border bg-white">
+        <div className="border-b border-border/80 px-5 py-4 sm:px-7 sm:py-5">
           <div className="flex items-center gap-3">
-            <span className="num grid size-7 shrink-0 place-items-center rounded-full bg-primary text-[12px] font-semibold text-white">
+            <span className="num grid size-8 shrink-0 place-items-center rounded-full bg-primary text-[13px] font-semibold text-white">
               {step + 1}
             </span>
-            <div>
-              <h2 className="text-[15px] font-semibold">{STEPS[step].title}</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">{STEPS[step].note}</p>
+            <div className="min-w-0">
+              <h2 className="text-[17px] font-semibold">{STEPS[step]?.title}</h2>
+              <p className="mt-0.5 text-[13px] text-muted-foreground">{STEPS[step]?.note}</p>
             </div>
           </div>
         </div>
 
-        <div className="p-5">
+        <div className="p-5 sm:p-7">
           {step === 0 ? (
             <PlatformStep
               platform={platform}
