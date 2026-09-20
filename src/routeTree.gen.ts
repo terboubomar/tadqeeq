@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
+import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
 import { Route as AuthenticatedBranchesRouteImport } from './routes/_authenticated/branches'
 import { Route as AuthenticatedBreakdownRouteImport } from './routes/_authenticated/breakdown'
 import { Route as AuthenticatedDailyRouteImport } from './routes/_authenticated/daily'
@@ -34,6 +36,16 @@ const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAiRoute = AuthenticatedAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAskRoute = AuthenticatedAskRouteImport.update({
+  id: '/ask',
+  path: '/ask',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedBranchesRoute = AuthenticatedBranchesRouteImport.update({
   id: '/branches',
@@ -80,6 +92,8 @@ const AuthenticatedInvoiceCheckRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/ai': typeof AuthenticatedAiRoute
+  '/ask': typeof AuthenticatedAskRoute
   '/branches': typeof AuthenticatedBranchesRoute
   '/breakdown': typeof AuthenticatedBreakdownRoute
   '/daily': typeof AuthenticatedDailyRoute
@@ -92,6 +106,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/ai': typeof AuthenticatedAiRoute
+  '/ask': typeof AuthenticatedAskRoute
   '/branches': typeof AuthenticatedBranchesRoute
   '/breakdown': typeof AuthenticatedBreakdownRoute
   '/daily': typeof AuthenticatedDailyRoute
@@ -106,6 +122,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/ai': typeof AuthenticatedAiRoute
+  '/_authenticated/ask': typeof AuthenticatedAskRoute
   '/_authenticated/branches': typeof AuthenticatedBranchesRoute
   '/_authenticated/breakdown': typeof AuthenticatedBreakdownRoute
   '/_authenticated/daily': typeof AuthenticatedDailyRoute
@@ -120,6 +138,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/ai'
+    | '/ask'
     | '/branches'
     | '/breakdown'
     | '/daily'
@@ -132,6 +152,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/ai'
+    | '/ask'
     | '/branches'
     | '/breakdown'
     | '/daily'
@@ -145,6 +167,8 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/ai'
+    | '/_authenticated/ask'
     | '/_authenticated/branches'
     | '/_authenticated/breakdown'
     | '/_authenticated/daily'
@@ -183,6 +207,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/ai': {
+      id: '/_authenticated/ai'
+      path: '/ai'
+      fullPath: '/ai'
+      preLoaderRoute: typeof AuthenticatedAiRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/ask': {
+      id: '/_authenticated/ask'
+      path: '/ask'
+      fullPath: '/ask'
+      preLoaderRoute: typeof AuthenticatedAskRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/branches': {
       id: '/_authenticated/branches'
@@ -244,6 +282,8 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAiRoute: typeof AuthenticatedAiRoute
+  AuthenticatedAskRoute: typeof AuthenticatedAskRoute
   AuthenticatedBranchesRoute: typeof AuthenticatedBranchesRoute
   AuthenticatedBreakdownRoute: typeof AuthenticatedBreakdownRoute
   AuthenticatedDailyRoute: typeof AuthenticatedDailyRoute
@@ -255,6 +295,8 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAiRoute: AuthenticatedAiRoute,
+  AuthenticatedAskRoute: AuthenticatedAskRoute,
   AuthenticatedBranchesRoute: AuthenticatedBranchesRoute,
   AuthenticatedBreakdownRoute: AuthenticatedBreakdownRoute,
   AuthenticatedDailyRoute: AuthenticatedDailyRoute,
