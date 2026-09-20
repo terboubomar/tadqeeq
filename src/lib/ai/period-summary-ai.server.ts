@@ -2,6 +2,8 @@ import type { StoredPeriod } from "@/lib/periods";
 
 import { buildPeriodExceptions } from "@/lib/exceptions";
 
+import { callTadqeeqAi } from "./gateway.server";
+
 import {
   buildPeriodSummaryAiPacket,
   periodSummaryAiExplanationSchema,
@@ -173,24 +175,10 @@ async function recordUsage(
   }
 }
 
-function extractOutputText(response: OpenAiResponse): string {
-  for (const item of response.output ?? []) {
-    if (item.type !== "message") continue;
-    for (const content of item.content ?? []) {
-      if (content.type === "output_text" && content.text) return content.text;
-      if (content.type === "refusal" && content.refusal) {
-        throw new Error("تعذّر إنشاء الملخص الذكي لهذه الفترة.");
-      }
-    }
-  }
-  throw new Error("لم يرجع نموذج الذكاء الاصطناعي ملخصاً قابلاً للقراءة.");
-}
-
 async function callOpenAi(
   packet: ReturnType<typeof buildPeriodSummaryAiPacket>,
 ): Promise<{ explanation: PeriodSummaryAiExplanation; model: string }> {
-  const apiKey = requiredEnv("OPENAI_API_KEY");
-  const model = process.env["TADQEEQ_AI_MODEL"]?.trim() || DEFAULT_MODEL;
+
 
   const systemPrompt = [
     "أنت Tadqeeq AI Analyst داخل نظام تدقيق مالي لمنصات التوصيل.",
@@ -251,70 +239,20 @@ async function callOpenAi(
     additionalProperties: false,
   };
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const { text, model } = await callTadqeeqAi({
+    systemPrompt,
+    userText:
+      "أنشئ ملخصاً تنفيذياً للفترة اعتماداً على بيانات Tadqeeq المنظمة فقط:\n" +
+      JSON.stringify(packet),
+    schemaName: "tadqeeq_period_summary",
+    schema,
+  });
 
-  try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        Authorization: "Bearer " + apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        store: false,
-        reasoning: { effort: "low" },
-        max_output_tokens: 1500,
-        input: [
-          {
-            role: "system",
-            content: [{ type: "input_text", text: systemPrompt }],
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "input_text",
-                text:
-                  "أنشئ ملخصاً تنفيذياً للفترة اعتماداً على بيانات Tadqeeq المنظمة فقط:\n" +
-                  JSON.stringify(packet),
-              },
-            ],
-          },
-        ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "tadqeeq_period_summary",
-            strict: true,
-            schema,
-          },
-        },
-      }),
-    });
-
-    const payload = (await response.json()) as OpenAiResponse;
-    if (!response.ok) {
-      console.error("OpenAI Responses API error", response.status, payload.error?.message);
-      throw new Error("تعذّر الاتصال بخدمة Tadqeeq AI حالياً.");
-    }
-
-    const parsed = JSON.parse(extractOutputText(payload)) as unknown;
-    return {
-      explanation: periodSummaryAiExplanationSchema.parse(parsed),
-      model,
-    };
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("استغرق Tadqeeq AI وقتاً أطول من المتوقع. حاول مرة أخرى.");
-    }
-    if (error instanceof Error) throw error;
-    throw new Error("تعذّر إنشاء ملخص Tadqeeq AI.");
-  } finally {
-    clearTimeout(timeout);
-  }
+  const parsed = JSON.parse(text) as unknown;
+  return {
+    explanation: periodSummaryAiExplanationSchema.parse(parsed),
+    model,
+  };
 }
 
 export async function summarizePeriodOnServer(

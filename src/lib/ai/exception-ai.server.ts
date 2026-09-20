@@ -10,6 +10,7 @@ import {
   type ExceptionAiExplanation,
   type ExceptionAiResult,
 } from "./exception-ai";
+import { callTadqeeqAi } from "./gateway.server";
 
 const FEATURE = "exception_explainer";
 const PROMPT_VERSION = "exception-explainer-v1";
@@ -178,24 +179,10 @@ async function recordUsage(
   }
 }
 
-function extractOutputText(response: OpenAiResponse): string {
-  for (const item of response.output ?? []) {
-    if (item.type !== "message") continue;
-    for (const content of item.content ?? []) {
-      if (content.type === "output_text" && content.text) return content.text;
-      if (content.type === "refusal" && content.refusal) {
-        throw new Error("تعذّر إنشاء الشرح لهذا الاستثناء.");
-      }
-    }
-  }
-  throw new Error("لم يرجع نموذج الذكاء الاصطناعي شرحاً قابلاً للقراءة.");
-}
-
 async function callOpenAi(
   packet: ReturnType<typeof buildExceptionAiPacket>,
 ): Promise<{ explanation: ExceptionAiExplanation; model: string }> {
-  const apiKey = requiredEnv("OPENAI_API_KEY");
-  const model = process.env["TADQEEQ_AI_MODEL"]?.trim() || DEFAULT_MODEL;
+
 
   const systemPrompt = [
     "أنت Tadqeeq AI Analyst داخل نظام تدقيق مالي لمنصات التوصيل.",
@@ -250,70 +237,20 @@ async function callOpenAi(
     additionalProperties: false,
   };
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const { text, model } = await callTadqeeqAi({
+    systemPrompt,
+    userText:
+      "اشرح الاستثناء التالي اعتماداً على البيانات المنظمة فقط:\n" +
+      JSON.stringify(packet),
+    schemaName: "tadqeeq_exception_explanation",
+    schema,
+  });
 
-  try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        Authorization: "Bearer " + apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        store: false,
-        reasoning: { effort: "low" },
-        max_output_tokens: 1200,
-        input: [
-          {
-            role: "system",
-            content: [{ type: "input_text", text: systemPrompt }],
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "input_text",
-                text:
-                  "اشرح الاستثناء التالي اعتماداً على البيانات المنظمة فقط:\n" +
-                  JSON.stringify(packet),
-              },
-            ],
-          },
-        ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "tadqeeq_exception_explanation",
-            strict: true,
-            schema,
-          },
-        },
-      }),
-    });
-
-    const payload = (await response.json()) as OpenAiResponse;
-    if (!response.ok) {
-      console.error("OpenAI Responses API error", response.status, payload.error?.message);
-      throw new Error("تعذّر الاتصال بخدمة Tadqeeq AI حالياً.");
-    }
-
-    const parsed = JSON.parse(extractOutputText(payload)) as unknown;
-    return {
-      explanation: exceptionAiExplanationSchema.parse(parsed),
-      model,
-    };
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("استغرق Tadqeeq AI وقتاً أطول من المتوقع. حاول مرة أخرى.");
-    }
-    if (error instanceof Error) throw error;
-    throw new Error("تعذّر إنشاء شرح الذكاء الاصطناعي.");
-  } finally {
-    clearTimeout(timeout);
-  }
+  const parsed = JSON.parse(text) as unknown;
+  return {
+    explanation: exceptionAiExplanationSchema.parse(parsed),
+    model,
+  };
 }
 
 export async function explainExceptionOnServer(
