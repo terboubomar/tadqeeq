@@ -191,11 +191,11 @@ function Dashboard() {
             )}
             hint={
               selected.invoice?.paymentFees !== undefined
-                ? `الفاتورة: ${sar(selected.invoice.paymentFees)} · المحتسب: ${sar(
-                    s.bankFeeSuccess + s.bankFeeRefunded + (s.walletFee ?? 0),
-                  )}`
+                ? `الفاتورة: ${sar(selected.invoice.paymentFees)} · بطاقات قابلة للتحقق: ${sar(
+                    s.bankFeeSuccess + s.bankFeeRefunded,
+                  )} · محافظ حسب الفاتورة: ${sar(s.walletFee ?? 0)}`
                 : s.bankRate > 0
-                  ? `المحتسب بنسبة ${percent(s.bankRate)} ${
+                  ? `رسوم البطاقات المحتسبة بنسبة ${percent(s.bankRate)} ${
                       s.bankRateSource === "invoice"
                         ? "(مستنتجة من الفاتورة — غير مستقلة)"
                         : s.bankRateSource === "manual"
