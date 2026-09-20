@@ -436,12 +436,34 @@ function branchAlreadyHasException(
   );
 }
 
+function hungerInvoiceHasOperationalActivity(branch: StoredPeriod["branches"][number]): boolean {
+  const dataRelatedOtherCharges =
+    (branch.invoiceOtherCharges ?? 0) - (branch.invoiceOnlyBranchCharges ?? 0);
+
+  return [
+    branch.invoiceCommission,
+    branch.invoicePaymentFees,
+    branch.invoiceCollections,
+    branch.invoiceCreditSales,
+    dataRelatedOtherCharges,
+  ].some(
+    (value) =>
+      typeof value === "number" &&
+      Number.isFinite(value) &&
+      Math.abs(value) > 0.05,
+  );
+}
+
 function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
   const result: AuditException[] = [];
 
   for (const branch of period.branches ?? []) {
-    const paymentComputed =
-      branch.bankFeeSuccess + branch.bankFeeRefunded + (branch.walletFee ?? 0);
+    const paymentComputed = branch.bankFeeSuccess + branch.bankFeeRefunded;
+    const invoiceCardPaymentFees =
+      branch.invoiceCardPaymentFees ??
+      (branch.invoicePaymentFees !== undefined
+        ? branch.invoicePaymentFees - (branch.invoiceWalletFee ?? 0)
+        : undefined);
     const otherComputed =
       branch.rdfCampaigns + branch.compensation + branch.jokerFees + branch.waitingTimeFees;
     const otherInvoiced =
@@ -462,9 +484,9 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       branch: branch.branch,
       branchId: branch.branchId,
       category: "payment_fee",
-      label: "فرق رسوم الدفع للفرع",
+      label: "فرق رسوم الدفع بالبطاقات للفرع",
       computed: paymentComputed,
-      invoiced: branch.invoicePaymentFees,
+      invoiced: invoiceCardPaymentFees,
       tolerance: 0.1,
     });
     pushBranchVariance(result, period, {
@@ -502,6 +524,8 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       (branch.branchAuditStatus === "warning" ||
         branch.branchAuditStatus === "unmatched" ||
         branch.branchAuditStatus === "invoice_only") &&
+      (branch.branchAuditStatus !== "invoice_only" ||
+        hungerInvoiceHasOperationalActivity(branch)) &&
       !branchAlreadyHasException(result, period.id, branch.branchId)
     ) {
       result.push(
@@ -1006,18 +1030,31 @@ export function buildExceptionEvidence(
         definedField("عمولة الفرع", "HungerStation PDF · Sales Commission", branch.invoiceCommission),
       ]);
     } else if (item.category === "payment_fee") {
-      formula = "رسوم البطاقات الناجحة + رسوم البطاقات المرتجعة + رسوم المحافظ";
+      formula =
+        "رسوم البطاقات الناجحة + رسوم البطاقات المرتجعة = رسوم البطاقات القابلة للتحقق؛ Wallet Payments Fee يُستبعد من المقارنة المستقلة";
       calculatedSources = compactFields([
         definedField("أساس البطاقات الناجحة", "HungerStation Excel · CC Amount", branch.ccSuccess),
         definedField("رسوم البطاقات الناجحة", "محرك تدقيق", branch.bankFeeSuccess),
         definedField("أساس البطاقات المرتجعة", "HungerStation Excel · Refunded CC", branch.ccRejected),
         definedField("رسوم البطاقات المرتجعة", "محرك تدقيق", branch.bankFeeRefunded),
-        definedField("أساس رسوم المحافظ", "Wallet Amount + Transmitter Amount", branch.walletFeeBase),
-        definedField("رسوم المحافظ", "محرك تدقيق", branch.walletFee),
-        definedField("الإجمالي المحتسب", "محرك تدقيق", item.computed),
+        definedField("إجمالي رسوم البطاقات المحتسب", "محرك تدقيق", item.computed),
       ]);
       platformSources = compactFields([
-        definedField("رسوم الدفع للفرع", "HungerStation PDF · Payment Fees", branch.invoicePaymentFees),
+        definedField(
+          "إجمالي Payment Fees",
+          "HungerStation PDF · Payment Fees",
+          branch.invoicePaymentFees,
+        ),
+        definedField(
+          "Wallet Payments Fee المستبعد",
+          "HungerStation PDF · Wallet Payments Fee",
+          branch.invoiceWalletFee,
+        ),
+        definedField(
+          "رسوم البطاقات للمقارنة",
+          "محرك تدقيق · Payment Fees ناقص Wallet Payments Fee",
+          branch.invoiceCardPaymentFees,
+        ),
       ]);
     } else if (item.category === "other_fee") {
       formula = "RDF + تعويضات العملاء + رسوم العروض + وقت الانتظار";
