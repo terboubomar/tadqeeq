@@ -49,13 +49,13 @@ const FEATURES = [
 
 function Landing() {
   return (
-    <div className="grain-bg min-h-screen bg-background">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-6">
+    <div className="min-h-screen bg-background">
+      <header className="mx-auto flex max-w-6xl items-center justify-between border-b border-border px-5 py-4">
         <div className="flex items-center gap-2.5">
-          <span className="grid size-9 place-items-center rounded-xl bg-primary text-lg font-black text-primary-foreground">
+          <span className="grid size-9 place-items-center rounded-[8px] bg-primary text-lg font-bold text-primary-foreground">
             ت
           </span>
-          <span className="font-display text-xl font-black gold-text">تدقيق</span>
+          <span className="text-lg font-bold">تدقيق</span>
         </div>
         <Button asChild variant="outline" size="sm">
           <Link to="/auth">تسجيل الدخول</Link>
@@ -63,14 +63,14 @@ function Landing() {
       </header>
 
       <main className="mx-auto max-w-6xl px-5 pb-24">
-        <section className="pt-10 pb-16 sm:pt-20">
-          <p className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+        <section className="pb-14 pt-14 sm:pt-20">
+          <p className="inline-flex rounded-[6px] border border-primary/20 bg-secondary px-2.5 py-1 text-xs font-medium text-primary">
             هنقرستيشن · كيتا
           </p>
-          <h1 className="mt-5 max-w-3xl text-4xl font-black leading-[1.25] sm:text-6xl">
+          <h1 className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.3] tracking-[-0.025em] sm:text-6xl">
             لا تدفع فاتورة المنصة
             <br />
-            <span className="gold-text">قبل ما تتأكد منها</span>
+            <span className="text-primary">قبل ما تتأكد منها</span>
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-8 text-muted-foreground sm:text-lg">
             ارفع ملف الطلبات الخام وفاتورة المنصة، ويقوم «تدقيق» بإعادة بناء كل بند في الفاتورة من
@@ -87,10 +87,10 @@ function Landing() {
           </div>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-2">
+        <section className="grid gap-3 sm:grid-cols-2">
           {FEATURES.map((feature) => (
-            <article key={feature.title} className="panel p-6">
-              <span className="inline-grid size-10 place-items-center rounded-xl bg-secondary text-primary">
+            <article key={feature.title} className="panel p-5">
+              <span className="inline-grid size-10 place-items-center rounded-[8px] bg-secondary text-primary">
                 <feature.icon className="size-5" />
               </span>
               <h2 className="mt-4 text-lg font-bold">{feature.title}</h2>
