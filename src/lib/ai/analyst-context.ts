@@ -217,12 +217,20 @@ function addPeriodFacts(builder: FactBuilder, period: StoredPeriod, exceptions: 
   });
 
   if (period.platform === "hungerstation") {
-    const paymentFees =
-      (s.bankFeeSuccess ?? 0) + (s.bankFeeRefunded ?? 0) + (s.walletFee ?? 0);
-    builder.add("period", "رسوم الدفع المحتسبة", money(paymentFees), {
-      value: paymentFees,
+    const cardPaymentFees = (s.bankFeeSuccess ?? 0) + (s.bankFeeRefunded ?? 0);
+    builder.add("period", "رسوم البطاقات المحتسبة", money(cardPaymentFees), {
+      value: cardPaymentFees,
       unit: "sar",
+      evidence: "deterministic",
     });
+    if ((s.walletFee ?? 0) > 0) {
+      builder.add("period", "رسوم المحافظ حسب الفاتورة", money(s.walletFee ?? 0), {
+        value: s.walletFee ?? 0,
+        unit: "sar",
+        evidence: "invoice_derived",
+        walletFeeBaseInvoice: s.walletFeeBase ?? 0,
+      });
+    }
     if (finite(s.totalCollections) !== null) {
       builder.add("period", "إجمالي التحصيلات المحتسب", money(s.totalCollections ?? 0), {
         value: s.totalCollections ?? 0,
