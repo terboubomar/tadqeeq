@@ -39,7 +39,9 @@ const NAV_GROUPS = [
     title: "الإعداد",
     items: [{ to: "/import", label: "رفع البيانات" }],
   },
-] as const;
+];
+
+const NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items);
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
