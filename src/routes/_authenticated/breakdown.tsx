@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import { EmptyState } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -97,10 +96,11 @@ function BreakdownPage() {
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black">تفصيل البنود</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{selected.label}</p>
+          <h1 className="audit-heading">تفصيل البنود</h1>
+          <p className="audit-subtitle">{selected.label}</p>
         </div>
         <Button
+          data-noprint
           variant="outline"
           size="sm"
           onClick={() =>
@@ -117,109 +117,100 @@ function BreakdownPage() {
         </Button>
       </header>
 
-      <div className="grid gap-5 lg:grid-cols-5">
-        <section className="panel p-5 lg:col-span-3">
-          <h2 className="text-base font-bold">
-            {isHunger ? "مما تتكوّن خصومات المنصة" : "مما تتكوّن تكلفة كيتا (بدون الضريبة)"}
-          </h2>
-          <ul className="mt-4 space-y-3">
-            {charges.map((line, index) => {
-              const share = total > 0 ? line.amount / total : 0;
-              return (
-                <li key={line.label}>
-                  <div className="flex items-center justify-between gap-3 text-sm">
-                    <span className="font-medium">{line.label}</span>
-                    <span className="num font-bold">{money(line.amount)}</span>
-                  </div>
-                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-secondary">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${Math.max(share * 100, 0.5)}%`,
-                        background: COLORS[index % COLORS.length],
-                      }}
-                    />
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{percent(share, 1)}</p>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-
-        <section className="panel p-5 lg:col-span-2">
-          <h2 className="text-base font-bold">التوزيع</h2>
-          <div className="mt-2 h-64" dir="ltr">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={charges}
-                  dataKey="amount"
-                  nameKey="label"
-                  innerRadius={54}
-                  outerRadius={92}
-                  paddingAngle={2}
-                >
-                  {charges.map((line, index) => (
-                    <Cell key={line.label} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value: number) => money(value)}
-                  contentStyle={{
-                    background: "var(--color-popover)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "12px",
-                    fontSize: "12px",
-                    direction: "rtl",
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+      <section className="rounded-[10px] border border-border bg-white p-[18px]">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">
+              {isHunger ? "تكوين خصومات المنصة" : "تكوين تكلفة كيتا بدون الضريبة"}
+            </h2>
+            <p className="mt-1 text-[11.5px] text-muted-foreground">
+              توزيع البنود كنسبة من إجمالي تكلفة المنصة في الفترة المحددة.
+            </p>
           </div>
-          <p className="mt-2 text-center text-sm">
-            الإجمالي <span className="num font-bold text-primary">{money(total)}</span> ر.س
-          </p>
-        </section>
-      </div>
+          <div className="text-end">
+            <p className="text-[11px] text-muted-foreground">الإجمالي</p>
+            <p className="num mt-0.5 text-xl font-semibold">{money(total)} ر.س</p>
+          </div>
+        </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <section className="panel p-5">
-          <h2 className="text-base font-bold">
+        <div className="mt-5 flex h-[12px] overflow-hidden rounded-full bg-muted">
+          {charges.map((line, index) => {
+            const share = total > 0 ? line.amount / total : 0;
+            return (
+              <span
+                key={line.label}
+                title={line.label}
+                style={{
+                  width: `${Math.max(share * 100, 0.5)}%`,
+                  background: COLORS[index % COLORS.length],
+                }}
+              />
+            );
+          })}
+        </div>
+
+        <div className="mt-5 grid gap-x-8 md:grid-cols-2">
+          {charges.map((line, index) => {
+            const share = total > 0 ? line.amount / total : 0;
+            return (
+              <div
+                key={line.label}
+                className="flex items-center gap-3 border-b border-border/60 py-2.5"
+              >
+                <span
+                  className="size-2.5 shrink-0 rounded-[3px]"
+                  style={{ background: COLORS[index % COLORS.length] }}
+                />
+                <span className="min-w-0 flex-1 text-[13px]">{line.label}</span>
+                <span className="num text-[12px] text-muted-foreground">
+                  {percent(share, 1)}
+                </span>
+                <span className="num min-w-[88px] text-end text-[13px] font-semibold">
+                  {money(line.amount)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <section className="panel p-4">
+          <h2 className="text-sm font-semibold">
             {isHunger ? "الخصومات التسويقية والمرتجعات" : "مؤشرات التسوية"}
           </h2>
           {discounts.length ? (
-            <ul className="mt-3 space-y-2 text-sm">
+            <dl className="mt-3">
               {discounts.map((line) => (
-                <li
+                <div
                   key={line.label}
-                  className="flex items-center justify-between gap-3 border-b border-border/50 pb-2"
+                  className="flex items-center justify-between gap-3 border-b border-border/60 py-2"
                 >
-                  <span className="text-muted-foreground">{line.label}</span>
-                  <span className="num font-semibold">{money(line.amount)}</span>
-                </li>
+                  <dt className="text-[12.5px] text-muted-foreground">{line.label}</dt>
+                  <dd className="num text-[13px] font-semibold">{money(line.amount)}</dd>
+                </div>
               ))}
-            </ul>
+            </dl>
           ) : (
             <p className="mt-3 text-sm text-muted-foreground">لا توجد قيم في هذه الفترة.</p>
           )}
         </section>
 
-        <section className="panel p-5">
-          <h2 className="text-base font-bold">حالات الطلبات</h2>
-          <ul className="mt-3 space-y-2 text-sm">
+        <section className="panel p-4">
+          <h2 className="text-sm font-semibold">حالات الطلبات</h2>
+          <dl className="mt-3">
             {Object.entries(s.statusCounts ?? {})
               .sort((a, b) => b[1] - a[1])
               .map(([status, value]) => (
-                <li
+                <div
                   key={status}
-                  className="flex items-center justify-between gap-3 border-b border-border/50 pb-2"
+                  className="flex items-center justify-between gap-3 border-b border-border/60 py-2"
                 >
-                  <span className="text-muted-foreground">{status}</span>
-                  <span className="num font-semibold">{count(value)}</span>
-                </li>
+                  <dt className="text-[12.5px] text-muted-foreground">{status}</dt>
+                  <dd className="num text-[13px] font-semibold">{count(value)}</dd>
+                </div>
               ))}
-          </ul>
+          </dl>
         </section>
       </div>
     </div>
