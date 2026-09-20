@@ -622,24 +622,24 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
   ];
 
   if (compensationReport) {
-    checks.push(
-      {
-        label: "تعويضات جاهز: إجمالي الخصم",
-        computed: compensationReport.detailDebit,
-        invoiced: compensationReport.summaryDebit,
-        evidence: "mixed",
-        tolerance: 0.01,
-        hint: "فحص داخلي لملف التعويضات: مجموع معاملات debit مقابل إجمالي الخصم في رأس الملف.",
-      },
-      {
+    checks.push({
+      label: "تعويضات جاهز: إجمالي الخصم",
+      computed: compensationReport.detailDebit,
+      invoiced: compensationReport.summaryDebit,
+      evidence: "mixed",
+      tolerance: 0.01,
+      hint: "فحص داخلي لملف التعويضات: مجموع معاملات debit مقابل إجمالي الخصم في رأس الملف.",
+    });
+    if (compensationReport.detailCredit !== 0 || compensationReport.summaryCredit !== 0) {
+      checks.push({
         label: "تعويضات جاهز: إجمالي الإضافة",
         computed: compensationReport.detailCredit,
         invoiced: compensationReport.summaryCredit,
         evidence: "mixed",
         tolerance: 0.01,
         hint: "فحص داخلي لملف التعويضات: مجموع معاملات credit مقابل إجمالي الإضافة في رأس الملف.",
-      },
-    );
+      });
+    }
   }
 
   if (invoice.jahezCommissionExVat !== undefined) {
