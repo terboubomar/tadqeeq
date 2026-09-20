@@ -317,6 +317,7 @@ export interface JahezCompensationTransaction {
   matchedBranch?: string;
   matchedPeriodLabel?: string;
   duplicateCandidate?: boolean;
+  branchMismatch?: boolean;
 }
 
 export interface JahezCompensationReport {
