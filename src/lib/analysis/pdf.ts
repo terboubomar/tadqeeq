@@ -413,7 +413,12 @@ export function parseKeetaInvoice(raw: string): InvoiceFigures {
   const taxPage = pages.find((page) => /Tax Invoice/i.test(page) && !/Tax Credit Note/i.test(page));
   const simplePage = pages.find((page) => /Simple invoice/i.test(page)) ?? pages[0] ?? "";
   const creditPage =
-    pages.find((page) => /Credit Sales/i.test(page) && !/Restaurant\s*ID/i.test(page)) ?? "";
+    pages.find(
+      (page) =>
+        /Credit Sales/i.test(page) &&
+        /Original item price|Revenue\/Expenses/i.test(page) &&
+        !/Restaurant\s*ID/i.test(page),
+    ) ?? "";
   const creditNotes = pages.filter((page) => /Tax Credit Note/i.test(page));
 
   const totalExVat = keetaAmountAfter(
