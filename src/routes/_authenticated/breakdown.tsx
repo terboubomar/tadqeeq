@@ -86,6 +86,10 @@ function BreakdownPage() {
       : isJahez
         ? [
             { label: "Restaurant Amount", amount: s.jahezReportedRestaurantAmount ?? 0 },
+            { label: "تعويضات مخصومة", amount: s.jahezCompensationDebit ?? 0 },
+            { label: "تعويضات مضافة", amount: s.jahezCompensationCredit ?? 0 },
+            { label: "صافي أثر التعويضات", amount: s.jahezCompensationNetImpact ?? 0 },
+            { label: "صافي المطعم بعد التعويضات", amount: s.jahezAdjustedRestaurantAmount ?? 0 },
             { label: "Payment Fees VAT", amount: s.jahezPaymentFeesVat ?? 0 },
             { label: "Delivery Offer المخصوم", amount: s.jahezDeliveryOfferInclVat ?? 0 },
             { label: "Offer Amount", amount: s.jahezOfferAmount ?? 0 },
