@@ -339,7 +339,9 @@ export async function askTadqeeqOnServer(
   );
   const context = buildAnalystContext(current, periods);
   const { response, model } = await callAnalyst(input, context);
-  const factsUsed = resolveAnalystFacts(context, response.usedFactIds);
+  const factsUsed = resolveAnalystFacts(context, response.usedFactIds).map(
+    ({ id, kind, label, displayValue }) => ({ id, kind, label, displayValue }),
+  );
   const presentation = buildAnalystPresentation(context, response);
 
   await recordUsage(input, user, model, supabaseUrl, supabaseKey);

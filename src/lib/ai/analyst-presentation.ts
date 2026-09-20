@@ -37,15 +37,15 @@ function factsByIds(context: AnalystContext, ids: string[]): AnalystFact[] {
 }
 
 function branchName(fact: AnalystFact): string | null {
-  return typeof fact.data.branch === "string" ? fact.data.branch : null;
+  return typeof fact.data["branch"] === "string" ? fact.data["branch"] : null;
 }
 
 function rankingNames(facts: AnalystFact[]): string[] {
   const names: string[] = [];
 
   for (const fact of facts) {
-    if (fact.kind !== "ranking" || !Array.isArray(fact.data.ranking)) continue;
-    for (const row of fact.data.ranking) {
+    if (fact.kind !== "ranking" || !Array.isArray(fact.data["ranking"])) continue;
+    for (const row of fact.data["ranking"]) {
       if (!row || typeof row !== "object") continue;
       const branch = (row as Record<string, unknown>).branch;
       if (typeof branch === "string" && !names.includes(branch)) names.push(branch);
@@ -99,12 +99,12 @@ function branchTable(
     ],
     rows: ordered.slice(0, 8).map((fact, index) => ({
       rank: String(index + 1),
-      branch: text(fact.data.branch),
-      grossSales: money(fact.data.grossSales),
-      platformCost: money(fact.data.platformCost),
-      platformCostRate: percent(fact.data.platformCostRatePct),
-      orders: count(fact.data.orders),
-      commissionRate: percent(fact.data.commissionRatePct),
+      branch: text(fact.data["branch"]),
+      grossSales: money(fact.data["grossSales"]),
+      platformCost: money(fact.data["platformCost"]),
+      platformCostRate: percent(fact.data["platformCostRatePct"]),
+      orders: count(fact.data["orders"]),
+      commissionRate: percent(fact.data["commissionRatePct"]),
     })),
   };
 }
@@ -128,12 +128,12 @@ function exceptionTable(
       { key: "status", label: "الحالة", align: "text" },
     ],
     rows: exceptions.slice(0, 10).map((fact) => ({
-      branch: text(fact.data.branch),
-      exception: text(fact.data.label),
-      category: text(fact.data.category),
-      reviewAmount: money(fact.data.reviewAmount),
-      potentialRecovery: money(fact.data.potentialRecovery),
-      status: text(fact.data.status),
+      branch: text(fact.data["branch"]),
+      exception: text(fact.data["label"]),
+      category: text(fact.data["category"]),
+      reviewAmount: money(fact.data["reviewAmount"]),
+      potentialRecovery: money(fact.data["potentialRecovery"]),
+      status: text(fact.data["status"]),
     })),
   };
 }
@@ -143,7 +143,7 @@ function comparisonTable(
   title: string,
 ): AnalystTablePresentation | null {
   const metrics = requestedFacts.filter(
-    (fact) => fact.kind === "comparison" && typeof fact.data.metric === "string",
+    (fact) => fact.kind === "comparison" && typeof fact.data["metric"] === "string",
   );
   if (!metrics.length) return null;
 
@@ -158,20 +158,20 @@ function comparisonTable(
       { key: "relative", label: "التغير النسبي", align: "number" },
     ],
     rows: metrics.slice(0, 10).map((fact) => {
-      const unit = fact.data.unit;
+      const unit = fact.data["unit"];
       const formatter =
         unit === "sar" ? money : unit === "percent" ? percent : count;
       const delta =
-        fact.data.deltaType === "percentage_points"
-          ? percent(fact.data.delta)
-          : formatter(fact.data.delta);
+        fact.data["deltaType"] === "percentage_points"
+          ? percent(fact.data["delta"])
+          : formatter(fact.data["delta"]);
 
       return {
-        metric: text(fact.data.metric),
-        current: formatter(fact.data.current),
-        previous: formatter(fact.data.previous),
+        metric: text(fact.data["metric"]),
+        current: formatter(fact.data["current"]),
+        previous: formatter(fact.data["previous"]),
         delta,
-        relative: percent(fact.data.relativeChangePct),
+        relative: percent(fact.data["relativeChangePct"]),
       };
     }),
   };
