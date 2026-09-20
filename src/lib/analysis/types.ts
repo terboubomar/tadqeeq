@@ -77,6 +77,11 @@ export interface BranchRow {
   keetaTotalCostInclVat?: number;
   keetaSourcePayable?: number;
   keetaSettlementVariance?: number;
+  /** Official Keeta Excel Invoice Details controls, aggregated by Restaurant ID. */
+  keetaExcelInvoiceAmount?: number;
+  keetaExcelInvoiceVariance?: number;
+  keetaExcelPayable?: number;
+  keetaExcelPayableVariance?: number;
   keetaPlatformCostPct?: number;
   keetaAvgOrderValueInclVat?: number;
   keetaPdfOrderCommissionInclVat?: number;
@@ -171,6 +176,15 @@ export interface Summary {
   keetaTotalCostInclVat?: number;
   keetaSourcePayable?: number;
   keetaSettlementVariance?: number;
+  /** Official Excel controls from Keeta Invoice Details / Billing data summary. */
+  keetaExcelInvoiceAmount?: number;
+  keetaExcelInvoiceVariance?: number;
+  keetaExcelPayable?: number;
+  keetaExcelPayableVariance?: number;
+  keetaBillingInvoiceAmount?: number;
+  keetaBillingInvoiceVariance?: number;
+  keetaBillingPayable?: number;
+  keetaBillingPayableVariance?: number;
   keetaPlatformCostPct?: number;
   keetaAvgOrderValueInclVat?: number;
 }
@@ -273,6 +287,13 @@ export interface InvoiceFigures {
   keetaMerchantSubsidyItems?: number;
   keetaAdvertisingCosts?: number;
   keetaPosMachineFees?: number;
+  /** Keeta official controls parsed from the same Excel workbook. */
+  keetaExcelInvoiceAmount?: number;
+  keetaExcelPayable?: number;
+  keetaExcelInvoiceDetailRows?: number;
+  keetaBillingInvoiceAmount?: number;
+  keetaBillingPayable?: number;
+  keetaBillingRows?: number;
   invoiceNo?: string;
 }
 
