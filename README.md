@@ -59,6 +59,27 @@ Users can then request **فسّر التغيّرات بـ AI**. The server re-fe
 
 The AI cannot change the comparison or accounting result and is instructed not to claim a cause unless the supplied comparison evidence supports it.
 
+### Ask Tadqeeq V1
+
+**اسأل تدقيق** is a period-aware financial analyst built on top of Tadqeeq's deterministic audit outputs.
+
+For every question, the server:
+
+1. authenticates the current user and re-fetches the selected owned period;
+2. builds a fresh fact registry from deterministic period KPIs, branch metrics, branch rankings, daily rankings, exceptions, Evidence Trails, and the nearest valid previous-period comparison;
+3. excludes raw files, user IDs, database period IDs, stored period labels, branch/store IDs, workflow notes/history, and direct order identifiers from the model packet;
+4. sends the question, limited conversational history, and the fact registry to OpenAI;
+5. requires a schema-constrained response containing explicit fact IDs;
+6. resolves those IDs against the server-built registry before returning the answer.
+
+Chat history is used only for conversational continuity. It is not a financial source of truth.
+
+If a supposedly grounded answer does not reference any valid fact in the current server registry, Tadqeeq replaces it with a safe **data not available** response instead of returning an unsupported financial claim.
+
+Ask Tadqeeq does not recalculate accounting figures, rank branches itself, modify audit state, change potential recovery, close exceptions, or submit disputes. Rankings, deltas, percentage changes, and percentage-point changes are calculated deterministically before the AI request.
+
+Chat messages and AI responses are not stored in the audit result. The AI usage ledger records metadata only.
+
 ## AI setup
 
 Configure these as deployment/server secrets, never as `VITE_*` client variables:
