@@ -569,7 +569,7 @@ export function parseJahezInvoice(raw: string): InvoiceFigures {
   const paymentFeesExVat = paymentRows.reduce((sum, row) => sum + row.taxableExVat, 0);
 
   const totalExVat =
-    amountBeforeLabel(source, "Total \\(Excluding VAT\\)", "Total Taxable Amount \\(Excluding VAT\\)") ??
+    amountBeforeLabel(source, "Total (Excluding VAT)", "Total Taxable Amount (Excluding VAT)") ??
     (commissionExVat || deliveryOfferExVat || paymentFeesExVat
       ? commissionExVat + deliveryOfferExVat + paymentFeesExVat
       : undefined);
