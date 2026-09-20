@@ -51,7 +51,7 @@ const HUNGER_COLUMNS: Column<BranchRow>[] = [
 const KEETA_COLUMNS: Column<BranchRow>[] = [
   { key: "branch", header: "المتجر", type: "text" },
   { key: "branchId", header: "Store ID", type: "text" },
-  { key: "branchAuditLabel", header: "حالة مطابقة PDF", type: "text" },
+  { key: "branchAuditLabel", header: "حالة المطابقة", type: "text" },
   { key: "orders", header: "الطلبات", type: "number" },
   { key: "grossSales", header: "المبيعات شامل الضريبة" },
   { key: "keetaSalesExVat", header: "المبيعات بدون الضريبة" },
@@ -64,12 +64,16 @@ const KEETA_COLUMNS: Column<BranchRow>[] = [
   { key: "keetaPosFeesExVat", header: "رسوم POS" },
   { key: "keetaOtherExpensesExVat", header: "مصروفات أخرى" },
   { key: "keetaCommissionInvoiceInclVat", header: "فاتورة العمولة المحتسبة" },
+  { key: "keetaExcelInvoiceAmount", header: "Invoice amount حسب Excel" },
+  { key: "keetaExcelInvoiceVariance", header: "فرق Invoice amount" },
   { key: "keetaPdfCommissionInvoiceInclVat", header: "فاتورة العمولة PDF" },
   { key: "keetaPdfCommissionVariance", header: "فرق فاتورة العمولة" },
   { key: "keetaCreditSales", header: "البيع الآجل المحتسب" },
   { key: "keetaPdfCreditSales", header: "البيع الآجل PDF" },
   { key: "keetaPdfCreditSalesVariance", header: "فرق البيع الآجل" },
   { key: "netSales", header: "صافي المستحق المحتسب" },
+  { key: "keetaExcelPayable", header: "Payable حسب Invoice Details" },
+  { key: "keetaExcelPayableVariance", header: "فرق Payable الرسمي" },
   { key: "keetaPdfNetDue", header: "صافي المستحق PDF" },
   { key: "keetaPdfNetDueVariance", header: "فرق صافي المستحق" },
   { key: "keetaSourcePayable", header: "Payable حسب Excel" },
@@ -112,7 +116,7 @@ function BranchesPage() {
         caption={
           selected.platform === "hungerstation"
             ? "حالة المطابقة تقارن كل فرع في ملف الطلبات مع صفحات تفاصيل فاتورة هنقرستيشن. الفروق الصغيرة قد تكون تقريباً من المنصة."
-            : "المطابقة تعتمد على Store ID. تتم مقارنة عمولة الطلب ورسوم البنك ودعم توصيل كيتا وفاتورة العمولة وإجمالي البيع الآجل وصافي المستحق مع صفحات كل فرع في PDF."
+            : "المطابقة تعتمد على Store ID. إذا كان ملف كيتا يحتوي Invoice Details تتم مقارنة Invoice amount وPayable لكل فرع مباشرةً من Excel؛ وعند إرفاق PDF تُضاف مطابقة عمولة الطلب ورسوم البنك والتوصيل وCredit Sales وNet Due."
         }
       />
     </div>

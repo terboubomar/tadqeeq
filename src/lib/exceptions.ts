@@ -154,6 +154,7 @@ function categoryForLabel(label: string): ExceptionCategory {
   if (label.includes("مرفوض")) return "rejected_sales";
   if (label.includes("مبيعات") || label.includes("البيع الآجل")) return "sales";
   if (label.includes("التحصيلات")) return "collections";
+  if (label.includes("Invoice amount")) return "invoice_total";
   if (label.includes("صافي المستحق") || label.includes("التسوية")) return "settlement";
   return "other";
 }
@@ -168,7 +169,8 @@ function isControlOnlyLabel(label: string): boolean {
     label.includes("إجمالي فاتورة العمولة") ||
     label.includes("صافي الفاتورة الضريبية") ||
     label.includes("اتساق صافي المستحق") ||
-    label.includes("رسوم مدفوعات المحافظ")
+    label.includes("رسوم مدفوعات المحافظ") ||
+    label.includes("Billing data summary")
   );
 }
 
@@ -327,9 +329,16 @@ function hasBranchCoverage(period: StoredPeriod, label: string): boolean {
   if (label === "صافي المستحق مقابل فاتورة كيتا") {
     return branches.some((branch) => branch.keetaPdfNetDue !== undefined);
   }
+  if (label === "Invoice amount مقابل Invoice Details") {
+    return branches.some((branch) => branch.keetaExcelInvoiceAmount !== undefined);
+  }
+  if (label === "صافي المستحق مقابل Invoice Details") {
+    return branches.some((branch) => branch.keetaExcelPayable !== undefined);
+  }
+  if (label === "صافي التسوية مقابل Order Summary Payable") {
+    return branches.some((branch) => branch.keetaExcelPayable !== undefined);
+  }
 
-  // "صافي التسوية مقابل ملف كيتا" is an Excel-internal payable control,
-  // so branch PDF coverage must not suppress it.
   return false;
 }
 
@@ -506,73 +515,119 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
 
   for (const branch of period.branches ?? []) {
     const vatFactor = 1.15;
+    const hasPdfEvidence =
+      branch.keetaPdfOrderCommissionInclVat !== undefined ||
+      branch.keetaPdfBankCommissionInclVat !== undefined ||
+      branch.keetaPdfDeliveryCommissionInclVat !== undefined ||
+      branch.keetaPdfCreditSales !== undefined ||
+      branch.keetaPdfNetDue !== undefined;
 
-    pushBranchVariance(result, period, {
-      branch: branch.branch,
-      branchId: branch.branchId,
-      category: "commission",
-      label: "فرق عمولة الطلب للفرع",
-      computed:
-        branch.keetaPdfOrderCommissionInclVat !== undefined &&
-        branch.keetaPdfOrderCommissionVariance !== undefined
-          ? branch.keetaPdfOrderCommissionInclVat + branch.keetaPdfOrderCommissionVariance
-          : (branch.keetaCommissionExVat ?? 0) * vatFactor,
-      invoiced: branch.keetaPdfOrderCommissionInclVat,
-      tolerance: 0.06,
-    });
-    pushBranchVariance(result, period, {
-      branch: branch.branch,
-      branchId: branch.branchId,
-      category: "payment_fee",
-      label: "فرق الرسوم المصرفية للفرع",
-      computed:
-        branch.keetaPdfBankCommissionInclVat !== undefined &&
-        branch.keetaPdfBankCommissionVariance !== undefined
-          ? branch.keetaPdfBankCommissionInclVat + branch.keetaPdfBankCommissionVariance
-          : (branch.keetaBankFeesExVat ?? 0) * vatFactor,
-      invoiced: branch.keetaPdfBankCommissionInclVat,
-      tolerance: 0.06,
-    });
-    pushBranchVariance(result, period, {
-      branch: branch.branch,
-      branchId: branch.branchId,
-      category: "delivery_campaign",
-      label: "فرق دعم توصيل كيتا للفرع",
-      computed:
-        branch.keetaPdfDeliveryCommissionInclVat !== undefined &&
-        branch.keetaPdfDeliveryCommissionVariance !== undefined
-          ? branch.keetaPdfDeliveryCommissionInclVat + branch.keetaPdfDeliveryCommissionVariance
-          : (branch.keetaDeliveryCampaignExVat ?? 0) * vatFactor,
-      invoiced: branch.keetaPdfDeliveryCommissionInclVat,
-      tolerance: 0.06,
-    });
-    pushBranchVariance(result, period, {
-      branch: branch.branch,
-      branchId: branch.branchId,
-      category: "sales",
-      label: "فرق البيع الآجل للفرع",
-      computed: branch.keetaCreditSales,
-      invoiced: branch.keetaPdfCreditSales,
-      tolerance: 0.06,
-    });
-    pushBranchVariance(result, period, {
-      branch: branch.branch,
-      branchId: branch.branchId,
-      category: "settlement",
-      label: "فرق صافي مستحق الفرع",
-      computed: branch.netSales,
-      invoiced: branch.keetaPdfNetDue,
-      tolerance: 0.06,
-    });
+    if (hasPdfEvidence) {
+      pushBranchVariance(result, period, {
+        branch: branch.branch,
+        branchId: branch.branchId,
+        category: "commission",
+        label: "فرق عمولة الطلب للفرع",
+        computed:
+          branch.keetaPdfOrderCommissionInclVat !== undefined &&
+          branch.keetaPdfOrderCommissionVariance !== undefined
+            ? branch.keetaPdfOrderCommissionInclVat + branch.keetaPdfOrderCommissionVariance
+            : (branch.keetaCommissionExVat ?? 0) * vatFactor,
+        invoiced: branch.keetaPdfOrderCommissionInclVat,
+        tolerance: 0.06,
+      });
+      pushBranchVariance(result, period, {
+        branch: branch.branch,
+        branchId: branch.branchId,
+        category: "payment_fee",
+        label: "فرق الرسوم المصرفية للفرع",
+        computed:
+          branch.keetaPdfBankCommissionInclVat !== undefined &&
+          branch.keetaPdfBankCommissionVariance !== undefined
+            ? branch.keetaPdfBankCommissionInclVat + branch.keetaPdfBankCommissionVariance
+            : (branch.keetaBankFeesExVat ?? 0) * vatFactor,
+        invoiced: branch.keetaPdfBankCommissionInclVat,
+        tolerance: 0.06,
+      });
+      pushBranchVariance(result, period, {
+        branch: branch.branch,
+        branchId: branch.branchId,
+        category: "delivery_campaign",
+        label: "فرق دعم توصيل كيتا للفرع",
+        computed:
+          branch.keetaPdfDeliveryCommissionInclVat !== undefined &&
+          branch.keetaPdfDeliveryCommissionVariance !== undefined
+            ? branch.keetaPdfDeliveryCommissionInclVat + branch.keetaPdfDeliveryCommissionVariance
+            : (branch.keetaDeliveryCampaignExVat ?? 0) * vatFactor,
+        invoiced: branch.keetaPdfDeliveryCommissionInclVat,
+        tolerance: 0.06,
+      });
+      pushBranchVariance(result, period, {
+        branch: branch.branch,
+        branchId: branch.branchId,
+        category: "sales",
+        label: "فرق البيع الآجل للفرع",
+        computed: branch.keetaCreditSales,
+        invoiced: branch.keetaPdfCreditSales,
+        tolerance: 0.06,
+      });
+      pushBranchVariance(result, period, {
+        branch: branch.branch,
+        branchId: branch.branchId,
+        category: "settlement",
+        label: "فرق صافي مستحق الفرع",
+        computed: branch.netSales,
+        invoiced: branch.keetaPdfNetDue,
+        tolerance: 0.06,
+      });
+    } else {
+      const excelPayableVariance =
+        branch.keetaExcelPayable !== undefined
+          ? branch.keetaExcelPayable - branch.netSales
+          : undefined;
+      pushBranchVariance(result, period, {
+        branch: branch.branch,
+        branchId: branch.branchId,
+        category: "settlement",
+        label: "فرق Payable للفرع",
+        computed: branch.netSales,
+        invoiced: branch.keetaExcelPayable,
+        tolerance: 0.02,
+      });
 
-    // Commission invoice total is a roll-up of the three component checks above.
-    // Do not create a second exception for the same branch.
+      // Invoice amount and Payable usually express the same financial mismatch in
+      // opposite directions. Only open a second Invoice amount case when Payable
+      // itself is already clean, avoiding double-counting the same exposure.
+      if (
+        excelPayableVariance === undefined ||
+        Math.abs(excelPayableVariance) <= 0.02
+      ) {
+        pushBranchVariance(result, period, {
+          branch: branch.branch,
+          branchId: branch.branchId,
+          category: "invoice_total",
+          label: "فرق Invoice amount للفرع",
+          computed:
+            (branch.keetaCommissionInvoiceInclVat ?? 0) +
+            (branch.keetaMerchantAdExVat ?? 0) * vatFactor,
+          invoiced: branch.keetaExcelInvoiceAmount,
+          tolerance: 0.02,
+        });
+      }
+    }
+
     if (
       (branch.branchAuditStatus === "warning" ||
         branch.branchAuditStatus === "unmatched" ||
         branch.branchAuditStatus === "invoice_only") &&
       !branchAlreadyHasException(result, period.id, branch.branchId)
     ) {
+      const source =
+        branch.keetaPdfNetDue !== undefined
+          ? "PDF"
+          : branch.keetaExcelPayable !== undefined
+            ? "Invoice Details"
+            : "مصادر كيتا";
       result.push(
         makeException(period, {
           sourceLevel: "branch",
@@ -581,7 +636,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
           category: "branch_match",
           label:
             branch.branchAuditStatus === "invoice_only"
-              ? "فرع موجود في PDF فقط"
+              ? "فرع موجود في " + source + " فقط"
               : "مشكلة في مطابقة Store ID",
           tolerance: 0,
           evidence: "data",
@@ -865,8 +920,31 @@ export function buildExceptionEvidence(
       platformSources = compactFields([
         definedField("Total credit sales", "Keeta PDF · Branch Credit Sales", branch.keetaPdfCreditSales),
       ]);
+    } else if (item.category === "invoice_total") {
+      formula =
+        "فاتورة العمولة شامل الضريبة + Merchant ad spend شامل الضريبة = Invoice amount";
+      calculatedSources = compactFields([
+        definedField(
+          "فاتورة العمولة شامل الضريبة",
+          "Keeta Order Summary",
+          branch.keetaCommissionInvoiceInclVat,
+        ),
+        definedField(
+          "Merchant ad spend شامل الضريبة",
+          "Keeta Order Summary",
+          (branch.keetaMerchantAdExVat ?? 0) * 1.15,
+        ),
+        definedField("Invoice amount المحتسب", "محرك تدقيق", item.computed),
+      ]);
+      platformSources = compactFields([
+        definedField(
+          "Invoice amount",
+          "Keeta Excel · Invoice Details",
+          branch.keetaExcelInvoiceAmount,
+        ),
+      ]);
     } else if (item.category === "settlement") {
-      formula = "Total credit sales - Total commission invoice = Net due";
+      formula = "Credit Sales - فاتورة العمولة شامل الضريبة = Payable / Net Due";
       calculatedSources = compactFields([
         definedField("Credit Sales", "Keeta Order Summary", branch.keetaCreditSales),
         definedField(
@@ -874,10 +952,16 @@ export function buildExceptionEvidence(
           "Keeta Order Summary",
           branch.keetaCommissionInvoiceInclVat,
         ),
-        definedField("Net Due المحتسب", "محرك تدقيق", branch.netSales),
+        definedField("صافي المستحق المحتسب", "محرك تدقيق", branch.netSales),
       ]);
       platformSources = compactFields([
-        definedField("Net due invoice", "Keeta PDF · Branch Credit Sales", branch.keetaPdfNetDue),
+        definedField(
+          branch.keetaPdfNetDue !== undefined ? "Net due invoice" : "Payable to Restaurant",
+          branch.keetaPdfNetDue !== undefined
+            ? "Keeta PDF · Branch Credit Sales"
+            : "Keeta Excel · Invoice Details",
+          branch.keetaPdfNetDue ?? branch.keetaExcelPayable,
+        ),
       ]);
     } else if (item.category === "branch_match") {
       formula = "مطابقة مباشرة بواسطة Store ID / Restaurant ID";
@@ -886,7 +970,15 @@ export function buildExceptionEvidence(
         definedField("اسم المتجر", "Keeta Order Summary", branch.branch),
       ]);
       platformSources = compactFields([
-        definedField("حالة مطابقة PDF", "محرك تدقيق", branch.branchAuditLabel),
+        definedField(
+          "حالة المطابقة",
+          branch.keetaPdfNetDue !== undefined
+            ? "Keeta PDF"
+            : branch.keetaExcelPayable !== undefined
+              ? "Keeta Excel · Invoice Details"
+              : "محرك تدقيق",
+          branch.branchAuditLabel,
+        ),
       ]);
     }
   }

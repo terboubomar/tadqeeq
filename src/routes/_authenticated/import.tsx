@@ -416,7 +416,7 @@ function PlatformStep({
             {
               id: "keeta" as Platform,
               label: "كيتا",
-              note: "Order Summary الشهري مع فاتورة PDF الكاملة.",
+              note: "ملف Excel الشهري؛ Invoice Details وBilling data summary تُستخدم تلقائياً، وPDF يضيف طبقة أعمق.",
             },
           ].map((item) => (
             <button
@@ -526,7 +526,7 @@ function DocumentsStep({
         hint={
           platform === "hungerstation"
             ? "موصى بها لإجراء المطابقة الرسمية على مستوى الإجمالي والفروع."
-            : "موصى بها لقراءة Simple invoice وCredit Sales وصفحات الفروع ومطابقتها عبر Store ID."
+            : "اختيارية للمطابقة المتقدمة. إذا كان Excel يحتوي Invoice Details فسيجري Tadqeeq المطابقة الرسمية من Excel حتى بدون PDF."
         }
         accept=".pdf"
         tag="موصى به"
@@ -573,7 +573,7 @@ function DocumentsStep({
         </>
       ) : (
         <div className="rounded-[9px] border border-primary/15 bg-secondary/55 px-4 py-3 text-[12px] leading-6 text-foreground/80">
-          لا توجد إعدادات إضافية مطلوبة لكيتا. سيطابق Tadqeeq ملف Order Summary مع PDF عبر Store ID.
+          لا توجد إعدادات إضافية مطلوبة لكيتا. سيستخدم Tadqeeq Invoice Details وBilling data summary تلقائياً إذا كانتا موجودتين داخل Excel، ويستخدم PDF كطبقة مطابقة إضافية عند إرفاقه.
         </div>
       )}
     </div>
@@ -628,7 +628,12 @@ function ReviewStep({
       <ReviewSection title="المستندات والإعدادات" icon={FileText} onEdit={() => onEdit(2)}>
         <ReviewRow
           label="فاتورة المنصة"
-          value={invoiceFile?.name ?? "غير مرفقة — سيعمل التحليل بدون المطابقة الرسمية"}
+          value={
+            invoiceFile?.name ??
+            (platform === "keeta"
+              ? "غير مرفقة — سيستخدم Tadqeeq ضوابط Excel الرسمية إذا كانت موجودة"
+              : "غير مرفقة — سيعمل التحليل بدون المطابقة الرسمية")
+          }
           ready={Boolean(invoiceFile)}
         />
         {platform === "hungerstation" ? (
