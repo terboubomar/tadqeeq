@@ -66,13 +66,13 @@ function FileField({
   onChange: (file: File | null) => void;
 }) {
   return (
-    <div className="rounded-[10px] border border-border bg-white p-4">
+    <div className="rounded-[12px] border border-border bg-white p-5 sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <Label htmlFor={id} className="text-[13.5px] font-semibold">
+          <Label htmlFor={id} className="text-[15px] font-semibold">
             {label}
           </Label>
-          <p className="mt-1 text-xs leading-6 text-muted-foreground">{hint}</p>
+          <p className="mt-1.5 text-[13px] leading-6 text-muted-foreground">{hint}</p>
         </div>
         <span
           className={cn(
