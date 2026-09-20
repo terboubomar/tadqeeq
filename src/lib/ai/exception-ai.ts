@@ -14,6 +14,12 @@ export const exceptionAiExplanationSchema = z.object({
 
 export type ExceptionAiExplanation = z.infer<typeof exceptionAiExplanationSchema>;
 
+export interface ExceptionAiResult {
+  explanation: ExceptionAiExplanation;
+  model: string;
+  promptVersion: string;
+}
+
 export interface ExceptionAiPacket {
   platform: AuditException["platform"];
   period: {
