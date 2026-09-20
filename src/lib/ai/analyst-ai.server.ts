@@ -11,12 +11,14 @@ import { buildAnalystPresentation } from "./analyst-presentation";
 import { callTadqeeqAi } from "./gateway.server";
 
 const FEATURE = "analyst_chat";
-const PROMPT_VERSION = "ask-tadqeeq-v2-structured";
+const PROMPT_VERSION = "ask-tadqeeq-v3-app-intelligence";
 const DEFAULT_HOURLY_LIMIT = 30;
+const DEFAULT_ANALYST_MODEL = "gpt-5.6-terra";
 
 interface AskTadqeeqInput {
   periodId: string;
   question: string;
+  currentRoute: string;
   history: AnalystHistoryMessage[];
   accessToken: string;
 }
@@ -181,7 +183,9 @@ async function callAnalyst(
   const systemPrompt = [
     "أنت Ask Tadqeeq، محلل مساعد داخل نظام تدقيق مالي لمنصات التوصيل.",
     "وظيفتك شرح واسترجاع النتائج التي حسبها Tadqeeq مسبقاً، وليس إنشاء نتيجة محاسبية جديدة.",
-    "FACT_REGISTRY هو المصدر الوحيد المسموح للحقائق المالية والتشغيلية.",
+    "FACT_REGISTRY هو المصدر الوحيد المسموح للحقائق المالية والتشغيلية ومعرفة واجهات Tadqeeq.",
+    "حقائق kind=app تشرح الشاشات، معنى كل صفحة، مصدرها، وحدودها. إذا قال المستخدم هذه الصفحة أو هنا، استخدم currentScreen=true وCURRENT_ROUTE لفهم المقصود.",
+    "حقائق kind=invoice_check تمثل دفتر مطابقة الفاتورة، kind=daily تمثل الصفوف اليومية الفعلية، kind=breakdown/status تمثل تفصيل البنود وحالات الطلبات، وkind=history تمثل الفترات المحفوظة.",
     "لا تستخدم معرفتك العامة أو رسائل المحادثة السابقة كمصدر لرقم أو حقيقة تخص هذا التدقيق.",
     "CHAT_HISTORY مخصص فقط لفهم الضمائر والمتابعة والسياق اللغوي.",
     "لا تقم بحساب نسبة أو فرق أو ترتيب أو مجموع جديد. استخدم فقط القيم والترتيبات والدلتا المحسوبة الموجودة في FACT_REGISTRY.",
@@ -261,6 +265,7 @@ async function callAnalyst(
     CHAT_HISTORY: input.history.slice(-8),
     SCOPE: {
       platform: context.platform,
+      currentRoute: context.currentRoute,
       period: context.period,
       hasPreviousPeriod: context.hasPreviousPeriod,
       coverage: context.coverage,
@@ -273,7 +278,11 @@ async function callAnalyst(
     userText: JSON.stringify(payload),
     schemaName: "ask_tadqeeq_answer",
     schema,
-    maxOutputTokens: 2000,
+    maxOutputTokens: 2400,
+    model:
+      process.env["TADQEEQ_ANALYST_MODEL"]?.trim() ||
+      DEFAULT_ANALYST_MODEL,
+    reasoningEffort: "medium",
   });
 
   const parsed = analystAiResponseSchema.parse(JSON.parse(text) as unknown);
@@ -320,7 +329,7 @@ export async function askTadqeeqOnServer(input: AskTadqeeqInput): Promise<Analys
   await enforceRateLimit(input, user, supabaseUrl, supabaseKey);
 
   const { current, periods } = await fetchOwnedPeriods(input, user, supabaseUrl, supabaseKey);
-  const context = buildAnalystContext(current, periods);
+  const context = buildAnalystContext(current, periods, input.currentRoute);
   const { response, model } = await callAnalyst(input, context);
   const factsUsed = resolveAnalystFacts(context, response.usedFactIds).map(
     ({ id, kind, label, displayValue }) => ({ id, kind, label, displayValue }),
