@@ -1136,8 +1136,6 @@ export function buildExceptionEvidence(
         ),
       ]);
     }
-  }
-
   } else if (period.platform === "jahez" && item.category === "compensation") {
     const orderId = item.label.match(/طلب\s+(\d+)/)?.[1];
     const transaction = period.invoice?.jahezCompensation?.transactions.find(
@@ -1178,6 +1176,8 @@ export function buildExceptionEvidence(
         ),
       ]);
     }
+  }
+
   return {
     reason: genericReason(item),
     formula,
