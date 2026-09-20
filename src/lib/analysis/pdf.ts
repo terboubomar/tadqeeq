@@ -521,3 +521,91 @@ export function parseKeetaInvoice(raw: string): InvoiceFigures {
 
   return figures;
 }
+
+
+function jahezRows(source: string, label: string): Array<{
+  unitExVat: number;
+  quantity: number;
+  taxableExVat: number;
+  inclVat: number;
+}> {
+  const escaped = label.replace(/[.*+?^$(){}|[\]\\]/g, "\\$&");
+  const re = new RegExp(
+    escaped +
+      "\\s+(\\d[\\d,]*\\.\\d{2,5})\\s+(\\d+)\\s+(\\d[\\d,]*\\.\\d{2,5})\\s+" +
+      "\\d[\\d,]*\\.\\d{2,5}\\s+15\\s*%?\\s+(\\d[\\d,]*\\.\\d{2,5})",
+    "gi",
+  );
+  return [...source.matchAll(re)].map((match) => ({
+    unitExVat: toNumber(match[1]!),
+    quantity: Number.parseInt(match[2]!, 10),
+    taxableExVat: toNumber(match[3]!),
+    inclVat: toNumber(match[4]!),
+  }));
+}
+
+function amountBeforeLabel(source: string, ...labels: string[]): number | undefined {
+  for (const label of labels) {
+    const escaped = label.replace(/[.*+?^$(){}|[\]\\]/g, "\\$&");
+    const re = new RegExp("(" + NUM + ")\\s*" + escaped, "i");
+    const match = source.match(re);
+    if (match?.[1]) {
+      const value = toNumber(match[1]);
+      if (Number.isFinite(value)) return value;
+    }
+  }
+  return undefined;
+}
+
+/** Parse a Jahez one-page tax invoice. */
+export function parseJahezInvoice(raw: string): InvoiceFigures {
+  const source = raw.replace(/\s+/g, " ").trim();
+  const commissionRows = jahezRows(source, "Commission");
+  const deliveryRows = jahezRows(source, "Delivery Offer");
+  const paymentRows = jahezRows(source, "Payment Fees");
+
+  const commissionExVat = commissionRows.reduce((sum, row) => sum + row.taxableExVat, 0);
+  const deliveryOfferExVat = deliveryRows.reduce((sum, row) => sum + row.taxableExVat, 0);
+  const paymentFeesExVat = paymentRows.reduce((sum, row) => sum + row.taxableExVat, 0);
+
+  const totalExVat =
+    amountBeforeLabel(source, "Total \\(Excluding VAT\\)", "Total Taxable Amount \\(Excluding VAT\\)") ??
+    (commissionExVat || deliveryOfferExVat || paymentFeesExVat
+      ? commissionExVat + deliveryOfferExVat + paymentFeesExVat
+      : undefined);
+  const vat = amountBeforeLabel(source, "Total VAT");
+  const totalIncVat = amountBeforeLabel(source, "Total Due Amount");
+
+  const figures = build({
+    totalExVat,
+    vat,
+    totalIncVat,
+  });
+
+  if (commissionRows.length) figures.jahezCommissionExVat = commissionExVat;
+  if (deliveryRows.length) {
+    figures.jahezDeliveryOfferExVat = deliveryOfferExVat;
+    figures.jahezDeliveryOfferRows = deliveryRows.map((row) => ({
+      unitExVat: row.unitExVat,
+      quantity: row.quantity,
+      amountExVat: row.taxableExVat,
+    }));
+  }
+  if (paymentRows.length) figures.jahezPaymentFeesExVat = paymentFeesExVat;
+
+  const invoiceNo =
+    source.match(/رقم الفاتورة\s*:?\s*(\d{6,})/i)?.[1] ??
+    source.match(/Invoice\s*(?:No|Number)[^0-9]{0,30}(\d{6,})/i)?.[1];
+  if (invoiceNo) figures.invoiceNo = invoiceNo;
+
+  const lines: { label: string; amount: number }[] = [];
+  if (commissionExVat) lines.push({ label: "عمولة جاهز", amount: commissionExVat });
+  if (deliveryOfferExVat) lines.push({ label: "عروض التوصيل", amount: deliveryOfferExVat });
+  if (paymentFeesExVat) lines.push({ label: "رسوم مدفوعات", amount: paymentFeesExVat });
+  if (totalExVat !== undefined) lines.push({ label: "الإجمالي بدون الضريبة", amount: totalExVat });
+  if (vat !== undefined) lines.push({ label: "ضريبة القيمة المضافة", amount: vat });
+  if (totalIncVat !== undefined) lines.push({ label: "إجمالي المبلغ المستحق", amount: totalIncVat });
+  figures.lines = lines;
+
+  return figures;
+}
