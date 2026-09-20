@@ -82,7 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "أعد احتساب عمولات هنقرستيشن وكيتا من بيانات الطلبات الخام، وقارنها بالفاتورة لاكتشاف الفروقات.",
+          "أعد احتساب عمولات هنقرستيشن وكيتا وجاهز وجاهز من بيانات الطلبات الخام، وقارنها بالفاتورة لاكتشاف الفروقات.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
