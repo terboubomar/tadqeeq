@@ -100,6 +100,105 @@ describe("Exception Center", () => {
     expect(summary.potentialRecovery).toBeCloseTo(20, 6);
   });
 
+  test("does not turn an invoice-only fixed-charge branch into a branch mismatch exception", () => {
+    const period = hungerPeriod();
+    period.branches.push({
+      branch: "Fixed Fee Branch",
+      branchId: "",
+      orders: 0,
+      grossSales: 0,
+      netSales: 0,
+      commission: 0,
+      commissionPct: 0,
+      ccSuccess: 0,
+      ccRejected: 0,
+      walletAmount: 0,
+      riderWallet: 0,
+      rdfCampaigns: 0,
+      freeDeliveryOrders: 0,
+      compensation: 0,
+      jokerFees: 0,
+      hsFoodDiscount: 0,
+      rewardsDiscount: 0,
+      restaurantFoodDiscount: 0,
+      totalFoodDiscount: 0,
+      partialRefund: 0,
+      fulfillmentMods: 0,
+      approvedRefunds: 0,
+      waitingTimeFees: 0,
+      bankFeeSuccess: 0,
+      bankFeeRefunded: 0,
+      totalCharges: 0,
+      invoiceCommission: 0,
+      invoicePaymentFees: 0,
+      invoiceOtherCharges: 500,
+      invoiceOnlyBranchCharges: 500,
+      invoiceCollections: 0,
+      invoiceCreditSales: 0,
+      branchAuditStatus: "invoice_only",
+      branchAuditLabel: "في الفاتورة فقط",
+      branchAuditNote: "الفرع يحمل رسماً ثابتاً فقط ولا توجد عليه حركة تشغيلية.",
+    });
+
+    const exceptions = buildPeriodExceptions(period);
+    expect(exceptions.some((item) => item.branch === "Fixed Fee Branch")).toBe(false);
+  });
+
+  test("keeps an invoice-only branch actionable when it contains operational financial activity", () => {
+    const period = hungerPeriod();
+    period.branches.push({
+      branch: "Operational Invoice Branch",
+      branchId: "",
+      orders: 0,
+      grossSales: 0,
+      netSales: 0,
+      commission: 0,
+      commissionPct: 0,
+      ccSuccess: 0,
+      ccRejected: 0,
+      walletAmount: 0,
+      riderWallet: 0,
+      rdfCampaigns: 0,
+      freeDeliveryOrders: 0,
+      compensation: 0,
+      jokerFees: 0,
+      hsFoodDiscount: 0,
+      rewardsDiscount: 0,
+      restaurantFoodDiscount: 0,
+      totalFoodDiscount: 0,
+      partialRefund: 0,
+      fulfillmentMods: 0,
+      approvedRefunds: 0,
+      waitingTimeFees: 0,
+      bankFeeSuccess: 0,
+      bankFeeRefunded: 0,
+      totalCharges: 0,
+      invoiceCommission: 125,
+      invoicePaymentFees: 10,
+      invoiceOtherCharges: 0,
+      invoiceOnlyBranchCharges: 0,
+      invoiceCollections: 700,
+      invoiceCreditSales: 800,
+      branchAuditStatus: "invoice_only",
+      branchAuditLabel: "في الفاتورة فقط",
+      branchAuditNote: "يوجد نشاط مالي في الفاتورة بدون فرع مقابل في ملف الطلبات.",
+    });
+
+    const exceptions = buildPeriodExceptions(period);
+    const actionable = exceptions.filter(
+      (item) => item.branch === "Operational Invoice Branch",
+    );
+
+    expect(actionable.length).toBeGreaterThan(0);
+    expect(
+      actionable.some((item) =>
+        ["commission", "payment_fee", "collections", "sales", "branch_match"].includes(
+          item.category,
+        ),
+      ),
+    ).toBe(true);
+  });
+
   test("never turns aggregate Keeta tax controls into an exception", () => {
     const period = {
       id: "keeta-old",

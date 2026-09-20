@@ -87,7 +87,6 @@ function build(entries: Record<string, number | string | undefined>): InvoiceFig
  * Each row reads: label, quantity, rate, amount — we keep the last number.
  */
 const EXTRA_LINES: { label: string; keys: string[] }[] = [
-  { label: "رسوم محفظة العميل", keys: ["Wallet Payments Fee", "Wallet Payment Fee"] },
   { label: "الطابعات", keys: ["Printers"] },
   { label: "الاشتراك الشهري", keys: ["Monthly subscription fees", "Monthly Subscription"] },
   {
@@ -236,6 +235,28 @@ export function parseHungerInvoice(raw: string): InvoiceFigures {
   const total = amountsAfter(firstPage, 3, "Total Invoice", "Invoice Total");
   const creditSales = amountsAfter(salesPage, 3, "Credit Sales");
   const rejectedSales = amountsAfter(salesPage, 3, "Rejected sales", "Rejected Sales");
+
+  // HungerStation's aggregate Invoice Details page lists Wallet Payments Fee as:
+  // fee base, rate, fee amount. The order export's Wallet Amount and Transmitter
+  // Amount are collection flows and are NOT a reliable substitute for this base.
+  const aggregateCommissionPage =
+    pages
+      .slice(1)
+      .find(
+        (page) =>
+          /Invoice Details/i.test(page) &&
+          /Total Commission/i.test(page) &&
+          /Successful Bank Fee|Refunded Bank Fee/i.test(page),
+      ) ?? "";
+  const walletFeeRow = aggregateCommissionPage
+    ? amountsAfter(
+        aggregateCommissionPage,
+        3,
+        "Wallet Payments Fee",
+        "Wallet Payment Fee",
+      )
+    : [];
+
   const figures = build({
     salesCommission: amountAfter(firstPage, "Sales Commission"),
     paymentFees: amountAfter(
@@ -245,6 +266,8 @@ export function parseHungerInvoice(raw: string): InvoiceFigures {
       "Online Payments Fees",
       "Online Payment Fees",
     ),
+    walletFeeBase: walletFeeRow[0],
+    walletFee: walletFeeRow[2],
     othersCommission: amountAfter(firstPage, "Others Commission", "Other Commission"),
     totalExVat: total[0],
     vat: total[1],

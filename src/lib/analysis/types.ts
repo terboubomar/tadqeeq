@@ -15,9 +15,13 @@ export interface BranchRow {
   netBankCards?: number;
   walletAmount: number;
   riderWallet: number;
-  /** Wallet + rider/transmitter amount charged the wallet-payment fee. */
+  /**
+   * Wallet-payment fee base reported by HungerStation's invoice.
+   * This is NOT reconstructed from Wallet Amount / Transmitter Amount because
+   * those columns are collection flows and do not identify the fee-bearing base.
+   */
   walletFeeBase?: number;
-  /** Wallet-payment fee calculated from the contract/payment rate. */
+  /** Wallet-payment fee reported by HungerStation; invoice-derived unless independently supported. */
   walletFee?: number;
   rdfCampaigns: number;
   freeDeliveryOrders: number;
@@ -44,7 +48,13 @@ export interface BranchRow {
   invoiceBranchName?: string;
   invoiceCommission?: number;
   commissionVariance?: number;
+  /** Full Payment Fees amount reported for the branch, including any Wallet Payments Fee. */
   invoicePaymentFees?: number;
+  /** Wallet Payments Fee reported on the branch invoice, if present. */
+  invoiceWalletFee?: number;
+  /** Card-only Payment Fees after excluding invoice Wallet Payments Fee. */
+  invoiceCardPaymentFees?: number;
+  /** Card-only variance: invoice card fees - independently reconstructed card fees. */
   paymentFeeVariance?: number;
   invoiceOtherCharges?: number;
   otherChargesVariance?: number;
@@ -142,9 +152,9 @@ export interface Summary {
   netBankCards?: number;
   walletAmount: number;
   riderWallet: number;
-  /** Wallet + rider/transmitter amount charged the wallet-payment fee. */
+  /** Wallet-payment fee base reported by HungerStation's invoice, when available. */
   walletFeeBase?: number;
-  /** Wallet-payment fee calculated from the contract/payment rate. */
+  /** Wallet-payment fee reported by HungerStation; not reconstructed from collection columns. */
   walletFee?: number;
   rdfCampaigns: number;
   compensation: number;
@@ -350,6 +360,10 @@ export interface InvoiceFigures {
   extras?: { label: string; amount: number }[];
   salesCommission?: number;
   paymentFees?: number;
+  /** Aggregate Wallet Payments Fee base reported on the HungerStation invoice. */
+  walletFeeBase?: number;
+  /** Aggregate Wallet Payments Fee reported on the HungerStation invoice. */
+  walletFee?: number;
   othersCommission?: number;
   totalExVat?: number;
   vat?: number;

@@ -185,7 +185,7 @@ describe("HungerStation audit rules", () => {
     expect(result.summary.ccRejected).toBeCloseTo(24, 6);
     expect(result.summary.walletAmount).toBeCloseTo(11, 6);
     expect(result.summary.riderWallet).toBeCloseTo(7, 6);
-    expect(result.summary.walletFeeBase).toBeCloseTo(50, 6);
+    expect(result.summary.walletFeeBase).toBeCloseTo(0, 6);
     expect(result.summary.walletFee).toBeCloseTo(1.25, 6);
     expect(result.summary.rdfCampaigns).toBeCloseTo(17.5, 6);
     expect(result.summary.totalFoodDiscount).toBeCloseTo(20, 6);
@@ -194,17 +194,18 @@ describe("HungerStation audit rules", () => {
     expect(result.branches[0]?.freeDeliveryOrders).toBe(3);
 
     const paymentCheck = result.checks.find(
-      (check) => check.label === "رسوم الدفع الإلكتروني",
+      (check) => check.label === "رسوم الدفع الإلكتروني القابلة للتحقق (البطاقات)",
     );
-    expect(paymentCheck?.computed).toBeCloseTo(7.1, 6);
+    expect(paymentCheck?.computed).toBeCloseTo(5.85, 6);
+    expect(paymentCheck?.invoiced).toBeCloseTo(5.85, 6);
     expect(paymentCheck?.evidence).toBe("contract");
 
     const walletFeeCheck = result.checks.find(
-      (check) => check.label === "رسوم مدفوعات المحافظ",
+      (check) => check.label.startsWith("رسوم مدفوعات المحافظ"),
     );
     expect(walletFeeCheck?.computed).toBeCloseTo(1.25, 6);
     expect(walletFeeCheck?.invoiced).toBeCloseTo(1.25, 6);
-    expect(walletFeeCheck?.evidence).toBe("contract");
+    expect(walletFeeCheck?.evidence).toBe("mixed");
 
     const collectionsCheck = result.checks.find(
       (check) => check.label === "إجمالي التحصيلات",
@@ -230,12 +231,12 @@ describe("HungerStation audit rules", () => {
 
     expect(result.summary.bankRateSource).toBe("manual");
     expect(result.summary.bankRate).toBeCloseTo(0.025, 8);
-    expect(result.summary.invoiceImpliedBankRate).toBeCloseTo(0.0825, 8);
+    expect(result.summary.invoiceImpliedBankRate).toBeCloseTo(0.1, 8);
 
     const paymentCheck = result.checks.find(
-      (check) => check.label === "رسوم الدفع الإلكتروني",
+      (check) => check.label === "رسوم الدفع الإلكتروني القابلة للتحقق (البطاقات)",
     );
-    expect(paymentCheck?.computed).toBeCloseTo(7.1, 6);
+    expect(paymentCheck?.computed).toBeCloseTo(5.85, 6);
     expect(paymentCheck?.invoiced).toBeCloseTo(23.4, 6);
     expect(paymentCheck?.evidence).toBe("contract");
   });
@@ -245,6 +246,8 @@ describe("HungerStation audit rules", () => {
       invoice: {
         lines: [],
         paymentFees: 7.1,
+        walletFeeBase: 50,
+        walletFee: 1.25,
       },
     });
 
@@ -252,7 +255,7 @@ describe("HungerStation audit rules", () => {
     expect(result.summary.bankRate).toBeCloseTo(0.025, 8);
 
     const paymentCheck = result.checks.find(
-      (check) => check.label === "رسوم الدفع الإلكتروني",
+      (check) => check.label === "رسوم الدفع الإلكتروني القابلة للتحقق (البطاقات)",
     );
     expect(paymentCheck?.evidence).toBe("invoice_derived");
   });
@@ -295,6 +298,8 @@ describe("HungerStation branch reconciliation", () => {
     expect(invoice.branches?.[0]?.branch).toBe("Branch A");
     expect(invoice.branches?.[0]?.salesCommission).toBeCloseTo(27.75, 2);
     expect(invoice.branches?.[0]?.paymentFees).toBeCloseTo(7.1, 2);
+    expect(invoice.walletFeeBase).toBeCloseTo(50, 2);
+    expect(invoice.walletFee).toBeCloseTo(1.25, 2);
     expect(invoice.branches?.[0]?.invoiceOnlyCharges).toBeCloseTo(500, 2);
     expect(invoice.branches?.[0]?.totalCollections).toBeCloseTo(214.5, 2);
     expect(invoice.branches?.[0]?.creditSales).toBeCloseTo(175, 2);
@@ -309,12 +314,58 @@ describe("HungerStation branch reconciliation", () => {
     expect(branch?.invoiceCommission).toBeCloseTo(27.75, 2);
     expect(branch?.commissionVariance).toBeCloseTo(0, 6);
     expect(branch?.invoicePaymentFees).toBeCloseTo(7.1, 2);
+    expect(branch?.invoiceWalletFee).toBeCloseTo(1.25, 2);
+    expect(branch?.invoiceCardPaymentFees).toBeCloseTo(5.85, 2);
     expect(branch?.paymentFeeVariance).toBeCloseTo(0, 6);
     expect(branch?.invoiceCollections).toBeCloseTo(214.5, 2);
     expect(branch?.collectionsVariance).toBeCloseTo(0, 6);
     expect(branch?.invoiceCreditSales).toBeCloseTo(175, 2);
     expect(branch?.creditSalesVariance).toBeCloseTo(0, 6);
     expect(branch?.invoiceOnlyBranchCharges).toBeCloseTo(500, 2);
+  });
+
+  test("does not charge wallet collections when the branch invoice has no Wallet Payments Fee", () => {
+    const invoice = parseHungerInvoice(
+      "Sales Commission 27.75 4.16 31.91 " +
+        "Payment Fees 5.85 0.88 6.73 " +
+        "Others Commission 17.50 2.63 20.13 " +
+        "Total Invoice 51.10 7.67 58.77 " +
+        "Total Online Sales (214.50) Net Due Invoice (155.73) " +
+        "Credit Sales 3.0 175.00 201.25 Rejected sales 1.0 10.00 11.50" +
+        "\n" +
+        "Invoice Details Branch A Commissions " +
+        "HS delivery commission 185.00 15.0% 27.75 " +
+        "Successful Bank Fee 210.00 2.5% 5.25 " +
+        "Refunded Bank Fee 24.00 2.5% 0.60 " +
+        "RDF campaigns 3.0 5.83 17.50 " +
+        "Total Commission 51.10" +
+        "\n" +
+        "Online Payments for branch Branch A " +
+        "Net Bank Cards Payments (180.00) " +
+        "User wallets payments (11.00) " +
+        "Rider wallets payments (7.00) " +
+        "Total food discounts (20.00) " +
+        "Restaurant food discounts 13.00 " +
+        "Rewards Discounts (9.50) " +
+        "Net Marketing Discounts (16.50) " +
+        "Total Approved Claims 0.00 " +
+        "Total Collections (214.50) " +
+        "Credit Sales 3.0 175.00 201.25 " +
+        "Rejected sales 1.0 10.00 11.50",
+    );
+
+    const result = analyzeHungerStation(buildWorkbook(), {
+      manualBankRate: 0.025,
+      invoice,
+    });
+    const branch = result.branches.find((row) => row.branch === "Branch A");
+
+    expect(branch?.walletAmount).toBeCloseTo(11, 6);
+    expect(branch?.riderWallet).toBeCloseTo(7, 6);
+    expect(branch?.invoiceWalletFee).toBeCloseTo(0, 6);
+    expect(branch?.invoiceCardPaymentFees).toBeCloseTo(5.85, 6);
+    expect(branch?.paymentFeeVariance).toBeCloseTo(0, 6);
+    expect(branch?.branchAuditStatus).toBe("matched");
   });
 
   test("reads Sales Summary from page two without using page-two fee-detail headings", () => {
@@ -382,6 +433,25 @@ describe("HungerStation commission invoice parser", () => {
     expect(figures.rejectedSalesIncVat).toBeCloseTo(181.95, 2);
   });
 });
+
+  test("extracts the aggregate wallet fee base without treating wallet collections as the fee base", () => {
+    const figures = parseHungerInvoice(
+      "Sales Commission 279,237.45 41,885.62 321,123.07 " +
+        "Payment Fees 40,835.53 6,125.33 46,960.86 " +
+        "Others Commission 149,161.30 22,374.20 171,535.50 " +
+        "Total Invoice 469,234.28 70,385.14 539,619.42" +
+        "\n" +
+        "Invoice Details Commissions " +
+        "Successful Bank Fee 1,628,333.97 2.5% 40,708.37 " +
+        "Refunded Bank Fee 2,603.43 2.5% 65.14 " +
+        "Wallet Payments Fee 2,480.66 2.5% 62.02 " +
+        "Total Commission 469,234.28",
+    );
+
+    expect(figures.walletFeeBase).toBeCloseTo(2480.66, 2);
+    expect(figures.walletFee).toBeCloseTo(62.02, 2);
+    expect(figures.extras?.some((extra) => extra.label.includes("محفظة")) ?? false).toBe(false);
+  });
 
 describe("HungerStation CPC parser", () => {
   test("reads the real before-VAT, VAT and after-VAT labels without confusing them", () => {
