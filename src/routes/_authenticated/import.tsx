@@ -66,13 +66,13 @@ function FileField({
   onChange: (file: File | null) => void;
 }) {
   return (
-    <div className="rounded-[10px] border border-border bg-white p-4">
+    <div className="rounded-[12px] border border-border bg-white p-5 sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <Label htmlFor={id} className="text-[13.5px] font-semibold">
+          <Label htmlFor={id} className="text-[15px] font-semibold">
             {label}
           </Label>
-          <p className="mt-1 text-xs leading-6 text-muted-foreground">{hint}</p>
+          <p className="mt-1.5 text-[13px] leading-6 text-muted-foreground">{hint}</p>
         </div>
         <span
           className={cn(
@@ -96,18 +96,30 @@ function FileField({
       <label
         htmlFor={id}
         className={cn(
-          "mt-3 flex cursor-pointer flex-wrap items-center gap-2 rounded-[8px] border border-dashed px-3 py-3 text-xs transition-colors",
+          "mt-4 flex min-h-[132px] cursor-pointer flex-col items-center justify-center gap-2 rounded-[12px] border-2 border-dashed px-4 py-7 text-center transition-colors sm:min-h-[160px]",
           file
-            ? "border-success/30 bg-success/[0.035]"
-            : "border-input bg-background/70 hover:border-primary/40",
+            ? "border-success/40 bg-success/[0.05]"
+            : "border-input bg-background/70 hover:border-primary/50 hover:bg-secondary/40",
         )}
       >
-        <span className="num text-[11px] text-muted-foreground">{accept}</span>
-        <span className="flex-1" />
-        <span className={file ? "font-medium text-foreground" : "text-muted-foreground"}>
-          {file ? file.name : "اسحب الملف هنا أو"}
+        <span
+          className={cn(
+            "grid size-11 place-items-center rounded-full",
+            file ? "bg-success/15 text-success" : "bg-secondary text-primary",
+          )}
+        >
+          {file ? <Check className="size-5" /> : <Upload className="size-5" />}
         </span>
-        <span className="rounded-[6px] border border-input bg-white px-2.5 py-1 font-medium text-foreground">
+        <span
+          className={cn(
+            "max-w-full break-all text-[14px]",
+            file ? "font-semibold text-foreground" : "font-medium text-foreground/80",
+          )}
+        >
+          {file ? file.name : "اسحب الملف هنا أو اضغط للاختيار"}
+        </span>
+        <span className="num text-[11.5px] text-muted-foreground">{accept}</span>
+        <span className="mt-1 rounded-[8px] border border-input bg-white px-4 py-2 text-[13px] font-medium text-foreground">
           {file ? "تغيير الملف" : "اختر ملفاً"}
         </span>
       </label>
@@ -218,10 +230,10 @@ function ImportPage() {
   }
 
   return (
-    <div className="max-w-[820px] space-y-5">
+    <div className="w-full space-y-6">
       <header>
-        <h1 className="audit-heading">رفع بيانات فترة جديدة</h1>
-        <p className="mt-1 text-[13px] leading-7 text-muted-foreground">
+        <h1 className="audit-heading text-2xl sm:text-[28px]">رفع بيانات فترة جديدة</h1>
+        <p className="mt-1.5 text-[14px] leading-7 text-muted-foreground">
           أكمل كل خطوة على حدة. لن ينتقل تدقيق للمرحلة التالية قبل اكتمال البيانات المطلوبة.
         </p>
       </header>
@@ -232,20 +244,20 @@ function ImportPage() {
         onStepClick={goToStep}
       />
 
-      <section className="rounded-[10px] border border-border bg-white">
-        <div className="border-b border-border/80 px-5 py-4">
+      <section className="rounded-[12px] border border-border bg-white">
+        <div className="border-b border-border/80 px-5 py-4 sm:px-7 sm:py-5">
           <div className="flex items-center gap-3">
-            <span className="num grid size-7 shrink-0 place-items-center rounded-full bg-primary text-[12px] font-semibold text-white">
+            <span className="num grid size-8 shrink-0 place-items-center rounded-full bg-primary text-[13px] font-semibold text-white">
               {step + 1}
             </span>
-            <div>
-              <h2 className="text-[15px] font-semibold">{STEPS[step].title}</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">{STEPS[step].note}</p>
+            <div className="min-w-0">
+              <h2 className="text-[17px] font-semibold">{STEPS[step]?.title}</h2>
+              <p className="mt-0.5 text-[13px] text-muted-foreground">{STEPS[step]?.note}</p>
             </div>
           </div>
         </div>
 
-        <div className="p-5">
+        <div className="p-5 sm:p-7">
           {step === 0 ? (
             <PlatformStep
               platform={platform}
