@@ -43,12 +43,17 @@ function InvoiceCheck() {
   const hasPdfInvoice =
     selected.platform === "hungerstation"
       ? Boolean(selected.invoice?.lines?.length)
-      : Boolean(
-          selected.invoice?.keetaBranches?.length ||
-            selected.invoice?.salesCommission !== undefined ||
-            selected.invoice?.netDue !== undefined ||
-            selected.invoice?.keetaTaxInvoiceExVat !== undefined,
-        );
+      : selected.platform === "keeta"
+        ? Boolean(
+            selected.invoice?.keetaBranches?.length ||
+              selected.invoice?.salesCommission !== undefined ||
+              selected.invoice?.netDue !== undefined ||
+              selected.invoice?.keetaTaxInvoiceExVat !== undefined,
+          )
+        : Boolean(
+            selected.invoice?.jahezCommissionExVat !== undefined ||
+              selected.invoice?.totalIncVat !== undefined,
+          );
   const hasKeetaExcelControl =
     selected.platform === "keeta" &&
     (selected.invoice?.keetaExcelInvoiceAmount !== undefined ||
@@ -62,13 +67,15 @@ function InvoiceCheck() {
           "رسوم الدفع الإلكتروني",
           "عمولات أخرى القابلة للتحقق من البيانات",
         ])
-      : new Set([
-          hasPdfInvoice
-            ? "صافي المستحق مقابل فاتورة كيتا"
-            : hasKeetaExcelControl
-              ? "صافي المستحق مقابل Invoice Details"
-              : "صافي التسوية مقابل Order Summary Payable",
-        ]);
+      : selected.platform === "keeta"
+        ? new Set([
+            hasPdfInvoice
+              ? "صافي المستحق مقابل فاتورة كيتا"
+              : hasKeetaExcelControl
+                ? "صافي المستحق مقابل Invoice Details"
+                : "صافي التسوية مقابل Order Summary Payable",
+          ])
+        : new Set(["إجمالي فاتورة جاهز شامل الضريبة"]);
   const independentlyComparable = checks.filter(
     (check) =>
       headlineLabels.has(check.label) &&
@@ -125,7 +132,9 @@ function InvoiceCheck() {
             <p className="mt-1 text-sm text-muted-foreground">
               {selected.platform === "keeta"
                 ? "تمت مطابقة التسوية داخلياً مع Order Summary فقط. هذا الملف لا يحتوي Invoice Details ولم تُرفق فاتورة PDF."
-                : "الأرقام أدناه محتسبة من بيانات الطلبات فقط. أعد رفع الفترة مع ملف الفاتورة (PDF) لإظهار الفروقات."}
+                : selected.platform === "jahez"
+                  ? "تمت إعادة بناء صافي المطعم والفاتورة من CSV. أرفق فاتورة جاهز PDF لإضافة المطابقة الضريبية الرسمية."
+                  : "الأرقام أدناه محتسبة من بيانات الطلبات فقط. أعد رفع الفترة مع ملف الفاتورة (PDF) لإظهار الفروقات."}
             </p>
           </div>
         </div>
