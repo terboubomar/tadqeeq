@@ -42,6 +42,23 @@ The packet excludes raw files, workflow notes/history, user IDs, period database
 
 Period Summary output is schema-constrained Arabic commentary only. It cannot edit figures, exception state, recovery amounts, or accounting results.
 
+### Period Intelligence V1
+
+The executive dashboard automatically finds the nearest earlier saved period for the same delivery platform and builds a deterministic comparison before any AI call.
+
+The comparison calculates:
+
+- orders, gross sales, net sales, commission, total platform cost, and their relative changes;
+- commission-rate and platform-cost-rate changes in **percentage points**, kept distinct from relative percentage change;
+- open-exception count, amount under review, potential recovery, and recovered-amount movement;
+- exception-category movement;
+- branch-level sales, platform-cost, cost-rate, and commission-rate movement;
+- warnings when period duration or branch coverage differs.
+
+Users can then request **فسّر التغيّرات بـ AI**. The server re-fetches both owned periods, rebuilds the comparison, and sends only the deterministic comparison packet to the model. Raw source files, workflow notes/history, user IDs, period IDs, and branch IDs are not included in the AI packet.
+
+The AI cannot change the comparison or accounting result and is instructed not to claim a cause unless the supplied comparison evidence supports it.
+
 ## AI setup
 
 Configure these as deployment/server secrets, never as `VITE_*` client variables:
