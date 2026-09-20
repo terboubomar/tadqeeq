@@ -105,7 +105,10 @@ function ImportPage() {
 
       let invoice;
       if (invoiceFile) {
-        const text = await extractPdfText(await invoiceFile.arrayBuffer(), 3);
+        const text = await extractPdfText(
+          await invoiceFile.arrayBuffer(),
+          platform === "hungerstation" ? 80 : 3,
+        );
         invoice =
           platform === "hungerstation" ? parseHungerInvoice(text) : parseKeetaInvoice(text);
       }
@@ -196,7 +199,7 @@ function ImportPage() {
       <FileField
         id="invoice"
         label="فاتورة المنصة (PDF) — اختياري"
-        hint="عند إرفاقها تتم مقارنة كل بند محتسب بالرقم المطالب به، ويُستخرج منها معدل رسوم الدفع الإلكتروني تلقائياً."
+        hint="عند إرفاقها تتم مقارنة الإجماليات والفروع ببنود الفاتورة، ويُستخرج منها معدل رسوم الدفع الإلكتروني تلقائياً."
         accept=".pdf"
         file={invoiceFile}
         onChange={setInvoiceFile}

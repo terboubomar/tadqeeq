@@ -19,19 +19,31 @@ export const Route = createFileRoute("/_authenticated/branches")({
 
 const HUNGER_COLUMNS: Column<BranchRow>[] = [
   { key: "branch", header: "الفرع", type: "text" },
+  { key: "branchAuditLabel", header: "حالة المطابقة", type: "text" },
   { key: "orders", header: "الطلبات", type: "number" },
+  { key: "creditSales", header: "مبيعات الائتمان (بدون ضريبة)" },
+  { key: "invoiceCreditSales", header: "مبيعات الفاتورة" },
+  { key: "creditSalesVariance", header: "فرق المبيعات" },
   { key: "grossSales", header: "المبيعات (شامل الضريبة)" },
   { key: "netSales", header: "الأساس الخاضع للعمولة" },
   { key: "commission", header: "العمولة" },
+  { key: "invoiceCommission", header: "عمولة الفاتورة" },
+  { key: "commissionVariance", header: "فرق العمولة" },
   { key: "commissionPct", header: "نسبة العمولة", type: "percent" },
-  { key: "bankFeeSuccess", header: "رسوم الدفع" },
+  { key: "bankFeeSuccess", header: "رسوم البطاقات الناجحة" },
+  { key: "invoicePaymentFees", header: "رسوم الدفع بالفاتورة" },
+  { key: "paymentFeeVariance", header: "فرق رسوم الدفع" },
   { key: "bankFeeRefunded", header: "رسوم دفع مرتجعة" },
   { key: "walletFee", header: "رسوم المحافظ" },
   { key: "rdfCampaigns", header: "حملات التوصيل المجاني" },
   { key: "compensation", header: "تعويضات العملاء" },
   { key: "jokerFees", header: "رسوم العروض" },
   { key: "waitingTimeFees", header: "وقت الانتظار" },
+  { key: "invoiceOnlyBranchCharges", header: "بنود الفرع من الفاتورة فقط" },
   { key: "totalCharges", header: "إجمالي الخصومات" },
+  { key: "totalCollections", header: "التحصيلات المحتسبة" },
+  { key: "invoiceCollections", header: "تحصيلات الفاتورة" },
+  { key: "collectionsVariance", header: "فرق التحصيلات" },
   { key: "walletAmount", header: "محافظ العملاء" },
   { key: "partialRefund", header: "مرتجعات جزئية" },
 ];
@@ -73,6 +85,11 @@ function BranchesPage() {
         }
         filename={`branches-${selected.period_start ?? "period"}`}
         searchKey="branch"
+        caption={
+          selected.platform === "hungerstation"
+            ? "حالة المطابقة تقارن كل فرع في ملف الطلبات مع صفحات تفاصيل فاتورة هنقرستيشن. الفروق الصغيرة قد تكون تقريباً من المنصة."
+            : undefined
+        }
       />
     </div>
   );
