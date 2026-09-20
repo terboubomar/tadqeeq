@@ -67,11 +67,20 @@ function Dashboard() {
 
   const s = selected.summary;
   const isHunger = selected.platform === "hungerstation";
-  const costLabel = isHunger ? "عمولة" : "تكلفة المنصة";
+  const isKeeta = selected.platform === "keeta";
+  const isJahez = selected.platform === "jahez";
+  const platformLabel = isHunger ? "هنقرستيشن" : isKeeta ? "كيتا" : "جاهز";
+  const costLabel = isHunger ? "عمولة" : isJahez ? "تكلفة الفاتورة" : "تكلفة المنصة";
   const topBranches = [...selected.branches].slice(0, 8).map((branch) => ({
     name: branch.branch.length > 18 ? `${branch.branch.slice(0, 18)}…` : branch.branch,
     [costLabel]: Number(
-      (isHunger ? branch.commission : (branch.keetaTotalCostExVat ?? branch.totalCharges)).toFixed(2),
+      (
+        isHunger
+          ? branch.commission
+          : isKeeta
+            ? (branch.keetaTotalCostExVat ?? branch.totalCharges)
+            : branch.totalCharges
+      ).toFixed(2),
     ),
     مبيعات: Number((isHunger ? branch.netSales : branch.grossSales).toFixed(2)),
   }));
@@ -88,7 +97,7 @@ function Dashboard() {
         <h1 className="audit-heading">اللوحة التنفيذية</h1>
         <p className="audit-subtitle">
           {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)} ·{" "}
-          {isHunger ? "هنقرستيشن" : "كيتا"} · <span className="num">{count(s.branchCount)}</span> فرع ·{" "}
+          {platformLabel} · <span className="num">{count(s.branchCount)}</span> فرع ·{" "}
           <span className="num">{count(s.orders)}</span> طلب
         </p>
       </header>
@@ -101,24 +110,44 @@ function Dashboard() {
           tone="gold"
         />
         <StatCard
-          label={isHunger ? "صافي المبيعات الخاضعة للعمولة" : "صافي التسوية المحتسب"}
+          label={
+            isHunger
+              ? "صافي المبيعات الخاضعة للعمولة"
+              : isJahez
+                ? "صافي المطعم حسب جاهز"
+                : "صافي التسوية المحتسب"
+          }
           value={sar(s.netSales)}
           icon={TrendingUp}
         />
         <StatCard
-          label={isHunger ? "إجمالي العمولة" : "عمولة كيتا (بدون الضريبة)"}
+          label={
+            isHunger
+              ? "إجمالي العمولة"
+              : isJahez
+                ? "عمولة جاهز (بدون الضريبة)"
+                : "عمولة كيتا (بدون الضريبة)"
+          }
           value={sar(s.commission)}
           hint={`بنسبة ${percent(s.commissionPct)} من الأساس`}
           icon={Percent}
           tone="negative"
         />
         <StatCard
-          label={isHunger ? "إجمالي ما خصمته المنصة" : "تكلفة المنصة (بدون الضريبة)"}
+          label={
+            isHunger
+              ? "إجمالي ما خصمته المنصة"
+              : isJahez
+                ? "فاتورة جاهز المحتسبة (بدون الضريبة)"
+                : "تكلفة المنصة (بدون الضريبة)"
+          }
           value={sar(s.totalCharges)}
           hint={
             isHunger
               ? "عمولة + رسوم دفع + حملات + تعويضات"
-              : `تكلفة فعلية ${percent(s.keetaPlatformCostPct ?? 0)} من المبيعات بدون الضريبة`
+              : isJahez
+                ? "عمولة + رسوم مدفوعات + عروض توصيل حسب قواعد الفاتورة"
+                : `تكلفة فعلية ${percent(s.keetaPlatformCostPct ?? 0)} من المبيعات بدون الضريبة`
           }
           icon={Receipt}
           tone="negative"
@@ -159,6 +188,34 @@ function Dashboard() {
           />
           <StatCard label="محافظ العملاء" value={sar(s.walletAmount)} icon={Wallet} />
           <StatCard label="محافظ المندوبين" value={sar(s.riderWallet)} icon={Store} />
+        </section>
+      ) : isJahez ? (
+        <section className="audit-kpi-strip grid gap-0 sm:grid-cols-2 xl:grid-cols-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0">
+          <StatCard
+            label="رسوم المدفوعات"
+            value={sar(s.jahezPaymentFeesExVat ?? 0)}
+            hint="Payment Fees من ملخص CSV"
+            icon={CreditCard}
+          />
+          <StatCard
+            label="VAT رسوم المدفوعات المخصوم"
+            value={sar(s.jahezPaymentFeesVat ?? 0)}
+            hint="مجموع الضريبة المخصومة على مستوى الطلب"
+            icon={Receipt}
+          />
+          <StatCard
+            label="عروض التوصيل المخصومة"
+            value={sar(s.jahezDeliveryOfferInclVat ?? 0)}
+            hint="القيمة المخصومة من التسوية شامل الضريبة"
+            icon={Store}
+          />
+          <StatCard
+            label="فرق صافي المطعم"
+            value={sar(s.jahezSettlementVariance ?? 0)}
+            hint="إعادة الاحتساب ناقص Restaurant Amount"
+            icon={Banknote}
+            tone={Math.abs(s.jahezSettlementVariance ?? 0) > 0.05 ? "negative" : "default"}
+          />
         </section>
       ) : (
         <section className="audit-kpi-strip grid gap-0 sm:grid-cols-2 xl:grid-cols-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0">
@@ -203,7 +260,7 @@ function Dashboard() {
       <div className="grid gap-5 xl:grid-cols-5">
         <section className="panel p-4 xl:col-span-3">
           <h2 className="text-sm font-semibold">
-            {isHunger ? "المبيعات والعمولة يومياً" : "المبيعات وتكلفة المنصة يومياً"}
+            {isHunger ? "المبيعات والعمولة يومياً" : isJahez ? "المبيعات وعمولة جاهز يومياً" : "المبيعات وتكلفة المنصة يومياً"}
           </h2>
           <div className="mt-4 h-72" dir="ltr">
             <ResponsiveContainer width="100%" height="100%">
@@ -247,7 +304,7 @@ function Dashboard() {
 
         <section className="panel p-4 xl:col-span-2">
           <h2 className="text-sm font-semibold">
-            {isHunger ? "أعلى الفروع عمولةً" : "أعلى الفروع تكلفة منصة"}
+            {isHunger ? "أعلى الفروع عمولةً" : isJahez ? "أعلى الفروع تكلفة فاتورة" : "أعلى الفروع تكلفة منصة"}
           </h2>
           <div className="mt-4 h-72" dir="ltr">
             <ResponsiveContainer width="100%" height="100%">

@@ -143,8 +143,17 @@ function exceptionId(
 }
 
 function categoryForLabel(label: string): ExceptionCategory {
-  if (label.includes("عمولة المبيعات") || label.includes("عمولة الطلب")) return "commission";
-  if (label.includes("رسوم الدفع") || label.includes("الرسوم المصرفية")) return "payment_fee";
+  if (
+    label.includes("عمولة المبيعات") ||
+    label.includes("عمولة الطلب") ||
+    label.includes("عمولة جاهز")
+  ) return "commission";
+  if (
+    label.includes("رسوم الدفع") ||
+    label.includes("رسوم مدفوعات") ||
+    label.includes("الرسوم المصرفية")
+  ) return "payment_fee";
+  if (label.includes("عروض التوصيل")) return "delivery_campaign";
   if (label.includes("عمولات أخرى")) {
     return label.includes("توصيل") ? "delivery_campaign" : "other_fee";
   }
@@ -170,7 +179,9 @@ function isControlOnlyLabel(label: string): boolean {
     label.includes("صافي الفاتورة الضريبية") ||
     label.includes("اتساق صافي المستحق") ||
     label.includes("رسوم مدفوعات المحافظ") ||
-    label.includes("Billing data summary")
+    label.includes("Billing data summary") ||
+    label.includes("إجمالي فاتورة جاهز") ||
+    label.includes("ضريبة فاتورة جاهز")
   );
 }
 
@@ -655,7 +666,9 @@ export function buildPeriodExceptions(period: StoredPeriod): AuditException[] {
     ...summaryExceptions(period),
     ...(period.platform === "hungerstation"
       ? hungerBranchExceptions(period)
-      : keetaBranchExceptions(period)),
+      : period.platform === "keeta"
+        ? keetaBranchExceptions(period)
+        : []),
   ];
 
   return result.sort((left, right) => {
@@ -804,6 +817,71 @@ export function buildExceptionEvidence(
       platformSources = compactFields([
         definedField("Payable to merchant", "Keeta Order Summary", item.invoiced),
       ]);
+    } else if (period.platform === "jahez") {
+      if (item.category === "commission") {
+        formula = "Jahez Commission من ملخص CSV ÷ 1.15 = عمولة الفاتورة بدون الضريبة";
+        calculatedSources = compactFields([
+          definedField(
+            "عمولة جاهز شامل الضريبة",
+            "Jahez CSV · Merchant Summary",
+            period.summary.jahezCommissionInclVat,
+          ),
+          definedField(
+            "عمولة الفاتورة المحتسبة بدون الضريبة",
+            "محرك تدقيق",
+            item.computed,
+          ),
+        ]);
+        platformSources = compactFields([
+          definedField(
+            "Commission",
+            "Jahez PDF · Tax Invoice",
+            period.invoice?.jahezCommissionExVat,
+          ),
+        ]);
+      } else if (item.category === "payment_fee") {
+        formula = "Payment Fees في ملخص CSV = Payment Fees في الفاتورة بدون الضريبة";
+        calculatedSources = compactFields([
+          definedField(
+            "Payment Fees",
+            "Jahez CSV · Merchant Summary",
+            period.summary.jahezPaymentFeesExVat,
+          ),
+        ]);
+        platformSources = compactFields([
+          definedField(
+            "Payment Fees",
+            "Jahez PDF · Tax Invoice",
+            period.invoice?.jahezPaymentFeesExVat,
+          ),
+        ]);
+      } else if (item.category === "delivery_campaign") {
+        formula =
+          "لكل Delivery Offer: سعر الوحدة شامل الضريبة ÷ 1.15 ثم تقريب هللتين × عدد الطلبات";
+        const tiers = period.summary.jahezDeliveryOfferTiers
+          ? Object.entries(period.summary.jahezDeliveryOfferTiers)
+              .map(([amount, quantity]) => amount + " × " + quantity)
+              .join("، ")
+          : undefined;
+        calculatedSources = compactFields([
+          definedField("Delivery Offer tiers", "Jahez CSV · Orders", tiers),
+          definedField(
+            "عروض التوصيل المحتسبة بدون الضريبة",
+            "محرك تدقيق",
+            period.summary.jahezDeliveryOfferInvoiceExVat,
+          ),
+        ]);
+        platformSources = compactFields([
+          definedField(
+            "Delivery Offer",
+            "Jahez PDF · Tax Invoice",
+            period.invoice?.jahezDeliveryOfferExVat,
+          ),
+        ]);
+      } else {
+        const check = period.invoice?.checks?.find((candidate) => candidate.label === item.label);
+        formula = check?.hint ?? formula;
+      }
     } else {
       const check = period.invoice?.checks?.find((candidate) => candidate.label === item.label);
       formula = check?.hint ?? formula;

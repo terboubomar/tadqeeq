@@ -85,6 +85,27 @@ const KEETA_COLUMNS: Column<BranchRow>[] = [
   { key: "keetaAvgOrderValueInclVat", header: "متوسط الطلب شامل الضريبة" },
 ];
 
+
+const JAHEZ_COLUMNS: Column<BranchRow>[] = [
+  { key: "branch", header: "الفرع", type: "text" },
+  { key: "branchAuditLabel", header: "حالة التسوية", type: "text" },
+  { key: "orders", header: "الطلبات", type: "number" },
+  { key: "grossSales", header: "Order Amount" },
+  { key: "jahezReportedRestaurantAmount", header: "Restaurant Amount" },
+  { key: "jahezSettlementVariance", header: "فرق صافي المطعم" },
+  { key: "commission", header: "عمولة جاهز بدون الضريبة" },
+  { key: "jahezCommissionInclVat", header: "عمولة جاهز شامل الضريبة" },
+  { key: "commissionPct", header: "نسبة العمولة", type: "percent" },
+  { key: "jahezPaymentFeesExVat", header: "Payment Fees" },
+  { key: "jahezPaymentFeesVat", header: "Payment Fees VAT" },
+  { key: "jahezDeliveryOfferInclVat", header: "Delivery Offer المخصوم" },
+  { key: "jahezDeliveryOfferInvoiceExVat", header: "Delivery Offer للفوترة بدون الضريبة" },
+  { key: "jahezOfferAmount", header: "Offer Amount" },
+  { key: "jahezDeliveryCoupon", header: "Delivery Coupon" },
+  { key: "jahezDeliveryCharge", header: "Delivery Charge" },
+  { key: "totalCharges", header: "تكلفة الفاتورة المحتسبة بدون الضريبة" },
+];
+
 function BranchesPage() {
   const { selected, isLoading } = useSelectedPeriod();
 
@@ -109,14 +130,18 @@ function BranchesPage() {
         columns={
           (selected.platform === "hungerstation"
             ? HUNGER_COLUMNS
-            : KEETA_COLUMNS) as unknown as Column<Record<string, unknown>>[]
+            : selected.platform === "keeta"
+              ? KEETA_COLUMNS
+              : JAHEZ_COLUMNS) as unknown as Column<Record<string, unknown>>[]
         }
         filename={`branches-${selected.period_start ?? "period"}`}
         searchKey="branch"
         caption={
           selected.platform === "hungerstation"
             ? "حالة المطابقة تقارن كل فرع في ملف الطلبات مع صفحات تفاصيل فاتورة هنقرستيشن. الفروق الصغيرة قد تكون تقريباً من المنصة."
-            : "المطابقة تعتمد على Store ID. إذا كان ملف كيتا يحتوي Invoice Details تتم مقارنة Invoice amount وPayable لكل فرع مباشرةً من Excel؛ وعند إرفاق PDF تُضاف مطابقة عمولة الطلب ورسوم البنك والتوصيل وCredit Sales وNet Due."
+            : selected.platform === "keeta"
+              ? "المطابقة تعتمد على Store ID. إذا كان ملف كيتا يحتوي Invoice Details تتم مقارنة Invoice amount وPayable لكل فرع مباشرةً من Excel؛ وعند إرفاق PDF تُضاف مطابقة عمولة الطلب ورسوم البنك والتوصيل وCredit Sales وNet Due."
+              : "جاهز لا يوفّر تفاصيل فاتورة حسب الفرع في الملفات الحالية؛ يتم التحقق لكل فرع من معادلة Restaurant Amount، بينما مطابقة الفاتورة الرسمية تتم على إجمالي التاجر."
         }
       />
     </div>

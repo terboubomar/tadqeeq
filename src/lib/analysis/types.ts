@@ -1,4 +1,4 @@
-export type Platform = "hungerstation" | "keeta";
+export type Platform = "hungerstation" | "keeta" | "jahez";
 
 export interface BranchRow {
   branch: string;
@@ -96,6 +96,18 @@ export interface BranchRow {
   keetaPdfCreditSalesVariance?: number;
   keetaPdfNetDue?: number;
   keetaPdfNetDueVariance?: number;
+
+  // Jahez accounting decomposition.
+  jahezCommissionInclVat?: number;
+  jahezPaymentFeesExVat?: number;
+  jahezPaymentFeesVat?: number;
+  jahezDeliveryCharge?: number;
+  jahezOfferAmount?: number;
+  jahezDeliveryOfferInclVat?: number;
+  jahezDeliveryOfferInvoiceExVat?: number;
+  jahezDeliveryCoupon?: number;
+  jahezReportedRestaurantAmount?: number;
+  jahezSettlementVariance?: number;
 }
 
 export interface DailyRow {
@@ -187,6 +199,23 @@ export interface Summary {
   keetaBillingPayableVariance?: number;
   keetaPlatformCostPct?: number;
   keetaAvgOrderValueInclVat?: number;
+
+  // Jahez accounting decomposition.
+  jahezCommissionInclVat?: number;
+  jahezCommissionInvoiceExVat?: number;
+  jahezPaymentFeesExVat?: number;
+  jahezPaymentFeesVat?: number;
+  jahezDeliveryCharge?: number;
+  jahezOfferAmount?: number;
+  jahezDeliveryOfferInclVat?: number;
+  jahezDeliveryOfferInvoiceExVat?: number;
+  jahezDeliveryCoupon?: number;
+  jahezReportedRestaurantAmount?: number;
+  jahezSettlementVariance?: number;
+  jahezInvoiceExVatComputed?: number;
+  jahezInvoiceVatComputed?: number;
+  jahezInvoiceInclVatComputed?: number;
+  jahezDeliveryOfferTiers?: Record<string, number>;
 }
 
 export interface HungerInvoiceBranch {
@@ -294,6 +323,12 @@ export interface InvoiceFigures {
   keetaBillingInvoiceAmount?: number;
   keetaBillingPayable?: number;
   keetaBillingRows?: number;
+
+  // Jahez tax invoice fields.
+  jahezCommissionExVat?: number;
+  jahezDeliveryOfferExVat?: number;
+  jahezPaymentFeesExVat?: number;
+  jahezDeliveryOfferRows?: { unitExVat: number; quantity: number; amountExVat: number }[];
   invoiceNo?: string;
 }
 

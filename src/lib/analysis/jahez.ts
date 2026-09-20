@@ -1,0 +1,484 @@
+import type {
+  AnalysisResult,
+  BranchRow,
+  CheckRow,
+  DailyRow,
+  InvoiceFigures,
+  Summary,
+} from "./types";
+
+const VAT_FACTOR = 1.15;
+const ROUNDING_TOLERANCE = 0.05;
+
+interface CsvRow {
+  [key: string]: string;
+}
+
+interface JahezAccumulator {
+  row: BranchRow;
+  commissionInclVat: number;
+  paymentFeesExVat: number;
+  paymentFeesVat: number;
+  deliveryCharge: number;
+  offerAmount: number;
+  deliveryOfferInclVat: number;
+  deliveryOfferInvoiceExVat: number;
+  deliveryCoupon: number;
+  reportedRestaurantAmount: number;
+  calculatedRestaurantAmount: number;
+}
+
+export interface JahezOptions {
+  invoice?: InvoiceFigures;
+  label?: string;
+}
+
+function num(value: string | undefined): number {
+  const parsed = Number.parseFloat((value ?? "").replace(/,/g, "").trim());
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function round2(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function normalizeBranch(value: string): string {
+  return value.replace(/[\t\r\n]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function emptyBranch(branch: string): BranchRow {
+  return {
+    branch,
+    branchId: branch,
+    orders: 0,
+    grossSales: 0,
+    netSales: 0,
+    commission: 0,
+    commissionPct: 0,
+    ccSuccess: 0,
+    ccRejected: 0,
+    walletAmount: 0,
+    riderWallet: 0,
+    rdfCampaigns: 0,
+    freeDeliveryOrders: 0,
+    compensation: 0,
+    jokerFees: 0,
+    hsFoodDiscount: 0,
+    rewardsDiscount: 0,
+    restaurantFoodDiscount: 0,
+    totalFoodDiscount: 0,
+    partialRefund: 0,
+    fulfillmentMods: 0,
+    approvedRefunds: 0,
+    waitingTimeFees: 0,
+    bankFeeSuccess: 0,
+    bankFeeRefunded: 0,
+    totalCharges: 0,
+  };
+}
+
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let quoted = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index]!;
+    if (quoted) {
+      if (char === '"') {
+        if (text[index + 1] === '"') {
+          field += '"';
+          index += 1;
+        } else {
+          quoted = false;
+        }
+      } else {
+        field += char;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      quoted = true;
+    } else if (char === ",") {
+      row.push(field);
+      field = "";
+    } else if (char === "\n") {
+      row.push(field.replace(/\r$/, ""));
+      rows.push(row);
+      row = [];
+      field = "";
+    } else {
+      field += char;
+    }
+  }
+
+  if (field || row.length) {
+    row.push(field.replace(/\r$/, ""));
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+function rowObject(headers: string[], row: string[]): CsvRow {
+  const result: CsvRow = {};
+  headers.forEach((header, index) => {
+    result[header.trim()] = row[index]?.trim() ?? "";
+  });
+  return result;
+}
+
+function dateKey(value: string): string | null {
+  const match = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!match) return null;
+  const [, day, month, year] = match;
+  return year + "-" + month!.padStart(2, "0") + "-" + day!.padStart(2, "0");
+}
+
+function periodRange(value: string): { start: string | null; end: string | null } {
+  const dates = [...value.matchAll(/(\d{1,2})\/(\d{1,2})\/(\d{4})/g)].map((match) => {
+    const [, day, month, year] = match;
+    return year + "-" + month!.padStart(2, "0") + "-" + day!.padStart(2, "0");
+  });
+  return { start: dates[0] ?? null, end: dates[1] ?? dates[0] ?? null };
+}
+
+function settlementFromDetail(row: CsvRow): number {
+  return (
+    num(row["Order Amount"]) -
+    num(row["Jahez Commision"]) +
+    num(row["Delivery Charge"]) -
+    num(row["Payment Fees"]) -
+    num(row["Payment Fees Vat"]) -
+    num(row["Offer Amount"]) -
+    num(row["Delivery Offer"]) -
+    num(row["Delivery Coupon"])
+  );
+}
+
+function deliveryInvoiceUnitExVat(deliveryOfferInclVat: number): number {
+  if (!deliveryOfferInclVat) return 0;
+  return round2(deliveryOfferInclVat / VAT_FACTOR);
+}
+
+export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): AnalysisResult {
+  const text = new TextDecoder("utf-8").decode(file).replace(/^\uFEFF/, "");
+  const matrix = parseCsv(text);
+
+  if (matrix.length < 5) {
+    throw new Error("ملف جاهز لا يحتوي البيانات المتوقعة.");
+  }
+
+  const summaryHeaders = matrix[0]!.map((value) => value.trim());
+  const summary = rowObject(summaryHeaders, matrix[1] ?? []);
+  const detailHeaderIndex = matrix.findIndex((row) => row[0]?.trim() === "#");
+  if (detailHeaderIndex < 0) {
+    throw new Error("تعذّر العثور على جدول الطلبات التفصيلي في تقرير جاهز.");
+  }
+
+  const detailHeaders = matrix[detailHeaderIndex]!.map((value) => value.trim());
+  const details = matrix
+    .slice(detailHeaderIndex + 1)
+    .filter((row) => row.some((value) => value.trim()))
+    .map((row) => rowObject(detailHeaders, row));
+
+  const branches = new Map<string, JahezAccumulator>();
+  const daily = new Map<string, DailyRow>();
+  const deliveryTiers = new Map<number, number>();
+
+  let detailGrossSales = 0;
+  let detailCommissionInclVat = 0;
+  let detailRestaurantAmount = 0;
+  let detailPaymentFees = 0;
+  let detailPaymentFeesVat = 0;
+  let detailDeliveryOffer = 0;
+  let detailOfferAmount = 0;
+  let detailDeliveryCoupon = 0;
+  let detailDeliveryCharge = 0;
+  let detailCalculatedSettlement = 0;
+
+  for (const source of details) {
+    const branchName = normalizeBranch(source["Branch Name"] || "غير محدد");
+    let branch = branches.get(branchName);
+    if (!branch) {
+      branch = {
+        row: emptyBranch(branchName),
+        commissionInclVat: 0,
+        paymentFeesExVat: 0,
+        paymentFeesVat: 0,
+        deliveryCharge: 0,
+        offerAmount: 0,
+        deliveryOfferInclVat: 0,
+        deliveryOfferInvoiceExVat: 0,
+        deliveryCoupon: 0,
+        reportedRestaurantAmount: 0,
+        calculatedRestaurantAmount: 0,
+      };
+      branches.set(branchName, branch);
+    }
+
+    const orderAmount = num(source["Order Amount"]);
+    const commissionInclVat = num(source["Jahez Commision"]);
+    const paymentFees = num(source["Payment Fees"]);
+    const paymentFeesVat = num(source["Payment Fees Vat"]);
+    const deliveryCharge = num(source["Delivery Charge"]);
+    const offerAmount = num(source["Offer Amount"]);
+    const deliveryOffer = num(source["Delivery Offer"]);
+    const deliveryCoupon = num(source["Delivery Coupon"]);
+    const reportedRestaurant = num(source["Restaurant Amount"]);
+    const calculatedRestaurant = settlementFromDetail(source);
+    const deliveryInvoiceExVat = deliveryInvoiceUnitExVat(deliveryOffer);
+
+    branch.row.orders += 1;
+    branch.row.grossSales += orderAmount;
+    branch.row.netSales += reportedRestaurant;
+    branch.commissionInclVat += commissionInclVat;
+    branch.paymentFeesExVat += paymentFees;
+    branch.paymentFeesVat += paymentFeesVat;
+    branch.deliveryCharge += deliveryCharge;
+    branch.offerAmount += offerAmount;
+    branch.deliveryOfferInclVat += deliveryOffer;
+    branch.deliveryOfferInvoiceExVat += deliveryInvoiceExVat;
+    branch.deliveryCoupon += deliveryCoupon;
+    branch.reportedRestaurantAmount += reportedRestaurant;
+    branch.calculatedRestaurantAmount += calculatedRestaurant;
+
+    if (deliveryOffer > 0) {
+      deliveryTiers.set(deliveryOffer, (deliveryTiers.get(deliveryOffer) ?? 0) + 1);
+    }
+
+    detailGrossSales += orderAmount;
+    detailCommissionInclVat += commissionInclVat;
+    detailRestaurantAmount += reportedRestaurant;
+    detailPaymentFees += paymentFees;
+    detailPaymentFeesVat += paymentFeesVat;
+    detailDeliveryOffer += deliveryOffer;
+    detailOfferAmount += offerAmount;
+    detailDeliveryCoupon += deliveryCoupon;
+    detailDeliveryCharge += deliveryCharge;
+    detailCalculatedSettlement += calculatedRestaurant;
+
+    const date = dateKey(source["Date"]);
+    if (date) {
+      let day = daily.get(date);
+      if (!day) {
+        day = { date, orders: 0, grossSales: 0, netSales: 0, commission: 0, ccSuccess: 0 };
+        daily.set(date, day);
+      }
+      day.orders += 1;
+      day.grossSales += orderAmount;
+      day.netSales += reportedRestaurant;
+      day.commission += commissionInclVat / VAT_FACTOR;
+    }
+  }
+
+  const branchRows = [...branches.values()].map((source) => {
+    const row = source.row;
+    row.commission = source.commissionInclVat / VAT_FACTOR;
+    row.commissionPct = row.grossSales ? source.commissionInclVat / row.grossSales : 0;
+    row.totalCharges =
+      row.commission +
+      source.paymentFeesExVat +
+      source.deliveryOfferInvoiceExVat;
+    row.jahezCommissionInclVat = source.commissionInclVat;
+    row.jahezPaymentFeesExVat = source.paymentFeesExVat;
+    row.jahezPaymentFeesVat = source.paymentFeesVat;
+    row.jahezDeliveryCharge = source.deliveryCharge;
+    row.jahezOfferAmount = source.offerAmount;
+    row.jahezDeliveryOfferInclVat = source.deliveryOfferInclVat;
+    row.jahezDeliveryOfferInvoiceExVat = source.deliveryOfferInvoiceExVat;
+    row.jahezDeliveryCoupon = source.deliveryCoupon;
+    row.jahezReportedRestaurantAmount = source.reportedRestaurantAmount;
+    row.jahezSettlementVariance =
+      source.calculatedRestaurantAmount - source.reportedRestaurantAmount;
+
+    if (Math.abs(row.jahezSettlementVariance) <= 0.01) {
+      row.branchAuditStatus = "matched";
+      row.branchAuditLabel = "مطابق";
+      row.branchAuditNote = "معادلة صافي المطعم مطابقة لكل طلبات الفرع.";
+    } else {
+      row.branchAuditStatus = "warning";
+      row.branchAuditLabel = "يحتاج مراجعة";
+      row.branchAuditNote = "يوجد فرق بين إعادة احتساب صافي المطعم والقيمة المبلغ عنها في CSV.";
+    }
+    return row;
+  });
+
+  branchRows.sort((left, right) => right.grossSales - left.grossSales);
+
+  const merchantGrossSales = num(summary["Orders Amount"]);
+  const merchantCommissionInclVat = num(summary["Jahez Commision"]);
+  const merchantRestaurantAmount = num(summary["Restaurant Amount"]);
+  const merchantPaymentFees = num(summary["Payment Fees"]);
+  const merchantPaymentFeesVat = num(summary["Payment Fees Vat"]);
+  const merchantOfferAmount = num(summary["Offer Amount"]);
+  const merchantDeliveryOffer = num(summary["Delivery Offer"]);
+  const merchantDeliveryCoupon = num(summary["Delivery Coupon"]);
+
+  const commissionInvoiceExVat = round2(merchantCommissionInclVat / VAT_FACTOR);
+  const deliveryOfferInvoiceExVat = [...deliveryTiers.entries()].reduce(
+    (total, [tierInclVat, quantity]) =>
+      total + deliveryInvoiceUnitExVat(tierInclVat) * quantity,
+    0,
+  );
+  const invoiceExVatComputed =
+    commissionInvoiceExVat + merchantPaymentFees + deliveryOfferInvoiceExVat;
+  const invoiceVatComputed = round2(invoiceExVatComputed * 0.15);
+  const invoiceInclVatComputed = round2(invoiceExVatComputed + invoiceVatComputed);
+  const range = periodRange(summary["Date"] ?? "");
+
+  const resultSummary: Summary = {
+    platform: "jahez",
+    orders: details.length,
+    grossSales: merchantGrossSales,
+    netSales: merchantRestaurantAmount,
+    commission: commissionInvoiceExVat,
+    commissionPct: merchantGrossSales ? merchantCommissionInclVat / merchantGrossSales : 0,
+    ccSuccess: 0,
+    ccRejected: 0,
+    walletAmount: 0,
+    riderWallet: 0,
+    rdfCampaigns: 0,
+    compensation: 0,
+    jokerFees: 0,
+    hsFoodDiscount: 0,
+    rewardsDiscount: 0,
+    restaurantFoodDiscount: 0,
+    totalFoodDiscount: 0,
+    partialRefund: 0,
+    fulfillmentMods: 0,
+    approvedRefunds: 0,
+    waitingTimeFees: 0,
+    bankRate: 0,
+    bankRateSource: "none",
+    bankFeeSuccess: 0,
+    bankFeeRefunded: 0,
+    invoiceOnlyExtras: 0,
+    totalCharges: invoiceExVatComputed,
+    branchCount: branchRows.length,
+    statusCounts: { "طلبات جاهز": details.length },
+    periodStart: range.start,
+    periodEnd: range.end,
+    jahezCommissionInclVat: merchantCommissionInclVat,
+    jahezCommissionInvoiceExVat: commissionInvoiceExVat,
+    jahezPaymentFeesExVat: merchantPaymentFees,
+    jahezPaymentFeesVat: merchantPaymentFeesVat,
+    jahezDeliveryCharge: detailDeliveryCharge,
+    jahezOfferAmount: merchantOfferAmount,
+    jahezDeliveryOfferInclVat: merchantDeliveryOffer,
+    jahezDeliveryOfferInvoiceExVat: deliveryOfferInvoiceExVat,
+    jahezDeliveryCoupon: merchantDeliveryCoupon,
+    jahezReportedRestaurantAmount: merchantRestaurantAmount,
+    jahezSettlementVariance: detailCalculatedSettlement - merchantRestaurantAmount,
+    jahezInvoiceExVatComputed: invoiceExVatComputed,
+    jahezInvoiceVatComputed: invoiceVatComputed,
+    jahezInvoiceInclVatComputed: invoiceInclVatComputed,
+    jahezDeliveryOfferTiers: Object.fromEntries(
+      [...deliveryTiers.entries()]
+        .sort((left, right) => right[0] - left[0])
+        .map(([amount, quantity]) => [amount.toFixed(2), quantity]),
+    ),
+  };
+
+  const invoice = options.invoice ?? { lines: [] };
+  const checks: CheckRow[] = [
+    {
+      label: "إجمالي الطلبات مقابل ملخص جاهز",
+      computed: detailGrossSales,
+      invoiced: merchantGrossSales,
+      evidence: "mixed",
+      tolerance: ROUNDING_TOLERANCE,
+      hint: "فحص رقابي داخلي داخل CSV: مجموع Order Amount من الطلبات مقابل Orders Amount في ملخص التاجر.",
+    },
+    {
+      label: "صافي المطعم المعاد احتسابه",
+      computed: detailCalculatedSettlement,
+      invoiced: merchantRestaurantAmount,
+      evidence: "mixed",
+      tolerance: ROUNDING_TOLERANCE,
+      hint:
+        "فحص رقابي داخلي داخل CSV: Order Amount - Jahez Commission + Delivery Charge - Payment Fees - Payment Fees VAT - Offer Amount - Delivery Offer - Delivery Coupon.",
+    },
+    {
+      label: "عمولة الطلبات مقابل ملخص جاهز",
+      computed: detailCommissionInclVat,
+      invoiced: merchantCommissionInclVat,
+      evidence: "mixed",
+      tolerance: ROUNDING_TOLERANCE,
+      hint: "فحص رقابي داخلي داخل CSV: مجموع العمولة المقربة لكل طلب مقابل عمولة التاجر الدقيقة في رأس التقرير.",
+    },
+  ];
+
+  if (invoice.jahezCommissionExVat !== undefined) {
+    checks.push({
+      label: "عمولة جاهز",
+      computed: commissionInvoiceExVat,
+      invoiced: invoice.jahezCommissionExVat,
+      evidence: "data",
+      tolerance: 0.05,
+      hint: "عمولة التاجر في CSV ÷ 1.15، مقربة إلى هللتين، مقابل الفاتورة الضريبية.",
+    });
+  }
+  if (invoice.jahezDeliveryOfferExVat !== undefined) {
+    checks.push({
+      label: "عروض التوصيل",
+      computed: deliveryOfferInvoiceExVat,
+      invoiced: invoice.jahezDeliveryOfferExVat,
+      evidence: "data",
+      tolerance: 0.05,
+      hint:
+        "كل Tier في CSV يتحول إلى سعر وحدة بدون الضريبة (مثال 10→8.70 و4→3.48) ثم يضرب في عدد الطلبات.",
+    });
+  }
+  if (invoice.jahezPaymentFeesExVat !== undefined) {
+    checks.push({
+      label: "رسوم مدفوعات جاهز",
+      computed: merchantPaymentFees,
+      invoiced: invoice.jahezPaymentFeesExVat,
+      evidence: "data",
+      tolerance: 0.05,
+      hint: "Payment Fees من ملخص CSV مقابل Payment Fees في الفاتورة.",
+    });
+  }
+  if (invoice.totalExVat !== undefined) {
+    checks.push({
+      label: "إجمالي فاتورة جاهز بدون الضريبة",
+      computed: invoiceExVatComputed,
+      invoiced: invoice.totalExVat,
+      evidence: "data",
+      tolerance: 0.05,
+    });
+  }
+  if (invoice.vat !== undefined) {
+    checks.push({
+      label: "ضريبة فاتورة جاهز",
+      computed: invoiceVatComputed,
+      invoiced: invoice.vat,
+      evidence: "data",
+      tolerance: 0.05,
+    });
+  }
+  if (invoice.totalIncVat !== undefined) {
+    checks.push({
+      label: "إجمالي فاتورة جاهز شامل الضريبة",
+      computed: invoiceInclVatComputed,
+      invoiced: invoice.totalIncVat,
+      evidence: "data",
+      tolerance: 0.05,
+    });
+  }
+
+  return {
+    platform: "jahez",
+    label:
+      options.label?.trim() ||
+      (range.start && range.end ? "جاهز · " + range.start + " — " + range.end : "جاهز"),
+    summary: resultSummary,
+    branches: branchRows,
+    daily: [...daily.values()].sort((left, right) => left.date.localeCompare(right.date)),
+    invoice,
+    checks,
+  };
+}

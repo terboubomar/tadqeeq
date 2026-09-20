@@ -149,7 +149,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span>المنصة</span>
                   <span className="rounded-[7px] border border-input bg-white px-2.5 py-1.5 text-[13px] text-foreground">
-                    {selected.platform === "hungerstation" ? "هنقرستيشن" : "كيتا"}
+                    {selected.platform === "hungerstation" ? "هنقرستيشن" : selected.platform === "keeta" ? "كيتا" : "جاهز"}
                   </span>
                 </div>
 

@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "تدقيق · مراجعة فواتير هنقرستيشن وكيتا" },
+      { title: "تدقيق · مراجعة فواتير هنقرستيشن وكيتا وجاهز" },
       {
         name: "description",
         content:
           "ارفع بيانات الطلبات وفواتير المنصات، وأعد احتساب العمولات ورسوم الدفع والحملات لاكتشاف أي فروقات قبل السداد.",
       },
-      { property: "og:title", content: "تدقيق · مراجعة فواتير هنقرستيشن وكيتا" },
+      { property: "og:title", content: "تدقيق · مراجعة فواتير هنقرستيشن وكيتا وجاهز" },
       {
         property: "og:description",
         content: "أعد احتساب كل بند في فاتورة المنصة من بيانات الطلبات الخام وقارنه بالمطالبة.",

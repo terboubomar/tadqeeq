@@ -89,7 +89,7 @@ function HistoryPage() {
                     <Td mono>
                       {arabicDate(period.period_start)} — {arabicDate(period.period_end)}
                     </Td>
-                    <Td>{period.platform === "hungerstation" ? "هنقرستيشن" : "كيتا"}</Td>
+                    <Td>{period.platform === "hungerstation" ? "هنقرستيشن" : period.platform === "keeta" ? "كيتا" : "جاهز"}</Td>
                     <Td mono>{count(period.summary?.orders ?? 0)}</Td>
                     <Td mono>{money(period.summary?.grossSales ?? 0)}</Td>
                     <Td mono>{money(period.summary?.commission ?? 0)}</Td>

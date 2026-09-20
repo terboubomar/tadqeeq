@@ -17,11 +17,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { analyzeHungerStation } from "@/lib/analysis/hungerstation";
+import { analyzeJahez } from "@/lib/analysis/jahez";
 import { analyzeKeeta } from "@/lib/analysis/keeta";
 import {
   extractPdfText,
   parseCpcInvoice,
   parseHungerInvoice,
+  parseJahezInvoice,
   parseKeetaInvoice,
 } from "@/lib/analysis/pdf";
 import type { Platform } from "@/lib/analysis/types";
@@ -189,10 +191,14 @@ function ImportPage() {
       if (invoiceFile) {
         const text = await extractPdfText(
           await invoiceFile.arrayBuffer(),
-          platform === "hungerstation" ? 80 : 200,
+          platform === "hungerstation" ? 80 : platform === "keeta" ? 200 : 3,
         );
         invoice =
-          platform === "hungerstation" ? parseHungerInvoice(text) : parseKeetaInvoice(text);
+          platform === "hungerstation"
+            ? parseHungerInvoice(text)
+            : platform === "keeta"
+              ? parseKeetaInvoice(text)
+              : parseJahezInvoice(text);
       }
 
       let cpcInvoice;
@@ -211,10 +217,15 @@ function ImportPage() {
                 : {}),
               ...(label.trim() ? { label: label.trim() } : {}),
             })
-          : analyzeKeeta(dataBuffer, {
-              ...(invoice ? { invoice } : {}),
-              ...(label.trim() ? { label: label.trim() } : {}),
-            });
+          : platform === "keeta"
+            ? analyzeKeeta(dataBuffer, {
+                ...(invoice ? { invoice } : {}),
+                ...(label.trim() ? { label: label.trim() } : {}),
+              })
+            : analyzeJahez(dataBuffer, {
+                ...(invoice ? { invoice } : {}),
+                ...(label.trim() ? { label: label.trim() } : {}),
+              });
 
       const saved = await savePeriod(result);
       setSelectedPeriodId(saved.id);
@@ -418,7 +429,7 @@ function PlatformStep({
     <div className="space-y-5">
       <div>
         <p className="mb-2 text-[13px] font-semibold">اختر المنصة</p>
-        <div className="grid gap-2.5 sm:grid-cols-2">
+        <div className="grid gap-2.5 sm:grid-cols-3">
           {[
             {
               id: "hungerstation" as Platform,
@@ -429,6 +440,11 @@ function PlatformStep({
               id: "keeta" as Platform,
               label: "كيتا",
               note: "ملف Excel الشهري؛ Invoice Details وBilling data summary تُستخدم تلقائياً، وPDF يضيف طبقة أعمق.",
+            },
+            {
+              id: "jahez" as Platform,
+              label: "جاهز",
+              note: "Restaurant Financial Report بصيغة CSV مع الفاتورة الضريبية PDF.",
             },
           ].map((item) => (
             <button
@@ -493,13 +509,21 @@ function DataFileStep({
     <div className="space-y-4">
       <FileField
         id="data"
-        label={platform === "hungerstation" ? "ملف الطلبات (Excel)" : "ملف كيتا الشهري (Excel)"}
+        label={
+          platform === "hungerstation"
+            ? "ملف الطلبات (Excel)"
+            : platform === "keeta"
+              ? "ملف كيتا الشهري (Excel)"
+              : "Restaurant Financial Report (CSV)"
+        }
         hint={
           platform === "hungerstation"
             ? "ارفع الملف الشهري من هنقرستيشن بأوراق الطلبات والتوصيل المجاني والتعويضات والتعديلات والمرتجعات ووقت الانتظار."
-            : "ارفع ملف كيتا الشهري الذي يحتوي على ورقة Order Summary."
+            : platform === "keeta"
+              ? "ارفع ملف كيتا الشهري الذي يحتوي على ورقة Order Summary."
+              : "ارفع تقرير جاهز المالي الشهري بصيغة CSV؛ سيقرأ Tadqeeq ملخص التاجر وجدول الطلبات التفصيلي."
         }
-        accept=".xlsx,.xls"
+        accept={platform === "jahez" ? ".csv" : ".xlsx,.xls"}
         tag="مطلوب"
         file={dataFile}
         onChange={onChange}
@@ -538,7 +562,9 @@ function DocumentsStep({
         hint={
           platform === "hungerstation"
             ? "موصى بها لإجراء المطابقة الرسمية على مستوى الإجمالي والفروع."
-            : "اختيارية للمطابقة المتقدمة. إذا كان Excel يحتوي Invoice Details فسيجري Tadqeeq المطابقة الرسمية من Excel حتى بدون PDF."
+            : platform === "keeta"
+              ? "اختيارية للمطابقة المتقدمة. إذا كان Excel يحتوي Invoice Details فسيجري Tadqeeq المطابقة الرسمية من Excel حتى بدون PDF."
+              : "موصى بها لمطابقة عمولة جاهز وعروض التوصيل ورسوم المدفوعات والإجمالي والضريبة مع CSV."
         }
         accept=".pdf"
         tag="موصى به"
@@ -585,7 +611,9 @@ function DocumentsStep({
         </>
       ) : (
         <div className="rounded-[9px] border border-primary/15 bg-secondary/55 px-4 py-3 text-[12px] leading-6 text-foreground/80">
-          لا توجد إعدادات إضافية مطلوبة لكيتا. سيستخدم Tadqeeq Invoice Details وBilling data summary تلقائياً إذا كانتا موجودتين داخل Excel، ويستخدم PDF كطبقة مطابقة إضافية عند إرفاقه.
+          {platform === "keeta"
+            ? "لا توجد إعدادات إضافية مطلوبة لكيتا. سيستخدم Tadqeeq Invoice Details وBilling data summary تلقائياً إذا كانتا موجودتين داخل Excel، ويستخدم PDF كطبقة مطابقة إضافية عند إرفاقه."
+            : "لا توجد إعدادات إضافية مطلوبة لجاهز. سيعيد Tadqeeq بناء صافي المطعم والفاتورة من CSV، ثم يطابق PDF عند إرفاقه."}
         </div>
       )}
     </div>
@@ -624,13 +652,24 @@ function ReviewStep({
       </div>
 
       <ReviewSection title="المنصة والفترة" icon={Settings2} onEdit={() => onEdit(0)}>
-        <ReviewRow label="المنصة" value={platform === "hungerstation" ? "هنقرستيشن" : "كيتا"} />
+        <ReviewRow
+          label="المنصة"
+          value={
+            platform === "hungerstation" ? "هنقرستيشن" : platform === "keeta" ? "كيتا" : "جاهز"
+          }
+        />
         <ReviewRow label="اسم الفترة" value={label.trim() || "سيُستخرج من الملف"} />
       </ReviewSection>
 
       <ReviewSection title="ملف البيانات" icon={FileSpreadsheet} onEdit={() => onEdit(1)}>
         <ReviewRow
-          label={platform === "hungerstation" ? "ملف الطلبات" : "Order Summary"}
+          label={
+            platform === "hungerstation"
+              ? "ملف الطلبات"
+              : platform === "keeta"
+                ? "Order Summary"
+                : "Restaurant Financial Report"
+          }
           value={dataFile?.name ?? "غير مرفق"}
           required
           ready={Boolean(dataFile)}
