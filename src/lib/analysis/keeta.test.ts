@@ -95,6 +95,105 @@ function buildKeetaWorkbook(): ArrayBuffer {
   return XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
 }
 
+
+function buildKeetaExcelOfficialWorkbook(): ArrayBuffer {
+  const workbook = XLSX.utils.book_new();
+  const headers = [
+    "Brand Name",
+    "Restaurant Name",
+    "Restaurant ID",
+    "shop code",
+    "Transaction date",
+    "Order Number",
+    "Status",
+    "Transaction type",
+    "Original item price (VAT included)",
+    "Subtotal of commission fee (VAT included)",
+    "Bank fee (VAT included)",
+    "Delivery subsidies (Keeta delivery) covered by merchant",
+    "Photography Service Fee(VAT included)",
+    "Adjustment (including invoice)",
+    "Product campaign expenses by merchant (VAT included)",
+    "Total Platform Deductions from Merchant (Merchant's Liability, VAT included)",
+    "POS Machine Fee(VAT included)",
+    "Merchant ad spend (including VAT)",
+    "Payable to Restaurant",
+  ];
+
+  const orderRows = [
+    ["Brand A", "Branch A", 1001, "A", "1 Aug 2026", "10001", "Completed", "Delivery Order", 115, -17.25, -2.875, -11.5, -1.15, 0, -5.75, -2.3, 0, 0, 74.175],
+    ["Brand A", "Branch A", 1001, "A", "1 Aug 2026", "10001", "Completed", "Partial Refund", -23, 3.45, 0, 0, 0, 0, 0, 0, 0, 0, -19.55],
+    ["Brand A", "Branch A", 1001, "A", "1 Aug 2026", null, null, "Advertising Fee", 0, 0, 0, 0, 0, 0, 0, 0, 0, -11.5, -11.5],
+    ["Brand A", "Branch A", 1001, "A", "2 Aug 2026", "10002", "Completed", "Delivery Order", 57.5, -8.625, -1.4375, -5.75, 0, 0, 0, 0, 0, 0, 41.6875],
+  ];
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.aoa_to_sheet([Array(headers.length).fill(null), Array(headers.length).fill(null), headers, ...orderRows]),
+    "Order Summary",
+  );
+
+  const invoiceHeaders = [
+    "Brand Name",
+    "Brand ID",
+    "Restaurant Name",
+    "Restaurant ID",
+    "shop code",
+    "Transaction date",
+    "Invoice amount",
+    "Payable to Restaurant",
+    "Settlement status",
+    "Billing Cycle",
+    "Settlement date",
+    "Settlement object type",
+    "Settlement object ID",
+  ];
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.aoa_to_sheet([
+      invoiceHeaders,
+      ["Brand A", 1, "Branch A", 1001, "A", "1 Aug 2026", 40.825, 43.125, "Settled", "cycle", "3 Aug 2026", "Restaurant", 1001],
+      ["Brand A", 1, "Branch A", 1001, "A", "2 Aug 2026", 15.8125, 41.6875, "Settled", "cycle", "3 Aug 2026", "Restaurant", 1001],
+    ]),
+    "Invoice Details",
+  );
+
+  const billingHeaders = [
+    "Number of restaurants",
+    "Transaction date",
+    "Total Original item price(VAT included)",
+    "Total Top-up to Minimum (VAT included)",
+    "Total Compensation to Merchant (VAT included)",
+    "Delivery fee for merchant delivery order (including VAT)",
+    "Adjustment increases (not included in invoices)",
+    "Total Commission(VAT included)",
+    "Total Bank Fee(VAT included)",
+    "Delivery subsidies (Keeta delivery) covered by merchant",
+    "Photography Service Fee(VAT included)",
+    "Adjustment (including invoice)",
+    "Product campaign expenses by merchant(VAT included)",
+    "Delivery promotion subsidy (merchant delivery, including VAT) covered by merchant",
+    "Total Platform Deductions from Merchant (Merchant's Liability, VAT included)",
+    "VAT withholding",
+    "POS Machine Fee(VAT included)",
+    "Merchant ad spend (including VAT)",
+    "Adjustment decreases (not included in invoices)",
+    "Total Payable to Restaurant",
+  ];
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.aoa_to_sheet([
+      Array(billingHeaders.length).fill(null),
+      Array(billingHeaders.length).fill(null),
+      billingHeaders,
+      [1, "1 Aug 2026", 92, 0, 0, 0, 0, -13.8, -2.875, -11.5, -1.15, 0, -5.75, 0, -2.3, 0, 0, -11.5, 0, 43.125],
+      [1, "2 Aug 2026", 57.5, 0, 0, 0, 0, -8.625, -1.4375, -5.75, 0, 0, 0, 0, 0, 0, 0, 0, 0, 41.6875],
+    ]),
+    "Billing data summary",
+  );
+
+  return XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+}
+
 describe("Keeta audit engine", () => {
   test("reconstructs sales, cost categories and settlement from Order Summary", () => {
     const result = analyzeKeeta(buildKeetaWorkbook());
@@ -142,6 +241,48 @@ describe("Keeta audit engine", () => {
     expect(result.summary.statusCounts.Completed).toBe(2);
     expect(result.summary.periodStart).toBe("2026-08-01");
     expect(result.summary.periodEnd).toBe("2026-08-02");
+  });
+
+  test("uses Invoice Details and Billing data summary as official Excel controls", () => {
+    const result = analyzeKeeta(buildKeetaExcelOfficialWorkbook());
+    const branch = result.branches[0];
+
+    expect(result.summary.orders).toBe(2);
+    expect(result.summary.statusCounts.Completed).toBe(2);
+    expect(result.daily.find((row) => row.date === "2026-08-01")?.orders).toBe(1);
+    expect(result.daily.find((row) => row.date === "2026-08-02")?.orders).toBe(1);
+
+    expect(result.summary.keetaExcelInvoiceAmount).toBeCloseTo(56.6375, 6);
+    expect(result.summary.keetaExcelInvoiceVariance).toBeCloseTo(0, 6);
+    expect(result.summary.keetaExcelPayable).toBeCloseTo(84.8125, 6);
+    expect(result.summary.keetaExcelPayableVariance).toBeCloseTo(0, 6);
+    expect(result.summary.keetaBillingInvoiceAmount).toBeCloseTo(56.6375, 6);
+    expect(result.summary.keetaBillingInvoiceVariance).toBeCloseTo(0, 6);
+    expect(result.summary.keetaBillingPayable).toBeCloseTo(84.8125, 6);
+    expect(result.summary.keetaBillingPayableVariance).toBeCloseTo(0, 6);
+
+    expect(branch?.orders).toBe(2);
+    expect(branch?.keetaExcelInvoiceAmount).toBeCloseTo(56.6375, 6);
+    expect(branch?.keetaExcelInvoiceVariance).toBeCloseTo(0, 6);
+    expect(branch?.keetaExcelPayable).toBeCloseTo(84.8125, 6);
+    expect(branch?.keetaExcelPayableVariance).toBeCloseTo(0, 6);
+    expect(branch?.branchAuditStatus).toBe("matched");
+    expect(branch?.branchAuditNote).toContain("Invoice Details");
+
+    expect(result.invoice.keetaExcelInvoiceDetailRows).toBe(2);
+    expect(result.invoice.keetaBillingRows).toBe(2);
+    expect(result.invoice.lines.some((line) => line.label.includes("Invoice Details"))).toBe(true);
+
+    const invoiceCheck = result.checks.find(
+      (check) => check.label === "Invoice amount مقابل Invoice Details",
+    );
+    const payableCheck = result.checks.find(
+      (check) => check.label === "صافي المستحق مقابل Invoice Details",
+    );
+    expect(invoiceCheck?.computed).toBeCloseTo(56.6375, 6);
+    expect(invoiceCheck?.invoiced).toBeCloseTo(56.6375, 6);
+    expect(payableCheck?.computed).toBeCloseTo(84.8125, 6);
+    expect(payableCheck?.invoiced).toBeCloseTo(84.8125, 6);
   });
 
   test("compares the independently calculated settlement to invoice Net Due when supplied", () => {
