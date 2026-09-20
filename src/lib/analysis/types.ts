@@ -64,8 +64,14 @@ export interface BranchRow {
   keetaBankFeesExVat?: number;
   keetaDeliveryCampaignExVat?: number;
   keetaAdvertisingExVat?: number;
+  keetaProductCampaignExVat?: number;
+  keetaMerchantAdExVat?: number;
+  keetaPosFeesExVat?: number;
   keetaCompensationExVat?: number;
   keetaOtherExpensesExVat?: number;
+  keetaCommissionInvoiceExVat?: number;
+  keetaCommissionInvoiceInclVat?: number;
+  keetaCreditSales?: number;
   keetaTotalCostExVat?: number;
   keetaInputVat?: number;
   keetaTotalCostInclVat?: number;
@@ -73,6 +79,18 @@ export interface BranchRow {
   keetaSettlementVariance?: number;
   keetaPlatformCostPct?: number;
   keetaAvgOrderValueInclVat?: number;
+  keetaPdfOrderCommissionInclVat?: number;
+  keetaPdfOrderCommissionVariance?: number;
+  keetaPdfBankCommissionInclVat?: number;
+  keetaPdfBankCommissionVariance?: number;
+  keetaPdfDeliveryCommissionInclVat?: number;
+  keetaPdfDeliveryCommissionVariance?: number;
+  keetaPdfCommissionInvoiceInclVat?: number;
+  keetaPdfCommissionVariance?: number;
+  keetaPdfCreditSales?: number;
+  keetaPdfCreditSalesVariance?: number;
+  keetaPdfNetDue?: number;
+  keetaPdfNetDueVariance?: number;
 }
 
 export interface DailyRow {
@@ -140,8 +158,14 @@ export interface Summary {
   keetaBankFeesExVat?: number;
   keetaDeliveryCampaignExVat?: number;
   keetaAdvertisingExVat?: number;
+  keetaProductCampaignExVat?: number;
+  keetaMerchantAdExVat?: number;
+  keetaPosFeesExVat?: number;
   keetaCompensationExVat?: number;
   keetaOtherExpensesExVat?: number;
+  keetaCommissionInvoiceExVat?: number;
+  keetaCommissionInvoiceInclVat?: number;
+  keetaCreditSales?: number;
   keetaTotalCostExVat?: number;
   keetaInputVat?: number;
   keetaTotalCostInclVat?: number;
@@ -187,6 +211,33 @@ export interface HungerInvoiceBranch {
   rejectedSales?: number;
 }
 
+export interface KeetaInvoiceBranch {
+  restaurantId: string;
+  orderCommissionInclVat?: number;
+  bankCommissionInclVat?: number;
+  deliveryCommissionInclVat?: number;
+  photographyInclVat?: number;
+  subscriptionInclVat?: number;
+  commissionAdjustmentInclVat?: number;
+  commissionTotalExVat?: number;
+  commissionVat?: number;
+  commissionTotalInclVat?: number;
+  originalItemPrice?: number;
+  topUpToMinimum?: number;
+  compensationToMerchant?: number;
+  restaurantDeliveryFee?: number;
+  merchantPaymentIncrease?: number;
+  merchantSubsidyItems?: number;
+  merchantDeliveryPromotion?: number;
+  platformDeductions?: number;
+  advertisingCosts?: number;
+  vatWithholding?: number;
+  merchantPaymentReduction?: number;
+  posMachineFees?: number;
+  totalCreditSales?: number;
+  netDue?: number;
+}
+
 export interface InvoiceFigures {
   /** Arabic label -> amount, in display order */
   lines: { label: string; amount: number }[];
@@ -208,6 +259,20 @@ export interface InvoiceFigures {
   rejectedSalesOrders?: number;
   rejectedSalesIncVat?: number;
   branches?: HungerInvoiceBranch[];
+  keetaBranches?: KeetaInvoiceBranch[];
+  keetaPromotionServiceFeeExVat?: number;
+  keetaTaxInvoiceExVat?: number;
+  keetaTaxInvoiceVat?: number;
+  keetaTaxInvoiceInclVat?: number;
+  keetaTaxCreditNoteExVat?: number;
+  keetaTaxCreditNoteVat?: number;
+  keetaTaxCreditNoteInclVat?: number;
+  keetaOriginalItemPrice?: number;
+  keetaTopUpToMinimum?: number;
+  keetaCompensationToMerchant?: number;
+  keetaMerchantSubsidyItems?: number;
+  keetaAdvertisingCosts?: number;
+  keetaPosMachineFees?: number;
   invoiceNo?: string;
 }
 
