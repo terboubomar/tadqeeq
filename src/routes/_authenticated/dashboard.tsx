@@ -67,16 +67,19 @@ function Dashboard() {
 
   const s = selected.summary;
   const isHunger = selected.platform === "hungerstation";
+  const costLabel = isHunger ? "عمولة" : "تكلفة المنصة";
   const topBranches = [...selected.branches].slice(0, 8).map((branch) => ({
     name: branch.branch.length > 18 ? `${branch.branch.slice(0, 18)}…` : branch.branch,
-    عمولة: Number(branch.commission.toFixed(2)),
+    [costLabel]: Number(
+      (isHunger ? branch.commission : (branch.keetaTotalCostExVat ?? branch.totalCharges)).toFixed(2),
+    ),
     مبيعات: Number((isHunger ? branch.netSales : branch.grossSales).toFixed(2)),
   }));
 
   const daily = selected.daily.map((day) => ({
     date: day.date.slice(5),
-    مبيعات: Number(day.netSales.toFixed(2)),
-    عمولة: Number(day.commission.toFixed(2)),
+    مبيعات: Number((isHunger ? day.netSales : day.grossSales).toFixed(2)),
+    [costLabel]: Number(day.commission.toFixed(2)),
   }));
 
   return (
@@ -97,27 +100,31 @@ function Dashboard() {
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label={isHunger ? "المبيعات الإجمالية (شامل الضريبة)" : "قيمة الفواتير"}
+          label={isHunger ? "المبيعات الإجمالية (شامل الضريبة)" : "المبيعات الإجمالية (شامل الضريبة)"}
           value={sar(s.grossSales)}
           icon={ShoppingBag}
           tone="gold"
         />
         <StatCard
-          label={isHunger ? "صافي المبيعات الخاضعة للعمولة" : "المستحق للتاجر"}
+          label={isHunger ? "صافي المبيعات الخاضعة للعمولة" : "صافي التسوية المحتسب"}
           value={sar(s.netSales)}
           icon={TrendingUp}
         />
         <StatCard
-          label="إجمالي العمولة"
+          label={isHunger ? "إجمالي العمولة" : "عمولة كيتا (بدون الضريبة)"}
           value={sar(s.commission)}
           hint={`بنسبة ${percent(s.commissionPct)} من الأساس`}
           icon={Percent}
           tone="negative"
         />
         <StatCard
-          label="إجمالي ما خصمته المنصة"
+          label={isHunger ? "إجمالي ما خصمته المنصة" : "تكلفة المنصة (بدون الضريبة)"}
           value={sar(s.totalCharges)}
-          hint="عمولة + رسوم دفع + حملات + تعويضات"
+          hint={
+            isHunger
+              ? "عمولة + رسوم دفع + حملات + تعويضات"
+              : `تكلفة فعلية ${percent(s.keetaPlatformCostPct ?? 0)} من المبيعات بدون الضريبة`
+          }
           icon={Receipt}
           tone="negative"
         />
@@ -158,11 +165,39 @@ function Dashboard() {
           <StatCard label="محافظ العملاء" value={sar(s.walletAmount)} icon={Wallet} />
           <StatCard label="محافظ المندوبين" value={sar(s.riderWallet)} icon={Store} />
         </section>
-      ) : null}
+      ) : (
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            label="Payable حسب كيتا"
+            value={sar(s.keetaSourcePayable ?? 0)}
+            hint="مجموع عمود Payable to merchant"
+            icon={Banknote}
+          />
+          <StatCard
+            label="فرق التسوية"
+            value={sar(s.keetaSettlementVariance ?? 0)}
+            hint="المحتسب ناقص Payable حسب كيتا"
+            icon={Receipt}
+            tone={Math.abs(s.keetaSettlementVariance ?? 0) > 0.05 ? "negative" : "default"}
+          />
+          <StatCard
+            label="رسوم البنك (بدون الضريبة)"
+            value={sar(s.keetaBankFeesExVat ?? 0)}
+            icon={CreditCard}
+          />
+          <StatCard
+            label="التوصيل والحملات (بدون الضريبة)"
+            value={sar(s.keetaDeliveryCampaignExVat ?? 0)}
+            icon={Store}
+          />
+        </section>
+      )}
 
       <div className="grid gap-5 xl:grid-cols-5">
         <section className="panel p-5 xl:col-span-3">
-          <h2 className="text-base font-bold">المبيعات والعمولة يومياً</h2>
+          <h2 className="text-base font-bold">
+            {isHunger ? "المبيعات والعمولة يومياً" : "المبيعات وتكلفة المنصة يومياً"}
+          </h2>
           <div className="mt-4 h-72" dir="ltr">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={daily} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -193,7 +228,7 @@ function Dashboard() {
                 />
                 <Area
                   type="monotone"
-                  dataKey="عمولة"
+                  dataKey={costLabel}
                   stroke="var(--color-chart-4)"
                   fill="transparent"
                   strokeWidth={2}
@@ -204,7 +239,9 @@ function Dashboard() {
         </section>
 
         <section className="panel p-5 xl:col-span-2">
-          <h2 className="text-base font-bold">أعلى الفروع عمولةً</h2>
+          <h2 className="text-base font-bold">
+            {isHunger ? "أعلى الفروع عمولةً" : "أعلى الفروع تكلفة منصة"}
+          </h2>
           <div className="mt-4 h-72" dir="ltr">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={topBranches} layout="vertical" margin={{ left: 8, right: 12 }}>
@@ -223,7 +260,7 @@ function Dashboard() {
                   stroke="var(--color-muted-foreground)"
                 />
                 <Tooltip {...chartStyle} formatter={(value: number) => money(value)} />
-                <Bar dataKey="عمولة" fill="var(--color-chart-1)" radius={[0, 6, 6, 0]} />
+                <Bar dataKey={costLabel} fill="var(--color-chart-1)" radius={[0, 6, 6, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
