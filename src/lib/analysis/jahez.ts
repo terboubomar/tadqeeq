@@ -135,19 +135,129 @@ function rowObject(headers: string[], row: string[]): CsvRow {
   return result;
 }
 
+function cleanDirectionalMarks(value: string): string {
+  return value.replace(/[\u200e\u200f\u202a-\u202e]/g, "");
+}
+
 function dateKey(value: string): string | null {
-  const match = value.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  const match = cleanDirectionalMarks(value).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (!match) return null;
   const [, day, month, year] = match;
   return year + "-" + month!.padStart(2, "0") + "-" + day!.padStart(2, "0");
 }
 
 function periodRange(value: string): { start: string | null; end: string | null } {
-  const dates = [...value.matchAll(/(\d{1,2})\/(\d{1,2})\/(\d{4})/g)].map((match) => {
+  const dates = [...cleanDirectionalMarks(value).matchAll(/(\d{1,2})\/(\d{1,2})\/(\d{4})/g)].map((match) => {
     const [, day, month, year] = match;
     return year + "-" + month!.padStart(2, "0") + "-" + day!.padStart(2, "0");
   });
   return { start: dates[0] ?? null, end: dates[1] ?? dates[0] ?? null };
+}
+
+function parseJahezCompensation(
+  file: ArrayBuffer,
+  currentOrders: Record<string, JahezOrderReference>,
+  historicalOrders: Record<string, JahezOrderReference> = {},
+): JahezCompensationReport {
+  const text = new TextDecoder("utf-8").decode(file).replace(/^\uFEFF/, "");
+  const matrix = parseCsv(text);
+  if (matrix.length < 5) {
+    throw new Error("ملف تعويضات جاهز لا يحتوي البيانات المتوقعة.");
+  }
+
+  const summaryHeaders = matrix[0]!.map((value) => value.trim());
+  const summary = rowObject(summaryHeaders, matrix[1] ?? []);
+  const detailHeaderIndex = matrix.findIndex((row) => row[0]?.trim() === "#");
+  if (detailHeaderIndex < 0) {
+    throw new Error("تعذّر العثور على جدول التعويضات التفصيلي في ملف جاهز.");
+  }
+
+  const detailHeaders = matrix[detailHeaderIndex]!.map((value) => value.trim());
+  const details = matrix
+    .slice(detailHeaderIndex + 1)
+    .filter((row) => row.some((value) => value.trim()))
+    .map((row) => rowObject(detailHeaders, row));
+
+  const seen = new Map<string, number>();
+  const transactions: JahezCompensationTransaction[] = [];
+  let detailDebit = 0;
+  let detailCredit = 0;
+  let matchedCurrent = 0;
+  let matchedHistorical = 0;
+  const unknownOrderIds = new Set<string>();
+  let duplicateCandidates = 0;
+  let duplicateAmount = 0;
+
+  for (const source of details) {
+    const transactionType = (source["Transaction Type"] || "").toLowerCase();
+    const amount = num(source["Amount"]);
+    const orderId = (source["Order #"] || "").trim();
+    const branch = normalizeBranch(source["Branch"] || "غير محدد");
+    const currentRef = currentOrders[orderId];
+    const historicalRef = !currentRef ? historicalOrders[orderId] : undefined;
+    const matched = currentRef ?? historicalRef;
+    const match = currentRef ? "current" : historicalRef ? "historical" : "unknown";
+
+    if (transactionType === "debit") detailDebit += amount;
+    if (transactionType === "credit") detailCredit += amount;
+    if (match === "current") matchedCurrent += 1;
+    if (match === "historical") matchedHistorical += 1;
+    if (match === "unknown" && orderId) unknownOrderIds.add(orderId);
+
+    const duplicateKey = [
+      branch,
+      orderId,
+      transactionType,
+      source["Reason"] || "",
+      cleanDirectionalMarks(source["Creation Date"] || ""),
+      amount.toFixed(2),
+      (source["Free"] || "").toLowerCase(),
+      source["Comments"] || "",
+      source["Missing Item Name"] || "",
+    ].join("|");
+    const duplicateIndex = seen.get(duplicateKey) ?? 0;
+    seen.set(duplicateKey, duplicateIndex + 1);
+    const duplicateCandidate = duplicateIndex > 0;
+    if (duplicateCandidate) {
+      duplicateCandidates += 1;
+      duplicateAmount += amount;
+    }
+
+    transactions.push({
+      sequence: source["#"] || "",
+      branch,
+      orderId,
+      transactionType,
+      reason: source["Reason"] || "",
+      creationDate: source["Creation Date"] || "",
+      amount,
+      free: (source["Free"] || "").toLowerCase() === "true",
+      comments: source["Comments"] || undefined,
+      missingItemName: source["Missing Item Name"] || undefined,
+      match,
+      matchedBranch: matched?.branch,
+      matchedPeriodLabel: historicalRef?.periodLabel,
+      duplicateCandidate,
+      branchMismatch: Boolean(matched?.branch && normalizeBranch(matched.branch) !== branch),
+    });
+  }
+
+  return {
+    periodLabel: summary["Date"] || undefined,
+    summaryTransactions: Math.round(num(summary["Restaurant_Total_Transactions"])),
+    summaryDebit: num(summary["Restaurant_Total_Debit_Amount"]),
+    summaryCredit: num(summary["Restaurant_Total_Credit_Amount"]),
+    detailTransactions: transactions.length,
+    detailDebit,
+    detailCredit,
+    netImpact: detailDebit - detailCredit,
+    matchedCurrent,
+    matchedHistorical,
+    unknownOrders: unknownOrderIds.size,
+    duplicateCandidates,
+    duplicateAmount,
+    transactions,
+  };
 }
 
 function settlementFromDetail(row: CsvRow): number {
