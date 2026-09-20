@@ -96,18 +96,30 @@ function FileField({
       <label
         htmlFor={id}
         className={cn(
-          "mt-3 flex cursor-pointer flex-wrap items-center gap-2 rounded-[8px] border border-dashed px-3 py-3 text-xs transition-colors",
+          "mt-4 flex min-h-[132px] cursor-pointer flex-col items-center justify-center gap-2 rounded-[12px] border-2 border-dashed px-4 py-7 text-center transition-colors sm:min-h-[160px]",
           file
-            ? "border-success/30 bg-success/[0.035]"
-            : "border-input bg-background/70 hover:border-primary/40",
+            ? "border-success/40 bg-success/[0.05]"
+            : "border-input bg-background/70 hover:border-primary/50 hover:bg-secondary/40",
         )}
       >
-        <span className="num text-[11px] text-muted-foreground">{accept}</span>
-        <span className="flex-1" />
-        <span className={file ? "font-medium text-foreground" : "text-muted-foreground"}>
-          {file ? file.name : "اسحب الملف هنا أو"}
+        <span
+          className={cn(
+            "grid size-11 place-items-center rounded-full",
+            file ? "bg-success/15 text-success" : "bg-secondary text-primary",
+          )}
+        >
+          {file ? <Check className="size-5" /> : <Upload className="size-5" />}
         </span>
-        <span className="rounded-[6px] border border-input bg-white px-2.5 py-1 font-medium text-foreground">
+        <span
+          className={cn(
+            "max-w-full break-all text-[14px]",
+            file ? "font-semibold text-foreground" : "font-medium text-foreground/80",
+          )}
+        >
+          {file ? file.name : "اسحب الملف هنا أو اضغط للاختيار"}
+        </span>
+        <span className="num text-[11.5px] text-muted-foreground">{accept}</span>
+        <span className="mt-1 rounded-[8px] border border-input bg-white px-4 py-2 text-[13px] font-medium text-foreground">
           {file ? "تغيير الملف" : "اختر ملفاً"}
         </span>
       </label>
