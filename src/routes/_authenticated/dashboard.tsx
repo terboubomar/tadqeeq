@@ -85,11 +85,18 @@ function Dashboard() {
     مبيعات: Number((isHunger ? branch.netSales : branch.grossSales).toFixed(2)),
   }));
 
-  const daily = selected.daily.map((day) => ({
-    date: day.date.slice(5),
-    مبيعات: Number((isHunger ? day.netSales : day.grossSales).toFixed(2)),
-    [costLabel]: Number(day.commission.toFixed(2)),
-  }));
+  const daily = selected.daily
+    .filter(
+      (day) =>
+        (!selected.period_start || day.date >= selected.period_start) &&
+        (!selected.period_end || day.date <= selected.period_end),
+    )
+    .sort((left, right) => left.date.localeCompare(right.date))
+    .map((day) => ({
+      date: day.date.slice(8, 10) + "/" + day.date.slice(5, 7),
+      مبيعات: Number((isHunger ? day.netSales : day.grossSales).toFixed(2)),
+      [costLabel]: Number(day.commission.toFixed(2)),
+    }));
 
   return (
     <div className="space-y-6">
