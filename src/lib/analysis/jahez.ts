@@ -146,6 +146,27 @@ function dateKey(value: string): string | null {
   return year + "-" + month!.padStart(2, "0") + "-" + day!.padStart(2, "0");
 }
 
+function compensationDateKey(value: string): string | null {
+  // Jahez Compensation Report uses US-style month/day/year timestamps,
+  // unlike the Restaurant Financial Report order dates (day/month/year).
+  const match = cleanDirectionalMarks(value).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!match) return null;
+  const [, month, day, year] = match;
+  const monthNumber = Number(month);
+  const dayNumber = Number(day);
+  if (
+    !Number.isInteger(monthNumber) ||
+    !Number.isInteger(dayNumber) ||
+    monthNumber < 1 ||
+    monthNumber > 12 ||
+    dayNumber < 1 ||
+    dayNumber > 31
+  ) {
+    return null;
+  }
+  return year + "-" + month!.padStart(2, "0") + "-" + day!.padStart(2, "0");
+}
+
 function periodRange(value: string): { start: string | null; end: string | null } {
   const dates = [...cleanDirectionalMarks(value).matchAll(/(\d{1,2})\/(\d{1,2})\/(\d{4})/g)].map((match) => {
     const [, day, month, year] = match;
@@ -431,7 +452,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
     if (transaction.match === "unknown") current.unknownAmount += transaction.amount;
     compensationByBranch.set(transaction.branch, current);
 
-    const compensationDate = dateKey(transaction.creationDate);
+    const compensationDate = compensationDateKey(transaction.creationDate);
     if (compensationDate) {
       let day = daily.get(compensationDate);
       if (!day) {
