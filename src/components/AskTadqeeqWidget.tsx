@@ -12,7 +12,11 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
-import type { AnalystChatResult, AnalystHistoryMessage } from "@/lib/ai/analyst-ai";
+import type {
+  AnalystChatResult,
+  AnalystHistoryMessage,
+  AnalystTablePresentation,
+} from "@/lib/ai/analyst-ai";
 import { askTadqeeq } from "@/lib/ai/analyst-ai.functions";
 import { arabicDate } from "@/lib/format";
 import type { StoredPeriod } from "@/lib/periods";
@@ -384,7 +388,12 @@ function ChatBubble({
         {isUser ? <UserRound className="size-4" /> : <Bot className="size-4" />}
       </div>
 
-      <div className={cn("max-w-[88%] space-y-2", isUser && "items-end")}>
+      <div
+        className={cn(
+          "min-w-0 space-y-2",
+          isUser ? "max-w-[88%] items-end" : "max-w-full flex-1",
+        )}
+      >
         <div
           className={cn(
             "rounded-xl px-3.5 py-3 text-sm leading-7",
@@ -398,6 +407,9 @@ function ChatBubble({
 
         {message.result ? (
           <>
+            {message.result.presentation ? (
+              <AnalystPresentationTable presentation={message.result.presentation} />
+            ) : null}
             <ResponseMeta result={message.result} />
             {showFollowUps && message.result.response.followUpSuggestions.length ? (
               <div className="flex flex-wrap gap-1.5">
@@ -415,6 +427,65 @@ function ChatBubble({
             ) : null}
           </>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+function AnalystPresentationTable({
+  presentation,
+}: {
+  presentation: AnalystTablePresentation;
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-white">
+      {presentation.title ? (
+        <div className="border-b border-border bg-secondary/25 px-3 py-2.5">
+          <p className="text-[11px] font-bold text-foreground">{presentation.title}</p>
+        </div>
+      ) : null}
+
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] border-collapse text-[11px]">
+          <thead className="bg-secondary/10 text-muted-foreground">
+            <tr>
+              {presentation.columns.map((column) => (
+                <th
+                  key={column.key}
+                  className={cn(
+                    "whitespace-nowrap border-b border-border px-3 py-2 font-semibold",
+                    column.align === "number" ? "text-end" : "text-start",
+                  )}
+                >
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {presentation.rows.map((row, rowIndex) => (
+              <tr
+                key={rowIndex}
+                className="border-b border-border/60 last:border-b-0 hover:bg-secondary/10"
+              >
+                {presentation.columns.map((column) => (
+                  <td
+                    key={column.key}
+                    className={cn(
+                      "whitespace-nowrap px-3 py-2.5",
+                      column.align === "number"
+                        ? "num text-end font-medium"
+                        : "text-start",
+                      column.key === "branch" && "font-semibold text-foreground",
+                    )}
+                  >
+                    {row[column.key] ?? "—"}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

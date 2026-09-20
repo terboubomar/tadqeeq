@@ -7,7 +7,8 @@ import {
   buildAnalystContext,
   resolveAnalystFacts,
 } from "./analyst-context";
-import { analystAiResponseSchema } from "./analyst-ai";
+import { analystAiResponseSchema, type AnalystAiResponse } from "./analyst-ai";
+import { buildAnalystPresentation } from "./analyst-presentation";
 
 function period(input: {
   id: string;
@@ -267,12 +268,88 @@ describe("Ask Tadqeeq deterministic context", () => {
   });
 });
 
+describe("Ask Tadqeeq structured presentation", () => {
+  test("builds a branch cost table from a deterministic ranking fact", () => {
+    const current = period({
+      id: "sep",
+      start: "2026-09-01",
+      end: "2026-09-30",
+      grossSales: 12000,
+      commissionPct: 0.19,
+      totalCharges: 3000,
+      branchCost: 2200,
+    });
+
+    const context = buildAnalystContext(current, [current]);
+    const ranking = context.facts.find(
+      (fact) => fact.label === "أعلى الفروع بتكلفة المنصة",
+    );
+    if (!ranking) throw new Error("expected cost ranking");
+
+    const response: AnalystAiResponse = {
+      answerability: "grounded",
+      answer: "الفرع الأعلى تكلفة هو Branch A.",
+      usedFactIds: [ranking.id],
+      presentation: {
+        type: "branch_table",
+        title: "أعلى الفروع تكلفة",
+        factIds: [ranking.id],
+      },
+      limitations: [],
+      followUpSuggestions: [],
+      confidence: "high",
+    };
+
+    const presentation = buildAnalystPresentation(context, response);
+
+    expect(presentation?.type).toBe("table");
+    expect(presentation?.rows[0]?.branch).toBe("Branch A");
+    expect(presentation?.rows[0]?.platformCost).toBe("2,200.00 ر.س");
+    expect(presentation?.rows[0]?.grossSales).toBe("7,200.00 ر.س");
+    expect(presentation?.rows[0]?.orders).toBe("60");
+    expect(presentation?.rows[1]?.branch).toBe("Branch B");
+  });
+
+  test("falls back to text when no valid table facts are supplied", () => {
+    const current = period({
+      id: "sep",
+      start: "2026-09-01",
+      end: "2026-09-30",
+      grossSales: 12000,
+      commissionPct: 0.19,
+      totalCharges: 3000,
+    });
+    const context = buildAnalystContext(current, [current]);
+
+    const response: AnalystAiResponse = {
+      answerability: "grounded",
+      answer: "ملخص نصي.",
+      usedFactIds: ["F001"],
+      presentation: {
+        type: "exception_table",
+        title: "الاستثناءات",
+        factIds: ["F001"],
+      },
+      limitations: [],
+      followUpSuggestions: [],
+      confidence: "high",
+    };
+
+    expect(buildAnalystPresentation(context, response)).toBeNull();
+  });
+});
+
 describe("Ask Tadqeeq structured response", () => {
   test("validates grounded answers with explicit fact references", () => {
     const result = analystAiResponseSchema.parse({
       answerability: "grounded",
       answer: "أعلى تكلفة منصة مسجلة في السياق الحالي تخص Branch A.",
       usedFactIds: ["F015"],
+      presentation: {
+        type: "text",
+        title: "",
+        factIds: [],
+      },
       limitations: [],
       followUpSuggestions: ["اعرض تفاصيل الفرع."],
       confidence: "high",
