@@ -40,8 +40,21 @@ function InvoiceCheck() {
 
   const [flaggedOnly, setFlaggedOnly] = useState(false);
   const checks = selected.invoice?.checks ?? [];
-  const hasPdfInvoice = Boolean(selected.invoice?.lines?.length);
-  // Headline variance should only use non-overlapping controls.
+  const hasPdfInvoice =
+    selected.platform === "hungerstation"
+      ? Boolean(selected.invoice?.lines?.length)
+      : Boolean(
+          selected.invoice?.keetaBranches?.length ||
+            selected.invoice?.salesCommission !== undefined ||
+            selected.invoice?.netDue !== undefined ||
+            selected.invoice?.keetaTaxInvoiceExVat !== undefined,
+        );
+  const hasKeetaExcelControl =
+    selected.platform === "keeta" &&
+    (selected.invoice?.keetaExcelInvoiceAmount !== undefined ||
+      selected.invoice?.keetaExcelPayable !== undefined);
+  const hasOfficialControl = hasPdfInvoice || hasKeetaExcelControl;
+  // Headline variance should only use one non-overlapping settlement control.
   const headlineLabels =
     selected.platform === "hungerstation"
       ? new Set([
@@ -50,7 +63,11 @@ function InvoiceCheck() {
           "عمولات أخرى القابلة للتحقق من البيانات",
         ])
       : new Set([
-          hasPdfInvoice ? "صافي المستحق مقابل فاتورة كيتا" : "صافي التسوية مقابل ملف كيتا",
+          hasPdfInvoice
+            ? "صافي المستحق مقابل فاتورة كيتا"
+            : hasKeetaExcelControl
+              ? "صافي المستحق مقابل Invoice Details"
+              : "صافي التسوية مقابل Order Summary Payable",
         ]);
   const independentlyComparable = checks.filter(
     (check) =>
@@ -100,14 +117,14 @@ function InvoiceCheck() {
         </label>
       </header>
 
-      {!hasPdfInvoice ? (
+      {!hasOfficialControl ? (
         <div className="panel flex items-start gap-3 border-warning/40 p-4">
           <AlertTriangle className="mt-0.5 size-5 shrink-0 text-warning" />
           <div>
             <p className="font-semibold">لم تُرفق فاتورة لهذه الفترة</p>
             <p className="mt-1 text-sm text-muted-foreground">
               {selected.platform === "keeta"
-                ? "تمت مطابقة صافي التسوية داخلياً مع Payable to merchant من ملف كيتا. أرفق فاتورة PDF لإضافة المطابقة الرسمية."
+                ? "تمت مطابقة التسوية داخلياً مع Order Summary فقط. هذا الملف لا يحتوي Invoice Details ولم تُرفق فاتورة PDF."
                 : "الأرقام أدناه محتسبة من بيانات الطلبات فقط. أعد رفع الفترة مع ملف الفاتورة (PDF) لإظهار الفروقات."}
             </p>
           </div>
@@ -156,9 +173,23 @@ function InvoiceCheck() {
             tone="gold"
           />
           <StatCard
-            label="إجمالي الفاتورة شامل الضريبة"
-            value={sar(selected.invoice?.totalIncVat ?? 0)}
-            hint={selected.invoice?.invoiceNo ? "فاتورة رقم " + selected.invoice.invoiceNo : "حسب ملف PDF"}
+            label={
+              selected.platform === "keeta" && !hasPdfInvoice && hasKeetaExcelControl
+                ? "Invoice amount حسب Invoice Details"
+                : "إجمالي الفاتورة شامل الضريبة"
+            }
+            value={
+              selected.platform === "keeta" && !hasPdfInvoice && hasKeetaExcelControl
+                ? sar(selected.invoice?.keetaExcelInvoiceAmount ?? 0)
+                : sar(selected.invoice?.totalIncVat ?? 0)
+            }
+            hint={
+              selected.platform === "keeta" && !hasPdfInvoice && hasKeetaExcelControl
+                ? "ضابط رسمي من ورقة Invoice Details داخل ملف كيتا"
+                : selected.invoice?.invoiceNo
+                  ? "فاتورة رقم " + selected.invoice.invoiceNo
+                  : "حسب ملف PDF"
+            }
           />
         </section>
       )}
@@ -181,7 +212,7 @@ function InvoiceCheck() {
                 المحتسب من البيانات
               </th>
               <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
-                المطالب به بالفاتورة
+                قيمة المنصة / المستند الرسمي
               </th>
               <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
                 الفرق
@@ -288,7 +319,11 @@ function InvoiceCheck() {
 
       <section className="grid gap-3 sm:grid-cols-2">
         <div className="panel p-4">
-          <h2 className="text-sm font-semibold">بنود الفاتورة كما وردت</h2>
+          <h2 className="text-sm font-semibold">
+            {selected.platform === "keeta" && !hasPdfInvoice && hasKeetaExcelControl
+              ? "الضوابط الرسمية كما وردت في Excel"
+              : "بنود الفاتورة كما وردت"}
+          </h2>
           {selected.invoice?.lines?.length ? (
             <ul className="mt-3 space-y-2 text-sm">
               {selected.invoice.lines.map((line) => (
@@ -302,7 +337,7 @@ function InvoiceCheck() {
               ))}
             </ul>
           ) : (
-            <p className="mt-3 text-sm text-muted-foreground">لم تُقرأ أي بنود من ملف الفاتورة.</p>
+            <p className="mt-3 text-sm text-muted-foreground">لم تُقرأ أي بنود أو ضوابط رسمية إضافية.</p>
           )}
         </div>
 
