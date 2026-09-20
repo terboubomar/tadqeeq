@@ -386,56 +386,110 @@ function InvoiceCheck() {
         <div className="panel p-4">
           <h2 className="text-sm font-semibold">أساس الاحتساب</h2>
           <dl className="mt-3 space-y-2 text-sm">
-            <Row label="نسبة العمولة الفعلية" value={percent(selected.summary.commissionPct)} />
-            <Row
-              label="نسبة العقد المستخدمة"
-              value={
-                selected.summary.bankRateSource === "manual" && selected.summary.bankRate > 0
-                  ? percent(selected.summary.bankRate)
-                  : "لم تُدخل"
-              }
-            />
-            <Row
-              label="النسبة المستنتجة من الفاتورة"
-              value={
-                (selected.summary.invoiceImpliedBankRate ?? 0) > 0
-                  ? percent(selected.summary.invoiceImpliedBankRate ?? 0)
-                  : "غير متاحة"
-              }
-            />
-            <Row
-              label="النسبة المطبّقة بالحساب"
-              value={
-                selected.summary.bankRate > 0 ? percent(selected.summary.bankRate) : "غير محددة"
-              }
-            />
-            <Row label="أساس رسوم البطاقات الناجحة" value={sar(selected.summary.ccSuccess)} />
-            <Row label="أساس رسوم المحافظ" value={sar(selected.summary.walletFeeBase ?? 0)} />
-            <Row label="رسوم المحافظ المحتسبة" value={sar(selected.summary.walletFee ?? 0)} />
-            <Row
-              label="صافي مدفوعات البطاقات المحصلة"
-              value={sar(selected.summary.netBankCards ?? selected.summary.ccSuccess)}
-            />
-            <Row label="مدفوعات بطاقات مرتجعة" value={sar(selected.summary.ccRejected)} />
-            {(selected.summary.totalCollections ?? 0) > 0 ? (
-              <Row
-                label="إجمالي التحصيلات المعاد احتسابه"
-                value={sar(selected.summary.totalCollections ?? 0)}
-              />
-            ) : null}
-            <Row label="حملات التوصيل المجاني" value={sar(selected.summary.rdfCampaigns)} />
-            <Row label="تعويضات العملاء" value={sar(selected.summary.compensation)} />
-            <Row label="رسوم العروض السريعة" value={sar(selected.summary.jokerFees)} />
-            <Row label="رسوم وقت الانتظار" value={sar(selected.summary.waitingTimeFees)} />
-            {selected.summary.invoiceOnlyExtras ? (
-              <Row
-                label="بنود مأخوذة من الفاتورة"
-                value={sar(selected.summary.invoiceOnlyExtras)}
-              />
-            ) : null}
-            {selected.invoice?.cpc ? (
-              <Row label="فاتورة الإعلانات CPC (شامل الضريبة)" value={sar(selected.invoice.cpc)} />
-            ) : null}
+            {selected.platform === "jahez" ? (
+              <>
+                <Row label="Order Amount" value={sar(selected.summary.grossSales)} />
+                <Row
+                  label="Restaurant Amount"
+                  value={sar(selected.summary.jahezReportedRestaurantAmount ?? selected.summary.netSales)}
+                />
+                <Row
+                  label="عمولة جاهز شامل الضريبة"
+                  value={sar(selected.summary.jahezCommissionInclVat ?? 0)}
+                />
+                <Row
+                  label="Payment Fees"
+                  value={sar(selected.summary.jahezPaymentFeesExVat ?? 0)}
+                />
+                <Row
+                  label="Payment Fees VAT"
+                  value={sar(selected.summary.jahezPaymentFeesVat ?? 0)}
+                />
+                <Row
+                  label="Delivery Offer المخصوم"
+                  value={sar(selected.summary.jahezDeliveryOfferInclVat ?? 0)}
+                />
+                {(selected.summary.jahezCompensationTransactions ?? 0) > 0 ? (
+                  <>
+                    <Row
+                      label="تعويضات مخصومة"
+                      value={sar(selected.summary.jahezCompensationDebit ?? 0)}
+                    />
+                    <Row
+                      label="تعويضات مضافة"
+                      value={sar(selected.summary.jahezCompensationCredit ?? 0)}
+                    />
+                    <Row
+                      label="صافي أثر التعويضات"
+                      value={sar(selected.summary.jahezCompensationNetImpact ?? 0)}
+                    />
+                    <Row
+                      label="صافي المطعم بعد التعويضات"
+                      value={sar(
+                        selected.summary.jahezAdjustedRestaurantAmount ??
+                          selected.summary.jahezReportedRestaurantAmount ??
+                          selected.summary.netSales,
+                      )}
+                    />
+                  </>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <Row label="نسبة العمولة الفعلية" value={percent(selected.summary.commissionPct)} />
+                <Row
+                  label="نسبة العقد المستخدمة"
+                  value={
+                    selected.summary.bankRateSource === "manual" && selected.summary.bankRate > 0
+                      ? percent(selected.summary.bankRate)
+                      : "لم تُدخل"
+                  }
+                />
+                <Row
+                  label="النسبة المستنتجة من الفاتورة"
+                  value={
+                    (selected.summary.invoiceImpliedBankRate ?? 0) > 0
+                      ? percent(selected.summary.invoiceImpliedBankRate ?? 0)
+                      : "غير متاحة"
+                  }
+                />
+                <Row
+                  label="النسبة المطبّقة بالحساب"
+                  value={
+                    selected.summary.bankRate > 0
+                      ? percent(selected.summary.bankRate)
+                      : "غير محددة"
+                  }
+                />
+                <Row label="أساس رسوم البطاقات الناجحة" value={sar(selected.summary.ccSuccess)} />
+                <Row label="أساس رسوم المحافظ" value={sar(selected.summary.walletFeeBase ?? 0)} />
+                <Row label="رسوم المحافظ المحتسبة" value={sar(selected.summary.walletFee ?? 0)} />
+                <Row
+                  label="صافي مدفوعات البطاقات المحصلة"
+                  value={sar(selected.summary.netBankCards ?? selected.summary.ccSuccess)}
+                />
+                <Row label="مدفوعات بطاقات مرتجعة" value={sar(selected.summary.ccRejected)} />
+                {(selected.summary.totalCollections ?? 0) > 0 ? (
+                  <Row
+                    label="إجمالي التحصيلات المعاد احتسابه"
+                    value={sar(selected.summary.totalCollections ?? 0)}
+                  />
+                ) : null}
+                <Row label="حملات التوصيل المجاني" value={sar(selected.summary.rdfCampaigns)} />
+                <Row label="تعويضات العملاء" value={sar(selected.summary.compensation)} />
+                <Row label="رسوم العروض السريعة" value={sar(selected.summary.jokerFees)} />
+                <Row label="رسوم وقت الانتظار" value={sar(selected.summary.waitingTimeFees)} />
+                {selected.summary.invoiceOnlyExtras ? (
+                  <Row
+                    label="بنود مأخوذة من الفاتورة"
+                    value={sar(selected.summary.invoiceOnlyExtras)}
+                  />
+                ) : null}
+                {selected.invoice?.cpc ? (
+                  <Row label="فاتورة الإعلانات CPC (شامل الضريبة)" value={sar(selected.invoice.cpc)} />
+                ) : null}
+              </>
+            )}
           </dl>
         </div>
       </section>
