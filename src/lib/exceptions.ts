@@ -29,11 +29,35 @@ export type ExceptionCategory =
   | "branch_match"
   | "other";
 
+export interface ExceptionWorkflowEvent {
+  at: string;
+  status: ExceptionStatus;
+  note?: string;
+  recoveredAmount?: number;
+}
+
 export interface ExceptionWorkflowEntry {
   status: ExceptionStatus;
   note?: string;
   recoveredAmount?: number;
   updatedAt?: string;
+  history?: ExceptionWorkflowEvent[];
+}
+
+export interface EvidenceField {
+  label: string;
+  source: string;
+  value?: number | string;
+}
+
+export interface ExceptionEvidenceTrail {
+  reason: string;
+  formula: string;
+  evidenceLabel: string;
+  calculatedSources: EvidenceField[];
+  platformSources: EvidenceField[];
+  conclusion: string;
+  workflow: ExceptionWorkflowEvent[];
 }
 
 export interface AuditException {
@@ -618,5 +642,262 @@ export function summarizeExceptions(exceptions: AuditException[]): ExceptionSumm
     underReview: open.reduce((sum, item) => sum + item.reviewAmount, 0),
     potentialRecovery: open.reduce((sum, item) => sum + item.potentialRecovery, 0),
     recovered: exceptions.reduce((sum, item) => sum + item.recoveredAmount, 0),
+  };
+}
+
+
+const EVIDENCE_LABELS: Record<CheckEvidence, string> = {
+  data: "بيانات مستقلة",
+  contract: "بيانات + شروط العقد",
+  invoice_derived: "مشتق من الفاتورة",
+  invoice_only: "من الفاتورة فقط",
+  mixed: "مصادر مختلطة",
+};
+
+function definedField(
+  label: string,
+  source: string,
+  value: number | string | null | undefined,
+): EvidenceField | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number" && !Number.isFinite(value)) return null;
+  return { label, source, value };
+}
+
+function compactFields(fields: Array<EvidenceField | null>): EvidenceField[] {
+  return fields.filter((field): field is EvidenceField => field !== null);
+}
+
+function workflowTimeline(period: StoredPeriod, item: AuditException): ExceptionWorkflowEvent[] {
+  const workflow = period.invoice?.exceptionWorkflow?.[item.id];
+  if (!workflow) return [];
+
+  if (workflow.history?.length) return workflow.history;
+  if (!workflow.updatedAt) return [];
+
+  return [
+    {
+      at: workflow.updatedAt,
+      status: workflow.status,
+      note: workflow.note,
+      recoveredAmount: workflow.recoveredAmount,
+    },
+  ];
+}
+
+function genericReason(item: AuditException): string {
+  if (item.category === "branch_match") {
+    return item.hint ?? "تعذّرت مطابقة الفرع بشكل موثوق بين مصدر البيانات ومستند المنصة.";
+  }
+  return (
+    item.hint ??
+    "القيمة المعاد احتسابها من المصدر المستقل تختلف عن القيمة الواردة من المنصة بأكثر من هامش التقريب المسموح."
+  );
+}
+
+function conclusionFor(item: AuditException): string {
+  if (item.category === "branch_match") return genericReason(item);
+  const difference = Math.abs(item.difference ?? 0);
+  const base =
+    "الفرق " +
+    difference.toFixed(2) +
+    " ر.س يتجاوز هامش المطابقة " +
+    item.tolerance.toFixed(2) +
+    " ر.س.";
+  if (item.potentialRecovery > 0) {
+    return (
+      base +
+      " اتجاه الفرق يشير إلى مبلغ محتمل للاسترداد قدره " +
+      item.potentialRecovery.toFixed(2) +
+      " ر.س، ويحتاج اعتماداً بشرياً قبل المطالبة."
+    );
+  }
+  return base + " يحتاج مراجعة مصدرية قبل اتخاذ أي إجراء مالي.";
+}
+
+export function buildExceptionEvidence(
+  period: StoredPeriod,
+  item: AuditException,
+): ExceptionEvidenceTrail {
+  const branch =
+    period.branches?.find(
+      (row) =>
+        (item.branchId && row.branchId === item.branchId) ||
+        (!item.branchId && item.branch && row.branch === item.branch),
+    ) ?? null;
+
+  let formula = "القيمة المحتسبة من المصدر المستقل مقابل القيمة الواردة من المنصة";
+  let calculatedSources: EvidenceField[] = compactFields([
+    definedField("القيمة المحتسبة", "محرك تدقيق", item.computed),
+  ]);
+  let platformSources: EvidenceField[] = compactFields([
+    definedField("قيمة المنصة", "الفاتورة / ملف المنصة", item.invoiced),
+  ]);
+
+  if (item.sourceLevel === "summary") {
+    if (period.platform === "keeta" && item.label.includes("صافي التسوية")) {
+      formula = "إجمالي البيع الآجل - فاتورة العمولة شامل الضريبة = صافي التسوية";
+      calculatedSources = compactFields([
+        definedField("إجمالي البيع الآجل", "Keeta Order Summary", period.summary.keetaCreditSales),
+        definedField(
+          "فاتورة العمولة شامل الضريبة",
+          "Keeta Order Summary",
+          period.summary.keetaCommissionInvoiceInclVat,
+        ),
+        definedField("صافي التسوية المحتسب", "محرك تدقيق", item.computed),
+      ]);
+      platformSources = compactFields([
+        definedField("Payable to merchant", "Keeta Order Summary", item.invoiced),
+      ]);
+    } else {
+      const check = period.invoice?.checks?.find((candidate) => candidate.label === item.label);
+      formula = check?.hint ?? formula;
+    }
+  } else if (branch && period.platform === "hungerstation") {
+    if (item.category === "commission") {
+      formula = "مجموع عمولة الطلبات القابلة للفوترة والمرفوضة";
+      calculatedSources = compactFields([
+        definedField("الأساس الخاضع للعمولة", "HungerStation Excel · Commissionable GMV", branch.netSales),
+        definedField("العمولة المحتسبة", "HungerStation Excel · Commission", branch.commission),
+      ]);
+      platformSources = compactFields([
+        definedField("عمولة الفرع", "HungerStation PDF · Sales Commission", branch.invoiceCommission),
+      ]);
+    } else if (item.category === "payment_fee") {
+      formula = "رسوم البطاقات الناجحة + رسوم البطاقات المرتجعة + رسوم المحافظ";
+      calculatedSources = compactFields([
+        definedField("أساس البطاقات الناجحة", "HungerStation Excel · CC Amount", branch.ccSuccess),
+        definedField("رسوم البطاقات الناجحة", "محرك تدقيق", branch.bankFeeSuccess),
+        definedField("أساس البطاقات المرتجعة", "HungerStation Excel · Refunded CC", branch.ccRejected),
+        definedField("رسوم البطاقات المرتجعة", "محرك تدقيق", branch.bankFeeRefunded),
+        definedField("أساس رسوم المحافظ", "Wallet Amount + Transmitter Amount", branch.walletFeeBase),
+        definedField("رسوم المحافظ", "محرك تدقيق", branch.walletFee),
+        definedField("الإجمالي المحتسب", "محرك تدقيق", item.computed),
+      ]);
+      platformSources = compactFields([
+        definedField("رسوم الدفع للفرع", "HungerStation PDF · Payment Fees", branch.invoicePaymentFees),
+      ]);
+    } else if (item.category === "other_fee") {
+      formula = "RDF + تعويضات العملاء + رسوم العروض + وقت الانتظار";
+      calculatedSources = compactFields([
+        definedField("RDF", "HungerStation Excel", branch.rdfCampaigns),
+        definedField("تعويضات العملاء", "HungerStation Excel", branch.compensation),
+        definedField("رسوم العروض", "HungerStation Excel", branch.jokerFees),
+        definedField("وقت الانتظار", "HungerStation Excel", branch.waitingTimeFees),
+        definedField("إجمالي الرسوم القابلة للتحقق", "محرك تدقيق", item.computed),
+      ]);
+      platformSources = compactFields([
+        definedField("عمولات أخرى", "HungerStation PDF · Other Commission", branch.invoiceOtherCharges),
+        definedField(
+          "بنود من الفاتورة فقط",
+          "HungerStation PDF · غير قابلة للتحقق من Excel",
+          branch.invoiceOnlyBranchCharges,
+        ),
+        definedField("المقارن بعد الاستبعاد", "محرك تدقيق", item.invoiced),
+      ]);
+    } else if (item.category === "collections") {
+      formula =
+        "صافي البطاقات + محافظ العملاء + محافظ المندوبين + صافي الخصومات التسويقية + الاعتراضات المعتمدة";
+      calculatedSources = compactFields([
+        definedField("صافي البطاقات", "HungerStation Excel", branch.netBankCards),
+        definedField("محافظ العملاء", "HungerStation Excel", branch.walletAmount),
+        definedField("محافظ المندوبين", "HungerStation Excel", branch.riderWallet),
+        definedField("صافي الخصومات التسويقية", "HungerStation Excel", branch.netMarketingDiscount),
+        definedField("اعتراضات معتمدة", "HungerStation Excel", branch.approvedRefunds),
+        definedField("إجمالي التحصيلات المحتسب", "محرك تدقيق", branch.totalCollections),
+      ]);
+      platformSources = compactFields([
+        definedField("تحصيلات الفرع", "HungerStation PDF · Total Collections", branch.invoiceCollections),
+      ]);
+    } else if (item.category === "sales") {
+      formula = "Commissionable GMV للطلبات القابلة للفوترة، بدون ضريبة القيمة المضافة";
+      calculatedSources = compactFields([
+        definedField("عدد الطلبات", "HungerStation Excel", branch.orders),
+        definedField("مبيعات الائتمان المحتسبة", "HungerStation Excel · Commissionable GMV", branch.creditSales),
+      ]);
+      platformSources = compactFields([
+        definedField("مبيعات الائتمان", "HungerStation PDF · Sales Summary", branch.invoiceCreditSales),
+      ]);
+    } else if (item.category === "branch_match") {
+      formula = "مطابقة الفرع بواسطة HS Branch ID أولاً ثم هوية/اسم الفرع";
+      calculatedSources = compactFields([
+        definedField("HS Branch ID", "HungerStation Excel", branch.branchId),
+        definedField("اسم الفرع", "HungerStation Excel", branch.branch),
+      ]);
+      platformSources = compactFields([
+        definedField("اسم الفرع في الفاتورة", "HungerStation PDF", branch.invoiceBranchName),
+        definedField("حالة المطابقة", "محرك تدقيق", branch.branchAuditLabel),
+      ]);
+    }
+  } else if (branch && period.platform === "keeta") {
+    if (item.category === "commission") {
+      formula = "عمولة الطلب بدون الضريبة × 1.15 = عمولة الطلب شامل الضريبة";
+      calculatedSources = compactFields([
+        definedField("عمولة الطلب بدون الضريبة", "Keeta Order Summary", branch.keetaCommissionExVat),
+        definedField("عمولة الطلب شامل الضريبة", "محرك تدقيق", item.computed),
+      ]);
+      platformSources = compactFields([
+        definedField("Order commission", "Keeta PDF · Branch Invoice Details", branch.keetaPdfOrderCommissionInclVat),
+      ]);
+    } else if (item.category === "payment_fee") {
+      formula = "رسوم البنك بدون الضريبة × 1.15 = الرسوم المصرفية شامل الضريبة";
+      calculatedSources = compactFields([
+        definedField("رسوم البنك بدون الضريبة", "Keeta Order Summary", branch.keetaBankFeesExVat),
+        definedField("رسوم البنك شامل الضريبة", "محرك تدقيق", item.computed),
+      ]);
+      platformSources = compactFields([
+        definedField("Bank commission", "Keeta PDF · Branch Invoice Details", branch.keetaPdfBankCommissionInclVat),
+      ]);
+    } else if (item.category === "delivery_campaign") {
+      formula = "دعم توصيل كيتا بدون الضريبة × 1.15 = Other commission شامل الضريبة";
+      calculatedSources = compactFields([
+        definedField("دعم توصيل كيتا بدون الضريبة", "Keeta Order Summary", branch.keetaDeliveryCampaignExVat),
+        definedField("المحتسب شامل الضريبة", "محرك تدقيق", item.computed),
+      ]);
+      platformSources = compactFields([
+        definedField("Other commission", "Keeta PDF · Branch Invoice Details", branch.keetaPdfDeliveryCommissionInclVat),
+      ]);
+    } else if (item.category === "sales") {
+      formula = "إجمالي مكونات Credit Sales من Order Summary";
+      calculatedSources = compactFields([
+        definedField("Credit Sales المحتسب", "Keeta Order Summary", branch.keetaCreditSales),
+      ]);
+      platformSources = compactFields([
+        definedField("Total credit sales", "Keeta PDF · Branch Credit Sales", branch.keetaPdfCreditSales),
+      ]);
+    } else if (item.category === "settlement") {
+      formula = "Total credit sales - Total commission invoice = Net due";
+      calculatedSources = compactFields([
+        definedField("Credit Sales", "Keeta Order Summary", branch.keetaCreditSales),
+        definedField(
+          "فاتورة العمولة شامل الضريبة",
+          "Keeta Order Summary",
+          branch.keetaCommissionInvoiceInclVat,
+        ),
+        definedField("Net Due المحتسب", "محرك تدقيق", branch.netSales),
+      ]);
+      platformSources = compactFields([
+        definedField("Net due invoice", "Keeta PDF · Branch Credit Sales", branch.keetaPdfNetDue),
+      ]);
+    } else if (item.category === "branch_match") {
+      formula = "مطابقة مباشرة بواسطة Store ID / Restaurant ID";
+      calculatedSources = compactFields([
+        definedField("Store ID", "Keeta Order Summary", branch.branchId),
+        definedField("اسم المتجر", "Keeta Order Summary", branch.branch),
+      ]);
+      platformSources = compactFields([
+        definedField("حالة مطابقة PDF", "محرك تدقيق", branch.branchAuditLabel),
+      ]);
+    }
+  }
+
+  return {
+    reason: genericReason(item),
+    formula,
+    evidenceLabel: item.evidence ? EVIDENCE_LABELS[item.evidence] : "بيانات مستقلة",
+    calculatedSources,
+    platformSources,
+    conclusion: conclusionFor(item),
+    workflow: workflowTimeline(period, item),
   };
 }
