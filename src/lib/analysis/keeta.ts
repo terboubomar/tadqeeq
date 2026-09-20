@@ -605,6 +605,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     const commissionInvoiceInclVat =
       -(source.commissionRaw + source.bankRaw + source.deliveryRaw + source.invoiceOtherRaw);
     const commissionInvoiceExVat = commissionInvoiceInclVat / VAT_FACTOR;
+    const excelInvoiceAmountComputed = commissionInvoiceInclVat - source.merchantAdRaw;
     const creditSales =
       source.salesRaw +
       source.productCampaignRaw +
@@ -616,6 +617,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     const totalCostExVat = totalCostInclVat / VAT_FACTOR;
     const inputVat = totalCostInclVat - totalCostExVat;
 
+    row.orders = source.orderNumbers.size;
     row.grossSales = source.salesRaw;
     row.netSales = calculatedPayable;
     row.commission = commissionExVat;
@@ -644,12 +646,32 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     row.keetaPlatformCostPct = salesExVat !== 0 ? totalCostExVat / salesExVat : 0;
     row.keetaAvgOrderValueInclVat = row.orders ? source.salesRaw / row.orders : 0;
 
+    const auditVariances: number[] = [];
+    const auditSources: string[] = [];
+    const missingSources: string[] = [];
+
+    if (excelControls.branches.size) {
+      const excelBranch = excelControls.branches.get(row.branchId);
+      if (!excelBranch) {
+        missingSources.push("Invoice Details");
+      } else {
+        matchedExcelIds.add(row.branchId);
+        row.keetaExcelInvoiceAmount = excelBranch.invoiceAmount;
+        row.keetaExcelInvoiceVariance = excelInvoiceAmountComputed - excelBranch.invoiceAmount;
+        row.keetaExcelPayable = excelBranch.payable;
+        row.keetaExcelPayableVariance = calculatedPayable - excelBranch.payable;
+        auditVariances.push(
+          absVariance(row.keetaExcelInvoiceVariance),
+          absVariance(row.keetaExcelPayableVariance),
+        );
+        auditSources.push("Invoice Details في Excel");
+      }
+    }
+
     if (invoiceBranches.size) {
       const invoiceBranch = invoiceBranches.get(row.branchId);
       if (!invoiceBranch) {
-        row.branchAuditStatus = "unmatched";
-        row.branchAuditLabel = "غير مطابق";
-        row.branchAuditNote = "Store ID موجود في Order Summary ولم يتم العثور عليه في صفحات الفاتورة.";
+        missingSources.push("صفحات PDF");
       } else {
         matchedInvoiceIds.add(row.branchId);
         row.keetaPdfOrderCommissionInclVat = invoiceBranch.orderCommissionInclVat;
@@ -668,8 +690,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
         row.keetaPdfCreditSalesVariance = creditSales - (invoiceBranch.totalCreditSales ?? 0);
         row.keetaPdfNetDue = invoiceBranch.netDue;
         row.keetaPdfNetDueVariance = calculatedPayable - (invoiceBranch.netDue ?? 0);
-
-        const maxVariance = Math.max(
+        auditVariances.push(
           absVariance(row.keetaPdfOrderCommissionVariance),
           absVariance(row.keetaPdfBankCommissionVariance),
           absVariance(row.keetaPdfDeliveryCommissionVariance),
@@ -677,26 +698,53 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
           absVariance(row.keetaPdfCreditSalesVariance),
           absVariance(row.keetaPdfNetDueVariance),
         );
-        Object.assign(row, auditState(maxVariance));
+        auditSources.push("صفحات PDF");
       }
+    }
+
+    if (missingSources.length) {
+      row.branchAuditStatus = "unmatched";
+      row.branchAuditLabel = "غير مطابق";
+      row.branchAuditNote =
+        "Store ID موجود في Order Summary ولم يتم العثور عليه في " + missingSources.join(" و") + ".";
+    } else if (auditSources.length) {
+      Object.assign(
+        row,
+        auditState(Math.max(0, ...auditVariances), auditSources.join(" و")),
+      );
     }
 
     return row;
   });
 
+  for (const excelBranch of excelControls.branches.values()) {
+    if (matchedExcelIds.has(excelBranch.restaurantId)) continue;
+    const row = emptyBranch(excelBranch.branch, excelBranch.restaurantId);
+    row.branchAuditStatus = "invoice_only";
+    row.branchAuditLabel = "في Invoice Details فقط";
+    row.branchAuditNote = "الفرع موجود في Invoice Details داخل ملف كيتا وغير موجود في Order Summary.";
+    row.keetaExcelInvoiceAmount = excelBranch.invoiceAmount;
+    row.keetaExcelPayable = excelBranch.payable;
+    branchList.push(row);
+  }
+
   for (const invoiceBranch of invoice.keetaBranches ?? []) {
     if (matchedInvoiceIds.has(invoiceBranch.restaurantId)) continue;
-    const row = emptyBranch("Restaurant ID " + invoiceBranch.restaurantId, invoiceBranch.restaurantId);
+    let row = branchList.find((candidate) => candidate.branchId === invoiceBranch.restaurantId);
+    if (!row) {
+      row = emptyBranch("Restaurant ID " + invoiceBranch.restaurantId, invoiceBranch.restaurantId);
+      branchList.push(row);
+    }
     row.branchAuditStatus = "invoice_only";
-    row.branchAuditLabel = "في الفاتورة فقط";
-    row.branchAuditNote = "الفرع موجود في صفحات فاتورة كيتا وغير موجود في Order Summary.";
+    row.branchAuditLabel = row.keetaExcelInvoiceAmount !== undefined ? "في المصادر الرسمية فقط" : "في PDF فقط";
+    row.branchAuditNote =
+      "الفرع موجود في المستندات الرسمية لكيتا وغير موجود في Order Summary.";
     row.keetaPdfOrderCommissionInclVat = invoiceBranch.orderCommissionInclVat;
     row.keetaPdfBankCommissionInclVat = invoiceBranch.bankCommissionInclVat;
     row.keetaPdfDeliveryCommissionInclVat = invoiceBranch.deliveryCommissionInclVat;
     row.keetaPdfCommissionInvoiceInclVat = invoiceBranch.commissionTotalInclVat;
     row.keetaPdfCreditSales = invoiceBranch.totalCreditSales;
     row.keetaPdfNetDue = invoiceBranch.netDue;
-    branchList.push(row);
   }
 
   branchList.sort((a, b) => b.grossSales - a.grossSales);
