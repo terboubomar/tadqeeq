@@ -23,6 +23,7 @@ export type ExceptionCategory =
   | "rejected_sales"
   | "collections"
   | "settlement"
+  | "compensation"
   | "tax"
   | "invoice_total"
   | "unsupported_charge"
@@ -116,6 +117,7 @@ const CATEGORY_LABELS: Record<ExceptionCategory, string> = {
   rejected_sales: "المبيعات المرفوضة",
   collections: "التحصيلات",
   settlement: "التسوية",
+  compensation: "التعويضات",
   tax: "الضريبة",
   invoice_total: "إجمالي الفاتورة",
   unsupported_charge: "بند غير مدعوم",
@@ -153,6 +155,7 @@ function categoryForLabel(label: string): ExceptionCategory {
     label.includes("رسوم مدفوعات") ||
     label.includes("الرسوم المصرفية")
   ) return "payment_fee";
+  if (label.includes("تعويض")) return "compensation";
   if (label.includes("عروض التوصيل")) return "delivery_campaign";
   if (label.includes("عمولات أخرى")) {
     return label.includes("توصيل") ? "delivery_campaign" : "other_fee";
@@ -247,6 +250,7 @@ function makeException(
     evidence?: CheckEvidence;
     hint?: string;
     forceReviewAmount?: number;
+    forcePotentialRecovery?: number;
   },
 ): AuditException {
   const computed = input.computed;
@@ -285,9 +289,10 @@ function makeException(
     tolerance,
     reviewAmount,
     potentialRecovery:
-      computed !== undefined && invoiced !== undefined
+      input.forcePotentialRecovery ??
+      (computed !== undefined && invoiced !== undefined
         ? recoveryFor(input.category, computed, invoiced, input.evidence)
-        : 0,
+        : 0),
     evidence: input.evidence,
     severity: severityFor(reviewAmount, input.category),
     status: workflow?.status ?? "new",
@@ -661,6 +666,78 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
   return result;
 }
 
+function jahezCompensationExceptions(period: StoredPeriod): AuditException[] {
+  const result: AuditException[] = [];
+  const compensation = period.invoice?.jahezCompensation;
+  if (!compensation) return result;
+
+  for (const transaction of compensation.transactions) {
+    const branchId = "jahez-comp:" + transaction.orderId + ":" + transaction.sequence;
+    const source = transaction.matchedPeriodLabel
+      ? "الفترة " + transaction.matchedPeriodLabel
+      : transaction.match === "current"
+        ? "الفترة الحالية"
+        : "لا يوجد طلب مصدر متاح";
+
+    if (transaction.duplicateCandidate) {
+      result.push(
+        makeException(period, {
+          sourceLevel: "branch",
+          branch: transaction.branch,
+          branchId,
+          category: "compensation",
+          label: "اشتباه تكرار تعويض · طلب " + transaction.orderId,
+          evidence: "data",
+          tolerance: 0,
+          forceReviewAmount: transaction.amount,
+          forcePotentialRecovery:
+            transaction.transactionType === "debit" ? transaction.amount : 0,
+          hint:
+            "وجد Tadqeeq معاملة تعويض إضافية مطابقة تماماً لمعاملة سابقة لنفس الطلب والمبلغ والوقت والسبب. هذه إشارة مراجعة وليست إثباتاً نهائياً على الخصم المكرر.",
+        }),
+      );
+    }
+
+    if (transaction.match === "unknown") {
+      result.push(
+        makeException(period, {
+          sourceLevel: "branch",
+          branch: transaction.branch,
+          branchId: branchId + ":unknown",
+          category: "compensation",
+          label: "تعويض بدون طلب مصدر متاح · طلب " + transaction.orderId,
+          evidence: "data",
+          tolerance: 0,
+          forceReviewAmount: transaction.amount,
+          hint:
+            "معاملة التعويض موجودة في تقرير جاهز، لكن رقم الطلب غير موجود في فهرس الطلبات المتاح للفترة الحالية أو الفترات السابقة المحفوظة. يحتاج مراجعة المصدر قبل الاعتراض.",
+        }),
+      );
+    }
+
+    if (transaction.branchMismatch) {
+      result.push(
+        makeException(period, {
+          sourceLevel: "branch",
+          branch: transaction.branch,
+          branchId: branchId + ":branch",
+          category: "compensation",
+          label: "عدم تطابق فرع التعويض · طلب " + transaction.orderId,
+          evidence: "data",
+          tolerance: 0,
+          forceReviewAmount: transaction.amount,
+          hint:
+            "فرع التعويض لا يطابق فرع الطلب المصدر. الطلب مطابق في " +
+            source +
+            (transaction.matchedBranch ? " تحت فرع " + transaction.matchedBranch + "." : "."),
+        }),
+      );
+    }
+  }
+
+  return result;
+}
+
 export function buildPeriodExceptions(period: StoredPeriod): AuditException[] {
   const result = [
     ...summaryExceptions(period),
@@ -668,7 +745,7 @@ export function buildPeriodExceptions(period: StoredPeriod): AuditException[] {
       ? hungerBranchExceptions(period)
       : period.platform === "keeta"
         ? keetaBranchExceptions(period)
-        : []),
+        : jahezCompensationExceptions(period)),
   ];
 
   return result.sort((left, right) => {
@@ -1061,6 +1138,46 @@ export function buildExceptionEvidence(
     }
   }
 
+  } else if (period.platform === "jahez" && item.category === "compensation") {
+    const orderId = item.label.match(/طلب\s+(\d+)/)?.[1];
+    const transaction = period.invoice?.jahezCompensation?.transactions.find(
+      (row) =>
+        row.orderId === orderId &&
+        (item.branch ? row.branch === item.branch : true) &&
+        (item.label.includes("تكرار") ? row.duplicateCandidate : true),
+    );
+    if (transaction) {
+      formula = "معاملة تعويض جاهز تُراجع مقابل الطلب المصدر وحالة المطابقة والتكرار";
+      calculatedSources = compactFields([
+        definedField("رقم الطلب", "Jahez Compensation Report", transaction.orderId),
+        definedField("نوع الحركة", "Jahez Compensation Report", transaction.transactionType),
+        definedField("السبب", "Jahez Compensation Report", transaction.reason),
+        definedField("المبلغ", "Jahez Compensation Report", transaction.amount),
+        definedField("تاريخ الإنشاء", "Jahez Compensation Report", transaction.creationDate),
+      ]);
+      platformSources = compactFields([
+        definedField(
+          "مطابقة الطلب",
+          transaction.match === "current"
+            ? "Jahez Restaurant Financial Report · الفترة الحالية"
+            : transaction.match === "historical"
+              ? "Jahez Restaurant Financial Report · فترة سابقة"
+              : "فهرس طلبات Jahez",
+          transaction.match === "current"
+            ? "مطابق"
+            : transaction.match === "historical"
+              ? "مطابق عبر فترة سابقة" +
+                (transaction.matchedPeriodLabel ? " · " + transaction.matchedPeriodLabel : "")
+              : "غير موجود",
+        ),
+        definedField("فرع الطلب المصدر", "فهرس طلبات Jahez", transaction.matchedBranch),
+        definedField(
+          "تكرار مطابق",
+          "محرك تدقيق",
+          transaction.duplicateCandidate ? "نعم — معاملة إضافية مطابقة" : "لا",
+        ),
+      ]);
+    }
   return {
     reason: genericReason(item),
     formula,
