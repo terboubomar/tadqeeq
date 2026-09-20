@@ -1,4 +1,4 @@
-import type { CheckEvidence } from "./analysis/types";
+import type { CheckEvidence, CheckRow } from "./analysis/types";
 import type { StoredPeriod } from "./periods";
 
 export type ExceptionStatus =
@@ -118,16 +118,9 @@ function exceptionId(
   return `ex_${hashString([periodId, level, category, branchId ?? "", label].join("|"))}`;
 }
 
-function categoryForLabel(label: string, evidence?: CheckEvidence): ExceptionCategory {
-  if (evidence === "invoice_only" || label.includes("فاتورة فقط")) return "unsupported_charge";
+function categoryForLabel(label: string): ExceptionCategory {
   if (label.includes("عمولة المبيعات") || label.includes("عمولة الطلب")) return "commission";
-  if (
-    label.includes("رسوم الدفع") ||
-    label.includes("الرسوم المصرفية") ||
-    label.includes("رسوم مدفوعات المحافظ")
-  ) {
-    return "payment_fee";
-  }
+  if (label.includes("رسوم الدفع") || label.includes("الرسوم المصرفية")) return "payment_fee";
   if (label.includes("عمولات أخرى")) {
     return label.includes("توصيل") ? "delivery_campaign" : "other_fee";
   }
@@ -138,19 +131,30 @@ function categoryForLabel(label: string, evidence?: CheckEvidence): ExceptionCat
   if (label.includes("مبيعات") || label.includes("البيع الآجل")) return "sales";
   if (label.includes("التحصيلات")) return "collections";
   if (label.includes("صافي المستحق") || label.includes("التسوية")) return "settlement";
-  if (label.includes("الضريبية") || label.includes("الضريبة")) return "tax";
-  if (label.includes("إجمالي الفاتورة") || label.includes("فاتورة العمولة")) return "invoice_total";
   return "other";
 }
 
-function isRollupLabel(label: string): boolean {
+/**
+ * Exception Center is an action queue, not a second copy of Invoice Check.
+ * Aggregate controls stay in Invoice Check and must not become cases on their own.
+ */
+function isControlOnlyLabel(label: string): boolean {
   return (
     label.includes("إجمالي الفاتورة") ||
     label.includes("إجمالي فاتورة العمولة") ||
-    label.includes("صافي المستحق") ||
     label.includes("صافي الفاتورة الضريبية") ||
+    label.includes("اتساق صافي المستحق") ||
     label.includes("رسوم مدفوعات المحافظ")
   );
+}
+
+function isIndependentEvidence(evidence: CheckEvidence | undefined): boolean {
+  return evidence === undefined || evidence === "data" || evidence === "contract";
+}
+
+function toleranceFor(check: CheckRow): number {
+  if (typeof check.tolerance === "number") return check.tolerance;
+  return check.evidence === "contract" ? 0.1 : 0.05;
 }
 
 function severityFor(amount: number, category: ExceptionCategory): ExceptionSeverity {
@@ -167,9 +171,7 @@ function recoveryFor(
   invoiced: number,
   evidence?: CheckEvidence,
 ): number {
-  if (evidence === "invoice_only" || evidence === "mixed" || evidence === "invoice_derived") {
-    return 0;
-  }
+  if (!isIndependentEvidence(evidence)) return 0;
 
   if (
     category === "commission" ||
@@ -206,7 +208,6 @@ function makeException(
     invoiced?: number;
     tolerance?: number;
     evidence?: CheckEvidence;
-    rollup?: boolean;
     hint?: string;
     forceReviewAmount?: number;
   },
@@ -215,7 +216,7 @@ function makeException(
   const invoiced = input.invoiced;
   const difference =
     computed !== undefined && invoiced !== undefined ? invoiced - computed : undefined;
-  const tolerance = input.tolerance ?? 1;
+  const tolerance = input.tolerance ?? 0.05;
   const reviewAmount =
     input.forceReviewAmount ??
     (difference !== undefined ? Math.abs(difference) : Math.abs(invoiced ?? computed ?? 0));
@@ -255,46 +256,83 @@ function makeException(
     status: workflow?.status ?? "new",
     note: workflow?.note,
     recoveredAmount: workflow?.recoveredAmount ?? 0,
-    rollup: input.rollup ?? false,
+    rollup: false,
     hint: input.hint,
   };
+}
+
+function hasBranchCoverage(period: StoredPeriod, label: string): boolean {
+  const branches = period.branches ?? [];
+  if (!branches.length) return false;
+
+  if (period.platform === "hungerstation") {
+    if (label.includes("عمولة المبيعات")) {
+      return branches.some((branch) => branch.invoiceCommission !== undefined);
+    }
+    if (label.includes("رسوم الدفع الإلكتروني")) {
+      return branches.some((branch) => branch.invoicePaymentFees !== undefined);
+    }
+    if (label.includes("عمولات أخرى")) {
+      return branches.some((branch) => branch.invoiceOtherCharges !== undefined);
+    }
+    if (label.includes("مبيعات الائتمان")) {
+      return branches.some(
+        (branch) =>
+          branch.invoiceCreditSales !== undefined ||
+          branch.branchAuditNote?.includes("ملخص مبيعات الفرع مفقود"),
+      );
+    }
+    if (label.includes("إجمالي التحصيلات")) {
+      return branches.some((branch) => branch.invoiceCollections !== undefined);
+    }
+    return false;
+  }
+
+  if (label === "عمولة الطلب") {
+    return branches.some((branch) => branch.keetaPdfOrderCommissionInclVat !== undefined);
+  }
+  if (label === "الرسوم المصرفية") {
+    return branches.some((branch) => branch.keetaPdfBankCommissionInclVat !== undefined);
+  }
+  if (label.includes("عمولات أخرى")) {
+    return branches.some((branch) => branch.keetaPdfDeliveryCommissionInclVat !== undefined);
+  }
+  if (label === "إجمالي البيع الآجل") {
+    return branches.some((branch) => branch.keetaPdfCreditSales !== undefined);
+  }
+  if (label === "صافي المستحق مقابل فاتورة كيتا") {
+    return branches.some((branch) => branch.keetaPdfNetDue !== undefined);
+  }
+
+  // "صافي التسوية مقابل ملف كيتا" is an Excel-internal payable control,
+  // so branch PDF coverage must not suppress it.
+  return false;
 }
 
 function summaryExceptions(period: StoredPeriod): AuditException[] {
   const result: AuditException[] = [];
 
   for (const check of period.invoice?.checks ?? []) {
-    const tolerance = check.tolerance ?? 1;
+    // Non-independent checks are evidence/diagnostics, not actionable exceptions.
+    if (!isIndependentEvidence(check.evidence)) continue;
+    if (check.label.includes("فاتورة فقط")) continue;
+    if (isControlOnlyLabel(check.label)) continue;
+    if (hasBranchCoverage(period, check.label)) continue;
+
+    const tolerance = toleranceFor(check);
     const difference = check.invoiced - check.computed;
-    const invoiceOnly =
-      check.evidence === "invoice_only" || check.label.includes("فاتورة فقط");
+    if (!Number.isFinite(difference) || Math.abs(difference) <= tolerance) continue;
 
-    // Keeta PDF parser V1 could read the Tax Invoice table quantity (1.00)
-    // from the "Total(Including VAT)" column header instead of the totals block.
-    // Existing saved periods cannot be reparsed because source PDFs are not stored,
-    // so ignore only this exact known parser signature. New imports are fixed upstream.
-    const staleKeetaTaxHeaderArtifact =
-      period.platform === "keeta" &&
-      check.label === "صافي الفاتورة الضريبية شامل الضريبة" &&
-      Math.abs(check.invoiced - 1) <= 0.005 &&
-      Math.abs(check.computed) >= 100;
-    if (staleKeetaTaxHeaderArtifact) continue;
-    if (!invoiceOnly && Math.abs(difference) <= tolerance) continue;
-    if (invoiceOnly && Math.abs(check.invoiced) <= 0.005) continue;
-
-    const category = categoryForLabel(check.label, check.evidence);
     result.push(
       makeException(period, {
         sourceLevel: "summary",
-        category,
+        category: categoryForLabel(check.label),
         label: check.label,
         computed: check.computed,
         invoiced: check.invoiced,
         tolerance,
         evidence: check.evidence,
-        rollup: isRollupLabel(check.label),
         hint: check.hint,
-        forceReviewAmount: invoiceOnly ? Math.abs(check.invoiced) : undefined,
       }),
     );
   }
@@ -313,12 +351,12 @@ function pushBranchVariance(
     computed?: number;
     invoiced?: number;
     tolerance: number;
-    rollup?: boolean;
     hint?: string;
   },
 ) {
   if (input.computed === undefined || input.invoiced === undefined) return;
-  if (Math.abs(input.invoiced - input.computed) <= input.tolerance) return;
+  const difference = input.invoiced - input.computed;
+  if (!Number.isFinite(difference) || Math.abs(difference) <= input.tolerance) return;
 
   result.push(
     makeException(period, {
@@ -331,9 +369,21 @@ function pushBranchVariance(
       invoiced: input.invoiced,
       tolerance: input.tolerance,
       evidence: "data",
-      rollup: input.rollup,
       hint: input.hint,
     }),
+  );
+}
+
+function branchAlreadyHasException(
+  result: AuditException[],
+  periodId: string,
+  branchId: string,
+): boolean {
+  return result.some(
+    (item) =>
+      item.periodId === periodId &&
+      item.sourceLevel === "branch" &&
+      item.branchId === branchId,
   );
 }
 
@@ -396,34 +446,14 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       tolerance: 0.05,
     });
 
-    if ((branch.invoiceOnlyBranchCharges ?? 0) > 0.005) {
-      result.push(
-        makeException(period, {
-          sourceLevel: "branch",
-          branch: branch.branch,
-          branchId: branch.branchId,
-          category: "unsupported_charge",
-          label: "بنود فرع موجودة في الفاتورة فقط",
-          computed: 0,
-          invoiced: branch.invoiceOnlyBranchCharges,
-          tolerance: 0,
-          evidence: "invoice_only",
-          forceReviewAmount: Math.abs(branch.invoiceOnlyBranchCharges ?? 0),
-          hint: branch.branchAuditNote,
-        }),
-      );
-    }
-
+    // invoiceOnlyBranchCharges means "not independently verifiable", not
+    // "incorrect". Keep those charges in Invoice Check unless the branch matcher
+    // itself says the branch is missing/unmatched.
     if (
       (branch.branchAuditStatus === "warning" ||
         branch.branchAuditStatus === "unmatched" ||
         branch.branchAuditStatus === "invoice_only") &&
-      !result.some(
-        (item) =>
-          item.branchId === branch.branchId &&
-          item.sourceLevel === "branch" &&
-          item.periodId === period.id,
-      )
+      !branchAlreadyHasException(result, period.id, branch.branchId)
     ) {
       result.push(
         makeException(period, {
@@ -438,7 +468,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
           tolerance: 0,
           evidence: "data",
           hint: branch.branchAuditNote,
-          forceReviewAmount: Math.abs(branch.invoiceOnlyBranchCharges ?? 0),
+          forceReviewAmount: 0,
         }),
       );
     }
@@ -495,16 +525,6 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
     pushBranchVariance(result, period, {
       branch: branch.branch,
       branchId: branch.branchId,
-      category: "invoice_total",
-      label: "فرق فاتورة عمولة الفرع",
-      computed: branch.keetaCommissionInvoiceInclVat,
-      invoiced: branch.keetaPdfCommissionInvoiceInclVat,
-      tolerance: 0.06,
-      rollup: true,
-    });
-    pushBranchVariance(result, period, {
-      branch: branch.branch,
-      branchId: branch.branchId,
       category: "sales",
       label: "فرق البيع الآجل للفرع",
       computed: branch.keetaCreditSales,
@@ -519,19 +539,15 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
       computed: branch.netSales,
       invoiced: branch.keetaPdfNetDue,
       tolerance: 0.06,
-      rollup: true,
     });
 
+    // Commission invoice total is a roll-up of the three component checks above.
+    // Do not create a second exception for the same branch.
     if (
       (branch.branchAuditStatus === "warning" ||
         branch.branchAuditStatus === "unmatched" ||
         branch.branchAuditStatus === "invoice_only") &&
-      !result.some(
-        (item) =>
-          item.branchId === branch.branchId &&
-          item.sourceLevel === "branch" &&
-          item.periodId === period.id,
-      )
+      !branchAlreadyHasException(result, period.id, branch.branchId)
     ) {
       result.push(
         makeException(period, {
@@ -556,21 +572,11 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
 }
 
 export function buildPeriodExceptions(period: StoredPeriod): AuditException[] {
-  const summary = summaryExceptions(period);
-  const branch =
-    period.platform === "hungerstation"
-      ? hungerBranchExceptions(period)
-      : keetaBranchExceptions(period);
-
-  // When a discrepancy is already localized to one or more branches, suppress the
-  // duplicate non-rollup summary exception for the same category. Rollup controls
-  // remain visible as diagnostics but never inflate financial impact.
-  const branchCategories = new Set(
-    branch.filter((item) => !item.rollup).map((item) => item.category),
-  );
   const result = [
-    ...summary.filter((item) => item.rollup || !branchCategories.has(item.category)),
-    ...branch,
+    ...summaryExceptions(period),
+    ...(period.platform === "hungerstation"
+      ? hungerBranchExceptions(period)
+      : keetaBranchExceptions(period)),
   ];
 
   return result.sort((left, right) => {
@@ -591,26 +597,6 @@ export function buildAllExceptions(periods: StoredPeriod[]): AuditException[] {
   });
 }
 
-function financialLeaves(exceptions: AuditException[]): AuditException[] {
-  const usable = exceptions.filter((item) => !item.rollup && item.reviewAmount > 0);
-  const groups = new Map<string, AuditException[]>();
-
-  for (const item of usable) {
-    const key = `${item.periodId}|${item.category}`;
-    const group = groups.get(key) ?? [];
-    group.push(item);
-    groups.set(key, group);
-  }
-
-  const leaves: AuditException[] = [];
-  for (const group of groups.values()) {
-    const branchItems = group.filter((item) => item.sourceLevel === "branch");
-    if (branchItems.length) leaves.push(...branchItems);
-    else leaves.push(...group.filter((item) => item.sourceLevel === "summary"));
-  }
-  return leaves;
-}
-
 export interface ExceptionSummary {
   total: number;
   openCount: number;
@@ -624,17 +610,13 @@ export function summarizeExceptions(exceptions: AuditException[]): ExceptionSumm
   const open = exceptions.filter(
     (item) => item.status !== "closed" && item.status !== "recovered",
   );
-  const leaves = financialLeaves(exceptions);
-  const openLeaves = leaves.filter(
-    (item) => item.status !== "closed" && item.status !== "recovered",
-  );
 
   return {
     total: exceptions.length,
     openCount: open.length,
     criticalCount: open.filter((item) => item.severity === "critical").length,
-    underReview: openLeaves.reduce((sum, item) => sum + item.reviewAmount, 0),
-    potentialRecovery: openLeaves.reduce((sum, item) => sum + item.potentialRecovery, 0),
+    underReview: open.reduce((sum, item) => sum + item.reviewAmount, 0),
+    potentialRecovery: open.reduce((sum, item) => sum + item.potentialRecovery, 0),
     recovered: exceptions.reduce((sum, item) => sum + item.recoveredAmount, 0),
   };
 }
