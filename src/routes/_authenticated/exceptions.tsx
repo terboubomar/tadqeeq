@@ -3,8 +3,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   AlertTriangle,
   BadgeDollarSign,
+  Calculator,
   CheckCircle2,
   CircleDollarSign,
+  Database,
+  Eye,
+  FileSearch,
+  History,
   Search,
   ShieldAlert,
 } from "lucide-react";
@@ -13,7 +18,15 @@ import { toast } from "sonner";
 
 import { EmptyState } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -22,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  buildExceptionEvidence,
   buildPeriodExceptions,
   EXCEPTION_SEVERITY_LABELS,
   EXCEPTION_STATUS_LABELS,
@@ -61,6 +75,7 @@ function ExceptionsPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("open");
   const [severity, setSeverity] = useState("all");
+  const [selectedException, setSelectedException] = useState<AuditException | null>(null);
 
   const updateWorkflow = useMutation({
     mutationFn: ({ periodId, exceptionId, patch }: WorkflowMutation) =>
@@ -235,6 +250,7 @@ function ExceptionsPage() {
                 <Th>الحالة</Th>
                 <Th>المسترد فعلياً</Th>
                 <Th>ملاحظة</Th>
+                <Th>الأدلة</Th>
               </tr>
             </thead>
             <tbody>
@@ -250,11 +266,12 @@ function ExceptionsPage() {
                       patch,
                     })
                   }
+                  onDetails={() => setSelectedException(item)}
                 />
               ))}
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={14} className="px-5 py-16 text-center text-muted-foreground">
+                  <td colSpan={15} className="px-5 py-16 text-center text-muted-foreground">
                     <CheckCircle2 className="mx-auto mb-3 size-7 text-success" />
                     لا توجد استثناءات مطابقة للفلاتر الحالية.
                   </td>
@@ -265,6 +282,15 @@ function ExceptionsPage() {
         </div>
       </section>
       )}
+
+      <EvidenceSheet
+        open={Boolean(selectedException)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedException(null);
+        }}
+        item={selectedException}
+        period={selected}
+      />
     </div>
   );
 }
@@ -273,10 +299,12 @@ function ExceptionRow({
   item,
   saving,
   onUpdate,
+  onDetails,
 }: {
   item: AuditException;
   saving: boolean;
   onUpdate: (patch: Partial<ExceptionWorkflowEntry>) => void;
+  onDetails: () => void;
 }) {
   const [note, setNote] = useState(item.note ?? "");
   const [recovered, setRecovered] = useState(
@@ -388,8 +416,249 @@ function ExceptionRow({
           className="h-8 w-52 text-xs"
         />
       </Td>
+      <Td>
+        <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={onDetails}>
+          <Eye className="size-3.5" />
+          التفاصيل
+        </Button>
+      </Td>
     </tr>
   );
+}
+
+
+
+function EvidenceSheet({
+  open,
+  onOpenChange,
+  item,
+  period,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  item: AuditException | null;
+  period: NonNullable<ReturnType<typeof useSelectedPeriod>["selected"]>;
+}) {
+  if (!item) return null;
+
+  const evidence = buildExceptionEvidence(period, item);
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="left" className="w-full overflow-y-auto sm:max-w-2xl" dir="rtl">
+        <SheetHeader className="pe-7 text-start">
+          <SheetTitle>مسار الأدلة</SheetTitle>
+          <SheetDescription>
+            {item.periodLabel}
+            {item.branch ? " · " + item.branch : " · إجمالي الفترة"}
+            {item.branchId ? " · " + item.branchId : ""}
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="mt-6 space-y-5">
+          <section className="grid gap-3 sm:grid-cols-3">
+            <EvidenceMetric label="المحتسب" value={item.computed} />
+            <EvidenceMetric label="المنصة" value={item.invoiced} />
+            <EvidenceMetric
+              label="الفرق"
+              value={item.difference}
+              signed
+              hint={"حد المطابقة: " + sar(item.tolerance)}
+            />
+          </section>
+
+          <section className="rounded-xl border border-border bg-secondary/30 p-4">
+            <div className="flex items-center gap-2">
+              <FileSearch className="size-4 text-primary" />
+              <h3 className="font-bold">سبب الاستثناء</h3>
+            </div>
+            <p className="mt-2 text-sm leading-7 text-muted-foreground">{evidence.reason}</p>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              <span className="rounded-full bg-background px-2.5 py-1">
+                {item.categoryLabel}
+              </span>
+              <span className="rounded-full bg-background px-2.5 py-1">
+                {evidence.evidenceLabel}
+              </span>
+              <span className="rounded-full bg-background px-2.5 py-1">
+                {item.sourceLevel === "branch" ? "مطابقة فرع" : "مطابقة إجمالية"}
+              </span>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-border p-4">
+            <div className="flex items-center gap-2">
+              <Calculator className="size-4 text-primary" />
+              <h3 className="font-bold">طريقة الاحتساب</h3>
+            </div>
+            <p className="mt-3 rounded-lg bg-secondary px-3 py-3 text-sm leading-7">
+              {evidence.formula}
+            </p>
+          </section>
+
+          <EvidenceSourceSection
+            title="مصادر Tadqeeq"
+            icon={<Database className="size-4 text-primary" />}
+            rows={evidence.calculatedSources}
+          />
+
+          <EvidenceSourceSection
+            title="مصدر المنصة"
+            icon={<FileSearch className="size-4 text-primary" />}
+            rows={evidence.platformSources}
+          />
+
+          <section className="rounded-xl border border-border p-4">
+            <h3 className="font-bold">النتيجة الرقابية</h3>
+            <p className="mt-2 text-sm leading-7 text-muted-foreground">
+              {evidence.conclusion}
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <EvidenceMetric label="المبلغ محل المراجعة" value={item.reviewAmount} />
+              <EvidenceMetric
+                label="استرداد محتمل"
+                value={item.potentialRecovery}
+                hint="لا يعد مطالبة مؤكدة قبل المراجعة البشرية"
+              />
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-border p-4">
+            <div className="flex items-center gap-2">
+              <History className="size-4 text-primary" />
+              <h3 className="font-bold">سير العمل</h3>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-secondary px-3 py-2.5 text-sm">
+              <span className="text-muted-foreground">الحالة الحالية</span>
+              <span className="font-bold">{EXCEPTION_STATUS_LABELS[item.status]}</span>
+            </div>
+            {item.note ? (
+              <div className="mt-2 rounded-lg bg-secondary/60 px-3 py-2.5 text-sm">
+                <span className="text-muted-foreground">الملاحظة: </span>
+                {item.note}
+              </div>
+            ) : null}
+            {item.recoveredAmount > 0 ? (
+              <div className="mt-2 rounded-lg bg-secondary/60 px-3 py-2.5 text-sm">
+                <span className="text-muted-foreground">المسترد فعلياً: </span>
+                <span className="num font-semibold">{sar(item.recoveredAmount)}</span>
+              </div>
+            ) : null}
+
+            {evidence.workflow.length ? (
+              <ol className="mt-4 space-y-3">
+                {[...evidence.workflow].reverse().map((event, index) => (
+                  <li
+                    key={event.at + "-" + index}
+                    className="border-s-2 border-border ps-3 text-sm"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-semibold">
+                        {EXCEPTION_STATUS_LABELS[event.status]}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {auditTimestamp(event.at)}
+                      </span>
+                    </div>
+                    {event.note ? (
+                      <p className="mt-1 text-muted-foreground">{event.note}</p>
+                    ) : null}
+                    {(event.recoveredAmount ?? 0) > 0 ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        المسترد: {sar(event.recoveredAmount)}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="mt-3 text-xs text-muted-foreground">
+                لا يوجد سجل تغييرات سابق لهذا الاستثناء حتى الآن.
+              </p>
+            )}
+          </section>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function EvidenceSourceSection({
+  title,
+  icon,
+  rows,
+}: {
+  title: string;
+  icon: ReactNode;
+  rows: Array<{ label: string; source: string; value?: number | string }>;
+}) {
+  return (
+    <section className="rounded-xl border border-border p-4">
+      <div className="flex items-center gap-2">
+        {icon}
+        <h3 className="font-bold">{title}</h3>
+      </div>
+      {rows.length ? (
+        <dl className="mt-3 divide-y divide-border/60">
+          {rows.map((row, index) => (
+            <div
+              key={row.label + "-" + index}
+              className="grid gap-1 py-3 sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4"
+            >
+              <div>
+                <dt className="text-sm font-medium">{row.label}</dt>
+                <dd className="mt-0.5 text-xs text-muted-foreground">{row.source}</dd>
+              </div>
+              <dd className="num text-sm font-semibold">
+                {typeof row.value === "number" ? sar(row.value) : row.value ?? "—"}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="mt-3 text-sm text-muted-foreground">
+          لا توجد حقول مصدر إضافية محفوظة لهذا الاستثناء.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function EvidenceMetric({
+  label,
+  value,
+  signed = false,
+  hint,
+}: {
+  label: string;
+  value?: number;
+  signed?: boolean;
+  hint?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-surface-raised p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p
+        className={cn(
+          "num mt-1 text-base font-bold",
+          signed && (value ?? 0) > 0 && "text-destructive",
+          signed && (value ?? 0) < 0 && "text-success",
+        )}
+      >
+        {value === undefined ? "—" : sar(value)}
+      </p>
+      {hint ? <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p> : null}
+    </div>
+  );
+}
+
+function auditTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 function SeverityBadge({ severity }: { severity: ExceptionSeverity }) {
