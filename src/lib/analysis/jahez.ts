@@ -388,26 +388,26 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       label: "إجمالي الطلبات مقابل ملخص جاهز",
       computed: detailGrossSales,
       invoiced: merchantGrossSales,
-      evidence: "data",
+      evidence: "mixed",
       tolerance: ROUNDING_TOLERANCE,
-      hint: "مجموع Order Amount من الطلبات مقابل Orders Amount في ملخص CSV.",
+      hint: "فحص رقابي داخلي داخل CSV: مجموع Order Amount من الطلبات مقابل Orders Amount في ملخص التاجر.",
     },
     {
       label: "صافي المطعم المعاد احتسابه",
       computed: detailCalculatedSettlement,
       invoiced: merchantRestaurantAmount,
-      evidence: "data",
+      evidence: "mixed",
       tolerance: ROUNDING_TOLERANCE,
       hint:
-        "Order Amount - Jahez Commission + Delivery Charge - Payment Fees - Payment Fees VAT - Offer Amount - Delivery Offer - Delivery Coupon.",
+        "فحص رقابي داخلي داخل CSV: Order Amount - Jahez Commission + Delivery Charge - Payment Fees - Payment Fees VAT - Offer Amount - Delivery Offer - Delivery Coupon.",
     },
     {
       label: "عمولة الطلبات مقابل ملخص جاهز",
       computed: detailCommissionInclVat,
       invoiced: merchantCommissionInclVat,
-      evidence: "data",
+      evidence: "mixed",
       tolerance: ROUNDING_TOLERANCE,
-      hint: "مجموع العمولة المقربة لكل طلب مقابل عمولة التاجر الدقيقة في رأس التقرير.",
+      hint: "فحص رقابي داخلي داخل CSV: مجموع العمولة المقربة لكل طلب مقابل عمولة التاجر الدقيقة في رأس التقرير.",
     },
   ];
 
