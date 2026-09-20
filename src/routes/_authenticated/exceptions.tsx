@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  buildAllExceptions,
+  buildPeriodExceptions,
   EXCEPTION_SEVERITY_LABELS,
   EXCEPTION_STATUS_LABELS,
   summarizeExceptions,
@@ -33,7 +33,7 @@ import {
 } from "@/lib/exceptions";
 import { arabicDate, sar } from "@/lib/format";
 import { updateExceptionWorkflow } from "@/lib/periods";
-import { usePeriods } from "@/lib/use-period";
+import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/exceptions")({
@@ -56,10 +56,9 @@ type WorkflowMutation = {
 };
 
 function ExceptionsPage() {
-  const { data: periods = [], isLoading } = usePeriods();
+  const { selected, isLoading } = useSelectedPeriod();
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
-  const [platform, setPlatform] = useState("all");
   const [status, setStatus] = useState("open");
   const [severity, setSeverity] = useState("all");
 
@@ -72,13 +71,15 @@ function ExceptionsPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const exceptions = useMemo(() => buildAllExceptions(periods), [periods]);
+  const exceptions = useMemo(
+    () => (selected ? buildPeriodExceptions(selected) : []),
+    [selected],
+  );
   const summary = useMemo(() => summarizeExceptions(exceptions), [exceptions]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return exceptions.filter((item) => {
-      if (platform !== "all" && item.platform !== platform) return false;
       if (
         status === "open" &&
         (item.status === "closed" || item.status === "recovered")
@@ -100,13 +101,13 @@ function ExceptionsPage() {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(needle));
     });
-  }, [exceptions, platform, query, severity, status]);
+  }, [exceptions, query, severity, status]);
 
   if (isLoading) {
     return <p className="py-20 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>;
   }
 
-  if (periods.length === 0) {
+  if (!selected) {
     return (
       <EmptyState
         title="لا توجد فترات تدقيق"
@@ -121,11 +122,15 @@ function ExceptionsPage() {
         <div>
           <h1 className="text-2xl font-black">مركز الاستثناءات</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            كل فرق مالي أو بند غير مدعوم أو مشكلة مطابقة، مع حالة المتابعة والمبلغ المسترد.
+            {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)} ·{" "}
+            {selected.platform === "hungerstation" ? "هنقرستيشن" : "كيتا"}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            يعرض هذا المركز الاستثناءات الخاصة بالملف المحدد فقط.
           </p>
         </div>
         <span className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs text-muted-foreground">
-          {exceptions.length} استثناء عبر {periods.length} فترة
+          {exceptions.length} استثناء في الملف المحدد
         </span>
       </header>
 
@@ -160,7 +165,7 @@ function ExceptionsPage() {
       </section>
 
       <section className="panel p-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <div className="relative xl:col-span-2">
             <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -170,17 +175,6 @@ function ExceptionsPage() {
               className="ps-9"
             />
           </div>
-
-          <Select value={platform} onValueChange={setPlatform}>
-            <SelectTrigger>
-              <SelectValue placeholder="المنصة" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">كل المنصات</SelectItem>
-              <SelectItem value="hungerstation">هنقرستيشن</SelectItem>
-              <SelectItem value="keeta">كيتا</SelectItem>
-            </SelectContent>
-          </Select>
 
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger>
