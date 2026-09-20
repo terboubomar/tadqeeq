@@ -671,6 +671,38 @@ function jahezCompensationExceptions(period: StoredPeriod): AuditException[] {
   const compensation = period.invoice?.jahezCompensation;
   if (!compensation) return result;
 
+  const debitDifference = compensation.summaryDebit - compensation.detailDebit;
+  if (Math.abs(debitDifference) > 0.01) {
+    result.push(
+      makeException(period, {
+        sourceLevel: "summary",
+        category: "compensation",
+        label: "عدم اتساق إجمالي خصم التعويضات",
+        computed: compensation.detailDebit,
+        invoiced: compensation.summaryDebit,
+        evidence: "data",
+        tolerance: 0.01,
+        hint: "مجموع معاملات debit في تفاصيل ملف التعويضات لا يساوي إجمالي الخصم في رأس الملف.",
+      }),
+    );
+  }
+
+  const creditDifference = compensation.summaryCredit - compensation.detailCredit;
+  if (Math.abs(creditDifference) > 0.01) {
+    result.push(
+      makeException(period, {
+        sourceLevel: "summary",
+        category: "compensation",
+        label: "عدم اتساق إجمالي إضافة التعويضات",
+        computed: compensation.detailCredit,
+        invoiced: compensation.summaryCredit,
+        evidence: "data",
+        tolerance: 0.01,
+        hint: "مجموع معاملات credit في تفاصيل ملف التعويضات لا يساوي إجمالي الإضافة في رأس الملف.",
+      }),
+    );
+  }
+
   for (const transaction of compensation.transactions) {
     const branchId = "jahez-comp:" + transaction.orderId + ":" + transaction.sequence;
     const source = transaction.matchedPeriodLabel
