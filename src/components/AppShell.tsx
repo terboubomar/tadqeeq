@@ -193,7 +193,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             data-noprint
             className="flex gap-1 overflow-x-auto border-b border-border bg-white px-3.5 py-2 min-[881px]:hidden"
           >
-            {NAV_GROUPS.flatMap((group) => group.items).map((item) => {
+            {NAV_ITEMS.map((item) => {
               const active = pathname === item.to;
               const badge = badgeFor(item.to);
               return (
