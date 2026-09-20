@@ -37,14 +37,18 @@ function InvoiceCheck() {
   }
 
   const checks = selected.invoice?.checks ?? [];
-  const hasInvoice = checks.some((check) => check.invoiced !== 0);
-  // Headline variance should only sum top-level commission-invoice charge categories.
-  // Sales, collections and wallet detail checks are diagnostics and would otherwise double-count.
-  const headlineLabels = new Set([
-    "عمولة المبيعات",
-    "رسوم الدفع الإلكتروني",
-    "عمولات أخرى القابلة للتحقق من البيانات",
-  ]);
+  const hasPdfInvoice = Boolean(selected.invoice?.lines?.length);
+  // Headline variance should only use non-overlapping controls.
+  const headlineLabels =
+    selected.platform === "hungerstation"
+      ? new Set([
+          "عمولة المبيعات",
+          "رسوم الدفع الإلكتروني",
+          "عمولات أخرى القابلة للتحقق من البيانات",
+        ])
+      : new Set([
+          hasPdfInvoice ? "صافي المستحق مقابل فاتورة كيتا" : "صافي التسوية مقابل ملف كيتا",
+        ]);
   const independentlyComparable = checks.filter(
     (check) =>
       headlineLabels.has(check.label) &&
@@ -66,14 +70,15 @@ function InvoiceCheck() {
         </p>
       </header>
 
-      {!hasInvoice ? (
+      {!hasPdfInvoice ? (
         <div className="panel flex items-start gap-3 border-warning/40 p-5">
           <AlertTriangle className="mt-0.5 size-5 shrink-0 text-warning" />
           <div>
             <p className="font-bold">لم تُرفق فاتورة لهذه الفترة</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              الأرقام أدناه محتسبة من بيانات الطلبات فقط. أعد رفع الفترة مع ملف الفاتورة (PDF)
-              لإظهار الفروقات.
+              {selected.platform === "keeta"
+                ? "تمت مطابقة صافي التسوية داخلياً مع Payable to merchant من ملف كيتا. أرفق فاتورة PDF لإضافة المطابقة الرسمية."
+                : "الأرقام أدناه محتسبة من بيانات الطلبات فقط. أعد رفع الفترة مع ملف الفاتورة (PDF) لإظهار الفروقات."}
             </p>
           </div>
         </div>
@@ -87,7 +92,9 @@ function InvoiceCheck() {
           )}
         >
           <p className="text-sm text-muted-foreground">
-            فرق رسوم الفاتورة القابلة للتحقق بشكل مستقل
+            {selected.platform === "hungerstation"
+              ? "فرق رسوم الفاتورة القابلة للتحقق بشكل مستقل"
+              : "فرق صافي التسوية القابل للتحقق"}
           </p>
           <p
             className={cn(

@@ -56,6 +56,23 @@ export interface BranchRow {
   branchAuditStatus?: "matched" | "rounding" | "warning" | "invoice_only" | "unmatched";
   branchAuditLabel?: string;
   branchAuditNote?: string;
+
+  // Keeta accounting decomposition (all Ex VAT unless stated otherwise).
+  keetaSalesExVat?: number;
+  keetaSalesVat?: number;
+  keetaCommissionExVat?: number;
+  keetaBankFeesExVat?: number;
+  keetaDeliveryCampaignExVat?: number;
+  keetaAdvertisingExVat?: number;
+  keetaCompensationExVat?: number;
+  keetaOtherExpensesExVat?: number;
+  keetaTotalCostExVat?: number;
+  keetaInputVat?: number;
+  keetaTotalCostInclVat?: number;
+  keetaSourcePayable?: number;
+  keetaSettlementVariance?: number;
+  keetaPlatformCostPct?: number;
+  keetaAvgOrderValueInclVat?: number;
 }
 
 export interface DailyRow {
@@ -115,6 +132,23 @@ export interface Summary {
   statusCounts: Record<string, number>;
   periodStart: string | null;
   periodEnd: string | null;
+
+  // Keeta accounting decomposition (all Ex VAT unless stated otherwise).
+  keetaSalesExVat?: number;
+  keetaSalesVat?: number;
+  keetaCommissionExVat?: number;
+  keetaBankFeesExVat?: number;
+  keetaDeliveryCampaignExVat?: number;
+  keetaAdvertisingExVat?: number;
+  keetaCompensationExVat?: number;
+  keetaOtherExpensesExVat?: number;
+  keetaTotalCostExVat?: number;
+  keetaInputVat?: number;
+  keetaTotalCostInclVat?: number;
+  keetaSourcePayable?: number;
+  keetaSettlementVariance?: number;
+  keetaPlatformCostPct?: number;
+  keetaAvgOrderValueInclVat?: number;
 }
 
 export interface HungerInvoiceBranch {
