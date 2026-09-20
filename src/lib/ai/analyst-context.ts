@@ -12,6 +12,8 @@ import {
 import type { BranchRow } from "@/lib/analysis/types";
 import type { StoredPeriod } from "@/lib/periods";
 
+import { APP_KNOWLEDGE, normalizeAppRoute } from "./app-knowledge";
+
 export type AnalystFactKind =
   | "period"
   | "branch"
@@ -19,6 +21,12 @@ export type AnalystFactKind =
   | "exception"
   | "evidence"
   | "comparison"
+  | "invoice_check"
+  | "daily"
+  | "breakdown"
+  | "status"
+  | "history"
+  | "app"
   | "warning";
 
 export interface AnalystFact {
@@ -31,6 +39,7 @@ export interface AnalystFact {
 
 export interface AnalystContext {
   platform: StoredPeriod["platform"];
+  currentRoute: string;
   period: {
     start: string | null;
     end: string | null;
@@ -43,6 +52,11 @@ export interface AnalystContext {
     exceptionDetailsIncluded: number;
     evidenceTrailsIncluded: number;
     comparisonIncluded: boolean;
+    invoiceChecksIncluded: number;
+    dailyRowsIncluded: number;
+    historyPeriodsIncluded: number;
+    historyPeriodsAvailable: number;
+    appKnowledgeItemsIncluded: number;
   };
 }
 
@@ -50,6 +64,8 @@ const MAX_EXCEPTION_DETAILS = 30;
 const MAX_EVIDENCE_TRAILS = 12;
 const MAX_COMPARISON_BRANCHES = 12;
 const MAX_COMPARISON_CATEGORIES = 10;
+const MAX_DAILY_ROWS = 62;
+const MAX_HISTORY_PERIODS = 24;
 
 function finite(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -319,6 +335,58 @@ function addBranchFacts(builder: FactBuilder, period: StoredPeriod) {
       ...(finite(branch.jahezCompensationNetImpact) !== null
         ? { compensationNetImpact: branch.jahezCompensationNetImpact ?? 0 }
         : {}),
+      ...(period.platform === "hungerstation"
+        ? {
+            ccSuccess: branch.ccSuccess,
+            ccRejected: branch.ccRejected,
+            bankFeeSuccess: branch.bankFeeSuccess,
+            bankFeeRefunded: branch.bankFeeRefunded,
+            walletAmount: branch.walletAmount,
+            riderWallet: branch.riderWallet,
+            walletFee: branch.walletFee ?? 0,
+            rdfCampaigns: branch.rdfCampaigns,
+            compensation: branch.compensation,
+            jokerFees: branch.jokerFees,
+            waitingTimeFees: branch.waitingTimeFees,
+            rejectedSales: branch.rejectedSales ?? 0,
+            totalCollections: branch.totalCollections ?? 0,
+            invoiceCommission: branch.invoiceCommission ?? null,
+            commissionVariance: branch.commissionVariance ?? null,
+            invoiceCardPaymentFees: branch.invoiceCardPaymentFees ?? null,
+            paymentFeeVariance: branch.paymentFeeVariance ?? null,
+            collectionsVariance: branch.collectionsVariance ?? null,
+            creditSalesVariance: branch.creditSalesVariance ?? null,
+            branchAuditStatus: branch.branchAuditStatus ?? null,
+          }
+        : {}),
+      ...(period.platform === "keeta"
+        ? {
+            salesExVat: branch.keetaSalesExVat ?? null,
+            salesVat: branch.keetaSalesVat ?? null,
+            bankFeesExVat: branch.keetaBankFeesExVat ?? null,
+            deliveryCampaignExVat: branch.keetaDeliveryCampaignExVat ?? null,
+            advertisingExVat: branch.keetaAdvertisingExVat ?? null,
+            compensationExVat: branch.keetaCompensationExVat ?? null,
+            otherExpensesExVat: branch.keetaOtherExpensesExVat ?? null,
+            inputVat: branch.keetaInputVat ?? null,
+            sourcePayable: branch.keetaSourcePayable ?? null,
+            officialPayable: branch.keetaExcelPayable ?? null,
+            officialPayableVariance: branch.keetaExcelPayableVariance ?? null,
+          }
+        : {}),
+      ...(period.platform === "jahez"
+        ? {
+            commissionInclVat: branch.jahezCommissionInclVat ?? null,
+            paymentFeesExVat: branch.jahezPaymentFeesExVat ?? null,
+            paymentFeesVat: branch.jahezPaymentFeesVat ?? null,
+            deliveryOfferInclVat: branch.jahezDeliveryOfferInclVat ?? null,
+            deliveryCoupon: branch.jahezDeliveryCoupon ?? null,
+            restaurantAmount: branch.jahezReportedRestaurantAmount ?? null,
+            compensationDebit: branch.jahezCompensationDebit ?? null,
+            compensationCredit: branch.jahezCompensationCredit ?? null,
+            compensationNetImpact: branch.jahezCompensationNetImpact ?? null,
+          }
+        : {}),
     });
   }
 
@@ -463,6 +531,184 @@ function addExceptionFacts(
   }
 }
 
+
+function addInvoiceCheckFacts(builder: FactBuilder, period: StoredPeriod) {
+  const checks = period.invoice?.checks ?? [];
+  for (const check of checks) {
+    const difference = check.invoiced - check.computed;
+    const tolerance = check.tolerance ?? 1;
+    builder.add(
+      "invoice_check",
+      "مطابقة فاتورة · " + check.label,
+      money(difference),
+      {
+        label: check.label,
+        computed: check.computed,
+        invoiced: check.invoiced,
+        difference,
+        tolerance,
+        withinTolerance: Math.abs(difference) <= tolerance,
+        evidence: check.evidence ?? "data",
+        hint: check.hint ?? null,
+      },
+    );
+  }
+}
+
+function addDailyDetailFacts(builder: FactBuilder, period: StoredPeriod) {
+  const rows = (period.daily ?? [])
+    .filter(
+      (day) =>
+        (!period.period_start || day.date >= period.period_start) &&
+        (!period.period_end || day.date <= period.period_end),
+    )
+    .sort((left, right) => left.date.localeCompare(right.date))
+    .slice(0, MAX_DAILY_ROWS);
+
+  for (const day of rows) {
+    builder.add("daily", "يوم · " + day.date, money(day.grossSales), {
+      date: day.date,
+      orders: day.orders,
+      grossSales: day.grossSales,
+      netSales: day.netSales,
+      commission: day.commission,
+      ccSuccess: day.ccSuccess,
+      jahezCompensationDebit: day.jahezCompensationDebit ?? null,
+      jahezCompensationCredit: day.jahezCompensationCredit ?? null,
+      jahezCompensationNetImpact: day.jahezCompensationNetImpact ?? null,
+    });
+  }
+}
+
+function addBreakdownFacts(builder: FactBuilder, period: StoredPeriod) {
+  const s = period.summary;
+  const lines: Array<{ label: string; value: number; group: string }> = [];
+
+  if (period.platform === "hungerstation") {
+    lines.push(
+      { label: "عمولة المبيعات", value: s.commission, group: "platform_cost" },
+      { label: "رسوم البطاقات", value: s.bankFeeSuccess + s.bankFeeRefunded, group: "platform_cost" },
+      { label: "رسوم المحافظ حسب الفاتورة", value: s.walletFee ?? 0, group: "platform_cost" },
+      { label: "حملات التوصيل المجاني", value: s.rdfCampaigns, group: "platform_cost" },
+      { label: "تعويضات العملاء", value: s.compensation, group: "platform_cost" },
+      { label: "رسوم العروض السريعة", value: s.jokerFees, group: "platform_cost" },
+      { label: "رسوم وقت الانتظار", value: s.waitingTimeFees, group: "platform_cost" },
+      { label: "خصم المنصة على الأصناف", value: s.hsFoodDiscount, group: "discounts" },
+      { label: "خصومات المكافآت", value: s.rewardsDiscount, group: "discounts" },
+      { label: "خصم المطعم على الأصناف", value: s.restaurantFoodDiscount, group: "discounts" },
+      { label: "تعديلات التنفيذ", value: s.fulfillmentMods, group: "refunds" },
+      { label: "مرتجعات معتمدة", value: s.approvedRefunds, group: "refunds" },
+      { label: "مرتجعات جزئية", value: s.partialRefund, group: "refunds" },
+    );
+  } else if (period.platform === "keeta") {
+    lines.push(
+      { label: "عمولة الطلبات بدون الضريبة", value: s.keetaCommissionExVat ?? 0, group: "platform_cost" },
+      { label: "رسوم البنك بدون الضريبة", value: s.keetaBankFeesExVat ?? 0, group: "platform_cost" },
+      { label: "التوصيل والحملات بدون الضريبة", value: s.keetaDeliveryCampaignExVat ?? 0, group: "platform_cost" },
+      { label: "الإعلانات بدون الضريبة", value: s.keetaAdvertisingExVat ?? 0, group: "platform_cost" },
+      { label: "تعويضات وخصومات المنصة بدون الضريبة", value: s.keetaCompensationExVat ?? 0, group: "platform_cost" },
+      { label: "مصروفات أخرى بدون الضريبة", value: s.keetaOtherExpensesExVat ?? 0, group: "platform_cost" },
+      { label: "ضريبة مدخلات تكاليف المنصة", value: s.keetaInputVat ?? 0, group: "tax" },
+      { label: "Payable حسب كيتا", value: s.keetaSourcePayable ?? 0, group: "settlement" },
+      { label: "فرق التسوية", value: s.keetaExcelPayableVariance ?? s.keetaSettlementVariance ?? 0, group: "settlement" },
+    );
+  } else {
+    lines.push(
+      { label: "عمولة جاهز بدون الضريبة", value: s.jahezCommissionInvoiceExVat ?? 0, group: "platform_cost" },
+      { label: "رسوم المدفوعات بدون الضريبة", value: s.jahezPaymentFeesExVat ?? 0, group: "platform_cost" },
+      { label: "عروض التوصيل للفوترة بدون الضريبة", value: s.jahezDeliveryOfferInvoiceExVat ?? 0, group: "platform_cost" },
+      { label: "VAT رسوم المدفوعات", value: s.jahezPaymentFeesVat ?? 0, group: "tax" },
+      { label: "عروض التوصيل المخصومة شامل الضريبة", value: s.jahezDeliveryOfferInclVat ?? 0, group: "settlement" },
+      { label: "صافي أثر التعويضات", value: s.jahezCompensationNetImpact ?? 0, group: "compensation" },
+      { label: "صافي المطعم بعد التعويضات", value: s.jahezAdjustedRestaurantAmount ?? s.netSales, group: "settlement" },
+    );
+  }
+
+  for (const line of lines.filter((item) => Math.abs(item.value) > 0.005)) {
+    builder.add("breakdown", "تفصيل بند · " + line.label, money(line.value), {
+      label: line.label,
+      value: line.value,
+      unit: "sar",
+      group: line.group,
+    });
+  }
+
+  for (const [status, value] of Object.entries(s.statusCounts ?? {})) {
+    builder.add("status", "حالة طلب · " + status, String(value), {
+      status,
+      value,
+      unit: "count",
+    });
+  }
+}
+
+function addHistoryFacts(
+  builder: FactBuilder,
+  ownedPeriods: StoredPeriod[],
+) {
+  const ordered = [...ownedPeriods]
+    .sort((left, right) => {
+      const leftKey = left.period_end ?? left.created_at;
+      const rightKey = right.period_end ?? right.created_at;
+      return rightKey.localeCompare(leftKey);
+    })
+    .slice(0, MAX_HISTORY_PERIODS);
+
+  for (const period of ordered) {
+    const exceptions = buildPeriodExceptions(period);
+    const exceptionSummary = summarizeExceptions(exceptions);
+    const costRate =
+      period.summary.grossSales > 0
+        ? period.summary.totalCharges / period.summary.grossSales
+        : 0;
+
+    builder.add(
+      "history",
+      "فترة محفوظة · " + (period.period_start ?? "غير محدد") + " — " + (period.period_end ?? "غير محدد"),
+      money(period.summary.grossSales),
+      {
+        platform: period.platform,
+        start: period.period_start,
+        end: period.period_end,
+        orders: period.summary.orders,
+        grossSales: period.summary.grossSales,
+        netSales: period.summary.netSales,
+        commission: period.summary.commission,
+        commissionRatePct: period.summary.commissionPct * 100,
+        platformCost: period.summary.totalCharges,
+        platformCostRatePct: costRate * 100,
+        openExceptions: exceptionSummary.openCount,
+        underReview: exceptionSummary.underReview,
+        potentialRecovery: exceptionSummary.potentialRecovery,
+      },
+    );
+  }
+}
+
+function addAppKnowledgeFacts(
+  builder: FactBuilder,
+  currentRoute: string,
+) {
+  const normalized = normalizeAppRoute(currentRoute);
+  for (const item of APP_KNOWLEDGE) {
+    builder.add(
+      "app",
+      "معرفة التطبيق · " + item.label,
+      item.purpose,
+      {
+        key: item.key,
+        route: item.route,
+        label: item.label,
+        purpose: item.purpose,
+        contains: item.contains,
+        sourceOfTruth: item.sourceOfTruth,
+        boundaries: item.boundaries,
+        currentScreen: item.route === normalized,
+      },
+    );
+  }
+}
+
 function addComparisonFacts(builder: FactBuilder, comparison: PeriodComparison) {
   for (const item of [...comparison.metrics, ...comparison.platformMetrics]) {
     const isRatio = item.unit === "ratio";
@@ -552,6 +798,7 @@ function addComparisonFacts(builder: FactBuilder, comparison: PeriodComparison) 
 export function buildAnalystContext(
   current: StoredPeriod,
   ownedPeriods: StoredPeriod[],
+  currentRoute = "/dashboard",
 ): AnalystContext {
   const builder = new FactBuilder();
   const exceptions = buildPeriodExceptions(current);
@@ -562,7 +809,12 @@ export function buildAnalystContext(
   addPeriodFacts(builder, current, exceptions);
   addBranchFacts(builder, current);
   addDailyFacts(builder, current);
+  addDailyDetailFacts(builder, current);
+  addInvoiceCheckFacts(builder, current);
+  addBreakdownFacts(builder, current);
   addExceptionFacts(builder, current, exceptions);
+  addHistoryFacts(builder, ownedPeriods);
+  addAppKnowledgeFacts(builder, currentRoute);
 
   const previous = findPreviousComparablePeriod(current, ownedPeriods);
   let comparisonIncluded = false;
@@ -596,6 +848,7 @@ export function buildAnalystContext(
 
   return {
     platform: current.platform,
+    currentRoute: normalizeAppRoute(currentRoute),
     period: {
       start: current.period_start,
       end: current.period_end,
@@ -608,6 +861,11 @@ export function buildAnalystContext(
       exceptionDetailsIncluded: Math.min(open.length, MAX_EXCEPTION_DETAILS),
       evidenceTrailsIncluded: Math.min(open.length, MAX_EVIDENCE_TRAILS),
       comparisonIncluded,
+      invoiceChecksIncluded: current.invoice?.checks?.length ?? 0,
+      dailyRowsIncluded: Math.min(current.daily?.length ?? 0, MAX_DAILY_ROWS),
+      historyPeriodsIncluded: Math.min(ownedPeriods.length, MAX_HISTORY_PERIODS),
+      historyPeriodsAvailable: ownedPeriods.length,
+      appKnowledgeItemsIncluded: APP_KNOWLEDGE.length,
     },
   };
 }
