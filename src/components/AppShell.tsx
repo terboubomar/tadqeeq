@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   ReceiptText,
+  ShieldAlert,
   Upload,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -28,6 +29,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { to: "/dashboard", label: "اللوحة التنفيذية", icon: LayoutDashboard },
   { to: "/invoice-check", label: "مطابقة الفاتورة", icon: ReceiptText },
+  { to: "/exceptions", label: "مركز الاستثناءات", icon: ShieldAlert },
   { to: "/branches", label: "تقرير الفروع", icon: Building2 },
   { to: "/daily", label: "التقرير اليومي", icon: CalendarDays },
   { to: "/breakdown", label: "تفصيل البنود", icon: BarChart3 },

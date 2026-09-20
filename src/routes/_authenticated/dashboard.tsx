@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
+  AlertTriangle,
   Banknote,
+  CircleDollarSign,
   CreditCard,
   Percent,
   Receipt,
@@ -23,6 +25,7 @@ import {
 
 import { EmptyState } from "@/components/AppShell";
 import { StatCard } from "@/components/StatCard";
+import { buildPeriodExceptions, summarizeExceptions } from "@/lib/exceptions";
 import { arabicDate, count, money, percent, sar, short } from "@/lib/format";
 import { useSelectedPeriod } from "@/lib/use-period";
 
@@ -67,6 +70,7 @@ function Dashboard() {
 
   const s = selected.summary;
   const isHunger = selected.platform === "hungerstation";
+  const exceptionSummary = summarizeExceptions(buildPeriodExceptions(selected));
   const costLabel = isHunger ? "عمولة" : "تكلفة المنصة";
   const topBranches = [...selected.branches].slice(0, 8).map((branch) => ({
     name: branch.branch.length > 18 ? `${branch.branch.slice(0, 18)}…` : branch.branch,
@@ -97,6 +101,36 @@ function Dashboard() {
           <span className="num">{count(s.orders)}</span> طلب
         </span>
       </header>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="استثناءات مفتوحة"
+          value={String(exceptionSummary.openCount)}
+          hint={exceptionSummary.criticalCount + " حرجة"}
+          icon={AlertTriangle}
+          tone={exceptionSummary.openCount ? "negative" : "default"}
+        />
+        <StatCard
+          label="مبالغ محل المراجعة"
+          value={sar(exceptionSummary.underReview)}
+          hint="بعد منع التكرار بين الإجمالي والفروع"
+          icon={Receipt}
+          tone={exceptionSummary.underReview > 0 ? "negative" : "default"}
+        />
+        <StatCard
+          label="استرداد محتمل"
+          value={sar(exceptionSummary.potentialRecovery)}
+          hint="فروقات مستقلة ذات اتجاه مالي واضح"
+          icon={CircleDollarSign}
+          tone="gold"
+        />
+        <StatCard
+          label="تم استرداده"
+          value={sar(exceptionSummary.recovered)}
+          hint="حسب سجل المتابعة"
+          icon={Banknote}
+        />
+      </section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
