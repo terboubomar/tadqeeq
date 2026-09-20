@@ -36,6 +36,25 @@ export interface BranchRow {
   bankFeeSuccess: number;
   bankFeeRefunded: number;
   totalCharges: number;
+  /** Billable Commissionable GMV excluding VAT. */
+  creditSales?: number;
+  rejectedOrders?: number;
+  rejectedSales?: number;
+  totalCollections?: number;
+  invoiceBranchName?: string;
+  invoiceCommission?: number;
+  commissionVariance?: number;
+  invoicePaymentFees?: number;
+  paymentFeeVariance?: number;
+  invoiceOtherCharges?: number;
+  otherChargesVariance?: number;
+  invoiceCollections?: number;
+  collectionsVariance?: number;
+  invoiceCreditSales?: number;
+  creditSalesVariance?: number;
+  invoiceOnlyBranchCharges?: number;
+  branchAuditStatus?: "matched" | "rounding" | "warning" | "invoice_only" | "unmatched";
+  branchAuditNote?: string;
 }
 
 export interface DailyRow {
@@ -97,6 +116,42 @@ export interface Summary {
   periodEnd: string | null;
 }
 
+export interface HungerInvoiceBranch {
+  branch?: string;
+  deliveryBase?: number;
+  deliveryCommission?: number;
+  pickupBase?: number;
+  pickupCommission?: number;
+  salesCommission?: number;
+  bankFeeSuccessBase?: number;
+  bankFeeSuccess?: number;
+  bankFeeRefundedBase?: number;
+  bankFeeRefunded?: number;
+  walletFeeBase?: number;
+  walletFee?: number;
+  paymentFees?: number;
+  rdfOrders?: number;
+  rdfCampaigns?: number;
+  compensation?: number;
+  waitingTimeFees?: number;
+  invoiceOnlyCharges?: number;
+  otherCommission?: number;
+  totalExVat?: number;
+  netBankCards?: number;
+  walletAmount?: number;
+  riderWallet?: number;
+  totalFoodDiscount?: number;
+  restaurantFoodDiscount?: number;
+  rewardsDiscount?: number;
+  netMarketingDiscount?: number;
+  approvedRefunds?: number;
+  totalCollections?: number;
+  creditSalesOrders?: number;
+  creditSales?: number;
+  rejectedSalesOrders?: number;
+  rejectedSales?: number;
+}
+
 export interface InvoiceFigures {
   /** Arabic label -> amount, in display order */
   lines: { label: string; amount: number }[];
@@ -117,6 +172,7 @@ export interface InvoiceFigures {
   rejectedSales?: number;
   rejectedSalesOrders?: number;
   rejectedSalesIncVat?: number;
+  branches?: HungerInvoiceBranch[];
   invoiceNo?: string;
 }
 
