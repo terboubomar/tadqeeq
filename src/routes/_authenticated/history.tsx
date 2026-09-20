@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/AppShell";
@@ -119,7 +120,7 @@ function HistoryPage() {
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
+function Th({ children }: { children: ReactNode }) {
   return <th className="whitespace-nowrap border-b border-border px-3.5 py-2.5 text-start">{children}</th>;
 }
 
@@ -128,7 +129,7 @@ function Td({
   mono = false,
   className,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   mono?: boolean;
   className?: string;
 }) {
