@@ -229,6 +229,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <AskTadqeeqWidget
         key={selected?.id ?? "no-period"}
         selected={selected}
+        currentRoute={pathname}
         defaultOpen={pathname === "/ask"}
       />
     </div>
