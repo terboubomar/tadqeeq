@@ -184,11 +184,11 @@ function ImportPage() {
 
       <FileField
         id="data"
-        label={platform === "hungerstation" ? "ملف الطلبات (Excel)" : "ملف الفواتير (Excel)"}
+        label={platform === "hungerstation" ? "ملف الطلبات (Excel)" : "ملف كيتا الشهري (Excel)"}
         hint={
           platform === "hungerstation"
             ? "الملف الشهري من هنقرستيشن بأوراقه الست: الطلبات، التوصيل المجاني، التعويضات، تعديلات التنفيذ، المرتجعات المعتمدة، ووقت الانتظار."
-            : "ملف كيتا الذي يحتوي على ورقة Invoice Details بتفاصيل كل فرع."
+            : "ملف كيتا الشهري الذي يحتوي على ورقة Order Summary. تدقيق يعيد احتساب المبيعات والعمولة ورسوم البنك والتوصيل والحملات والإعلانات والمصروفات وصافي Payable لكل فرع."
         }
         accept=".xlsx,.xls"
         file={dataFile}
