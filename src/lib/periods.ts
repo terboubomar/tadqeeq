@@ -7,7 +7,7 @@ import type { ExceptionWorkflowEntry } from "./exceptions";
 export interface StoredPeriod {
   id: string;
   label: string;
-  platform: "hungerstation" | "keeta";
+  platform: "hungerstation" | "keeta" | "jahez";
   period_start: string | null;
   period_end: string | null;
   created_at: string;

@@ -30,6 +30,7 @@ const DEFAULT_TOLERANCE = 1; // ريال
 
 function InvoiceCheck() {
   const { selected, isLoading } = useSelectedPeriod();
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
 
   if (isLoading) {
     return <p className="py-20 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>;
@@ -38,7 +39,6 @@ function InvoiceCheck() {
     return <EmptyState title="لا توجد فترات محفوظة" body="ارفع ملفات الفترة لبدء المطابقة." />;
   }
 
-  const [flaggedOnly, setFlaggedOnly] = useState(false);
   const checks = selected.invoice?.checks ?? [];
   const hasPdfInvoice =
     selected.platform === "hungerstation"

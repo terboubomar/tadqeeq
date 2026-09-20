@@ -260,7 +260,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
     detailDeliveryCharge += deliveryCharge;
     detailCalculatedSettlement += calculatedRestaurant;
 
-    const date = dateKey(source["Date"]);
+    const date = dateKey(source["Date"] ?? "");
     if (date) {
       let day = daily.get(date);
       if (!day) {
