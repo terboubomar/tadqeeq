@@ -417,7 +417,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       "غير محدد";
     const storeId = text(valueOf(sourceRow, "Store ID", "Restaurant ID"));
     const shopCode = text(valueOf(sourceRow, "shop code"));
-    const branchKey = storeId + "|" + shopCode + "|" + store;
+    const branchKey = storeId ? "id:" + storeId : "fallback:" + shopCode + "|" + store;
 
     let branch = branches.get(branchKey);
     if (!branch) {
