@@ -1,104 +1,116 @@
-const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/responses";
-const DEFAULT_MODEL = "openai/gpt-6-astra";
+const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
+const DEFAULT_MODEL = "gpt-5.6-luna";
 
 interface GatewayCallInput {
   systemPrompt: string;
   userText: string;
   schemaName: string;
   schema: Record<string, unknown>;
+  maxOutputTokens?: number;
+}
+
+interface OpenAiResponse {
+  output?: Array<{
+    type?: string;
+    content?: Array<{
+      type?: string;
+      text?: string;
+      refusal?: string;
+    }>;
+  }>;
+  error?: {
+    message?: string;
+  };
+}
+
+function extractOutputText(response: OpenAiResponse): string {
+  for (const item of response.output ?? []) {
+    if (item.type !== "message") continue;
+    for (const content of item.content ?? []) {
+      if (content.type === "output_text" && content.text) return content.text;
+      if (content.type === "refusal" && content.refusal) {
+        throw new Error("تعذّر إنشاء تحليل Tadqeeq AI لهذا الطلب.");
+      }
+    }
+  }
+  throw new Error("لم يرجع نموذج الذكاء الاصطناعي نتيجة قابلة للقراءة.");
 }
 
 /**
- * Calls the Lovable AI Gateway Responses API with streaming (required for
- * reasoning models) and returns the final structured JSON text.
+ * Central server-only Tadqeeq AI transport.
+ *
+ * Uses the OpenAI Responses API directly. This intentionally avoids the
+ * Lovable AI Gateway so Tadqeeq AI usage is billed only through the configured
+ * OpenAI API account and never consumes Lovable AI credits.
  */
 export async function callTadqeeqAi(
   input: GatewayCallInput,
 ): Promise<{ text: string; model: string }> {
-  const apiKey = process.env["LOVABLE_API_KEY"]?.trim();
+  const apiKey = process.env["OPENAI_API_KEY"]?.trim();
   if (!apiKey) {
-    throw new Error("خدمة Tadqeeq AI غير مفعّلة بعد. تواصل مع الدعم لتفعيلها.");
+    throw new Error(
+      "خدمة Tadqeeq AI غير مفعّلة بعد. أضف OPENAI_API_KEY في أسرار بيئة النشر.",
+    );
   }
+
   const model = process.env["TADQEEQ_AI_MODEL"]?.trim() || DEFAULT_MODEL;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
 
-  const response = await fetch(GATEWAY_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Lovable-API-Key": apiKey,
-      "X-Lovable-AIG-SDK": "fetch",
-    },
-    body: JSON.stringify({
-      model,
-      stream: true,
-      store: false,
-      reasoning: { effort: "low" },
-      input: [
-        { role: "system", content: [{ type: "input_text", text: input.systemPrompt }] },
-        { role: "user", content: [{ type: "input_text", text: input.userText }] },
-      ],
-      text: {
-        format: {
-          type: "json_schema",
-          name: input.schemaName,
-          strict: true,
-          schema: input.schema,
-        },
+  try {
+    const response = await fetch(OPENAI_RESPONSES_URL, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        Authorization: "Bearer " + apiKey,
+        "Content-Type": "application/json",
       },
-    }),
-  });
+      body: JSON.stringify({
+        model,
+        store: false,
+        reasoning: { effort: "low" },
+        max_output_tokens: input.maxOutputTokens ?? 1500,
+        input: [
+          {
+            role: "system",
+            content: [{ type: "input_text", text: input.systemPrompt }],
+          },
+          {
+            role: "user",
+            content: [{ type: "input_text", text: input.userText }],
+          },
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: input.schemaName,
+            strict: true,
+            schema: input.schema,
+          },
+        },
+      }),
+    });
 
-  if (!response.ok || !response.body) {
-    const detail = await response.text().catch(() => "");
-    console.error("Lovable AI Gateway error", response.status, detail.slice(0, 500));
-    if (response.status === 429) {
-      throw new Error("ضغط مرتفع على خدمة Tadqeeq AI. حاول بعد قليل.");
-    }
-    if (response.status === 402) {
-      throw new Error("رصيد الذكاء الاصطناعي غير كافٍ. أضف رصيداً لمتابعة استخدام Tadqeeq AI.");
-    }
-    throw new Error("تعذّر الاتصال بخدمة Tadqeeq AI حالياً.");
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let text = "";
-  let refused = false;
-
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-
-    const parts = buffer.split("\n\n");
-    buffer = parts.pop() ?? "";
-    for (const part of parts) {
-      for (const line of part.split("\n")) {
-        if (!line.startsWith("data:")) continue;
-        const payload = line.slice(5).trim();
-        if (!payload || payload === "[DONE]") continue;
-        try {
-          const event = JSON.parse(payload) as {
-            type?: string;
-            delta?: string;
-            refusal?: string;
-          };
-          if (event.type === "response.output_text.delta" && event.delta) {
-            text += event.delta;
-          } else if (event.type === "response.refusal.delta") {
-            refused = true;
-          }
-        } catch {
-          // ignore keep-alive / non-JSON frames
-        }
+    const payload = (await response.json()) as OpenAiResponse;
+    if (!response.ok) {
+      console.error("OpenAI Responses API error", response.status, payload.error?.message);
+      if (response.status === 429) {
+        throw new Error("تم الوصول إلى حد استخدام خدمة Tadqeeq AI. حاول مرة أخرى لاحقاً.");
       }
+      throw new Error("تعذّر الاتصال بخدمة Tadqeeq AI حالياً.");
     }
-  }
 
-  if (refused || !text.trim()) {
-    throw new Error("لم يرجع نموذج الذكاء الاصطناعي نتيجة قابلة للقراءة.");
+    return {
+      text: extractOutputText(payload),
+      model,
+    };
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("استغرق Tadqeeq AI وقتاً أطول من المتوقع. حاول مرة أخرى.");
+    }
+    if (error instanceof Error) throw error;
+    throw new Error("تعذّر إنشاء تحليل Tadqeeq AI.");
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return { text, model };
 }
