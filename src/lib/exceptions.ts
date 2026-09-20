@@ -268,6 +268,17 @@ function summaryExceptions(period: StoredPeriod): AuditException[] {
     const difference = check.invoiced - check.computed;
     const invoiceOnly =
       check.evidence === "invoice_only" || check.label.includes("فاتورة فقط");
+
+    // Keeta PDF parser V1 could read the Tax Invoice table quantity (1.00)
+    // from the "Total(Including VAT)" column header instead of the totals block.
+    // Existing saved periods cannot be reparsed because source PDFs are not stored,
+    // so ignore only this exact known parser signature. New imports are fixed upstream.
+    const staleKeetaTaxHeaderArtifact =
+      period.platform === "keeta" &&
+      check.label === "صافي الفاتورة الضريبية شامل الضريبة" &&
+      Math.abs(check.invoiced - 1) <= 0.005 &&
+      Math.abs(check.computed) >= 100;
+    if (staleKeetaTaxHeaderArtifact) continue;
     if (!invoiceOnly && Math.abs(difference) <= tolerance) continue;
     if (invoiceOnly && Math.abs(check.invoiced) <= 0.005) continue;
 
