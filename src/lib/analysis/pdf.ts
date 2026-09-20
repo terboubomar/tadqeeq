@@ -112,15 +112,13 @@ function cleanBranchName(page: string): string | undefined {
   const match = page.match(/Invoice Details\s+(.+?)\s+Commissions\b/i);
   if (!match?.[1]) return undefined;
 
-  const ascii = match[1]
-    .replace(/[^\x20-\x7E]+/g, " ")
-    .replace(/\/7\S*/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const tokens = ascii
-    .split(" ")
-    .filter((token) => token === "-" || token.length > 1)
+  // Keep only whitespace-separated tokens that were already pure ASCII.
+  // This removes the garbled bilingual PDF fragments without damaging short real
+  // branch tokens such as "A", "Al", "Ar" or wrapped words like "Fahd".
+  const tokens = match[1]
+    .split(/\s+/)
+    .filter((token) => /^[\x20-\x7E]+$/.test(token))
+    .filter((token) => !/^\/7/.test(token))
     .filter((token) => !/^[0-9.]+$/.test(token));
 
   const name = tokens.join(" ").replace(/\s+-\s+/g, " - ").trim();
