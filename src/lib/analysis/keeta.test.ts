@@ -232,7 +232,7 @@ describe("Keeta audit engine", () => {
     expect(branch?.keetaSettlementVariance).toBeCloseTo(0, 6);
 
     const settlementCheck = result.checks.find(
-      (check) => check.label === "صافي التسوية مقابل ملف كيتا",
+      (check) => check.label === "صافي التسوية مقابل Order Summary Payable",
     );
     expect(settlementCheck?.computed).toBeCloseTo(115.8625, 6);
     expect(settlementCheck?.invoiced).toBeCloseTo(115.8625, 6);
