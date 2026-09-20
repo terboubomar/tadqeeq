@@ -10,7 +10,7 @@ import {
   Settings2,
   Upload,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -664,7 +664,7 @@ function ReviewSection({
   title: string;
   icon: typeof FileText;
   onEdit: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section className="overflow-hidden rounded-[9px] border border-border">
