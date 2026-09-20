@@ -108,6 +108,12 @@ export interface BranchRow {
   jahezDeliveryCoupon?: number;
   jahezReportedRestaurantAmount?: number;
   jahezSettlementVariance?: number;
+  jahezCompensationTransactions?: number;
+  jahezCompensationDebit?: number;
+  jahezCompensationCredit?: number;
+  jahezCompensationNetImpact?: number;
+  jahezCompensationDuplicateAmount?: number;
+  jahezCompensationUnknownAmount?: number;
 }
 
 export interface DailyRow {
@@ -117,6 +123,9 @@ export interface DailyRow {
   netSales: number;
   commission: number;
   ccSuccess: number;
+  jahezCompensationDebit?: number;
+  jahezCompensationCredit?: number;
+  jahezCompensationNetImpact?: number;
 }
 
 export interface Summary {
@@ -216,6 +225,16 @@ export interface Summary {
   jahezInvoiceVatComputed?: number;
   jahezInvoiceInclVatComputed?: number;
   jahezDeliveryOfferTiers?: Record<string, number>;
+  jahezCompensationTransactions?: number;
+  jahezCompensationDebit?: number;
+  jahezCompensationCredit?: number;
+  jahezCompensationNetImpact?: number;
+  jahezAdjustedRestaurantAmount?: number;
+  jahezCompensationMatchedCurrent?: number;
+  jahezCompensationMatchedHistorical?: number;
+  jahezCompensationUnknownOrders?: number;
+  jahezCompensationDuplicateCandidates?: number;
+  jahezCompensationDuplicateAmount?: number;
 }
 
 export interface HungerInvoiceBranch {
@@ -281,6 +300,48 @@ export interface KeetaInvoiceBranch {
   netDue?: number;
 }
 
+export type JahezCompensationMatch = "current" | "historical" | "unknown";
+
+export interface JahezCompensationTransaction {
+  sequence: string;
+  branch: string;
+  orderId: string;
+  transactionType: "debit" | "credit" | string;
+  reason: string;
+  creationDate: string;
+  amount: number;
+  free: boolean;
+  comments?: string;
+  missingItemName?: string;
+  match: JahezCompensationMatch;
+  matchedBranch?: string;
+  matchedPeriodLabel?: string;
+  duplicateCandidate?: boolean;
+}
+
+export interface JahezCompensationReport {
+  periodLabel?: string;
+  summaryTransactions: number;
+  summaryDebit: number;
+  summaryCredit: number;
+  detailTransactions: number;
+  detailDebit: number;
+  detailCredit: number;
+  netImpact: number;
+  matchedCurrent: number;
+  matchedHistorical: number;
+  unknownOrders: number;
+  duplicateCandidates: number;
+  duplicateAmount: number;
+  transactions: JahezCompensationTransaction[];
+}
+
+export interface JahezOrderReference {
+  branch: string;
+  date: string;
+  periodLabel?: string;
+}
+
 export interface InvoiceFigures {
   /** Arabic label -> amount, in display order */
   lines: { label: string; amount: number }[];
@@ -329,6 +390,8 @@ export interface InvoiceFigures {
   jahezDeliveryOfferExVat?: number;
   jahezPaymentFeesExVat?: number;
   jahezDeliveryOfferRows?: { unitExVat: number; quantity: number; amountExVat: number }[];
+  jahezCompensation?: JahezCompensationReport;
+  jahezOrderIndex?: Record<string, JahezOrderReference>;
   invoiceNo?: string;
 }
 
