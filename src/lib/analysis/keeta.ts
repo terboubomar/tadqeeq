@@ -11,6 +11,8 @@ import type {
 
 const VAT_RATE = 0.15;
 const VAT_FACTOR = 1 + VAT_RATE;
+const BRANCH_MATCH_TOLERANCE = 0.02;
+const BRANCH_ROUNDING_TOLERANCE = 0.06;
 
 const SALES_COLUMNS = [
   "Original item price (VAT included)",
@@ -23,19 +25,18 @@ const SALES_COLUMNS = [
 const COMMISSION_COLUMNS = ["Subtotal of commission fee (VAT included)"];
 const BANK_COLUMNS = ["Bank fee (VAT included)"];
 const DELIVERY_COLUMNS = ["Delivery subsidies (Keeta delivery) covered by merchant"];
-const ADS_COLUMNS = [
-  "Product campaign expenses by merchant (VAT included)",
-  "Merchant ad spend (including VAT)",
-  "Advertising costs",
-];
+const PRODUCT_CAMPAIGN_COLUMNS = ["Product campaign expenses by merchant (VAT included)"];
+const MERCHANT_AD_COLUMNS = ["Merchant ad spend (including VAT)", "Advertising costs"];
 const COMPENSATION_COLUMNS = [
   "Total Platform Deductions from Merchant (Merchant's Liability, VAT included)",
 ];
-const OTHER_COLUMNS = [
+const INVOICE_OTHER_COLUMNS = [
   "Photography Service Fee(VAT included)",
   "Monthly service fee (including VAT)",
   "Subscription fee (including VAT)",
   "Adjustment (including invoice)",
+];
+const CREDIT_OTHER_COLUMNS = [
   "Delivery promotion subsidy (merchant delivery, including VAT) covered by merchant",
   "VAT withholding",
   "POS Machine Fee(VAT included)",
@@ -85,9 +86,8 @@ function normalizeDate(value: unknown): string {
     ];
     const month = monthNames.indexOf(english[2]!.slice(0, 3).toLowerCase()) + 1;
     if (month > 0) {
-      return `${english[3]}-${String(month).padStart(2, "0")}-${String(
-        Number(english[1]),
-      ).padStart(2, "0")}`;
+      return english[3] + "-" + String(month).padStart(2, "0") + "-" +
+        String(Number(english[1])).padStart(2, "0");
     }
   }
 
@@ -95,10 +95,13 @@ function normalizeDate(value: unknown): string {
   if (Number.isFinite(asNumber) && asNumber > 20000 && asNumber < 80000) {
     const parsed = XLSX.SSF.parse_date_code(asNumber);
     if (parsed) {
-      return `${parsed.y}-${String(parsed.m).padStart(2, "0")}-${String(parsed.d).padStart(
-        2,
-        "0",
-      )}`;
+      return (
+        parsed.y +
+        "-" +
+        String(parsed.m).padStart(2, "0") +
+        "-" +
+        String(parsed.d).padStart(2, "0")
+      );
     }
   }
 
@@ -211,8 +214,14 @@ function emptyBranch(branch: string, branchId: string): BranchRow {
     keetaBankFeesExVat: 0,
     keetaDeliveryCampaignExVat: 0,
     keetaAdvertisingExVat: 0,
+    keetaProductCampaignExVat: 0,
+    keetaMerchantAdExVat: 0,
+    keetaPosFeesExVat: 0,
     keetaCompensationExVat: 0,
     keetaOtherExpensesExVat: 0,
+    keetaCommissionInvoiceExVat: 0,
+    keetaCommissionInvoiceInclVat: 0,
+    keetaCreditSales: 0,
     keetaTotalCostExVat: 0,
     keetaInputVat: 0,
     keetaTotalCostInclVat: 0,
@@ -226,18 +235,52 @@ function emptyBranch(branch: string, branchId: string): BranchRow {
 interface RawKeetaBranch {
   row: BranchRow;
   salesRaw: number;
+  originalItemPriceRaw: number;
+  topUpRaw: number;
+  compensationRevenueRaw: number;
+  restaurantDeliveryRevenueRaw: number;
+  merchantIncreaseRaw: number;
   commissionRaw: number;
   bankRaw: number;
   deliveryRaw: number;
-  adsRaw: number;
+  productCampaignRaw: number;
+  merchantAdRaw: number;
   compensationRaw: number;
-  otherRaw: number;
+  invoiceOtherRaw: number;
+  creditOtherRaw: number;
+  posRaw: number;
   payableRaw: number;
 }
 
 export interface KeetaOptions {
   invoice?: InvoiceFigures;
   label?: string;
+}
+
+function absVariance(value: number | undefined): number {
+  return Math.abs(value ?? 0);
+}
+
+function auditState(maxVariance: number): Pick<BranchRow, "branchAuditStatus" | "branchAuditLabel" | "branchAuditNote"> {
+  if (maxVariance <= BRANCH_MATCH_TOLERANCE) {
+    return {
+      branchAuditStatus: "matched",
+      branchAuditLabel: "مطابق",
+      branchAuditNote: "مطابقة كاملة مع صفحات الفرع في فاتورة كيتا.",
+    };
+  }
+  if (maxVariance <= BRANCH_ROUNDING_TOLERANCE) {
+    return {
+      branchAuditStatus: "rounding",
+      branchAuditLabel: "مطابق ضمن التقريب",
+      branchAuditNote: "الفروق ضمن تقريب كيتا المعتاد.",
+    };
+  }
+  return {
+    branchAuditStatus: "warning",
+    branchAuditLabel: "يحتاج مراجعة",
+    branchAuditNote: "يوجد فرق بين Order Summary وصفحات الفرع في فاتورة كيتا.",
+  };
 }
 
 export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): AnalysisResult {
@@ -255,56 +298,102 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
   let periodStart: string | null = null;
   let periodEnd: string | null = null;
 
-  for (const row of rows) {
+  for (const sourceRow of rows) {
     const store =
-      text(valueOf(row, "Store name", "Restaurant Name")) ||
-      text(valueOf(row, "Brand Name")) ||
+      text(valueOf(sourceRow, "Store name", "Restaurant Name")) ||
+      text(valueOf(sourceRow, "Brand Name")) ||
       "غير محدد";
-    const storeId = text(valueOf(row, "Store ID", "Restaurant ID"));
-    const shopCode = text(valueOf(row, "shop code"));
-    const branchKey = `${storeId}|${shopCode}|${store}`;
+    const storeId = text(valueOf(sourceRow, "Store ID", "Restaurant ID"));
+    const shopCode = text(valueOf(sourceRow, "shop code"));
+    const branchKey = storeId + "|" + shopCode + "|" + store;
 
     let branch = branches.get(branchKey);
     if (!branch) {
       branch = {
         row: emptyBranch(store, storeId || shopCode),
         salesRaw: 0,
+        originalItemPriceRaw: 0,
+        topUpRaw: 0,
+        compensationRevenueRaw: 0,
+        restaurantDeliveryRevenueRaw: 0,
+        merchantIncreaseRaw: 0,
         commissionRaw: 0,
         bankRaw: 0,
         deliveryRaw: 0,
-        adsRaw: 0,
+        productCampaignRaw: 0,
+        merchantAdRaw: 0,
         compensationRaw: 0,
-        otherRaw: 0,
+        invoiceOtherRaw: 0,
+        creditOtherRaw: 0,
+        posRaw: 0,
         payableRaw: 0,
       };
       branches.set(branchKey, branch);
     }
 
-    branch.row.orders += 1;
-    branch.salesRaw += sumColumns(row, SALES_COLUMNS);
-    branch.commissionRaw += sumColumns(row, COMMISSION_COLUMNS);
-    branch.bankRaw += sumColumns(row, BANK_COLUMNS);
-    branch.deliveryRaw += sumColumns(row, DELIVERY_COLUMNS);
-    branch.adsRaw += sumColumns(row, ADS_COLUMNS);
-    branch.compensationRaw += sumColumns(row, COMPENSATION_COLUMNS);
-    branch.otherRaw += sumColumns(row, OTHER_COLUMNS);
-    branch.payableRaw += num(valueOf(row, "Payable to merchant", "Payable to Restaurant"));
+    const originalItemPriceRaw = num(valueOf(sourceRow, "Original item price (VAT included)"));
+    const topUpRaw = num(valueOf(sourceRow, "Total Top-up to Minimum (VAT included)"));
+    const compensationRevenueRaw = num(
+      valueOf(sourceRow, "Total Compensation to Merchant (VAT included)"),
+    );
+    const restaurantDeliveryRevenueRaw = num(
+      valueOf(sourceRow, "Delivery fee for merchant delivery order (including VAT)"),
+    );
+    const merchantIncreaseRaw = num(
+      valueOf(sourceRow, "Adjustment increases (not included in invoices)"),
+    );
+    const salesRaw =
+      originalItemPriceRaw +
+      topUpRaw +
+      compensationRevenueRaw +
+      restaurantDeliveryRevenueRaw +
+      merchantIncreaseRaw;
 
-    const status = text(valueOf(row, "Status")) || "غير محدد";
+    const commissionRaw = sumColumns(sourceRow, COMMISSION_COLUMNS);
+    const bankRaw = sumColumns(sourceRow, BANK_COLUMNS);
+    const deliveryRaw = sumColumns(sourceRow, DELIVERY_COLUMNS);
+    const productCampaignRaw = sumColumns(sourceRow, PRODUCT_CAMPAIGN_COLUMNS);
+    const merchantAdRaw = sumColumns(sourceRow, MERCHANT_AD_COLUMNS);
+    const compensationRaw = sumColumns(sourceRow, COMPENSATION_COLUMNS);
+    const invoiceOtherRaw = sumColumns(sourceRow, INVOICE_OTHER_COLUMNS);
+    const creditOtherRaw = sumColumns(sourceRow, CREDIT_OTHER_COLUMNS);
+    const posRaw = num(valueOf(sourceRow, "POS Machine Fee(VAT included)"));
+    const payableRaw = num(valueOf(sourceRow, "Payable to merchant", "Payable to Restaurant"));
+
+    branch.row.orders += 1;
+    branch.salesRaw += salesRaw;
+    branch.originalItemPriceRaw += originalItemPriceRaw;
+    branch.topUpRaw += topUpRaw;
+    branch.compensationRevenueRaw += compensationRevenueRaw;
+    branch.restaurantDeliveryRevenueRaw += restaurantDeliveryRevenueRaw;
+    branch.merchantIncreaseRaw += merchantIncreaseRaw;
+    branch.commissionRaw += commissionRaw;
+    branch.bankRaw += bankRaw;
+    branch.deliveryRaw += deliveryRaw;
+    branch.productCampaignRaw += productCampaignRaw;
+    branch.merchantAdRaw += merchantAdRaw;
+    branch.compensationRaw += compensationRaw;
+    branch.invoiceOtherRaw += invoiceOtherRaw;
+    branch.creditOtherRaw += creditOtherRaw;
+    branch.posRaw += posRaw;
+    branch.payableRaw += payableRaw;
+
+    const status = text(valueOf(sourceRow, "Status")) || "غير محدد";
     statusCounts[status] = (statusCounts[status] ?? 0) + 1;
 
-    const date = normalizeDate(valueOf(row, "Transaction date"));
+    const date = normalizeDate(valueOf(sourceRow, "Transaction date"));
     if (date) {
-      const salesRaw = sumColumns(row, SALES_COLUMNS);
-      const commissionRaw = sumColumns(row, COMMISSION_COLUMNS);
-      const bankRaw = sumColumns(row, BANK_COLUMNS);
-      const deliveryRaw = sumColumns(row, DELIVERY_COLUMNS);
-      const adsRaw = sumColumns(row, ADS_COLUMNS);
-      const compensationRaw = sumColumns(row, COMPENSATION_COLUMNS);
-      const otherRaw = sumColumns(row, OTHER_COLUMNS);
       const totalCostExVat =
-        -(commissionRaw + bankRaw + deliveryRaw + adsRaw + compensationRaw + otherRaw) /
-        VAT_FACTOR;
+        -(
+          commissionRaw +
+          bankRaw +
+          deliveryRaw +
+          productCampaignRaw +
+          merchantAdRaw +
+          compensationRaw +
+          invoiceOtherRaw +
+          creditOtherRaw
+        ) / VAT_FACTOR;
 
       let day = dailyMap.get(date);
       if (!day) {
@@ -321,25 +410,38 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     }
   }
 
+  const invoice = options.invoice ?? { lines: [] };
+  const invoiceBranches = new Map(
+    (invoice.keetaBranches ?? []).map((branch) => [branch.restaurantId, branch]),
+  );
+  const matchedInvoiceIds = new Set<string>();
+
   const branchList = [...branches.values()].map((source) => {
     const row = source.row;
     const salesExVat = source.salesRaw / VAT_FACTOR;
     const commissionExVat = -source.commissionRaw / VAT_FACTOR;
     const bankExVat = -source.bankRaw / VAT_FACTOR;
     const deliveryExVat = -source.deliveryRaw / VAT_FACTOR;
-    const advertisingExVat = -source.adsRaw / VAT_FACTOR;
+    const productCampaignExVat = -source.productCampaignRaw / VAT_FACTOR;
+    const merchantAdExVat = -source.merchantAdRaw / VAT_FACTOR;
+    const advertisingExVat = productCampaignExVat + merchantAdExVat;
     const compensationExVat = -source.compensationRaw / VAT_FACTOR;
-    const otherExVat = -source.otherRaw / VAT_FACTOR;
-    const totalCostExVat =
-      commissionExVat +
-      bankExVat +
-      deliveryExVat +
-      advertisingExVat +
-      compensationExVat +
-      otherExVat;
-    const inputVat = totalCostExVat * VAT_RATE;
-    const totalCostInclVat = totalCostExVat + inputVat;
-    const calculatedPayable = source.salesRaw - totalCostInclVat;
+    const invoiceOtherExVat = -source.invoiceOtherRaw / VAT_FACTOR;
+    const creditOtherExVat = -source.creditOtherRaw / VAT_FACTOR;
+    const otherExVat = invoiceOtherExVat + creditOtherExVat;
+    const commissionInvoiceInclVat =
+      -(source.commissionRaw + source.bankRaw + source.deliveryRaw + source.invoiceOtherRaw);
+    const commissionInvoiceExVat = commissionInvoiceInclVat / VAT_FACTOR;
+    const creditSales =
+      source.salesRaw +
+      source.productCampaignRaw +
+      source.merchantAdRaw +
+      source.compensationRaw +
+      source.creditOtherRaw;
+    const calculatedPayable = creditSales - commissionInvoiceInclVat;
+    const totalCostInclVat = source.salesRaw - calculatedPayable;
+    const totalCostExVat = totalCostInclVat / VAT_FACTOR;
+    const inputVat = totalCostInclVat - totalCostExVat;
 
     row.grossSales = source.salesRaw;
     row.netSales = calculatedPayable;
@@ -353,8 +455,14 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     row.keetaBankFeesExVat = bankExVat;
     row.keetaDeliveryCampaignExVat = deliveryExVat;
     row.keetaAdvertisingExVat = advertisingExVat;
+    row.keetaProductCampaignExVat = productCampaignExVat;
+    row.keetaMerchantAdExVat = merchantAdExVat;
+    row.keetaPosFeesExVat = -source.posRaw / VAT_FACTOR;
     row.keetaCompensationExVat = compensationExVat;
     row.keetaOtherExpensesExVat = otherExVat;
+    row.keetaCommissionInvoiceExVat = commissionInvoiceExVat;
+    row.keetaCommissionInvoiceInclVat = commissionInvoiceInclVat;
+    row.keetaCreditSales = creditSales;
     row.keetaTotalCostExVat = totalCostExVat;
     row.keetaInputVat = inputVat;
     row.keetaTotalCostInclVat = totalCostInclVat;
@@ -363,20 +471,77 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     row.keetaPlatformCostPct = salesExVat !== 0 ? totalCostExVat / salesExVat : 0;
     row.keetaAvgOrderValueInclVat = row.orders ? source.salesRaw / row.orders : 0;
 
+    if (invoiceBranches.size) {
+      const invoiceBranch = invoiceBranches.get(row.branchId);
+      if (!invoiceBranch) {
+        row.branchAuditStatus = "unmatched";
+        row.branchAuditLabel = "غير مطابق";
+        row.branchAuditNote = "Store ID موجود في Order Summary ولم يتم العثور عليه في صفحات الفاتورة.";
+      } else {
+        matchedInvoiceIds.add(row.branchId);
+        row.keetaPdfOrderCommissionInclVat = invoiceBranch.orderCommissionInclVat;
+        row.keetaPdfOrderCommissionVariance =
+          -source.commissionRaw - (invoiceBranch.orderCommissionInclVat ?? 0);
+        row.keetaPdfBankCommissionInclVat = invoiceBranch.bankCommissionInclVat;
+        row.keetaPdfBankCommissionVariance =
+          -source.bankRaw - (invoiceBranch.bankCommissionInclVat ?? 0);
+        row.keetaPdfDeliveryCommissionInclVat = invoiceBranch.deliveryCommissionInclVat;
+        row.keetaPdfDeliveryCommissionVariance =
+          -source.deliveryRaw - (invoiceBranch.deliveryCommissionInclVat ?? 0);
+        row.keetaPdfCommissionInvoiceInclVat = invoiceBranch.commissionTotalInclVat;
+        row.keetaPdfCommissionVariance =
+          commissionInvoiceInclVat - (invoiceBranch.commissionTotalInclVat ?? 0);
+        row.keetaPdfCreditSales = invoiceBranch.totalCreditSales;
+        row.keetaPdfCreditSalesVariance = creditSales - (invoiceBranch.totalCreditSales ?? 0);
+        row.keetaPdfNetDue = invoiceBranch.netDue;
+        row.keetaPdfNetDueVariance = calculatedPayable - (invoiceBranch.netDue ?? 0);
+
+        const maxVariance = Math.max(
+          absVariance(row.keetaPdfOrderCommissionVariance),
+          absVariance(row.keetaPdfBankCommissionVariance),
+          absVariance(row.keetaPdfDeliveryCommissionVariance),
+          absVariance(row.keetaPdfCommissionVariance),
+          absVariance(row.keetaPdfCreditSalesVariance),
+          absVariance(row.keetaPdfNetDueVariance),
+        );
+        Object.assign(row, auditState(maxVariance));
+      }
+    }
+
     return row;
   });
 
+  for (const invoiceBranch of invoice.keetaBranches ?? []) {
+    if (matchedInvoiceIds.has(invoiceBranch.restaurantId)) continue;
+    const row = emptyBranch("Restaurant ID " + invoiceBranch.restaurantId, invoiceBranch.restaurantId);
+    row.branchAuditStatus = "invoice_only";
+    row.branchAuditLabel = "في الفاتورة فقط";
+    row.branchAuditNote = "الفرع موجود في صفحات فاتورة كيتا وغير موجود في Order Summary.";
+    row.keetaPdfOrderCommissionInclVat = invoiceBranch.orderCommissionInclVat;
+    row.keetaPdfBankCommissionInclVat = invoiceBranch.bankCommissionInclVat;
+    row.keetaPdfDeliveryCommissionInclVat = invoiceBranch.deliveryCommissionInclVat;
+    row.keetaPdfCommissionInvoiceInclVat = invoiceBranch.commissionTotalInclVat;
+    row.keetaPdfCreditSales = invoiceBranch.totalCreditSales;
+    row.keetaPdfNetDue = invoiceBranch.netDue;
+    branchList.push(row);
+  }
+
   branchList.sort((a, b) => b.grossSales - a.grossSales);
 
+  const operationalBranches = branchList.filter((row) => row.branchAuditStatus !== "invoice_only");
   const sum = (pick: (row: BranchRow) => number) =>
-    branchList.reduce((total, row) => total + pick(row), 0);
+    operationalBranches.reduce((total, row) => total + pick(row), 0);
 
   const grossSales = sum((row) => row.grossSales);
   const salesExVat = sum((row) => row.keetaSalesExVat ?? 0);
   const commissionExVat = sum((row) => row.keetaCommissionExVat ?? 0);
+  const commissionInvoiceExVat = sum((row) => row.keetaCommissionInvoiceExVat ?? 0);
+  const commissionInvoiceInclVat = sum((row) => row.keetaCommissionInvoiceInclVat ?? 0);
+  const creditSales = sum((row) => row.keetaCreditSales ?? 0);
   const totalCostExVat = sum((row) => row.keetaTotalCostExVat ?? 0);
   const calculatedPayable = sum((row) => row.netSales);
   const sourcePayable = sum((row) => row.keetaSourcePayable ?? 0);
+  const merchantAdExVat = sum((row) => row.keetaMerchantAdExVat ?? 0);
 
   const summary: Summary = {
     platform: "keeta",
@@ -406,7 +571,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     bankFeeRefunded: 0,
     invoiceOnlyExtras: 0,
     totalCharges: totalCostExVat,
-    branchCount: branchList.length,
+    branchCount: operationalBranches.length,
     statusCounts,
     periodStart,
     periodEnd,
@@ -416,8 +581,14 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     keetaBankFeesExVat: sum((row) => row.keetaBankFeesExVat ?? 0),
     keetaDeliveryCampaignExVat: sum((row) => row.keetaDeliveryCampaignExVat ?? 0),
     keetaAdvertisingExVat: sum((row) => row.keetaAdvertisingExVat ?? 0),
+    keetaProductCampaignExVat: sum((row) => row.keetaProductCampaignExVat ?? 0),
+    keetaMerchantAdExVat: merchantAdExVat,
+    keetaPosFeesExVat: sum((row) => row.keetaPosFeesExVat ?? 0),
     keetaCompensationExVat: sum((row) => row.keetaCompensationExVat ?? 0),
     keetaOtherExpensesExVat: sum((row) => row.keetaOtherExpensesExVat ?? 0),
+    keetaCommissionInvoiceExVat: commissionInvoiceExVat,
+    keetaCommissionInvoiceInclVat: commissionInvoiceInclVat,
+    keetaCreditSales: creditSales,
     keetaTotalCostExVat: totalCostExVat,
     keetaInputVat: sum((row) => row.keetaInputVat ?? 0),
     keetaTotalCostInclVat: sum((row) => row.keetaTotalCostInclVat ?? 0),
@@ -427,7 +598,6 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     keetaAvgOrderValueInclVat: summaryAverage(grossSales, sum((row) => row.orders)),
   };
 
-  const invoice = options.invoice ?? { lines: [] };
   const checks: CheckRow[] = [
     {
       label: "صافي التسوية مقابل ملف كيتا",
@@ -436,10 +606,69 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       evidence: "data",
       tolerance: 0.05,
       hint:
-        "المبيعات شامل الضريبة ناقص جميع تكاليف المنصة شامل الضريبة، مقارنةً بعمود Payable to merchant.",
+        "إجمالي البيع الآجل ناقص فاتورة العمولة شامل الضريبة، مقارنةً بعمود Payable to merchant.",
     },
   ];
 
+  if (invoice.salesCommission !== undefined) {
+    checks.push({
+      label: "عمولة الطلب",
+      computed: summary.keetaCommissionExVat ?? 0,
+      invoiced: invoice.salesCommission,
+      evidence: "data",
+      tolerance: 0.05,
+      hint: "عمولة الطلب بدون الضريبة من Order Summary مقابل Simple invoice.",
+    });
+  }
+  if (invoice.paymentFees !== undefined) {
+    checks.push({
+      label: "الرسوم المصرفية",
+      computed: summary.keetaBankFeesExVat ?? 0,
+      invoiced: invoice.paymentFees,
+      evidence: "data",
+      tolerance: 0.05,
+      hint: "رسوم البنك بدون الضريبة من Order Summary مقابل Simple invoice.",
+    });
+  }
+  if (invoice.othersCommission !== undefined) {
+    checks.push({
+      label: "عمولات أخرى - دعم توصيل كيتا",
+      computed: summary.keetaDeliveryCampaignExVat ?? 0,
+      invoiced: invoice.othersCommission,
+      evidence: "data",
+      tolerance: 0.05,
+      hint: "Delivery promotion subsidy (Keeta delivery) بدون الضريبة.",
+    });
+  }
+  if (invoice.totalExVat !== undefined) {
+    checks.push({
+      label: "إجمالي فاتورة العمولة بدون الضريبة",
+      computed: commissionInvoiceExVat,
+      invoiced: invoice.totalExVat,
+      evidence: "data",
+      tolerance: 0.05,
+      hint: "العمولة + رسوم البنك + دعم توصيل كيتا + أي بنود فاتورة إضافية.",
+    });
+  }
+  if (invoice.totalIncVat !== undefined) {
+    checks.push({
+      label: "إجمالي فاتورة العمولة شامل الضريبة",
+      computed: commissionInvoiceInclVat,
+      invoiced: invoice.totalIncVat,
+      evidence: "data",
+      tolerance: 0.05,
+    });
+  }
+  if (invoice.creditSales !== undefined) {
+    checks.push({
+      label: "إجمالي البيع الآجل",
+      computed: creditSales,
+      invoiced: invoice.creditSales,
+      evidence: "data",
+      tolerance: 0.05,
+      hint: "الإيرادات بعد دعم الأصناف والإعلانات وبقية بنود Credit Sales وقبل فاتورة العمولة.",
+    });
+  }
   if (invoice.netDue !== undefined) {
     checks.push({
       label: "صافي المستحق مقابل فاتورة كيتا",
@@ -450,10 +679,63 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       hint: "صافي التسوية المعاد احتسابه من Order Summary مقابل Net Due في الفاتورة.",
     });
   }
+  if (invoice.keetaMerchantSubsidyItems !== undefined) {
+    checks.push({
+      label: "إعانة التاجر على الأصناف",
+      computed: -((summary.keetaProductCampaignExVat ?? 0) * VAT_FACTOR),
+      invoiced: invoice.keetaMerchantSubsidyItems,
+      evidence: "data",
+      tolerance: 0.05,
+    });
+  }
+  if (invoice.keetaAdvertisingCosts !== undefined) {
+    checks.push({
+      label: "تكاليف الإعلانات",
+      computed: -((summary.keetaMerchantAdExVat ?? 0) * VAT_FACTOR),
+      invoiced: invoice.keetaAdvertisingCosts,
+      evidence: "data",
+      tolerance: 0.05,
+    });
+  }
+  if (invoice.keetaPosMachineFees !== undefined) {
+    checks.push({
+      label: "رسوم أجهزة POS",
+      computed: -((summary.keetaPosFeesExVat ?? 0) * VAT_FACTOR),
+      invoiced: invoice.keetaPosMachineFees,
+      evidence: "data",
+      tolerance: 0.05,
+    });
+  }
+
+  if (invoice.keetaTaxInvoiceExVat !== undefined) {
+    const netTaxInvoiceExVat =
+      invoice.keetaTaxInvoiceExVat - (invoice.keetaTaxCreditNoteExVat ?? 0);
+    checks.push({
+      label: "صافي الفاتورة الضريبية بدون الضريبة",
+      computed: commissionInvoiceExVat + merchantAdExVat,
+      invoiced: netTaxInvoiceExVat,
+      evidence: "data",
+      tolerance: 0.05,
+      hint:
+        "فاتورة العمولة بدون الضريبة + Promotion service fee، بعد طرح أي Tax Credit Note.",
+    });
+  }
+
+  if (invoice.keetaTaxInvoiceInclVat !== undefined) {
+    const netTaxInvoiceInclVat =
+      invoice.keetaTaxInvoiceInclVat - (invoice.keetaTaxCreditNoteInclVat ?? 0);
+    checks.push({
+      label: "صافي الفاتورة الضريبية شامل الضريبة",
+      computed: commissionInvoiceInclVat + merchantAdExVat * VAT_FACTOR,
+      invoiced: netTaxInvoiceInclVat,
+      evidence: "data",
+      tolerance: 0.05,
+    });
+  }
 
   const label =
     options.label ??
-    (periodStart && periodEnd ? `كيتا · ${periodStart} — ${periodEnd}` : "كيتا");
+    (periodStart && periodEnd ? "كيتا · " + periodStart + " — " + periodEnd : "كيتا");
 
   return {
     platform: "keeta",
