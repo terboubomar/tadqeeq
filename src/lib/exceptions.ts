@@ -148,7 +148,8 @@ function isRollupLabel(label: string): boolean {
     label.includes("إجمالي الفاتورة") ||
     label.includes("إجمالي فاتورة العمولة") ||
     label.includes("صافي المستحق") ||
-    label.includes("صافي الفاتورة الضريبية")
+    label.includes("صافي الفاتورة الضريبية") ||
+    label.includes("رسوم مدفوعات المحافظ")
   );
 }
 
@@ -544,11 +545,21 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
 }
 
 export function buildPeriodExceptions(period: StoredPeriod): AuditException[] {
-  const result = [
-    ...summaryExceptions(period),
-    ...(period.platform === "hungerstation"
+  const summary = summaryExceptions(period);
+  const branch =
+    period.platform === "hungerstation"
       ? hungerBranchExceptions(period)
-      : keetaBranchExceptions(period)),
+      : keetaBranchExceptions(period);
+
+  // When a discrepancy is already localized to one or more branches, suppress the
+  // duplicate non-rollup summary exception for the same category. Rollup controls
+  // remain visible as diagnostics but never inflate financial impact.
+  const branchCategories = new Set(
+    branch.filter((item) => !item.rollup).map((item) => item.category),
+  );
+  const result = [
+    ...summary.filter((item) => item.rollup || !branchCategories.has(item.category)),
+    ...branch,
   ];
 
   return result.sort((left, right) => {
@@ -602,14 +613,17 @@ export function summarizeExceptions(exceptions: AuditException[]): ExceptionSumm
   const open = exceptions.filter(
     (item) => item.status !== "closed" && item.status !== "recovered",
   );
-  const leaves = financialLeaves(open);
+  const leaves = financialLeaves(exceptions);
+  const openLeaves = leaves.filter(
+    (item) => item.status !== "closed" && item.status !== "recovered",
+  );
 
   return {
     total: exceptions.length,
     openCount: open.length,
     criticalCount: open.filter((item) => item.severity === "critical").length,
-    underReview: leaves.reduce((sum, item) => sum + item.reviewAmount, 0),
-    potentialRecovery: leaves.reduce((sum, item) => sum + item.potentialRecovery, 0),
+    underReview: openLeaves.reduce((sum, item) => sum + item.reviewAmount, 0),
+    potentialRecovery: openLeaves.reduce((sum, item) => sum + item.potentialRecovery, 0),
     recovered: exceptions.reduce((sum, item) => sum + item.recoveredAmount, 0),
   };
 }
