@@ -763,6 +763,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
   const calculatedPayable = sum((row) => row.netSales);
   const sourcePayable = sum((row) => row.keetaSourcePayable ?? 0);
   const merchantAdExVat = sum((row) => row.keetaMerchantAdExVat ?? 0);
+  const excelInvoiceAmountComputed = commissionInvoiceInclVat + merchantAdExVat * VAT_FACTOR;
 
   const summary: Summary = {
     platform: "keeta",
@@ -815,21 +816,87 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     keetaTotalCostInclVat: sum((row) => row.keetaTotalCostInclVat ?? 0),
     keetaSourcePayable: sourcePayable,
     keetaSettlementVariance: calculatedPayable - sourcePayable,
+    keetaExcelInvoiceAmount: invoice.keetaExcelInvoiceAmount,
+    keetaExcelInvoiceVariance:
+      invoice.keetaExcelInvoiceAmount !== undefined
+        ? excelInvoiceAmountComputed - invoice.keetaExcelInvoiceAmount
+        : undefined,
+    keetaExcelPayable: invoice.keetaExcelPayable,
+    keetaExcelPayableVariance:
+      invoice.keetaExcelPayable !== undefined
+        ? calculatedPayable - invoice.keetaExcelPayable
+        : undefined,
+    keetaBillingInvoiceAmount: invoice.keetaBillingInvoiceAmount,
+    keetaBillingInvoiceVariance:
+      invoice.keetaBillingInvoiceAmount !== undefined
+        ? excelInvoiceAmountComputed - invoice.keetaBillingInvoiceAmount
+        : undefined,
+    keetaBillingPayable: invoice.keetaBillingPayable,
+    keetaBillingPayableVariance:
+      invoice.keetaBillingPayable !== undefined
+        ? calculatedPayable - invoice.keetaBillingPayable
+        : undefined,
     keetaPlatformCostPct: salesExVat !== 0 ? totalCostExVat / salesExVat : 0,
     keetaAvgOrderValueInclVat: summaryAverage(grossSales, sum((row) => row.orders)),
   };
 
   const checks: CheckRow[] = [
     {
-      label: "صافي التسوية مقابل ملف كيتا",
+      label: "صافي التسوية مقابل Order Summary Payable",
       computed: calculatedPayable,
       invoiced: sourcePayable,
       evidence: "data",
       tolerance: 0.05,
       hint:
-        "إجمالي البيع الآجل ناقص فاتورة العمولة شامل الضريبة، مقارنةً بعمود Payable to merchant.",
+        "إعادة بناء التسوية من المبيعات والخصومات والرسوم، مقارنةً بعمود Payable to Restaurant داخل Order Summary.",
     },
   ];
+
+  if (invoice.keetaExcelInvoiceAmount !== undefined) {
+    checks.push({
+      label: "Invoice amount مقابل Invoice Details",
+      computed: excelInvoiceAmountComputed,
+      invoiced: invoice.keetaExcelInvoiceAmount,
+      evidence: "data",
+      tolerance: 0.05,
+      hint:
+        "عمولة الطلب + رسوم البنك + دعم توصيل كيتا + بنود الفاتورة الإضافية + Merchant ad spend، مقارنةً بورقة Invoice Details.",
+    });
+  }
+
+  if (invoice.keetaExcelPayable !== undefined) {
+    checks.push({
+      label: "صافي المستحق مقابل Invoice Details",
+      computed: calculatedPayable,
+      invoiced: invoice.keetaExcelPayable,
+      evidence: "data",
+      tolerance: 0.05,
+      hint:
+        "صافي التسوية المعاد احتسابه من Order Summary مقابل Payable to Restaurant في Invoice Details.",
+    });
+  }
+
+  if (invoice.keetaBillingInvoiceAmount !== undefined) {
+    checks.push({
+      label: "Invoice amount مقابل Billing data summary",
+      computed: excelInvoiceAmountComputed,
+      invoiced: invoice.keetaBillingInvoiceAmount,
+      evidence: "data",
+      tolerance: 0.05,
+      hint: "تحقق يومي تجميعي من ورقة Billing data summary.",
+    });
+  }
+
+  if (invoice.keetaBillingPayable !== undefined) {
+    checks.push({
+      label: "صافي المستحق مقابل Billing data summary",
+      computed: calculatedPayable,
+      invoiced: invoice.keetaBillingPayable,
+      evidence: "data",
+      tolerance: 0.05,
+      hint: "صافي التسوية مقابل Total Payable to Restaurant في Billing data summary.",
+    });
+  }
 
   if (invoice.salesCommission !== undefined) {
     checks.push({
