@@ -126,7 +126,7 @@ function ExceptionsPage() {
             {selected.platform === "hungerstation" ? "هنقرستيشن" : "كيتا"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            يعرض هذا المركز الاستثناءات الخاصة بالملف المحدد فقط.
+            يعرض فقط الفروقات المستقلة القابلة للإجراء في الملف المحدد؛ المجاميع الرقابية والبنود غير القابلة للتحقق تبقى في مطابقة الفاتورة.
           </p>
         </div>
         <span className="rounded-full border border-border bg-secondary px-3 py-1.5 text-xs text-muted-foreground">
@@ -207,6 +207,15 @@ function ExceptionsPage() {
         </div>
       </section>
 
+      {exceptions.length === 0 ? (
+        <section className="panel px-6 py-14 text-center">
+          <CheckCircle2 className="mx-auto mb-3 size-9 text-success" />
+          <h2 className="text-lg font-bold">الملف نظيف</h2>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
+            لا توجد فروقات مستقلة تتجاوز حدود التقريب ولا توجد مشكلة مطابقة فروع في هذا الملف.
+          </p>
+        </section>
+      ) : (
       <section className="panel overflow-hidden">
         <div className="max-h-[72vh] overflow-auto">
           <table className="w-full min-w-[1600px] border-collapse text-sm">
@@ -255,6 +264,7 @@ function ExceptionsPage() {
           </table>
         </div>
       </section>
+      )}
     </div>
   );
 }
@@ -348,10 +358,17 @@ function ExceptionRow({
           inputMode="decimal"
           value={recovered}
           onChange={(event) => setRecovered(event.target.value)}
+          disabled={saving}
           onBlur={() => {
             const value = Number(recovered.replace(/,/g, ""));
-            if (Number.isFinite(value) && value !== item.recoveredAmount) {
-              onUpdate({ recoveredAmount: Math.max(0, value) });
+            if (!Number.isFinite(value)) return;
+            const capped = Math.min(Math.max(0, value), item.reviewAmount);
+            if (value > item.reviewAmount) {
+              toast.warning("المبلغ المسترد لا يمكن أن يتجاوز المبلغ محل المراجعة.");
+              setRecovered(String(capped));
+            }
+            if (capped !== item.recoveredAmount) {
+              onUpdate({ recoveredAmount: capped });
             }
           }}
           placeholder="0.00"
@@ -360,6 +377,7 @@ function ExceptionRow({
       </Td>
       <Td>
         <Input
+          disabled={saving}
           value={note}
           onChange={(event) => setNote(event.target.value)}
           onBlur={() => {
