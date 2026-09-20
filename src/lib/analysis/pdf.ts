@@ -310,14 +310,16 @@ export function parseCpcInvoice(raw: string): InvoiceFigures {
   });
 }
 
+const KEETA_GAP = "(?:[^0-9]|\\d(?![\\d,]*\\.\\d))";
+
 function keetaAmountsAfter(source: string, count: number, ...labels: string[]): number[] {
   for (const label of labels) {
     const escaped = label.replace(/[.*+?^$(){}|[\]\\]/g, "\\$&");
     const re = new RegExp(
       escaped +
-        GAP +
+        KEETA_GAP +
         "{0,700}" +
-        Array.from({ length: count }, () => "(" + NUM + ")").join(GAP + "{0,100}"),
+        Array.from({ length: count }, () => "(" + NUM + ")").join(KEETA_GAP + "{0,100}"),
       "i",
     );
     const match = source.match(re);
