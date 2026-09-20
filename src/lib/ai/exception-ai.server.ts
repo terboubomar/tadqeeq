@@ -8,6 +8,7 @@ import {
   buildExceptionAiPacket,
   exceptionAiExplanationSchema,
   type ExceptionAiExplanation,
+  type ExceptionAiResult,
 } from "./exception-ai";
 
 const FEATURE = "exception_explainer";
@@ -37,12 +38,6 @@ interface OpenAiResponse {
   error?: {
     message?: string;
   };
-}
-
-export interface ExceptionAiResult {
-  explanation: ExceptionAiExplanation;
-  model: string;
-  promptVersion: string;
 }
 
 function requiredEnv(name: string): string {
