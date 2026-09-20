@@ -13,7 +13,7 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "تسجيل الدخول · تدقيق" },
-      { name: "description", content: "سجّل الدخول لمراجعة فواتير هنقرستيشن وكيتا ومطابقتها ببيانات الطلبات." },
+      { name: "description", content: "سجّل الدخول لمراجعة فواتير هنقرستيشن وكيتا وجاهز ومطابقتها ببيانات الطلبات." },
       { property: "og:title", content: "تسجيل الدخول · تدقيق" },
       { property: "og:description", content: "سجّل الدخول لمراجعة فواتير تطبيقات التوصيل." },
     ],
