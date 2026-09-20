@@ -221,13 +221,16 @@ function InvoiceCheck() {
                 المحتسب من البيانات
               </th>
               <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
-                قيمة المنصة / المستند الرسمي
+                قيمة المقارنة / المستند الرسمي
               </th>
               <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
                 الفرق
               </th>
               <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
-                الحالة
+                النتيجة
+              </th>
+              <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
+                نوع التحقق
               </th>
             </tr>
           </thead>
@@ -246,13 +249,16 @@ function InvoiceCheck() {
               const missing = check.invoiced === 0 && !invoiceOnly;
               const over = diff > tolerance;
               const under = diff < -tolerance;
+              const withinTolerance = !missing && !invoiceOnly && !over && !under;
+              const exactMatch = withinTolerance && Math.abs(diff) <= 0.005;
               return (
                 <tr
                   key={check.label}
                   className={cn(
                     "align-top",
                     index % 2 ? "bg-background/55" : "bg-white",
-                    over && "bg-destructive/[0.025]",
+                    over && !mixed && "bg-destructive/[0.025]",
+                    (over || under) && mixed && "bg-warning/[0.035]",
                   )}
                 >
                   <td className="border-b border-border/60 px-3.5 py-2.5">
@@ -286,19 +292,19 @@ function InvoiceCheck() {
                   <td className="whitespace-nowrap border-b border-border/60 px-3.5 py-2.5">
                     {invoiceOnly ? (
                       <span className="flex items-center gap-1.5 text-xs font-semibold text-warning">
-                        <AlertTriangle className="size-4" /> فاتورة فقط — يحتاج تحقق
-                      </span>
-                    ) : invoiceDerived ? (
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-warning">
-                        <AlertTriangle className="size-4" /> نسبة مستنتجة من الفاتورة
-                      </span>
-                    ) : mixed ? (
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-warning">
-                        <AlertTriangle className="size-4" /> تسوية تشمل بنوداً غير مستقلة
+                        <AlertTriangle className="size-4" /> يحتاج تحقق
                       </span>
                     ) : missing ? (
                       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <MinusCircle className="size-4" /> غير متاح
+                      </span>
+                    ) : mixed && (over || under) ? (
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-warning">
+                        <AlertTriangle className="size-4" /> فرق داخلي يحتاج مراجعة
+                      </span>
+                    ) : invoiceDerived && (over || under) ? (
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-warning">
+                        <AlertTriangle className="size-4" /> فرق حسابي يحتاج مراجعة
                       </span>
                     ) : roundingMatch ? (
                       <span className="flex items-center gap-1.5 text-xs font-semibold text-success">
@@ -312,9 +318,36 @@ function InvoiceCheck() {
                       <span className="flex items-center gap-1.5 text-xs font-semibold text-success">
                         <CheckCircle2 className="size-4" /> أقل من المحتسب
                       </span>
-                    ) : (
+                    ) : exactMatch ? (
                       <span className="flex items-center gap-1.5 text-xs font-semibold text-success">
                         <CheckCircle2 className="size-4" /> مطابق
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-success">
+                        <CheckCircle2 className="size-4" /> مطابق ضمن هامش التقريب
+                      </span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap border-b border-border/60 px-3.5 py-2.5">
+                    {invoiceOnly ? (
+                      <span className="rounded-full bg-warning/10 px-2 py-1 text-[11px] font-semibold text-warning">
+                        من الفاتورة فقط
+                      </span>
+                    ) : invoiceDerived ? (
+                      <span className="rounded-full bg-warning/10 px-2 py-1 text-[11px] font-semibold text-warning">
+                        مشتق من الفاتورة
+                      </span>
+                    ) : mixed ? (
+                      <span className="rounded-full bg-secondary px-2 py-1 text-[11px] font-semibold text-secondary-foreground">
+                        فحص داخلي
+                      </span>
+                    ) : evidence === "contract" ? (
+                      <span className="rounded-full bg-primary/10 px-2 py-1 text-[11px] font-semibold text-primary">
+                        تحقق مستقل + عقد
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-success/10 px-2 py-1 text-[11px] font-semibold text-success">
+                        تحقق مستقل
                       </span>
                     )}
                   </td>
