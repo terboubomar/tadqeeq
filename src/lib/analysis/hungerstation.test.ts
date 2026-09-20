@@ -258,6 +258,83 @@ describe("HungerStation audit rules", () => {
   });
 });
 
+describe("HungerStation branch reconciliation", () => {
+  test("parses a branch detail pair and reconciles it to the Excel branch", () => {
+    const invoice = parseHungerInvoice(
+      "Sales Commission 27.75 4.16 31.91 " +
+        "Payment Fees 7.10 1.07 8.17 " +
+        "Others Commission 517.50 77.63 595.13 " +
+        "Total Invoice 552.35 82.85 635.20 " +
+        "Total Online Sales (214.50) Net Due Invoice (420.70) " +
+        "Credit Sales 3.0 175.00 201.25 Rejected sales 1.0 10.00 11.50" +
+        "\n" +
+        "Invoice Details Branch A Commissions " +
+        "HS delivery commission 185.00 15.0% 27.75 " +
+        "Successful Bank Fee 210.00 2.5% 5.25 " +
+        "Refunded Bank Fee 24.00 2.5% 0.60 " +
+        "Wallet Payments Fee 50.00 2.5% 1.25 " +
+        "RDF campaigns 3.0 5.83 17.50 " +
+        "Printers 1.0 500.00 500.00 " +
+        "Total Commission 552.35" +
+        "\n" +
+        "Online Payments for branch Branch A " +
+        "Net Bank Cards Payments (180.00) " +
+        "User wallets payments (11.00) " +
+        "Rider wallets payments (7.00) " +
+        "Total food discounts (20.00) " +
+        "Restaurant food discounts 13.00 " +
+        "Rewards Discounts (9.50) " +
+        "Net Marketing Discounts (16.50) " +
+        "Total Approved Claims 0.00 " +
+        "Total Collections (214.50) " +
+        "Credit Sales 3.0 175.00 201.25 " +
+        "Rejected sales 1.0 10.00 11.50",
+    );
+
+    expect(invoice.branches).toHaveLength(1);
+    expect(invoice.branches?.[0]?.branch).toBe("Branch A");
+    expect(invoice.branches?.[0]?.salesCommission).toBeCloseTo(27.75, 2);
+    expect(invoice.branches?.[0]?.paymentFees).toBeCloseTo(7.1, 2);
+    expect(invoice.branches?.[0]?.invoiceOnlyCharges).toBeCloseTo(500, 2);
+    expect(invoice.branches?.[0]?.totalCollections).toBeCloseTo(214.5, 2);
+    expect(invoice.branches?.[0]?.creditSales).toBeCloseTo(175, 2);
+
+    const result = analyzeHungerStation(buildWorkbook(), {
+      manualBankRate: 0.025,
+      invoice,
+    });
+    const branch = result.branches.find((row) => row.branch === "Branch A");
+
+    expect(branch?.branchAuditStatus).toBe("matched");
+    expect(branch?.invoiceCommission).toBeCloseTo(27.75, 2);
+    expect(branch?.commissionVariance).toBeCloseTo(0, 6);
+    expect(branch?.invoicePaymentFees).toBeCloseTo(7.1, 2);
+    expect(branch?.paymentFeeVariance).toBeCloseTo(0, 6);
+    expect(branch?.invoiceCollections).toBeCloseTo(214.5, 2);
+    expect(branch?.collectionsVariance).toBeCloseTo(0, 6);
+    expect(branch?.invoiceCreditSales).toBeCloseTo(175, 2);
+    expect(branch?.creditSalesVariance).toBeCloseTo(0, 6);
+    expect(branch?.invoiceOnlyBranchCharges).toBeCloseTo(500, 2);
+  });
+
+  test("reads Sales Summary from page two without using page-two fee-detail headings", () => {
+    const figures = parseHungerInvoice(
+      "Sales Commission 5,568.20 835.23 6,403.43 " +
+        "Payment Fees 859.14 128.87 988.01 " +
+        "Others Commission 6,060.00 909.00 6,969.00 " +
+        "Total Invoice 12,487.34 1,873.10 14,360.44 " +
+        "Total Online Sales (35,422.65) Net Due Invoice (21,062.21)" +
+        "\n" +
+        "Sales Summary Credit Sales 603.0 30,934.63 35,574.82 " +
+        "Rejected sales 0.0 0.00 0.00",
+    );
+
+    expect(figures.paymentFees).toBeCloseTo(859.14, 2);
+    expect(figures.creditSalesOrders).toBeCloseTo(603, 2);
+    expect(figures.creditSales).toBeCloseTo(30934.63, 2);
+  });
+});
+
 describe("HungerStation commission invoice parser", () => {
   test("does not mistake the page-2 bank-fee base for the page-1 Payment Fees total", () => {
     const figures = parseHungerInvoice(
