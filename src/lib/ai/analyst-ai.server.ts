@@ -10,10 +10,11 @@ import {
   type AnalystChatResult,
   type AnalystHistoryMessage,
 } from "./analyst-ai";
+import { buildAnalystPresentation } from "./analyst-presentation";
 import { callTadqeeqAi } from "./gateway.server";
 
 const FEATURE = "analyst_chat";
-const PROMPT_VERSION = "ask-tadqeeq-v1";
+const PROMPT_VERSION = "ask-tadqeeq-v2-structured";
 const DEFAULT_HOURLY_LIMIT = 30;
 
 interface AskTadqeeqInput {
@@ -165,6 +166,11 @@ function fallbackUngroundedResponse(): AnalystAiResponse {
     answer:
       "لا توجد في سياق Tadqeeq الموثق لهذه الفترة أدلة كافية تسمح لي بالإجابة على هذا السؤال بدقة دون افتراضات إضافية.",
     usedFactIds: [],
+    presentation: {
+      type: "text",
+      title: "",
+      factIds: [],
+    },
     limitations: [
       "لم أتمكن من ربط الإجابة بحقيقة موثقة من سجل Tadqeeq الحالي، لذلك لم يتم تقديم تقدير أو رقم بديل.",
     ],
@@ -194,6 +200,9 @@ async function callAnalyst(
     "إذا كان السؤال يطلب سبباً ولم توجد حقيقة موثقة تدعم السبب، قل إن السبب غير متاح ولا تخمّن.",
     "إذا كان السؤال خارج البيانات المتاحة أو عن عقد/سياسة غير موجودة في FACT_REGISTRY، استخدم answerability=not_available.",
     "عند الإجابة grounded أو partial يجب إرجاع usedFactIds التي تدعم الإجابة مباشرة.",
+    "اختر presentation.type حسب طبيعة السؤال: branch_table عند ترتيب أو مقارنة عدة فروع، exception_table عند عرض عدة استثناءات، comparison_table عند مقارنة عدة مؤشرات بين الفترات، وtext لباقي الحالات.",
+    "في presentation.factIds أرسل فقط معرفات الحقائق التي يحتاجها العرض. عند branch_table يمكن إرسال حقيقة ranking المناسبة، وسيبني الخادم تفاصيل الصفوف من حقائق الفروع الموثقة.",
+    "لا تكتب جدول Markdown أو تسرد كل صف داخل answer. اجعل answer خلاصة قصيرة، لأن الخادم سيبني الجدول من البيانات الحتمية.",
     "لا تذكر Fact IDs داخل نص answer؛ الواجهة ستعرض الأدلة بشكل منفصل.",
     "اكتب بالعربية المهنية الواضحة، ويمكنك فهم السؤال بالإنجليزية أو العربية.",
     "لا تقدم نصيحة قانونية ولا ترسل اعتراضاً أو تعدّل أي سجل.",
@@ -211,6 +220,23 @@ async function callAnalyst(
         type: "array",
         items: { type: "string", pattern: "^F[0-9]{3}$" },
         maxItems: 12,
+      },
+      presentation: {
+        type: "object",
+        properties: {
+          type: {
+            type: "string",
+            enum: ["text", "branch_table", "exception_table", "comparison_table"],
+          },
+          title: { type: "string", maxLength: 160 },
+          factIds: {
+            type: "array",
+            items: { type: "string", pattern: "^F[0-9]{3}$" },
+            maxItems: 12,
+          },
+        },
+        required: ["type", "title", "factIds"],
+        additionalProperties: false,
       },
       limitations: {
         type: "array",
@@ -231,6 +257,7 @@ async function callAnalyst(
       "answerability",
       "answer",
       "usedFactIds",
+      "presentation",
       "limitations",
       "followUpSuggestions",
       "confidence",
@@ -261,7 +288,13 @@ async function callAnalyst(
   const parsed = analystAiResponseSchema.parse(JSON.parse(text) as unknown);
   const factsUsed = resolveAnalystFacts(context, parsed.usedFactIds);
   const validIds = factsUsed.map((fact) => fact.id);
-  const lostReferences = validIds.length !== parsed.usedFactIds.length;
+  const validPresentationIds = resolveAnalystFacts(
+    context,
+    parsed.presentation.factIds,
+  ).map((fact) => fact.id);
+  const lostReferences =
+    validIds.length !== parsed.usedFactIds.length ||
+    validPresentationIds.length !== parsed.presentation.factIds.length;
 
   if (parsed.answerability !== "not_available" && validIds.length === 0) {
     return { response: fallbackUngroundedResponse(), model };
@@ -271,6 +304,10 @@ async function callAnalyst(
     response: {
       ...parsed,
       usedFactIds: validIds,
+      presentation: {
+        ...parsed.presentation,
+        factIds: validPresentationIds,
+      },
       ...(lostReferences
         ? {
             limitations: [
@@ -303,12 +340,14 @@ export async function askTadqeeqOnServer(
   const context = buildAnalystContext(current, periods);
   const { response, model } = await callAnalyst(input, context);
   const factsUsed = resolveAnalystFacts(context, response.usedFactIds);
+  const presentation = buildAnalystPresentation(context, response);
 
   await recordUsage(input, user, model, supabaseUrl, supabaseKey);
 
   return {
     response,
     factsUsed,
+    presentation,
     model,
     promptVersion: PROMPT_VERSION,
     scope: {
