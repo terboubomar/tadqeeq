@@ -343,12 +343,7 @@ function keetaAmountAfter(source: string, ...labels: string[]): number | undefin
  */
 function keetaSarSummaryAmount(source: string, ...labels: string[]): number | undefined {
   for (const label of labels) {
-    const escaped = label.replace(/[.*+?^$(){}|[\]\\]/g, "\\function keetaAmountAfter(source: string, ...labels: string[]): number | undefined {
-  const [value] = keetaAmountsAfter(source, 1, ...labels);
-  return value;
-}
-
-function restaurantId");
+    const escaped = label.replace(/[.*+?^$(){}|[\]\\]/g, "\\$&");
     const re = new RegExp(
       escaped + "\\s*(?:SAR\\s*)(" + NUM + ")",
       "i",
