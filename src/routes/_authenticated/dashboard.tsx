@@ -163,17 +163,29 @@ function Dashboard() {
       ) : (
         <section className="audit-kpi-strip grid gap-0 sm:grid-cols-2 xl:grid-cols-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0">
           <StatCard
-            label="Payable حسب كيتا"
-            value={sar(s.keetaSourcePayable ?? 0)}
-            hint="مجموع عمود Payable to merchant"
+            label={s.keetaExcelPayable !== undefined ? "Payable الرسمي حسب كيتا" : "Payable حسب Order Summary"}
+            value={sar(s.keetaExcelPayable ?? s.keetaSourcePayable ?? 0)}
+            hint={
+              s.keetaExcelPayable !== undefined
+                ? "من ورقة Invoice Details داخل ملف كيتا"
+                : "من عمود Payable to Restaurant في Order Summary"
+            }
             icon={Banknote}
           />
           <StatCard
             label="فرق التسوية"
-            value={sar(s.keetaSettlementVariance ?? 0)}
-            hint="المحتسب ناقص Payable حسب كيتا"
+            value={sar(s.keetaExcelPayableVariance ?? s.keetaSettlementVariance ?? 0)}
+            hint={
+              s.keetaExcelPayable !== undefined
+                ? "المحتسب ناقص Payable في Invoice Details"
+                : "المحتسب ناقص Payable في Order Summary"
+            }
             icon={Receipt}
-            tone={Math.abs(s.keetaSettlementVariance ?? 0) > 0.05 ? "negative" : "default"}
+            tone={
+              Math.abs(s.keetaExcelPayableVariance ?? s.keetaSettlementVariance ?? 0) > 0.05
+                ? "negative"
+                : "default"
+            }
           />
           <StatCard
             label="رسوم البنك (بدون الضريبة)"
