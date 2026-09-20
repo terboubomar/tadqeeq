@@ -17,13 +17,24 @@ export const Route = createFileRoute("/_authenticated/daily")({
   component: DailyPage,
 });
 
-const COLUMNS: Column<DailyRow>[] = [
+const DEFAULT_COLUMNS: Column<DailyRow>[] = [
   { key: "date", header: "اليوم", type: "text" },
   { key: "orders", header: "الطلبات", type: "number" },
   { key: "grossSales", header: "المبيعات (شامل الضريبة)" },
-  { key: "netSales", header: "الأساس الخاضع للعمولة" },
+  { key: "netSales", header: "الأساس / صافي التسوية" },
   { key: "commission", header: "العمولة" },
   { key: "ccSuccess", header: "مدفوعات البطاقات" },
+];
+
+const JAHEZ_COLUMNS: Column<DailyRow>[] = [
+  { key: "date", header: "اليوم", type: "text" },
+  { key: "orders", header: "طلبات جاهز", type: "number" },
+  { key: "grossSales", header: "Order Amount" },
+  { key: "netSales", header: "Restaurant Amount" },
+  { key: "commission", header: "عمولة جاهز بدون الضريبة" },
+  { key: "jahezCompensationDebit", header: "تعويضات مخصومة" },
+  { key: "jahezCompensationCredit", header: "تعويضات مضافة" },
+  { key: "jahezCompensationNetImpact", header: "صافي أثر التعويضات" },
 ];
 
 function DailyPage() {
@@ -41,13 +52,19 @@ function DailyPage() {
       <header>
         <h1 className="audit-heading">التقرير اليومي</h1>
         <p className="audit-subtitle">
-          يعتمد على يوم التشغيل للطلبات الناجحة والفاشلة بعد الاستلام.
+          {selected.platform === "jahez"
+            ? "يعرض حركة طلبات جاهز وتعويضاتها حسب تاريخ الحركة."
+            : "يعتمد على يوم التشغيل للطلبات الناجحة والفاشلة بعد الاستلام."}
         </p>
       </header>
       <ReportTable
         title={selected.label}
         rows={selected.daily as unknown as Record<string, unknown>[]}
-        columns={COLUMNS as unknown as Column<Record<string, unknown>>[]}
+        columns={
+          (selected.platform === "jahez" ? JAHEZ_COLUMNS : DEFAULT_COLUMNS) as unknown as Column<
+            Record<string, unknown>
+          >[]
+        }
         filename={`daily-${selected.period_start ?? "period"}`}
         searchKey="date"
       />
