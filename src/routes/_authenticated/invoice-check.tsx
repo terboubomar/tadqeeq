@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, CheckCircle2, MinusCircle } from "lucide-react";
+import { useState } from "react";
 
 import { EmptyState } from "@/components/AppShell";
+import { StatCard } from "@/components/StatCard";
 import { arabicDate, money, percent, sar } from "@/lib/format";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
@@ -36,6 +38,7 @@ function InvoiceCheck() {
     return <EmptyState title="لا توجد فترات محفوظة" body="ارفع ملفات الفترة لبدء المطابقة." />;
   }
 
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
   const checks = selected.invoice?.checks ?? [];
   const hasPdfInvoice = Boolean(selected.invoice?.lines?.length);
   // Headline variance should only use non-overlapping controls.
@@ -59,22 +62,49 @@ function InvoiceCheck() {
     const tolerance = check.tolerance ?? DEFAULT_TOLERANCE;
     return sum + (Math.abs(diff) <= tolerance ? 0 : diff);
   }, 0);
+  const flaggedCount = checks.filter((check) => {
+    if (check.evidence === "invoice_only" || check.evidence === "invoice_derived" || check.evidence === "mixed") {
+      return false;
+    }
+    return Math.abs(check.invoiced - check.computed) > (check.tolerance ?? DEFAULT_TOLERANCE);
+  }).length;
+  const missingCount = checks.filter(
+    (check) => check.invoiced === 0 && check.evidence !== "invoice_only",
+  ).length;
+  const visibleChecks = flaggedOnly
+    ? checks.filter((check) => {
+        if (check.evidence === "invoice_only" || check.evidence === "invoice_derived" || check.evidence === "mixed") {
+          return false;
+        }
+        return Math.abs(check.invoiced - check.computed) > (check.tolerance ?? DEFAULT_TOLERANCE);
+      })
+    : checks;
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-black">مطابقة الفاتورة</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {selected.label} · {arabicDate(selected.period_start)} —{" "}
-          {arabicDate(selected.period_end)}
-        </p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="audit-heading">مطابقة الفاتورة</h1>
+          <p className="audit-subtitle">
+            {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)}
+          </p>
+        </div>
+        <label data-noprint className="flex cursor-pointer items-center gap-2 text-[12.5px] text-foreground/80">
+          <input
+            type="checkbox"
+            checked={flaggedOnly}
+            onChange={(event) => setFlaggedOnly(event.target.checked)}
+            className="size-[15px] accent-primary"
+          />
+          البنود غير المطابقة فقط
+        </label>
       </header>
 
       {!hasPdfInvoice ? (
-        <div className="panel flex items-start gap-3 border-warning/40 p-5">
+        <div className="panel flex items-start gap-3 border-warning/40 p-4">
           <AlertTriangle className="mt-0.5 size-5 shrink-0 text-warning" />
           <div>
-            <p className="font-bold">لم تُرفق فاتورة لهذه الفترة</p>
+            <p className="font-semibold">لم تُرفق فاتورة لهذه الفترة</p>
             <p className="mt-1 text-sm text-muted-foreground">
               {selected.platform === "keeta"
                 ? "تمت مطابقة صافي التسوية داخلياً مع Payable to merchant من ملف كيتا. أرفق فاتورة PDF لإضافة المطابقة الرسمية."
@@ -83,43 +113,65 @@ function InvoiceCheck() {
           </div>
         </div>
       ) : (
-        <div
-          className={cn(
-            "panel p-5",
-            Math.abs(totalDiff) > DEFAULT_TOLERANCE
-              ? "border-destructive/50"
-              : "border-success/50",
-          )}
-        >
-          <p className="text-sm text-muted-foreground">
-            {selected.platform === "hungerstation"
-              ? "فرق رسوم الفاتورة القابلة للتحقق بشكل مستقل"
-              : "فرق صافي التسوية القابل للتحقق"}
-          </p>
-          <p
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div
             className={cn(
-              "mt-2 text-3xl font-black",
-              totalDiff > DEFAULT_TOLERANCE
-                ? "text-destructive"
-                : totalDiff < -DEFAULT_TOLERANCE
-                  ? "text-success"
-                  : "text-foreground",
+              "rounded-[10px] border p-4",
+              Math.abs(totalDiff) > DEFAULT_TOLERANCE
+                ? "border-destructive/25 bg-destructive/[0.035]"
+                : "border-success/25 bg-success/[0.035]",
             )}
           >
-            <span className="num">{money(totalDiff)}</span> ر.س
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            {totalDiff > DEFAULT_TOLERANCE
-              ? "المنصة طالبت بمبلغ أعلى من المحتسب — راجع البنود المعلَّمة بالأحمر."
-              : totalDiff < -DEFAULT_TOLERANCE
-                ? "المطالبة أقل من المحتسب."
-                : "البنود القابلة للتحقق مستقلاً مطابقة ضمن هامش التسامح."}
-          </p>
-        </div>
+            <p className="text-xs font-semibold text-foreground/80">فرق المطالبة عن المحتسب</p>
+            <p
+              className={cn(
+                "num mt-2 text-[30px] font-semibold tracking-[-0.02em]",
+                totalDiff > DEFAULT_TOLERANCE
+                  ? "text-destructive"
+                  : totalDiff < -DEFAULT_TOLERANCE
+                    ? "text-success"
+                    : "text-foreground",
+              )}
+            >
+              {money(totalDiff)} <span className="font-sans text-sm font-normal text-muted-foreground">ر.س</span>
+            </p>
+            <p className="mt-2 text-[12.5px] leading-6 text-foreground/75">
+              {totalDiff > DEFAULT_TOLERANCE
+                ? "المنصة طالبت بمبلغ أعلى من المحتسب. راجع البنود المعلَّمة."
+                : totalDiff < -DEFAULT_TOLERANCE
+                  ? "المطالبة أقل من المحتسب."
+                  : "البنود القابلة للتحقق مستقلاً مطابقة ضمن هامش التسامح."}
+            </p>
+          </div>
+          <StatCard
+            label="بنود تحتاج مراجعة"
+            value={String(flaggedCount)}
+            hint={"من أصل " + checks.length + " بند مطابَق"}
+            tone={flaggedCount ? "negative" : "default"}
+          />
+          <StatCard
+            label="بنود بلا مقابل في الفاتورة"
+            value={String(missingCount)}
+            hint="محتسبة من البيانات ولم تُطالب بها المنصة"
+            tone="gold"
+          />
+          <StatCard
+            label="إجمالي الفاتورة شامل الضريبة"
+            value={sar(selected.invoice?.totalIncVat ?? 0)}
+            hint={selected.invoice?.invoiceNo ? "فاتورة رقم " + selected.invoice.invoiceNo : "حسب ملف PDF"}
+          />
+        </section>
       )}
 
-      <section className="panel overflow-hidden">
-        <table className="w-full text-sm">
+      <section className="overflow-hidden rounded-[10px] border border-border bg-white">
+        <div className="flex items-center justify-between gap-3 border-b border-border/80 px-4 py-3">
+          <h2 className="text-sm font-semibold">دفتر المطابقة</h2>
+          <span className="text-[11.5px] text-muted-foreground">
+            الحدود تختلف حسب نوع البند ومصدر الدليل
+          </span>
+        </div>
+        <div data-scroll className="overflow-x-auto">
+        <table className="w-full min-w-[780px] text-[13.5px]">
           <thead className="bg-surface-raised">
             <tr>
               <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground">
@@ -140,7 +192,7 @@ function InvoiceCheck() {
             </tr>
           </thead>
           <tbody>
-            {checks.map((check) => {
+            {visibleChecks.map((check, index) => {
               const evidence = check.evidence ?? "data";
               const invoiceOnly = evidence === "invoice_only";
               const invoiceDerived = evidence === "invoice_derived";
@@ -155,7 +207,14 @@ function InvoiceCheck() {
               const over = diff > tolerance;
               const under = diff < -tolerance;
               return (
-                <tr key={check.label} className="border-t border-border/60 align-top">
+                <tr
+                  key={check.label}
+                  className={cn(
+                    "align-top",
+                    index % 2 ? "bg-background/55" : "bg-white",
+                    over && "bg-destructive/[0.025]",
+                  )}
+                >
                   <td className="px-4 py-3">
                     <p className="font-semibold">{check.label}</p>
                     {check.hint ? (
@@ -224,11 +283,13 @@ function InvoiceCheck() {
             })}
           </tbody>
         </table>
+        </table>
+        </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2">
-        <div className="panel p-5">
-          <h2 className="text-base font-bold">بنود الفاتورة كما وردت</h2>
+      <section className="grid gap-3 sm:grid-cols-2">
+        <div className="panel p-4">
+          <h2 className="text-sm font-semibold">بنود الفاتورة كما وردت</h2>
           {selected.invoice?.lines?.length ? (
             <ul className="mt-3 space-y-2 text-sm">
               {selected.invoice.lines.map((line) => (
@@ -246,8 +307,8 @@ function InvoiceCheck() {
           )}
         </div>
 
-        <div className="panel p-5">
-          <h2 className="text-base font-bold">أساس الاحتساب</h2>
+        <div className="panel p-4">
+          <h2 className="text-sm font-semibold">أساس الاحتساب</h2>
           <dl className="mt-3 space-y-2 text-sm">
             <Row label="نسبة العمولة الفعلية" value={percent(selected.summary.commissionPct)} />
             <Row
