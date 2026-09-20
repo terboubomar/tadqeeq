@@ -1,4 +1,4 @@
-import type { HungerInvoiceBranch, InvoiceFigures } from "./types";
+import type { HungerInvoiceBranch, InvoiceFigures, KeetaInvoiceBranch } from "./types";
 
 /** Extract plain text from the first pages of a PDF, in the browser. */
 export async function extractPdfText(file: ArrayBuffer, maxPages = 3): Promise<string> {
@@ -310,17 +310,175 @@ export function parseCpcInvoice(raw: string): InvoiceFigures {
   });
 }
 
-/** Parse a Keeta settlement invoice. */
+function keetaAmountsAfter(source: string, count: number, ...labels: string[]): number[] {
+  for (const label of labels) {
+    const escaped = label.replace(/[.*+?^$(){}|[\]\\]/g, "\\$&");
+    const re = new RegExp(
+      escaped +
+        GAP +
+        "{0,700}" +
+        Array.from({ length: count }, () => "(" + NUM + ")").join(GAP + "{0,100}"),
+      "i",
+    );
+    const match = source.match(re);
+    if (match) {
+      const values = match.slice(1, count + 1).map(toNumber);
+      if (values.every((value) => Number.isFinite(value))) return values;
+    }
+  }
+  return [];
+}
+
+function keetaAmountAfter(source: string, ...labels: string[]): number | undefined {
+  const [value] = keetaAmountsAfter(source, 1, ...labels);
+  return value;
+}
+
+function restaurantId(page: string): string | undefined {
+  return page.match(/Restaurant\s*ID\s*:\s*(\d+)/i)?.[1];
+}
+
+function parseKeetaBranch(detailPage: string, creditPage: string): KeetaInvoiceBranch {
+  const totalExVat = keetaAmountAfter(
+    detailPage,
+    "Total commission (not including VAT)",
+    "Total commission",
+  );
+  const totalIncVat = keetaAmountAfter(detailPage, "Total invoice (including VAT)");
+
+  return {
+    restaurantId: restaurantId(detailPage) ?? "",
+    orderCommissionInclVat: keetaAmountAfter(detailPage, "Order commission"),
+    bankCommissionInclVat: keetaAmountAfter(detailPage, "Bank commission"),
+    deliveryCommissionInclVat: keetaAmountAfter(detailPage, "Other commission"),
+    photographyInclVat: keetaAmountAfter(detailPage, "Photography service fees"),
+    subscriptionInclVat: keetaAmountAfter(detailPage, "Subscription fee"),
+    commissionAdjustmentInclVat: keetaAmountAfter(detailPage, "Commission adjustment"),
+    commissionTotalExVat: totalExVat,
+    commissionVat:
+      totalExVat !== undefined && totalIncVat !== undefined ? totalIncVat - totalExVat : undefined,
+    commissionTotalInclVat: totalIncVat,
+    originalItemPrice: keetaAmountAfter(creditPage, "Original item price"),
+    topUpToMinimum: keetaAmountAfter(creditPage, "Top-up to minimum"),
+    compensationToMerchant: keetaAmountAfter(creditPage, "Compensation to merchant"),
+    restaurantDeliveryFee: keetaAmountAfter(creditPage, "Restaurant delivery fee"),
+    merchantPaymentIncrease: keetaAmountAfter(creditPage, "Merchant payment increase"),
+    merchantSubsidyItems: keetaAmountAfter(creditPage, "Merchant subsidy on items"),
+    merchantDeliveryPromotion: keetaAmountAfter(
+      creditPage,
+      "Delivery promotion subsidy (restaurant delivery)",
+      "Delivery promotion subsidy (restaurant",
+    ),
+    platformDeductions: keetaAmountAfter(creditPage, "Platform deductions from merchant"),
+    advertisingCosts: keetaAmountAfter(creditPage, "Advertising costs"),
+    vatWithholding: keetaAmountAfter(creditPage, "VAT withholding"),
+    merchantPaymentReduction: keetaAmountAfter(creditPage, "Merchant payment reduction"),
+    posMachineFees: keetaAmountAfter(creditPage, "POS machine fees"),
+    totalCreditSales: keetaAmountAfter(creditPage, "Total credit sales"),
+    netDue: keetaAmountAfter(creditPage, "Net due invoice"),
+  };
+}
+
+function parseKeetaBranches(pages: string[]): KeetaInvoiceBranch[] {
+  const branches: KeetaInvoiceBranch[] = [];
+
+  for (let index = 0; index < pages.length; index += 1) {
+    const detailPage = pages[index]!;
+    if (!/Invoice Details For Branch/i.test(detailPage)) continue;
+
+    const id = restaurantId(detailPage);
+    if (!id) continue;
+
+    const idPattern = new RegExp("Restaurant\\s*ID\\s*:\\s*" + id + "\\b", "i");
+    const creditPage =
+      pages
+        .slice(index + 1, Math.min(index + 3, pages.length))
+        .find((page) => /Credit Sales/i.test(page) && idPattern.test(page)) ?? "";
+
+    branches.push(parseKeetaBranch(detailPage, creditPage));
+  }
+
+  return branches.filter((branch) => branch.restaurantId);
+}
+
+/** Parse a Keeta settlement/tax invoice and its branch detail pages. */
 export function parseKeetaInvoice(raw: string): InvoiceFigures {
-  const source = raw.replace(/\s+/g, " ");
-  return build({
-    salesCommission: amountAfter(source, "Order commission", "Commission fee"),
-    paymentFees: amountAfter(source, "Bank commission", "Bank charges"),
-    othersCommission: amountAfter(source, "Other commission", "Promotion service fee"),
-    totalExVat: amountAfter(source, "Total Excluding VAT", "Subtotal"),
-    vat: amountAfter(source, "VAT 15", "Total VAT"),
-    totalIncVat: amountAfter(source, "Total Invoice", "Invoice Total", "Total amount"),
-    creditSales: amountAfter(source, "Total credit sales", "Credit sales"),
-    netDue: amountAfter(source, "Net due invoice", "Net Due"),
+  const pages = raw
+    .split(/\n+/)
+    .map((page) => page.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+
+  const taxPage = pages.find((page) => /Tax Invoice/i.test(page) && !/Tax Credit Note/i.test(page));
+  const simplePage = pages.find((page) => /Simple invoice/i.test(page)) ?? pages[0] ?? "";
+  const creditPage =
+    pages.find((page) => /Credit Sales/i.test(page) && !/Restaurant\s*ID/i.test(page)) ?? "";
+  const creditNotes = pages.filter((page) => /Tax Credit Note/i.test(page));
+
+  const totalExVat = keetaAmountAfter(
+    simplePage,
+    "Total commission (not including VAT)",
+    "Total commission",
+  );
+  const totalIncVat = keetaAmountAfter(simplePage, "Total invoice (including VAT)");
+  const promotionRow = taxPage ? keetaAmountsAfter(taxPage, 6, "Promotion service fee") : [];
+  const taxTotalExVat = taxPage
+    ? keetaAmountAfter(taxPage, "Total Taxable Amount (Excluding VAT)", "Total Taxable Amount")
+    : undefined;
+  const taxTotalVat = taxPage ? keetaAmountAfter(taxPage, "Total VAT Amount") : undefined;
+  const taxTotalInclVat = taxPage
+    ? keetaAmountAfter(taxPage, "Total(Including VAT)", "Total (Including VAT)")
+    : undefined;
+
+  const creditNoteExVat = creditNotes.reduce(
+    (sum, page) =>
+      sum +
+      (keetaAmountAfter(page, "Total Taxable Amount (Excluding VAT)", "Total Taxable Amount") ?? 0),
+    0,
+  );
+  const creditNoteVat = creditNotes.reduce(
+    (sum, page) => sum + (keetaAmountAfter(page, "Total VAT Amount") ?? 0),
+    0,
+  );
+  const creditNoteInclVat = creditNotes.reduce(
+    (sum, page) =>
+      sum + (keetaAmountAfter(page, "Total(Including VAT)", "Total (Including VAT)") ?? 0),
+    0,
+  );
+
+  const figures = build({
+    salesCommission: keetaAmountAfter(simplePage, "Order commission"),
+    paymentFees: keetaAmountAfter(simplePage, "Bank commission"),
+    othersCommission: keetaAmountAfter(simplePage, "Other commission"),
+    totalExVat,
+    vat:
+      totalExVat !== undefined && totalIncVat !== undefined ? totalIncVat - totalExVat : undefined,
+    totalIncVat,
+    creditSales: keetaAmountAfter(simplePage, "Total credit sales"),
+    netDue: keetaAmountAfter(simplePage, "Net due invoice"),
+    invoiceNo: taxPage?.match(/Invoice\s*Number[^0-9]{0,80}(\d{12,})/i)?.[1],
   });
+
+  const branches = parseKeetaBranches(pages);
+  if (branches.length) figures.keetaBranches = branches;
+
+  if (promotionRow.length >= 3) {
+    figures.keetaPromotionServiceFeeExVat = promotionRow[2] ?? promotionRow[1];
+  }
+  figures.keetaTaxInvoiceExVat = taxTotalExVat;
+  figures.keetaTaxInvoiceVat = taxTotalVat;
+  figures.keetaTaxInvoiceInclVat = taxTotalInclVat;
+  if (creditNoteExVat) figures.keetaTaxCreditNoteExVat = creditNoteExVat;
+  if (creditNoteVat) figures.keetaTaxCreditNoteVat = creditNoteVat;
+  if (creditNoteInclVat) figures.keetaTaxCreditNoteInclVat = creditNoteInclVat;
+
+  if (creditPage) {
+    figures.keetaOriginalItemPrice = keetaAmountAfter(creditPage, "Original item price");
+    figures.keetaTopUpToMinimum = keetaAmountAfter(creditPage, "Top-up to minimum");
+    figures.keetaCompensationToMerchant = keetaAmountAfter(creditPage, "Compensation to merchant");
+    figures.keetaMerchantSubsidyItems = keetaAmountAfter(creditPage, "Merchant subsidy on items");
+    figures.keetaAdvertisingCosts = keetaAmountAfter(creditPage, "Advertising costs");
+    figures.keetaPosMachineFees = keetaAmountAfter(creditPage, "POS machine fees");
+  }
+
+  return figures;
 }
