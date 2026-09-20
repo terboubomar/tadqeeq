@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage: {
+        Row: {
+          created_at: string
+          exception_id: string | null
+          feature: string
+          id: string
+          model: string
+          period_id: string | null
+          prompt_version: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          exception_id?: string | null
+          feature: string
+          id?: string
+          model: string
+          period_id?: string | null
+          prompt_version: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          exception_id?: string | null
+          feature?: string
+          id?: string
+          model?: string
+          period_id?: string | null
+          prompt_version?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       periods: {
         Row: {
           branches: Json
