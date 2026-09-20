@@ -19,7 +19,7 @@ export const Route = createFileRoute("/_authenticated/branches")({
 
 const HUNGER_COLUMNS: Column<BranchRow>[] = [
   { key: "branch", header: "الفرع", type: "text" },
-  { key: "branchAuditStatus", header: "حالة المطابقة", type: "text" },
+  { key: "branchAuditLabel", header: "حالة المطابقة", type: "text" },
   { key: "orders", header: "الطلبات", type: "number" },
   { key: "creditSales", header: "مبيعات الائتمان (بدون ضريبة)" },
   { key: "invoiceCreditSales", header: "مبيعات الفاتورة" },
