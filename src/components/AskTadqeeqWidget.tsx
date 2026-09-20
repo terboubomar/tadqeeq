@@ -1,16 +1,20 @@
-import {
-  Bot,
-  Loader2,
-  Maximize2,
-  Minimize2,
-  RotateCcw,
-  Send,
-  UserRound,
-  X,
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Bot, Maximize2, Minimize2, RotateCcw, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+} from "@/components/ai-elements/conversation";
+import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
+import {
+  PromptInput,
+  PromptInputFooter,
+  PromptInputSubmit,
+  PromptInputTextarea,
+} from "@/components/ai-elements/prompt-input";
+import { Shimmer } from "@/components/ai-elements/shimmer";
 import { supabase } from "@/integrations/supabase/client";
 import type {
   AnalystChatResult,
@@ -23,8 +27,6 @@ import type { StoredPeriod } from "@/lib/periods";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./ui/button";
-import { ScrollArea } from "./ui/scroll-area";
-import { Textarea } from "./ui/textarea";
 
 interface ChatMessage {
   id: string;
@@ -145,7 +147,8 @@ function WidgetHeader({
               </div>
               {selected ? (
                 <p className="mt-0.5 truncate text-[10.5px] text-muted-foreground">
-                  {platformLabel} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)}
+                  {platformLabel} · {arabicDate(selected.period_start)} —{" "}
+                  {arabicDate(selected.period_end)}
                 </p>
               ) : (
                 <p className="mt-0.5 text-[10.5px] text-muted-foreground">لا توجد فترة مختارة</p>
@@ -179,7 +182,6 @@ function WidgetHeader({
           </Button>
         </div>
       </div>
-
     </header>
   );
 }
@@ -194,12 +196,6 @@ function AskTadqeeqConversation({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, loading]);
-
   function historyForRequest(): AnalystHistoryMessage[] {
     return messages.slice(-8).map((message) => ({
       role: message.role,
@@ -254,9 +250,7 @@ function AskTadqeeqConversation({
       ]);
     } catch (cause) {
       const message =
-        cause instanceof Error
-          ? cause.message
-          : "تعذّر الحصول على إجابة من Ask Tadqeeq حالياً.";
+        cause instanceof Error ? cause.message : "تعذّر الحصول على إجابة من Ask Tadqeeq حالياً.";
       toast.error(message);
       setMessages((current) => [
         ...current,
@@ -273,8 +267,8 @@ function AskTadqeeqConversation({
 
   return (
     <>
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="p-4 sm:p-5">
+      <Conversation className="min-h-0 flex-1">
+        <ConversationContent className="gap-4 p-4 sm:p-5">
           {messages.length === 0 ? (
             <EmptyConversation onAsk={sendQuestion} />
           ) : (
@@ -306,63 +300,44 @@ function AskTadqeeqConversation({
               ))}
 
               {loading ? (
-                <div className="flex items-start gap-2.5">
-                  <div className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary text-primary">
-                    <Bot className="size-4" />
-                  </div>
-                  <div className="rounded-xl rounded-tr-sm border border-border bg-secondary/30 px-3.5 py-3">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="size-3.5 animate-spin" />
-                      أراجع حقائق الفترة والأدلة الموثقة…
-                    </div>
-                  </div>
-                </div>
+                <Message from="assistant">
+                  <MessageContent>
+                    <Shimmer className="text-xs">أراجع حقائق الفترة والأدلة الموثقة…</Shimmer>
+                  </MessageContent>
+                </Message>
               ) : null}
-              <div ref={bottomRef} />
             </div>
           )}
-        </div>
-      </ScrollArea>
+        </ConversationContent>
+        <ConversationScrollButton aria-label="الانتقال إلى أحدث رسالة" />
+      </Conversation>
 
-      <form
-        className="shrink-0 border-t border-border bg-background/80 p-3 sm:p-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void sendQuestion(draft);
-        }}
-      >
-        <div className="flex items-end gap-2">
-          <Textarea
+      <div className="shrink-0 border-t border-border bg-background/80 p-3 sm:p-4">
+        <PromptInput
+          className="bg-white"
+          onSubmit={({ text }) => {
+            void sendQuestion(text || draft);
+            return undefined;
+          }}
+        >
+          <PromptInputTextarea
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                void sendQuestion(draft);
-              }
-            }}
             placeholder="اسأل عن الفروع، الاستثناءات، التكاليف أو التغيّرات…"
             maxLength={1200}
             disabled={loading}
-            className="min-h-[54px] max-h-36 resize-y bg-white"
+            className="min-h-[54px]"
           />
-          <Button
-            type="submit"
-            size="icon"
-            className="size-[54px] shrink-0"
-            disabled={loading || draft.trim().length < 2}
-            aria-label="إرسال"
-          >
-            {loading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-          </Button>
-        </div>
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <p className="text-[9.5px] leading-5 text-muted-foreground">
-            Enter للإرسال · Shift+Enter لسطر جديد
-          </p>
-          <span className="text-[9.5px] text-muted-foreground">{draft.length}/1200</span>
-        </div>
-      </form>
+          <PromptInputFooter>
+            <span className="text-[9.5px] text-muted-foreground">{draft.length}/1200</span>
+            <PromptInputSubmit
+              status={loading ? "submitted" : "ready"}
+              disabled={loading || draft.trim().length < 2}
+              aria-label="إرسال"
+            />
+          </PromptInputFooter>
+        </PromptInput>
+      </div>
     </>
   );
 }
@@ -372,14 +347,15 @@ function EmptyConversation({ onAsk }: { onAsk: (question: string) => void }) {
     <div className="mx-auto flex min-h-[420px] max-w-xl items-center justify-center sm:min-h-[500px]">
       <div className="grid w-full gap-2 sm:grid-cols-2">
         {SUGGESTIONS.map((suggestion) => (
-          <button
+          <Button
             key={suggestion}
             type="button"
+            variant="outline"
             onClick={() => onAsk(suggestion)}
-            className="rounded-lg border border-border bg-white px-3 py-3 text-start text-xs leading-5 transition-colors hover:border-primary/25 hover:bg-secondary/40"
+            className="h-auto min-h-12 justify-start whitespace-normal px-3 py-3 text-start text-xs leading-5"
           >
             {suggestion}
-          </button>
+          </Button>
         ))}
       </div>
     </div>
@@ -400,10 +376,10 @@ function ChatBubble({
 
   if (structured && message.result) {
     return (
-      <div className="w-full space-y-3">
-        <div className="rounded-xl border border-primary/15 bg-secondary/15 px-4 py-3">
-          <p className="text-sm leading-7 text-foreground">{message.content}</p>
-        </div>
+      <Message from="assistant" className="max-w-full space-y-3">
+        <MessageContent className="w-full">
+          <MessageResponse className="text-sm leading-7">{message.content}</MessageResponse>
+        </MessageContent>
 
         {message.result.presentation ? (
           <AnalystPresentationTable presentation={message.result.presentation} />
@@ -414,48 +390,29 @@ function ChatBubble({
         {showFollowUps && message.result.response.followUpSuggestions.length ? (
           <div className="flex flex-wrap gap-1.5">
             {message.result.response.followUpSuggestions.map((suggestion) => (
-              <button
+              <Button
                 key={suggestion}
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => onFollowUp(suggestion)}
-                className="rounded-full border border-border bg-white px-2.5 py-1 text-[10.5px] text-muted-foreground transition-colors hover:border-primary/25 hover:text-foreground"
+                className="h-auto min-h-7 whitespace-normal rounded-full px-2.5 py-1 text-[10.5px] text-muted-foreground"
               >
                 {suggestion}
-              </button>
+              </Button>
             ))}
           </div>
         ) : null}
-      </div>
+      </Message>
     );
   }
 
   return (
-    <div className={cn("flex items-start gap-2.5", isUser && "flex-row-reverse")}>
-      <div
-        className={cn(
-          "grid size-8 shrink-0 place-items-center rounded-full",
-          isUser ? "bg-primary text-primary-foreground" : "bg-secondary text-primary",
-        )}
+    <Message from={message.role} className={isUser ? "max-w-[88%]" : "max-w-full"}>
+      <MessageContent
+        className={cn(isUser && "bg-primary text-primary-foreground", !isUser && "w-full")}
       >
-        {isUser ? <UserRound className="size-4" /> : <Bot className="size-4" />}
-      </div>
-
-      <div
-        className={cn(
-          "min-w-0 space-y-2",
-          isUser ? "max-w-[88%] items-end" : "max-w-full flex-1",
-        )}
-      >
-        <div
-          className={cn(
-            "rounded-xl px-3.5 py-3 text-sm leading-7",
-            isUser
-              ? "rounded-tl-sm bg-primary text-primary-foreground"
-              : "rounded-tr-sm border border-border bg-secondary/25 text-foreground",
-          )}
-        >
-          {message.content}
-        </div>
+        <MessageResponse className="text-sm leading-7">{message.content}</MessageResponse>
 
         {message.result ? (
           <>
@@ -463,49 +420,56 @@ function ChatBubble({
             {showFollowUps && message.result.response.followUpSuggestions.length ? (
               <div className="flex flex-wrap gap-1.5">
                 {message.result.response.followUpSuggestions.map((suggestion) => (
-                  <button
+                  <Button
                     key={suggestion}
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => onFollowUp(suggestion)}
-                    className="rounded-full border border-border bg-white px-2.5 py-1 text-[10.5px] text-muted-foreground transition-colors hover:border-primary/25 hover:text-foreground"
+                    className="h-auto min-h-7 whitespace-normal rounded-full px-2.5 py-1 text-[10.5px] text-muted-foreground"
                   >
                     {suggestion}
-                  </button>
+                  </Button>
                 ))}
               </div>
             ) : null}
           </>
         ) : null}
-      </div>
-    </div>
+      </MessageContent>
+    </Message>
   );
 }
 
-function AnalystPresentationTable({
-  presentation,
-}: {
-  presentation: AnalystTablePresentation;
-}) {
+function AnalystPresentationTable({ presentation }: { presentation: AnalystTablePresentation }) {
+  const hasBranch = presentation.columns.some((column) => column.key === "branch");
+  const hasRank = presentation.columns.some((column) => column.key === "rank");
+
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-white shadow-sm">
+    <div className="min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-white shadow-sm">
       {presentation.title ? (
         <div className="border-b border-border bg-secondary/20 px-4 py-3">
           <p className="text-xs font-bold text-foreground">{presentation.title}</p>
         </div>
       ) : null}
 
-      <div className="max-h-[430px] overflow-auto">
-        <table className="w-full min-w-[900px] border-separate border-spacing-0 text-[11px]">
+      <div className="max-h-[min(430px,52vh)] w-full overflow-auto overscroll-contain" dir="rtl">
+        <table className="w-max min-w-full border-separate border-spacing-0 text-[11px]">
           <thead className="sticky top-0 z-20 bg-background text-muted-foreground shadow-[0_1px_0_0_var(--color-border)]">
             <tr>
               {presentation.columns.map((column) => (
                 <th
                   key={column.key}
                   className={cn(
-                    "whitespace-nowrap bg-background px-4 py-2.5 font-semibold",
+                    "whitespace-nowrap bg-background px-3 py-2.5 font-semibold sm:px-4",
                     column.align === "number" ? "text-end" : "text-start",
                     column.key === "branch" &&
-                      "sticky right-0 z-30 min-w-[180px] border-l border-border bg-background",
+                      cn(
+                        "min-w-36 border-l border-border bg-background sm:sticky sm:z-30 sm:min-w-44",
+                        hasRank ? "sm:right-10" : "sm:right-0",
+                      ),
+                    column.key === "rank" &&
+                      hasBranch &&
+                      "w-10 min-w-10 text-center sm:sticky sm:right-0 sm:z-30 sm:bg-background",
                   )}
                 >
                   {column.label}
@@ -524,13 +488,21 @@ function AnalystPresentationTable({
                     key={column.key}
                     dir={column.align === "number" ? "ltr" : undefined}
                     className={cn(
-                      "whitespace-nowrap border-b border-border/60 px-4 py-3 last:border-b-0",
+                      "whitespace-nowrap border-b border-border/60 px-3 py-3 sm:px-4",
                       column.align === "number"
                         ? "num text-end font-medium tabular-nums"
                         : "text-start",
                       column.key === "branch" &&
-                        "sticky right-0 z-10 min-w-[180px] border-l border-border bg-white font-semibold text-foreground group-hover:bg-secondary/10",
-                      column.key === "rank" && "w-10 text-center text-muted-foreground",
+                        cn(
+                          "min-w-36 border-l border-border bg-white font-semibold text-foreground group-hover:bg-secondary/10 sm:sticky sm:z-10 sm:min-w-44",
+                          hasRank ? "sm:right-10" : "sm:right-0",
+                        ),
+                      column.key === "rank" &&
+                        cn(
+                          "w-10 min-w-10 text-center text-muted-foreground",
+                          hasBranch &&
+                            "sm:sticky sm:right-0 sm:z-10 sm:bg-white sm:group-hover:bg-secondary/10",
+                        ),
                     )}
                   >
                     {row[column.key] ?? "—"}

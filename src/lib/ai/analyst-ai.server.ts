@@ -1,9 +1,6 @@
 import type { StoredPeriod } from "@/lib/periods";
 
-import {
-  buildAnalystContext,
-  resolveAnalystFacts,
-} from "./analyst-context";
+import { buildAnalystContext, resolveAnalystFacts } from "./analyst-context";
 import {
   analystAiResponseSchema,
   type AnalystAiResponse,
@@ -95,12 +92,8 @@ async function enforceRateLimit(
   supabaseUrl: string,
   supabaseKey: string,
 ): Promise<void> {
-  const configured = Number.parseInt(
-    process.env["TADQEEQ_AI_MAX_REQUESTS_PER_HOUR"] ?? "",
-    10,
-  );
-  const limit =
-    Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_HOURLY_LIMIT;
+  const configured = Number.parseInt(process.env["TADQEEQ_AI_MAX_REQUESTS_PER_HOUR"] ?? "", 10);
+  const limit = Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_HOURLY_LIMIT;
   const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
   const url = new URL(supabaseUrl + "/rest/v1/ai_usage");
@@ -124,9 +117,7 @@ async function enforceRateLimit(
 
   const rows = (await response.json()) as Array<{ id: string }>;
   if (rows.length >= limit) {
-    throw new Error(
-      "تم الوصول إلى حد استخدام Tadqeeq AI لهذه الساعة. جرّب مرة أخرى لاحقاً.",
-    );
+    throw new Error("تم الوصول إلى حد استخدام Tadqeeq AI لهذه الساعة. جرّب مرة أخرى لاحقاً.");
   }
 }
 
@@ -288,10 +279,9 @@ async function callAnalyst(
   const parsed = analystAiResponseSchema.parse(JSON.parse(text) as unknown);
   const factsUsed = resolveAnalystFacts(context, parsed.usedFactIds);
   const validIds = factsUsed.map((fact) => fact.id);
-  const validPresentationIds = resolveAnalystFacts(
-    context,
-    parsed.presentation.factIds,
-  ).map((fact) => fact.id);
+  const validPresentationIds = resolveAnalystFacts(context, parsed.presentation.factIds).map(
+    (fact) => fact.id,
+  );
   const lostReferences =
     validIds.length !== parsed.usedFactIds.length ||
     validPresentationIds.length !== parsed.presentation.factIds.length;
@@ -322,24 +312,19 @@ async function callAnalyst(
   };
 }
 
-export async function askTadqeeqOnServer(
-  input: AskTadqeeqInput,
-): Promise<AnalystChatResult> {
+export async function askTadqeeqOnServer(input: AskTadqeeqInput): Promise<AnalystChatResult> {
   const supabaseUrl = requiredEnv("SUPABASE_URL");
   const supabaseKey = requiredEnv("SUPABASE_PUBLISHABLE_KEY");
 
   const user = await authenticateUser(input.accessToken, supabaseUrl, supabaseKey);
   await enforceRateLimit(input, user, supabaseUrl, supabaseKey);
 
-  const { current, periods } = await fetchOwnedPeriods(
-    input,
-    user,
-    supabaseUrl,
-    supabaseKey,
-  );
+  const { current, periods } = await fetchOwnedPeriods(input, user, supabaseUrl, supabaseKey);
   const context = buildAnalystContext(current, periods);
   const { response, model } = await callAnalyst(input, context);
-  const factsUsed = resolveAnalystFacts(context, response.usedFactIds);
+  const factsUsed = resolveAnalystFacts(context, response.usedFactIds).map(
+    ({ id, kind, label, displayValue }) => ({ id, kind, label, displayValue }),
+  );
   const presentation = buildAnalystPresentation(context, response);
 
   await recordUsage(input, user, model, supabaseUrl, supabaseKey);

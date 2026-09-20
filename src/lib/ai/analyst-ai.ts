@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import type { AnalystFact } from "./analyst-context";
-
 export const analystHistoryMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
   content: z.string().min(1).max(1500),
@@ -38,9 +36,16 @@ export interface AnalystTablePresentation {
   rows: Array<Record<string, string>>;
 }
 
+export interface AnalystUsedFact {
+  id: string;
+  kind: string;
+  label: string;
+  displayValue: string;
+}
+
 export interface AnalystChatResult {
   response: AnalystAiResponse;
-  factsUsed: AnalystFact[];
+  factsUsed: AnalystUsedFact[];
   presentation: AnalystTablePresentation | null;
   model: string;
   promptVersion: string;
