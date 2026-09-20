@@ -32,6 +32,16 @@ Raw Excel, CSV, and PDF files are not sent to the AI provider. Workflow notes/hi
 
 AI outputs are not written back into the audit result.
 
+### Period Summary V1
+
+Inside **اللوحة التنفيذية**, users can request **أنشئ ملخص الفترة**.
+
+The server re-authenticates the Supabase session, re-fetches the owned period, rebuilds the deterministic exception set, and creates a compact management packet containing audited period metrics, exception exposure, top exceptions, top branches, and platform-specific deterministic metrics.
+
+The packet excludes raw files, workflow notes/history, user IDs, period database IDs, branch database IDs, and the private stored period label. The model is explicitly prohibited from inventing calculations or claiming month-over-month trends from a single period.
+
+Period Summary output is schema-constrained Arabic commentary only. It cannot edit figures, exception state, recovery amounts, or accounting results.
+
 ## AI setup
 
 Configure these as deployment/server secrets, never as `VITE_*` client variables:
