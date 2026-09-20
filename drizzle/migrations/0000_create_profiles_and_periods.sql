@@ -35,7 +35,7 @@ FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 CREATE TABLE public.periods (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  platform TEXT NOT NULL CHECK (platform IN ('hungerstation','keeta')),
+  platform TEXT NOT NULL CHECK (platform IN ('hungerstation','keeta','jahez')),
   label TEXT NOT NULL,
   period_start DATE,
   period_end DATE,
