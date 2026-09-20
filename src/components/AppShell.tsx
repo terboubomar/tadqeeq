@@ -3,6 +3,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { LogOut, Upload } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { AskTadqeeqWidget } from "@/components/AskTadqeeqWidget";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -23,7 +24,6 @@ const NAV_GROUPS = [
     items: [
       { to: "/dashboard", label: "اللوحة التنفيذية" },
       { to: "/ai", label: "Tadqeeq AI" },
-      { to: "/ask", label: "اسأل تدقيق" },
       { to: "/invoice-check", label: "مطابقة الفاتورة" },
       { to: "/exceptions", label: "مركز الاستثناءات" },
     ],
@@ -225,6 +225,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </main>
       </div>
+
+      <AskTadqeeqWidget
+        key={selected?.id ?? "no-period"}
+        selected={selected}
+        defaultOpen={pathname === "/ask"}
+      />
     </div>
   );
 }
