@@ -174,19 +174,19 @@ function InvoiceCheck() {
         <table className="w-full min-w-[780px] text-[13.5px]">
           <thead className="bg-surface-raised">
             <tr>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground">
+              <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
                 البند
               </th>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground">
+              <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
                 المحتسب من البيانات
               </th>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground">
+              <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
                 المطالب به بالفاتورة
               </th>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground">
+              <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
                 الفرق
               </th>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-muted-foreground">
+              <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
                 الحالة
               </th>
             </tr>
@@ -215,7 +215,7 @@ function InvoiceCheck() {
                     over && "bg-destructive/[0.025]",
                   )}
                 >
-                  <td className="px-4 py-3">
+                  <td className="border-b border-border/60 px-3.5 py-2.5">
                     <p className="font-semibold">{check.label}</p>
                     {check.hint ? (
                       <p className="mt-1 max-w-sm text-xs leading-6 text-muted-foreground">
@@ -223,13 +223,13 @@ function InvoiceCheck() {
                       </p>
                     ) : null}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3">
+                  <td className="whitespace-nowrap border-b border-border/60 px-3.5 py-2.5">
                     <span className="num">{invoiceOnly ? "—" : money(check.computed)}</span>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3">
+                  <td className="whitespace-nowrap border-b border-border/60 px-3.5 py-2.5">
                     <span className="num">{missing ? "—" : money(check.invoiced)}</span>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3">
+                  <td className="whitespace-nowrap border-b border-border/60 px-3.5 py-2.5">
                     {missing || invoiceOnly ? (
                       "—"
                     ) : (
@@ -243,7 +243,7 @@ function InvoiceCheck() {
                       </span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3">
+                  <td className="whitespace-nowrap border-b border-border/60 px-3.5 py-2.5">
                     {invoiceOnly ? (
                       <span className="flex items-center gap-1.5 text-xs font-semibold text-warning">
                         <AlertTriangle className="size-4" /> فاتورة فقط — يحتاج تحقق
@@ -282,7 +282,6 @@ function InvoiceCheck() {
               );
             })}
           </tbody>
-        </table>
         </table>
         </div>
       </section>
