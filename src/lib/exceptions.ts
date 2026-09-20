@@ -581,17 +581,10 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         tolerance: 0.06,
       });
     } else {
-      pushBranchVariance(result, period, {
-        branch: branch.branch,
-        branchId: branch.branchId,
-        category: "invoice_total",
-        label: "فرق Invoice amount للفرع",
-        computed:
-          (branch.keetaCommissionInvoiceInclVat ?? 0) +
-          (branch.keetaMerchantAdExVat ?? 0) * vatFactor,
-        invoiced: branch.keetaExcelInvoiceAmount,
-        tolerance: 0.02,
-      });
+      const excelPayableVariance =
+        branch.keetaExcelPayable !== undefined
+          ? branch.keetaExcelPayable - branch.netSales
+          : undefined;
       pushBranchVariance(result, period, {
         branch: branch.branch,
         branchId: branch.branchId,
@@ -601,6 +594,26 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         invoiced: branch.keetaExcelPayable,
         tolerance: 0.02,
       });
+
+      // Invoice amount and Payable usually express the same financial mismatch in
+      // opposite directions. Only open a second Invoice amount case when Payable
+      // itself is already clean, avoiding double-counting the same exposure.
+      if (
+        excelPayableVariance === undefined ||
+        Math.abs(excelPayableVariance) <= 0.02
+      ) {
+        pushBranchVariance(result, period, {
+          branch: branch.branch,
+          branchId: branch.branchId,
+          category: "invoice_total",
+          label: "فرق Invoice amount للفرع",
+          computed:
+            (branch.keetaCommissionInvoiceInclVat ?? 0) +
+            (branch.keetaMerchantAdExVat ?? 0) * vatFactor,
+          invoiced: branch.keetaExcelInvoiceAmount,
+          tolerance: 0.02,
+        });
+      }
     }
 
     if (
