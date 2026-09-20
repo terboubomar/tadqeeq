@@ -159,8 +159,7 @@ function comparisonTable(
     ],
     rows: metrics.slice(0, 10).map((fact) => {
       const unit = fact.data["unit"];
-      const formatter =
-        unit === "sar" ? money : unit === "percent" ? percent : count;
+      const formatter = unit === "sar" ? money : unit === "percent" ? percent : count;
       const delta =
         fact.data["deltaType"] === "percentage_points"
           ? percent(fact.data["delta"])
@@ -183,10 +182,7 @@ export function buildAnalystPresentation(
 ): AnalystTablePresentation | null {
   if (response.presentation.type === "text") return null;
 
-  const requestedIds = [
-    ...response.presentation.factIds,
-    ...response.usedFactIds,
-  ];
+  const requestedIds = [...response.presentation.factIds, ...response.usedFactIds];
   const requestedFacts = factsByIds(context, requestedIds);
   const title = response.presentation.title.trim();
 

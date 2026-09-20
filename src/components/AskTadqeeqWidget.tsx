@@ -1,10 +1,4 @@
-import {
-  Bot,
-  Maximize2,
-  Minimize2,
-  RotateCcw,
-  X,
-} from "lucide-react";
+import { Bot, Maximize2, Minimize2, RotateCcw, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -13,11 +7,7 @@ import {
   ConversationContent,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import {
-  Message,
-  MessageContent,
-  MessageResponse,
-} from "@/components/ai-elements/message";
+import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
 import {
   PromptInput,
   PromptInputFooter,
@@ -157,7 +147,8 @@ function WidgetHeader({
               </div>
               {selected ? (
                 <p className="mt-0.5 truncate text-[10.5px] text-muted-foreground">
-                  {platformLabel} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)}
+                  {platformLabel} · {arabicDate(selected.period_start)} —{" "}
+                  {arabicDate(selected.period_end)}
                 </p>
               ) : (
                 <p className="mt-0.5 text-[10.5px] text-muted-foreground">لا توجد فترة مختارة</p>
@@ -191,7 +182,6 @@ function WidgetHeader({
           </Button>
         </div>
       </div>
-
     </header>
   );
 }
@@ -260,9 +250,7 @@ function AskTadqeeqConversation({
       ]);
     } catch (cause) {
       const message =
-        cause instanceof Error
-          ? cause.message
-          : "تعذّر الحصول على إجابة من Ask Tadqeeq حالياً.";
+        cause instanceof Error ? cause.message : "تعذّر الحصول على إجابة من Ask Tadqeeq حالياً.";
       toast.error(message);
       setMessages((current) => [
         ...current,
@@ -452,11 +440,7 @@ function ChatBubble({
   );
 }
 
-function AnalystPresentationTable({
-  presentation,
-}: {
-  presentation: AnalystTablePresentation;
-}) {
+function AnalystPresentationTable({ presentation }: { presentation: AnalystTablePresentation }) {
   const hasBranch = presentation.columns.some((column) => column.key === "branch");
   const hasRank = presentation.columns.some((column) => column.key === "rank");
 
@@ -483,7 +467,8 @@ function AnalystPresentationTable({
                         "min-w-36 border-l border-border bg-background sm:sticky sm:z-30 sm:min-w-44",
                         hasRank ? "sm:right-10" : "sm:right-0",
                       ),
-                    column.key === "rank" && hasBranch &&
+                    column.key === "rank" &&
+                      hasBranch &&
                       "w-10 min-w-10 text-center sm:sticky sm:right-0 sm:z-30 sm:bg-background",
                   )}
                 >
@@ -512,10 +497,12 @@ function AnalystPresentationTable({
                           "min-w-36 border-l border-border bg-white font-semibold text-foreground group-hover:bg-secondary/10 sm:sticky sm:z-10 sm:min-w-44",
                           hasRank ? "sm:right-10" : "sm:right-0",
                         ),
-                      column.key === "rank" && cn(
-                        "w-10 min-w-10 text-center text-muted-foreground",
-                        hasBranch && "sm:sticky sm:right-0 sm:z-10 sm:bg-white sm:group-hover:bg-secondary/10",
-                      ),
+                      column.key === "rank" &&
+                        cn(
+                          "w-10 min-w-10 text-center text-muted-foreground",
+                          hasBranch &&
+                            "sm:sticky sm:right-0 sm:z-10 sm:bg-white sm:group-hover:bg-secondary/10",
+                        ),
                     )}
                   >
                     {row[column.key] ?? "—"}
