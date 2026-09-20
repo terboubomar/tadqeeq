@@ -47,7 +47,7 @@ function rankingNames(facts: AnalystFact[]): string[] {
     if (fact.kind !== "ranking" || !Array.isArray(fact.data["ranking"])) continue;
     for (const row of fact.data["ranking"]) {
       if (!row || typeof row !== "object") continue;
-      const branch = (row as Record<string, unknown>).branch;
+      const branch = (row as Record<string, unknown>)["branch"];
       if (typeof branch === "string" && !names.includes(branch)) names.push(branch);
     }
   }
