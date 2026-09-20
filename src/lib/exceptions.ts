@@ -907,8 +907,31 @@ export function buildExceptionEvidence(
       platformSources = compactFields([
         definedField("Total credit sales", "Keeta PDF · Branch Credit Sales", branch.keetaPdfCreditSales),
       ]);
+    } else if (item.category === "invoice_total") {
+      formula =
+        "فاتورة العمولة شامل الضريبة + Merchant ad spend شامل الضريبة = Invoice amount";
+      calculatedSources = compactFields([
+        definedField(
+          "فاتورة العمولة شامل الضريبة",
+          "Keeta Order Summary",
+          branch.keetaCommissionInvoiceInclVat,
+        ),
+        definedField(
+          "Merchant ad spend شامل الضريبة",
+          "Keeta Order Summary",
+          (branch.keetaMerchantAdExVat ?? 0) * 1.15,
+        ),
+        definedField("Invoice amount المحتسب", "محرك تدقيق", item.computed),
+      ]);
+      platformSources = compactFields([
+        definedField(
+          "Invoice amount",
+          "Keeta Excel · Invoice Details",
+          branch.keetaExcelInvoiceAmount,
+        ),
+      ]);
     } else if (item.category === "settlement") {
-      formula = "Total credit sales - Total commission invoice = Net due";
+      formula = "Credit Sales - فاتورة العمولة شامل الضريبة = Payable / Net Due";
       calculatedSources = compactFields([
         definedField("Credit Sales", "Keeta Order Summary", branch.keetaCreditSales),
         definedField(
@@ -916,10 +939,16 @@ export function buildExceptionEvidence(
           "Keeta Order Summary",
           branch.keetaCommissionInvoiceInclVat,
         ),
-        definedField("Net Due المحتسب", "محرك تدقيق", branch.netSales),
+        definedField("صافي المستحق المحتسب", "محرك تدقيق", branch.netSales),
       ]);
       platformSources = compactFields([
-        definedField("Net due invoice", "Keeta PDF · Branch Credit Sales", branch.keetaPdfNetDue),
+        definedField(
+          branch.keetaPdfNetDue !== undefined ? "Net due invoice" : "Payable to Restaurant",
+          branch.keetaPdfNetDue !== undefined
+            ? "Keeta PDF · Branch Credit Sales"
+            : "Keeta Excel · Invoice Details",
+          branch.keetaPdfNetDue ?? branch.keetaExcelPayable,
+        ),
       ]);
     } else if (item.category === "branch_match") {
       formula = "مطابقة مباشرة بواسطة Store ID / Restaurant ID";
@@ -928,7 +957,15 @@ export function buildExceptionEvidence(
         definedField("اسم المتجر", "Keeta Order Summary", branch.branch),
       ]);
       platformSources = compactFields([
-        definedField("حالة مطابقة PDF", "محرك تدقيق", branch.branchAuditLabel),
+        definedField(
+          "حالة المطابقة",
+          branch.keetaPdfNetDue !== undefined
+            ? "Keeta PDF"
+            : branch.keetaExcelPayable !== undefined
+              ? "Keeta Excel · Invoice Details"
+              : "محرك تدقيق",
+          branch.branchAuditLabel,
+        ),
       ]);
     }
   }
