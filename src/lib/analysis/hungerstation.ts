@@ -9,7 +9,7 @@ import type {
   InvoiceFigures,
   Summary,
 } from "./types";
-import { ParseError, parseAmount } from "./parse";
+import { ParseError, parseAmount, parseDate } from "./parse";
 
 const VAT = 1.15;
 
@@ -185,23 +185,6 @@ function emptyBranch(branch: string, branchId: string): BranchRow {
   };
 }
 
-function normalizeDate(value: unknown): string {
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
-  const raw = text(value);
-  if (!raw) return "";
-  const match = raw.match(/\d{4}-\d{2}-\d{2}/);
-  if (match) return match[0];
-  const asNumber = Number(raw);
-  if (Number.isFinite(asNumber) && asNumber > 20000 && asNumber < 80000) {
-    const parsed = XLSX.SSF.parse_date_code(asNumber);
-    if (parsed) {
-      const mm = String(parsed.m).padStart(2, "0");
-      const dd = String(parsed.d).padStart(2, "0");
-      return `${parsed.y}-${mm}-${dd}`;
-    }
-  }
-  return raw.slice(0, 10);
-}
 
 export interface HungerOptions {
   /**
@@ -285,7 +268,16 @@ export function analyzeHungerStation(
         column,
         optional: true,
       });
-    const date = normalizeDate(col(order, "Operation Day", "Creation Time"));
+    const date = parseDate(
+      col(order, "Operation Day", "Creation Time"),
+      { order: "ISO" },
+      {
+        platform: "hungerstation",
+        sheet: "Commissionable GMV",
+        row: rowNumber,
+        column: "Operation Day / Creation Time",
+      },
+    );
 
     // Commission base observed on real HS invoices:
     // successful + failed after pickup + failed by vendor + rejected.
