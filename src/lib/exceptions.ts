@@ -28,6 +28,7 @@ export type ExceptionCategory =
   | "invoice_total"
   | "unsupported_charge"
   | "branch_match"
+  | "data_missing"
   | "other";
 
 export interface ExceptionWorkflowEvent {
@@ -122,6 +123,7 @@ const CATEGORY_LABELS: Record<ExceptionCategory, string> = {
   invoice_total: "إجمالي الفاتورة",
   unsupported_charge: "بند غير مدعوم",
   branch_match: "مطابقة الفرع",
+  data_missing: "بيانات مفقودة",
   other: "أخرى",
 };
 
@@ -369,6 +371,25 @@ function summaryExceptions(period: StoredPeriod): AuditException[] {
     if (hasBranchCoverage(period, check.label)) continue;
 
     const tolerance = toleranceFor(check);
+    if (check.invoiced === undefined) {
+      result.push(
+        makeException(period, {
+          sourceLevel: "summary",
+          category: "data_missing",
+          label: "بيانات فاتورة مفقودة · " + check.label,
+          computed: check.computed,
+          invoiced: undefined,
+          tolerance,
+          evidence: check.evidence,
+          hint:
+            "لم تُقرأ قيمة المقارنة من الفاتورة أو المستند الرسمي لهذا البند؛ لا يمكن اعتباره فرقاً مالياً حتى يتوفر المصدر.",
+          forceReviewAmount: 0,
+          forcePotentialRecovery: 0,
+        }),
+      );
+      continue;
+    }
+
     const difference = check.invoiced - check.computed;
     if (!Number.isFinite(difference) || Math.abs(difference) <= tolerance) continue;
 
@@ -887,6 +908,12 @@ function workflowTimeline(period: StoredPeriod, item: AuditException): Exception
 }
 
 function genericReason(item: AuditException): string {
+  if (item.category === "data_missing") {
+    return (
+      item.hint ??
+      "قيمة المقارنة الرسمية غير متاحة، لذلك لا يمكن تنفيذ مطابقة مالية لهذا البند."
+    );
+  }
   if (item.category === "branch_match") {
     return item.hint ?? "تعذّرت مطابقة الفرع بشكل موثوق بين مصدر البيانات ومستند المنصة.";
   }
@@ -897,6 +924,9 @@ function genericReason(item: AuditException): string {
 }
 
 function conclusionFor(item: AuditException): string {
+  if (item.category === "data_missing") {
+    return "البيانات الرسمية لهذا البند مفقودة. لا يوجد فرق مالي أو مبلغ استرداد محسوب حتى يتم توفير المصدر.";
+  }
   if (item.category === "branch_match") return genericReason(item);
   const difference = Math.abs(item.difference ?? 0);
   const base =
