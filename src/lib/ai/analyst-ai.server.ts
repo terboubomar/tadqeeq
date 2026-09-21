@@ -13,10 +13,10 @@ import {
 } from "./analyst-grounding";
 import { buildAnalystPresentation } from "./analyst-presentation";
 import { callTadqeeqAi } from "./gateway.server";
+import { runWithAiUsageReservation } from "./usage.server";
 
 const FEATURE = "analyst_chat";
 const PROMPT_VERSION = "ask-tadqeeq-v3-app-intelligence";
-const DEFAULT_HOURLY_LIMIT = 30;
 const DEFAULT_ANALYST_MODEL = "gpt-5.6-terra";
 
 interface AskTadqeeqInput {
@@ -90,71 +90,6 @@ async function fetchOwnedPeriods(
     throw new Error("فترة التدقيق غير موجودة أو لا تملك صلاحية الوصول إليها.");
   }
   return { current, periods };
-}
-
-async function enforceRateLimit(
-  input: AskTadqeeqInput,
-  user: AuthenticatedUser,
-  supabaseUrl: string,
-  supabaseKey: string,
-): Promise<void> {
-  const configured = Number.parseInt(process.env["TADQEEQ_AI_MAX_REQUESTS_PER_HOUR"] ?? "", 10);
-  const limit = Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_HOURLY_LIMIT;
-  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-
-  const url = new URL(supabaseUrl + "/rest/v1/ai_usage");
-  url.searchParams.set("user_id", "eq." + user.id);
-  url.searchParams.set("feature", "eq." + FEATURE);
-  url.searchParams.set("created_at", "gte." + since);
-  url.searchParams.set("select", "id");
-  url.searchParams.set("limit", String(limit));
-
-  const response = await fetch(url, {
-    headers: {
-      apikey: supabaseKey,
-      Authorization: "Bearer " + input.accessToken,
-      Accept: "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("تعذّر التحقق من حد استخدام Tadqeeq AI.");
-  }
-
-  const rows = (await response.json()) as Array<{ id: string }>;
-  if (rows.length >= limit) {
-    throw new Error("تم الوصول إلى حد استخدام Tadqeeq AI لهذه الساعة. جرّب مرة أخرى لاحقاً.");
-  }
-}
-
-async function recordUsage(
-  input: AskTadqeeqInput,
-  user: AuthenticatedUser,
-  model: string,
-  supabaseUrl: string,
-  supabaseKey: string,
-): Promise<void> {
-  const response = await fetch(supabaseUrl + "/rest/v1/ai_usage", {
-    method: "POST",
-    headers: {
-      apikey: supabaseKey,
-      Authorization: "Bearer " + input.accessToken,
-      "Content-Type": "application/json",
-      Prefer: "return=minimal",
-    },
-    body: JSON.stringify({
-      user_id: user.id,
-      feature: FEATURE,
-      model,
-      prompt_version: PROMPT_VERSION,
-      period_id: input.periodId,
-      exception_id: null,
-    }),
-  });
-
-  if (!response.ok) {
-    console.error("Failed to record Ask Tadqeeq usage", response.status);
-  }
 }
 
 function fallbackUngroundedResponse(): AnalystAiResponse {
@@ -348,17 +283,29 @@ export async function askTadqeeqOnServer(input: AskTadqeeqInput): Promise<Analys
   const supabaseKey = requiredEnv("SUPABASE_PUBLISHABLE_KEY");
 
   const user = await authenticateUser(input.accessToken, supabaseUrl, supabaseKey);
-  await enforceRateLimit(input, user, supabaseUrl, supabaseKey);
 
   const { current, periods } = await fetchOwnedPeriods(input, user, supabaseUrl, supabaseKey);
   const context = buildAnalystContext(current, periods, input.currentRoute);
-  const { response, model } = await callAnalyst(input, context);
+  const expectedModel =
+    process.env["TADQEEQ_ANALYST_MODEL"]?.trim() || DEFAULT_ANALYST_MODEL;
+  const { response, model } = await runWithAiUsageReservation(
+    {
+      accessToken: input.accessToken,
+      userId: user.id,
+      feature: FEATURE,
+      expectedModel,
+      promptVersion: PROMPT_VERSION,
+      periodId: input.periodId,
+      exceptionId: null,
+      supabaseUrl,
+      supabaseKey,
+    },
+    () => callAnalyst(input, context),
+  );
   const factsUsed = resolveAnalystFacts(context, response.usedFactIds).map(
     ({ id, kind, label, displayValue }) => ({ id, kind, label, displayValue }),
   );
   const presentation = buildAnalystPresentation(context, response);
-
-  await recordUsage(input, user, model, supabaseUrl, supabaseKey);
 
   return {
     response,
