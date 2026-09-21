@@ -47,6 +47,10 @@ export function isDuplicatePeriodConstraintError(
   return error?.code === "23505";
 }
 
+export function normalizePeriodLabel(label: string): string {
+  return label.trim().toLocaleLowerCase();
+}
+
 export function samePeriodRange(
   period: Pick<StoredPeriod, "platform" | "period_start" | "period_end">,
   input: {
@@ -88,19 +92,21 @@ export async function savePeriod(result: AnalysisResult): Promise<StoredPeriod> 
 
   const periodStart = result.summary.periodStart;
   const periodEnd = result.summary.periodEnd;
+  const normalizedLabel = normalizePeriodLabel(result.label);
 
   if (periodStart && periodEnd) {
-    const { data: existing, error: duplicateError } = await supabase
+    const { data: matchingRanges, error: duplicateError } = await supabase
       .from("periods")
-      .select("id, platform, period_start, period_end")
+      .select("id, label")
       .eq("user_id", userId)
       .eq("platform", result.platform)
       .eq("period_start", periodStart)
-      .eq("period_end", periodEnd)
-      .limit(1)
-      .maybeSingle();
+      .eq("period_end", periodEnd);
 
     if (duplicateError) throw new Error(duplicateError.message);
+    const existing = matchingRanges?.find(
+      (period) => normalizePeriodLabel(period.label) === normalizedLabel,
+    );
     if (existing) {
       throw new DuplicatePeriodError({
         existingPeriodId: existing.id,
@@ -129,15 +135,17 @@ export async function savePeriod(result: AnalysisResult): Promise<StoredPeriod> 
 
   if (error) {
     if (isDuplicatePeriodConstraintError(error) && periodStart && periodEnd) {
-      const { data: existing } = await supabase
+      const { data: matchingRanges } = await supabase
         .from("periods")
-        .select("id")
+        .select("id, label")
         .eq("user_id", userId)
         .eq("platform", result.platform)
         .eq("period_start", periodStart)
-        .eq("period_end", periodEnd)
-        .limit(1)
-        .maybeSingle();
+        .eq("period_end", periodEnd);
+
+      const existing = matchingRanges?.find(
+        (period) => normalizePeriodLabel(period.label) === normalizedLabel,
+      );
 
       if (existing?.id) {
         throw new DuplicatePeriodError({
