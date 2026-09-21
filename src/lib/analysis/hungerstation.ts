@@ -543,16 +543,35 @@ export function analyzeHungerStation(
   if (options.cpcInvoice?.totalIncVat) invoice.cpc = options.cpcInvoice.totalIncVat;
 
   // Branch identity must be independent from the values being audited.
-  // Match only by normalized name: exact first, then one unambiguous containment match.
+  // Match by normalized name first. When both sources contain exactly one
+  // operational branch and the invoice branch has no usable identity, a
+  // one-to-one cardinality match is deterministic and does not use audited
+  // amounts to infer identity.
   const invoiceBranches = invoice.branches ?? [];
   const unmatchedInvoiceBranches = new Set(invoiceBranches.map((_, index) => index));
+  const singletonUnnamedInvoiceIndex =
+    branchList.length === 1 &&
+    invoiceBranches.length === 1 &&
+    !normalizeBranchName(invoiceBranches[0]?.branch)
+      ? 0
+      : -1;
 
   for (const row of branchList) {
-    const matchedIndex = findInvoiceBranchMatch(
+    let matchedIndex = findInvoiceBranchMatch(
       row,
       invoiceBranches,
       unmatchedInvoiceBranches,
     );
+    let matchedBySingletonCardinality = false;
+
+    if (
+      matchedIndex < 0 &&
+      singletonUnnamedInvoiceIndex >= 0 &&
+      unmatchedInvoiceBranches.has(singletonUnnamedInvoiceIndex)
+    ) {
+      matchedIndex = singletonUnnamedInvoiceIndex;
+      matchedBySingletonCardinality = true;
+    }
 
     if (matchedIndex < 0) {
       if (invoiceBranches.length) {
@@ -636,7 +655,13 @@ export function analyzeHungerStation(
         Math.abs(row.creditSalesVariance ?? 0) > 0.005;
       row.branchAuditStatus = hasRounding ? "rounding" : "matched";
       row.branchAuditLabel = hasRounding ? "مطابق ضمن التقريب" : "مطابق";
-      row.branchAuditNote = hasRounding ? "مطابق ضمن فروق التقريب المعتادة." : "مطابق.";
+      row.branchAuditNote = matchedBySingletonCardinality
+        ? hasRounding
+          ? "تمت مطابقة الفرع بشكل حتمي لأن ملف الطلبات والفاتورة يحتوي كل منهما على فرع تشغيلي واحد فقط، مع فرق تقريب بسيط."
+          : "تمت مطابقة الفرع بشكل حتمي لأن ملف الطلبات والفاتورة يحتوي كل منهما على فرع تشغيلي واحد فقط؛ لم تُستخدم القيم المالية لتحديد هوية الفرع."
+        : hasRounding
+          ? "مطابق ضمن فروق التقريب المعتادة."
+          : "مطابق.";
     }
   }
 
