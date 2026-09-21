@@ -268,6 +268,44 @@ describe("HungerStation audit rules", () => {
     expect(summary.potentialRecovery).toBe(0);
   });
 
+  test("keeps a real zero invoice value distinct from missing data", () => {
+    const result = analyzeHungerStation(buildWorkbook(), {
+      manualBankRate: 0.025,
+      invoice: {
+        lines: [],
+        salesCommission: 0,
+        paymentFees: 5.85,
+        othersCommission: 17.5,
+        totalExVat: 51.1,
+      },
+    });
+
+    const commissionCheck = result.checks.find(
+      (check) => check.label === "عمولة المبيعات",
+    );
+    expect(commissionCheck?.invoiced).toBe(0);
+
+    const period = {
+      id: "hs-zero-commission",
+      label: result.label,
+      platform: result.platform,
+      period_start: result.summary.periodStart,
+      period_end: result.summary.periodEnd,
+      created_at: "2026-09-01T00:00:00Z",
+      summary: result.summary,
+      branches: result.branches,
+      daily: result.daily,
+      invoice: {
+        ...result.invoice,
+        checks: result.checks,
+      },
+    } as StoredPeriod;
+
+    const exceptions = buildPeriodExceptions(period);
+    expect(exceptions.some((item) => item.category === "data_missing")).toBe(false);
+    expect(exceptions.some((item) => item.category === "commission")).toBe(true);
+  });
+
   test("contract rate takes precedence over the invoice-implied rate", () => {
     const result = analyzeHungerStation(buildWorkbook(), {
       manualBankRate: 0.025,
