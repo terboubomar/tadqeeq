@@ -33,6 +33,10 @@ import {
 import type { Platform } from "@/lib/analysis/types";
 import { DuplicatePeriodError, savePeriod } from "@/lib/periods";
 import { setSelectedPeriodId, usePeriods } from "@/lib/use-period";
+import {
+  MAX_UPLOAD_SIZE_LABEL,
+  uploadSizeError,
+} from "@/lib/upload-validation";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/import")({
@@ -97,7 +101,23 @@ function FileField({
         type="file"
         accept={accept}
         className="sr-only"
-        onChange={(event) => onChange(event.target.files?.[0] ?? null)}
+        onChange={(event) => {
+          const nextFile = event.target.files?.[0] ?? null;
+          if (!nextFile) {
+            onChange(null);
+            return;
+          }
+
+          const sizeError = uploadSizeError(nextFile.size);
+          if (sizeError) {
+            event.currentTarget.value = "";
+            onChange(null);
+            toast.error(sizeError);
+            return;
+          }
+
+          onChange(nextFile);
+        }}
       />
       <label
         htmlFor={id}
@@ -124,7 +144,9 @@ function FileField({
         >
           {file ? file.name : "اسحب الملف هنا أو اضغط للاختيار"}
         </span>
-        <span className="num text-[11.5px] text-muted-foreground">{accept}</span>
+        <span className="num text-[11.5px] text-muted-foreground">
+          {accept} · الحد الأقصى {MAX_UPLOAD_SIZE_LABEL}
+        </span>
         <span className="mt-1 rounded-[8px] border border-input bg-white px-4 py-2 text-[13px] font-medium text-foreground">
           {file ? "تغيير الملف" : "اختر ملفاً"}
         </span>
