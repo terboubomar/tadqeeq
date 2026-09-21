@@ -111,17 +111,30 @@ function cleanBranchName(page: string): string | undefined {
   const match = page.match(/Invoice Details\s+(.+?)\s+Commissions\b/i);
   if (!match?.[1]) return undefined;
 
-  // Keep only whitespace-separated tokens that were already pure ASCII.
-  // This removes the garbled bilingual PDF fragments without damaging short real
-  // branch tokens such as "A", "Al", "Ar" or wrapped words like "Fahd".
-  const tokens = match[1]
+  const rawTokens = match[1]
     .split(/\s+/)
-    .filter((token) => /^[\x20-\x7E]+$/.test(token))
     .filter((token) => !/^\/7/.test(token))
     .filter((token) => !/^[0-9.]+$/.test(token));
 
-  const name = tokens.join(" ").replace(/\s+-\s+/g, " - ").trim();
-  return /[A-Za-z]/.test(name) ? name : undefined;
+  // Prefer the existing clean ASCII path because some bilingual PDFs contain
+  // garbled Arabic extraction fragments next to a valid English branch name.
+  const asciiName = rawTokens
+    .filter((token) => /^[\x20-\x7E]+$/.test(token))
+    .join(" ")
+    .replace(/\s+-\s+/g, " - ")
+    .trim();
+  if (/[A-Za-z]/.test(asciiName)) return asciiName;
+
+  // Arabic-only invoices still need an identity. Keep Arabic letters/numbers
+  // and ordinary separators while dropping extraction noise.
+  const arabicName = rawTokens
+    .join(" ")
+    .replace(/[^\p{Script=Arabic}\p{N}\s-]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\s+-\s+/g, " - ")
+    .trim();
+
+  return /\p{Script=Arabic}/u.test(arabicName) ? arabicName : undefined;
 }
 
 function sumNumbers(...values: Array<number | undefined>): number {
