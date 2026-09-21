@@ -8,6 +8,7 @@ import type {
   InvoiceFigures,
   Summary,
 } from "./types";
+import { ParseError, parseAmount } from "./parse";
 
 const VAT_RATE = 0.15;
 const VAT_FACTOR = 1 + VAT_RATE;
@@ -42,13 +43,6 @@ const CREDIT_OTHER_COLUMNS = [
   "POS Machine Fee(VAT included)",
   "Adjustment decreases (not included in invoices)",
 ];
-
-function num(value: unknown): number {
-  if (value === null || value === undefined || value === "") return 0;
-  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
-  const parsed = Number.parseFloat(String(value).replace(/[^0-9.\-]/g, ""));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
 
 function text(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -180,11 +174,53 @@ function valueOf(row: Record<string, unknown>, ...candidates: string[]): unknown
   return key ? row[key] : null;
 }
 
-function sumColumns(row: Record<string, unknown>, columns: string[]): number {
+function sumColumns(
+  row: Record<string, unknown>,
+  columns: string[],
+  rowNumber?: number,
+): number {
   return columns.reduce((sum, column) => {
     const key = findKey(row, column);
-    return sum + (key ? num(row[key]) : 0);
+    return (
+      sum +
+      (key
+        ? parseAmount(row[key], {
+            platform: "keeta",
+            sheet: "Order Summary",
+            row: rowNumber,
+            column: key,
+            optional: true,
+          })
+        : 0)
+    );
   }, 0);
+}
+
+function assertRequiredOrderColumns(row: Record<string, unknown>): void {
+  const required: string[][] = [
+    ["Brand Name"],
+    ["Store name", "Restaurant Name"],
+    ["Transaction date"],
+    ["Transaction type"],
+    ["Original item price (VAT included)"],
+    ["Subtotal of commission fee (VAT included)"],
+    ["Bank fee (VAT included)"],
+    ["Payable to merchant", "Payable to Restaurant"],
+  ];
+
+  for (const candidates of required) {
+    if (!findKey(row, ...candidates)) {
+      throw new ParseError(
+        "عمود مطلوب مفقود في ورقة Order Summary بملف كيتا: " + candidates.join(" / "),
+        undefined,
+        {
+          platform: "keeta",
+          sheet: "Order Summary",
+          column: candidates.join(" / "),
+        },
+      );
+    }
+  }
 }
 
 function isOrderTransaction(row: Record<string, unknown>): boolean {
@@ -240,11 +276,11 @@ function parseExcelControls(wb: XLSX.WorkBook): KeetaExcelControls {
         branch = { restaurantId, branch: branchName, invoiceAmount: 0, payable: 0, days: 0 };
         controls.branches.set(restaurantId, branch);
       }
-      branch.invoiceAmount += num(valueOf(row, "Invoice amount"));
-      branch.payable += num(valueOf(row, "Payable to Restaurant"));
+      branch.invoiceAmount += parseAmount(valueOf(row, "Invoice amount"), { platform: "keeta", sheet: "Invoice Details", column: "Invoice amount", optional: true });
+      branch.payable += parseAmount(valueOf(row, "Payable to Restaurant"), { platform: "keeta", sheet: "Invoice Details", column: "Payable to Restaurant", optional: true });
       branch.days += 1;
-      invoiceAmount += num(valueOf(row, "Invoice amount"));
-      payable += num(valueOf(row, "Payable to Restaurant"));
+      invoiceAmount += parseAmount(valueOf(row, "Invoice amount"), { platform: "keeta", sheet: "Invoice Details", column: "Invoice amount", optional: true });
+      payable += parseAmount(valueOf(row, "Payable to Restaurant"), { platform: "keeta", sheet: "Invoice Details", column: "Payable to Restaurant", optional: true });
     }
 
     controls.invoiceDetailRows = rows.length;
@@ -266,14 +302,14 @@ function parseExcelControls(wb: XLSX.WorkBook): KeetaExcelControls {
     let payable = 0;
     for (const row of rows) {
       invoiceAmount += -(
-        num(valueOf(row, "Total Commission(VAT included)")) +
-        num(valueOf(row, "Total Bank Fee(VAT included)")) +
-        num(valueOf(row, "Delivery subsidies (Keeta delivery) covered by merchant")) +
-        num(valueOf(row, "Photography Service Fee(VAT included)")) +
-        num(valueOf(row, "Adjustment (including invoice)")) +
-        num(valueOf(row, "Merchant ad spend (including VAT)"))
+        parseAmount(valueOf(row, "Total Commission(VAT included)"), { platform: "keeta", sheet: "Billing data summary", column: "Total Commission(VAT included)", optional: true }) +
+        parseAmount(valueOf(row, "Total Bank Fee(VAT included)"), { platform: "keeta", sheet: "Billing data summary", column: "Total Bank Fee(VAT included)", optional: true }) +
+        parseAmount(valueOf(row, "Delivery subsidies (Keeta delivery) covered by merchant"), { platform: "keeta", sheet: "Billing data summary", column: "Delivery subsidies (Keeta delivery) covered by merchant", optional: true }) +
+        parseAmount(valueOf(row, "Photography Service Fee(VAT included)"), { platform: "keeta", sheet: "Billing data summary", column: "Photography Service Fee(VAT included)", optional: true }) +
+        parseAmount(valueOf(row, "Adjustment (including invoice)"), { platform: "keeta", sheet: "Billing data summary", column: "Adjustment (including invoice)", optional: true }) +
+        parseAmount(valueOf(row, "Merchant ad spend (including VAT)"), { platform: "keeta", sheet: "Billing data summary", column: "Merchant ad spend (including VAT)", optional: true })
       );
-      payable += num(valueOf(row, "Total Payable to Restaurant"));
+      payable += parseAmount(valueOf(row, "Total Payable to Restaurant"), { platform: "keeta", sheet: "Billing data summary", column: "Total Payable to Restaurant", optional: true });
     }
 
     controls.billingRows = rows.length;
@@ -402,6 +438,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
   }
 
   const rows = orderRows(wb.Sheets[sheetName]!);
+  assertRequiredOrderColumns(rows[0]!);
   const excelControls = parseExcelControls(wb);
   const branches = new Map<string, RawKeetaBranch>();
   const dailyMap = new Map<string, DailyRow>();
@@ -410,7 +447,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
   let periodStart: string | null = null;
   let periodEnd: string | null = null;
 
-  for (const sourceRow of rows) {
+  for (const [sourceIndex, sourceRow] of rows.entries()) {
     const store =
       text(valueOf(sourceRow, "Store name", "Restaurant Name")) ||
       text(valueOf(sourceRow, "Brand Name")) ||
@@ -444,16 +481,36 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       branches.set(branchKey, branch);
     }
 
-    const originalItemPriceRaw = num(valueOf(sourceRow, "Original item price (VAT included)"));
-    const topUpRaw = num(valueOf(sourceRow, "Total Top-up to Minimum (VAT included)"));
-    const compensationRevenueRaw = num(
+    const rowNumber = sourceIndex + 4;
+    const amount = (value: unknown, column: string, optional = true) =>
+      parseAmount(value, {
+        platform: "keeta",
+        sheet: "Order Summary",
+        row: rowNumber,
+        column,
+        optional,
+      });
+
+    const originalItemPriceRaw = amount(
+      valueOf(sourceRow, "Original item price (VAT included)"),
+      "Original item price (VAT included)",
+      false,
+    );
+    const topUpRaw = amount(
+      valueOf(sourceRow, "Total Top-up to Minimum (VAT included)"),
+      "Total Top-up to Minimum (VAT included)",
+    );
+    const compensationRevenueRaw = amount(
       valueOf(sourceRow, "Total Compensation to Merchant (VAT included)"),
+      "Total Compensation to Merchant (VAT included)",
     );
-    const restaurantDeliveryRevenueRaw = num(
+    const restaurantDeliveryRevenueRaw = amount(
       valueOf(sourceRow, "Delivery fee for merchant delivery order (including VAT)"),
+      "Delivery fee for merchant delivery order (including VAT)",
     );
-    const merchantIncreaseRaw = num(
+    const merchantIncreaseRaw = amount(
       valueOf(sourceRow, "Adjustment increases (not included in invoices)"),
+      "Adjustment increases (not included in invoices)",
     );
     const salesRaw =
       originalItemPriceRaw +
@@ -462,16 +519,23 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       restaurantDeliveryRevenueRaw +
       merchantIncreaseRaw;
 
-    const commissionRaw = sumColumns(sourceRow, COMMISSION_COLUMNS);
-    const bankRaw = sumColumns(sourceRow, BANK_COLUMNS);
-    const deliveryRaw = sumColumns(sourceRow, DELIVERY_COLUMNS);
-    const productCampaignRaw = sumColumns(sourceRow, PRODUCT_CAMPAIGN_COLUMNS);
-    const merchantAdRaw = sumColumns(sourceRow, MERCHANT_AD_COLUMNS);
-    const compensationRaw = sumColumns(sourceRow, COMPENSATION_COLUMNS);
-    const invoiceOtherRaw = sumColumns(sourceRow, INVOICE_OTHER_COLUMNS);
-    const creditOtherRaw = sumColumns(sourceRow, CREDIT_OTHER_COLUMNS);
-    const posRaw = num(valueOf(sourceRow, "POS Machine Fee(VAT included)"));
-    const payableRaw = num(valueOf(sourceRow, "Payable to merchant", "Payable to Restaurant"));
+    const commissionRaw = sumColumns(sourceRow, COMMISSION_COLUMNS, rowNumber);
+    const bankRaw = sumColumns(sourceRow, BANK_COLUMNS, rowNumber);
+    const deliveryRaw = sumColumns(sourceRow, DELIVERY_COLUMNS, rowNumber);
+    const productCampaignRaw = sumColumns(sourceRow, PRODUCT_CAMPAIGN_COLUMNS, rowNumber);
+    const merchantAdRaw = sumColumns(sourceRow, MERCHANT_AD_COLUMNS, rowNumber);
+    const compensationRaw = sumColumns(sourceRow, COMPENSATION_COLUMNS, rowNumber);
+    const invoiceOtherRaw = sumColumns(sourceRow, INVOICE_OTHER_COLUMNS, rowNumber);
+    const creditOtherRaw = sumColumns(sourceRow, CREDIT_OTHER_COLUMNS, rowNumber);
+    const posRaw = amount(
+      valueOf(sourceRow, "POS Machine Fee(VAT included)"),
+      "POS Machine Fee(VAT included)",
+    );
+    const payableRaw = amount(
+      valueOf(sourceRow, "Payable to merchant", "Payable to Restaurant"),
+      "Payable to merchant / Payable to Restaurant",
+      false,
+    );
 
     const orderNumber = text(valueOf(sourceRow, "Order Number"));
     const orderTransaction = isOrderTransaction(sourceRow);

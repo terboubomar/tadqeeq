@@ -9,6 +9,7 @@ import type {
   JahezOrderReference,
   Summary,
 } from "./types";
+import { ParseError, parseAmount } from "./parse";
 
 const VAT_FACTOR = 1.15;
 const ROUNDING_TOLERANCE = 0.05;
@@ -36,11 +37,6 @@ export interface JahezOptions {
   label?: string;
   compensationFile?: ArrayBuffer;
   historicalOrders?: Record<string, JahezOrderReference>;
-}
-
-function num(value: string | undefined): number {
-  const parsed = Number.parseFloat((value ?? "").replace(/,/g, "").trim());
-  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function round2(value: number): number {
@@ -135,6 +131,43 @@ function rowObject(headers: string[], row: string[]): CsvRow {
   return result;
 }
 
+function assertRequiredHeaders(
+  headers: string[],
+  required: string[],
+  sheet: string,
+): void {
+  const available = new Set(headers.map((header) => header.trim()));
+  for (const column of required) {
+    if (!available.has(column)) {
+      throw new ParseError(
+        "عمود مطلوب مفقود في " + sheet + " بملف جاهز: " + column,
+        undefined,
+        {
+          platform: "jahez",
+          sheet,
+          column,
+        },
+      );
+    }
+  }
+}
+
+function jahezAmount(
+  value: string | undefined,
+  sheet: string,
+  column: string,
+  row?: number,
+  optional = false,
+): number {
+  return parseAmount(value, {
+    platform: "jahez",
+    sheet,
+    row,
+    column,
+    optional,
+  });
+}
+
 function cleanDirectionalMarks(value: string): string {
   return value.replace(/[\u200e\u200f\u202a-\u202e]/g, "");
 }
@@ -187,6 +220,16 @@ function parseJahezCompensation(
   }
 
   const summaryHeaders = matrix[0]!.map((value) => value.trim());
+  assertRequiredHeaders(
+    summaryHeaders,
+    [
+      "Date",
+      "Restaurant_Total_Transactions",
+      "Restaurant_Total_Debit_Amount",
+      "Restaurant_Total_Credit_Amount",
+    ],
+    "Jahez Compensation Summary",
+  );
   const summary = rowObject(summaryHeaders, matrix[1] ?? []);
   const detailHeaderIndex = matrix.findIndex((row) => row[0]?.trim() === "#");
   if (detailHeaderIndex < 0) {
@@ -194,6 +237,11 @@ function parseJahezCompensation(
   }
 
   const detailHeaders = matrix[detailHeaderIndex]!.map((value) => value.trim());
+  assertRequiredHeaders(
+    detailHeaders,
+    ["#", "Branch", "Order #", "Transaction Type", "Reason", "Creation Date", "Amount"],
+    "Jahez Compensation Details",
+  );
   const details = matrix
     .slice(detailHeaderIndex + 1)
     .filter((row) => row.some((value) => value.trim()))
@@ -209,9 +257,14 @@ function parseJahezCompensation(
   let duplicateCandidates = 0;
   let duplicateAmount = 0;
 
-  for (const source of details) {
+  for (const [detailIndex, source] of details.entries()) {
     const transactionType = (source["Transaction Type"] || "").toLowerCase();
-    const amount = num(source["Amount"]);
+    const amount = jahezAmount(
+      source["Amount"],
+      "Jahez Compensation Details",
+      "Amount",
+      detailHeaderIndex + detailIndex + 2,
+    );
     const orderId = (source["Order #"] || "").trim();
     const branch = normalizeBranch(source["Branch"] || "غير محدد");
     const currentRef = currentOrders[orderId];
@@ -265,9 +318,26 @@ function parseJahezCompensation(
 
   return {
     periodLabel: summary["Date"] || undefined,
-    summaryTransactions: Math.round(num(summary["Restaurant_Total_Transactions"])),
-    summaryDebit: num(summary["Restaurant_Total_Debit_Amount"]),
-    summaryCredit: num(summary["Restaurant_Total_Credit_Amount"]),
+    summaryTransactions: Math.round(
+      jahezAmount(
+        summary["Restaurant_Total_Transactions"],
+        "Jahez Compensation Summary",
+        "Restaurant_Total_Transactions",
+        2,
+      ),
+    ),
+    summaryDebit: jahezAmount(
+      summary["Restaurant_Total_Debit_Amount"],
+      "Jahez Compensation Summary",
+      "Restaurant_Total_Debit_Amount",
+      2,
+    ),
+    summaryCredit: jahezAmount(
+      summary["Restaurant_Total_Credit_Amount"],
+      "Jahez Compensation Summary",
+      "Restaurant_Total_Credit_Amount",
+      2,
+    ),
     detailTransactions: transactions.length,
     detailDebit,
     detailCredit,
@@ -281,16 +351,16 @@ function parseJahezCompensation(
   };
 }
 
-function settlementFromDetail(row: CsvRow): number {
+function settlementFromDetail(row: CsvRow, rowNumber?: number): number {
   return (
-    num(row["Order Amount"]) -
-    num(row["Jahez Commision"]) +
-    num(row["Delivery Charge"]) -
-    num(row["Payment Fees"]) -
-    num(row["Payment Fees Vat"]) -
-    num(row["Offer Amount"]) -
-    num(row["Delivery Offer"]) -
-    num(row["Delivery Coupon"])
+    jahezAmount(row["Order Amount"], "Jahez Order Details", "Order Amount", rowNumber) -
+    jahezAmount(row["Jahez Commision"], "Jahez Order Details", "Jahez Commision", rowNumber) +
+    jahezAmount(row["Delivery Charge"], "Jahez Order Details", "Delivery Charge", rowNumber) -
+    jahezAmount(row["Payment Fees"], "Jahez Order Details", "Payment Fees", rowNumber) -
+    jahezAmount(row["Payment Fees Vat"], "Jahez Order Details", "Payment Fees Vat", rowNumber) -
+    jahezAmount(row["Offer Amount"], "Jahez Order Details", "Offer Amount", rowNumber) -
+    jahezAmount(row["Delivery Offer"], "Jahez Order Details", "Delivery Offer", rowNumber) -
+    jahezAmount(row["Delivery Coupon"], "Jahez Order Details", "Delivery Coupon", rowNumber)
   );
 }
 
@@ -308,6 +378,21 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
   }
 
   const summaryHeaders = matrix[0]!.map((value) => value.trim());
+  assertRequiredHeaders(
+    summaryHeaders,
+    [
+      "Date",
+      "Orders Amount",
+      "Jahez Commision",
+      "Restaurant Amount",
+      "Payment Fees",
+      "Payment Fees Vat",
+      "Offer Amount",
+      "Delivery Offer",
+      "Delivery Coupon",
+    ],
+    "Jahez Summary",
+  );
   const summary = rowObject(summaryHeaders, matrix[1] ?? []);
   const detailHeaderIndex = matrix.findIndex((row) => row[0]?.trim() === "#");
   if (detailHeaderIndex < 0) {
@@ -315,6 +400,25 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
   }
 
   const detailHeaders = matrix[detailHeaderIndex]!.map((value) => value.trim());
+  assertRequiredHeaders(
+    detailHeaders,
+    [
+      "#",
+      "Branch Name",
+      "Order #",
+      "Date",
+      "Order Amount",
+      "Jahez Commision",
+      "Delivery Charge",
+      "Restaurant Amount",
+      "Payment Fees",
+      "Payment Fees Vat",
+      "Offer Amount",
+      "Delivery Offer",
+      "Delivery Coupon",
+    ],
+    "Jahez Order Details",
+  );
   const details = matrix
     .slice(detailHeaderIndex + 1)
     .filter((row) => row.some((value) => value.trim()))
@@ -336,7 +440,8 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
   let detailDeliveryCharge = 0;
   let detailCalculatedSettlement = 0;
 
-  for (const source of details) {
+  for (const [detailIndex, source] of details.entries()) {
+    const rowNumber = detailHeaderIndex + detailIndex + 2;
     const branchName = normalizeBranch(source["Branch Name"] || "غير محدد");
     let branch = branches.get(branchName);
     if (!branch) {
@@ -362,16 +467,16 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       orderIndex[orderId] = { branch: branchName, date: orderDate };
     }
 
-    const orderAmount = num(source["Order Amount"]);
-    const commissionInclVat = num(source["Jahez Commision"]);
-    const paymentFees = num(source["Payment Fees"]);
-    const paymentFeesVat = num(source["Payment Fees Vat"]);
-    const deliveryCharge = num(source["Delivery Charge"]);
-    const offerAmount = num(source["Offer Amount"]);
-    const deliveryOffer = num(source["Delivery Offer"]);
-    const deliveryCoupon = num(source["Delivery Coupon"]);
-    const reportedRestaurant = num(source["Restaurant Amount"]);
-    const calculatedRestaurant = settlementFromDetail(source);
+    const orderAmount = jahezAmount(source["Order Amount"], "Jahez Order Details", "Order Amount", rowNumber);
+    const commissionInclVat = jahezAmount(source["Jahez Commision"], "Jahez Order Details", "Jahez Commision", rowNumber);
+    const paymentFees = jahezAmount(source["Payment Fees"], "Jahez Order Details", "Payment Fees", rowNumber);
+    const paymentFeesVat = jahezAmount(source["Payment Fees Vat"], "Jahez Order Details", "Payment Fees Vat", rowNumber);
+    const deliveryCharge = jahezAmount(source["Delivery Charge"], "Jahez Order Details", "Delivery Charge", rowNumber);
+    const offerAmount = jahezAmount(source["Offer Amount"], "Jahez Order Details", "Offer Amount", rowNumber);
+    const deliveryOffer = jahezAmount(source["Delivery Offer"], "Jahez Order Details", "Delivery Offer", rowNumber);
+    const deliveryCoupon = jahezAmount(source["Delivery Coupon"], "Jahez Order Details", "Delivery Coupon", rowNumber);
+    const reportedRestaurant = jahezAmount(source["Restaurant Amount"], "Jahez Order Details", "Restaurant Amount", rowNumber);
+    const calculatedRestaurant = settlementFromDetail(source, rowNumber);
     const deliveryInvoiceExVat = deliveryInvoiceUnitExVat(deliveryOffer);
 
     branch.row.orders += 1;
@@ -522,14 +627,14 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
 
   branchRows.sort((left, right) => right.grossSales - left.grossSales);
 
-  const merchantGrossSales = num(summary["Orders Amount"]);
-  const merchantCommissionInclVat = num(summary["Jahez Commision"]);
-  const merchantRestaurantAmount = num(summary["Restaurant Amount"]);
-  const merchantPaymentFees = num(summary["Payment Fees"]);
-  const merchantPaymentFeesVat = num(summary["Payment Fees Vat"]);
-  const merchantOfferAmount = num(summary["Offer Amount"]);
-  const merchantDeliveryOffer = num(summary["Delivery Offer"]);
-  const merchantDeliveryCoupon = num(summary["Delivery Coupon"]);
+  const merchantGrossSales = jahezAmount(summary["Orders Amount"], "Jahez Summary", "Orders Amount", 2);
+  const merchantCommissionInclVat = jahezAmount(summary["Jahez Commision"], "Jahez Summary", "Jahez Commision", 2);
+  const merchantRestaurantAmount = jahezAmount(summary["Restaurant Amount"], "Jahez Summary", "Restaurant Amount", 2);
+  const merchantPaymentFees = jahezAmount(summary["Payment Fees"], "Jahez Summary", "Payment Fees", 2);
+  const merchantPaymentFeesVat = jahezAmount(summary["Payment Fees Vat"], "Jahez Summary", "Payment Fees Vat", 2);
+  const merchantOfferAmount = jahezAmount(summary["Offer Amount"], "Jahez Summary", "Offer Amount", 2);
+  const merchantDeliveryOffer = jahezAmount(summary["Delivery Offer"], "Jahez Summary", "Delivery Offer", 2);
+  const merchantDeliveryCoupon = jahezAmount(summary["Delivery Coupon"], "Jahez Summary", "Delivery Coupon", 2);
 
   const commissionInvoiceExVat = round2(merchantCommissionInclVat / VAT_FACTOR);
   const deliveryOfferInvoiceExVat = [...deliveryTiers.entries()].reduce(

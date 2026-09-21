@@ -9,16 +9,9 @@ import type {
   InvoiceFigures,
   Summary,
 } from "./types";
+import { ParseError, parseAmount } from "./parse";
 
 const VAT = 1.15;
-
-function num(value: unknown): number {
-  if (value === null || value === undefined || value === "") return 0;
-  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
-  const cleaned = String(value).replace(/[^0-9.\-]/g, "");
-  const parsed = Number.parseFloat(cleaned);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
 
 function text(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -52,6 +45,38 @@ function col(row: Record<string, unknown>, ...candidates: string[]): unknown {
   }
   return null;
 }
+function hasColumn(row: Record<string, unknown>, ...candidates: string[]): boolean {
+  const keys = Object.keys(row).map((key) => key.toLowerCase());
+  return candidates.some((candidate) => keys.includes(candidate.toLowerCase()));
+}
+
+function assertRequiredOrderColumns(row: Record<string, unknown>): void {
+  const required: string[][] = [
+    ["Status"],
+    ["Branch Name"],
+    ["HS Branch ID"],
+    ["Payment Type"],
+    ["Commissionable GMV (VAT Excluded)"],
+    ["Commission"],
+    ["CC Amount"],
+    ["Operation Day", "Creation Time"],
+  ];
+
+  for (const candidates of required) {
+    if (!hasColumn(row, ...candidates)) {
+      throw new ParseError(
+        "عمود مطلوب مفقود في ورقة Commissionable GMV بملف هنقرستيشن: " + candidates.join(" / "),
+        undefined,
+        {
+          platform: "hungerstation",
+          sheet: "Commissionable GMV",
+          column: candidates.join(" / "),
+        },
+      );
+    }
+  }
+}
+
 
 type StatusClass =
   | "successful"
@@ -192,6 +217,7 @@ export function analyzeHungerStation(
   if (orders.length === 0) {
     throw new Error("لم يتم العثور على ورقة الطلبات (Commissionable GMV) في الملف.");
   }
+  assertRequiredOrderColumns(orders[0]!);
 
   const branches = new Map<string, BranchRow>();
   const dailyMap = new Map<string, DailyRow>();
@@ -211,7 +237,7 @@ export function analyzeHungerStation(
     return row;
   };
 
-  for (const order of orders) {
+  for (const [orderIndex, order] of orders.entries()) {
     const statusRaw = text(col(order, "Status"));
     if (!statusRaw) continue;
     statusCounts[statusRaw] = (statusCounts[statusRaw] ?? 0) + 1;
@@ -224,9 +250,34 @@ export function analyzeHungerStation(
     const paymentType = text(col(order, "Payment Type")).toLowerCase();
     const isOnline = paymentType.includes("online");
 
-    const gmv = num(col(order, "Commissionable GMV (VAT Excluded)"));
-    const commission = num(col(order, "Commission"));
-    const ccAmount = num(col(order, "CC Amount"));
+    const rowNumber = orderIndex + 2;
+    const gmv = parseAmount(col(order, "Commissionable GMV (VAT Excluded)"), {
+      platform: "hungerstation",
+      sheet: "Commissionable GMV",
+      row: rowNumber,
+      column: "Commissionable GMV (VAT Excluded)",
+    });
+    const commission = parseAmount(col(order, "Commission"), {
+      platform: "hungerstation",
+      sheet: "Commissionable GMV",
+      row: rowNumber,
+      column: "Commission",
+    });
+    const ccAmount = parseAmount(col(order, "CC Amount"), {
+      platform: "hungerstation",
+      sheet: "Commissionable GMV",
+      row: rowNumber,
+      column: "CC Amount",
+      optional: !isOnline,
+    });
+    const optionalAmount = (value: unknown, column: string) =>
+      parseAmount(value, {
+        platform: "hungerstation",
+        sheet: "Commissionable GMV",
+        row: rowNumber,
+        column,
+        optional: true,
+      });
     const date = normalizeDate(col(order, "Operation Day", "Creation Time"));
 
     // Commission base observed on real HS invoices:
@@ -244,11 +295,11 @@ export function analyzeHungerStation(
       // HungerStation's Sales Summary is based on Commissionable GMV, VAT inclusive.
       // Original Amount is pre-discount and overstates invoice sales when offers exist.
       row.grossSales += gmv * VAT;
-      row.rdfCampaigns += num(col(order, "Restaurant delivery Discount"));
-      row.jokerFees += num(col(order, "Flash Deals Fee Excluding Vat"));
-      row.hsFoodDiscount += num(col(order, "HS Food Discount"));
-      row.rewardsDiscount += num(col(order, "Rewards Discounts", "Rewards Discount"));
-      row.restaurantFoodDiscount += num(col(order, "Restaurant Food discount"));
+      row.rdfCampaigns += optionalAmount(col(order, "Restaurant delivery Discount"), "Restaurant delivery Discount");
+      row.jokerFees += optionalAmount(col(order, "Flash Deals Fee Excluding Vat"), "Flash Deals Fee Excluding Vat");
+      row.hsFoodDiscount += optionalAmount(col(order, "HS Food Discount"), "HS Food Discount");
+      row.rewardsDiscount += optionalAmount(col(order, "Rewards Discounts", "Rewards Discount"), "Rewards Discounts");
+      row.restaurantFoodDiscount += optionalAmount(col(order, "Restaurant Food discount"), "Restaurant Food discount");
 
       if (isOnline) {
         // HS charges the successful bank fee on failed-by-vendor orders too.
@@ -262,8 +313,8 @@ export function analyzeHungerStation(
         // Collections exclude failed-by-vendor payments.
         if (isCollectionOrder(cls)) {
           row.netBankCards = (row.netBankCards ?? 0) + ccAmount;
-          row.walletAmount += num(col(order, "Wallet Amount"));
-          row.riderWallet += num(col(order, "Transmitter Amount"));
+          row.walletAmount += optionalAmount(col(order, "Wallet Amount"), "Wallet Amount");
+          row.riderWallet += optionalAmount(col(order, "Transmitter Amount"), "Transmitter Amount");
         }
       }
 
@@ -293,7 +344,7 @@ export function analyzeHungerStation(
       row.ccRejected += ccAmount;
     }
 
-    row.partialRefund += num(col(order, "CC Refund Amount")) + num(col(order, "Wallet Refund"));
+    row.partialRefund += optionalAmount(col(order, "CC Refund Amount"), "CC Refund Amount") + optionalAmount(col(order, "Wallet Refund"), "Wallet Refund");
 
     if (date) {
       if (!periodStart || date < periodStart) periodStart = date;
@@ -309,24 +360,44 @@ export function analyzeHungerStation(
     row.freeDeliveryOrders += 1;
   }
 
-  for (const comp of rowsOf(wb, "compensated")) {
+  for (const [index, comp] of rowsOf(wb, "compensated").entries()) {
     const row = branchOf(text(col(comp, "Branch Name")), text(col(comp, "HS Branch ID")));
-    row.compensation += num(col(comp, "Compensation"));
+    row.compensation += parseAmount(col(comp, "Compensation"), {
+      platform: "hungerstation",
+      sheet: "Compensated Orders",
+      row: index + 2,
+      column: "Compensation",
+    });
   }
 
-  for (const mod of rowsOf(wb, "fulfillment")) {
+  for (const [index, mod] of rowsOf(wb, "fulfillment").entries()) {
     const row = branchOf(text(col(mod, "Branch Name")), text(col(mod, "HS Branch ID")));
-    row.fulfillmentMods += num(col(mod, "Modification Amount"));
+    row.fulfillmentMods += parseAmount(col(mod, "Modification Amount"), {
+      platform: "hungerstation",
+      sheet: "Fulfillment",
+      row: index + 2,
+      column: "Modification Amount",
+    });
   }
 
-  for (const refund of rowsOf(wb, "disputes")) {
+  for (const [index, refund] of rowsOf(wb, "disputes").entries()) {
     const row = branchOf(text(col(refund, "Branch Name")), text(col(refund, "HS Branch ID")));
-    row.approvedRefunds += num(col(refund, "Refunded Amount"));
+    row.approvedRefunds += parseAmount(col(refund, "Refunded Amount"), {
+      platform: "hungerstation",
+      sheet: "Disputes",
+      row: index + 2,
+      column: "Refunded Amount",
+    });
   }
 
-  for (const wait of rowsOf(wb, "waiting time")) {
+  for (const [index, wait] of rowsOf(wb, "waiting time").entries()) {
     const row = branchOf(text(col(wait, "Branch Name")), text(col(wait, "HS Branch ID")));
-    row.waitingTimeFees += num(col(wait, "Avoidable Waiting Time Fee"));
+    row.waitingTimeFees += parseAmount(col(wait, "Avoidable Waiting Time Fee"), {
+      platform: "hungerstation",
+      sheet: "Waiting Time",
+      row: index + 2,
+      column: "Avoidable Waiting Time Fee",
+    });
   }
 
   const branchList = [...branches.values()];
