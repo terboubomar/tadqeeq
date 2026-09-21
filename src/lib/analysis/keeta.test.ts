@@ -2,9 +2,10 @@ import { describe, expect, test } from "bun:test";
 import * as XLSX from "xlsx";
 
 import { analyzeKeeta } from "./keeta";
+import { ParseError } from "./parse";
 import { parseKeetaInvoice } from "./pdf";
 
-function buildKeetaWorkbook(): ArrayBuffer {
+function buildKeetaWorkbook(omitHeader?: string): ArrayBuffer {
   const workbook = XLSX.utils.book_new();
   const headers = [
     "Brand Name",
@@ -96,6 +97,16 @@ function buildKeetaWorkbook(): ArrayBuffer {
       41.6875,
     ],
   ];
+
+  if (omitHeader) {
+    const columnIndex = headers.indexOf(omitHeader);
+    if (columnIndex >= 0) {
+      headers.splice(columnIndex, 1);
+      for (const row of rows) {
+        row.splice(columnIndex, 1);
+      }
+    }
+  }
 
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), "Order Summary");
   return XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
@@ -247,6 +258,19 @@ describe("Keeta audit engine", () => {
     expect(result.summary.statusCounts.Completed).toBe(2);
     expect(result.summary.periodStart).toBe("2026-08-01");
     expect(result.summary.periodEnd).toBe("2026-08-02");
+  });
+
+  test("fails loudly when a required financial column is missing", () => {
+    const file = buildKeetaWorkbook("Subtotal of commission fee (VAT included)");
+
+    try {
+      analyzeKeeta(file);
+      throw new Error("expected ParseError");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ParseError);
+      expect((error as Error).message).toContain("Order Summary");
+      expect((error as Error).message).toContain("Subtotal of commission fee");
+    }
   });
 
   test("uses Invoice Details and Billing data summary as official Excel controls", () => {
