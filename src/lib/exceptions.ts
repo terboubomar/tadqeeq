@@ -414,6 +414,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       branch: branch.branch,
       branchId: branch.branchId,
       category: "commission",
+      code: "HS_BRANCH_COMMISSION_VARIANCE",
       label: "فرق عمولة الفرع",
       computed: branch.commission,
       invoiced: branch.invoiceCommission,
@@ -423,6 +424,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       branch: branch.branch,
       branchId: branch.branchId,
       category: "payment_fee",
+      code: "HS_BRANCH_CARD_FEE_VARIANCE",
       label: "فرق رسوم الدفع بالبطاقات للفرع",
       computed: paymentComputed,
       invoiced: invoiceCardPaymentFees,
@@ -432,6 +434,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       branch: branch.branch,
       branchId: branch.branchId,
       category: "other_fee",
+      code: "HS_BRANCH_OTHER_FEES_VARIANCE",
       label: "فرق الرسوم الأخرى للفرع",
       computed: otherComputed,
       invoiced: otherInvoiced,
@@ -441,6 +444,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       branch: branch.branch,
       branchId: branch.branchId,
       category: "collections",
+      code: "HS_BRANCH_COLLECTIONS_VARIANCE",
       label: "فرق تحصيلات الفرع",
       computed: branch.totalCollections,
       invoiced: branch.invoiceCollections,
@@ -450,6 +454,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       branch: branch.branch,
       branchId: branch.branchId,
       category: "sales",
+      code: "HS_BRANCH_CREDIT_SALES_VARIANCE",
       label: "فرق مبيعات الائتمان للفرع",
       computed: branch.creditSales,
       invoiced: branch.invoiceCreditSales,
@@ -469,6 +474,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
     ) {
       result.push(
         makeException(period, {
+          code: "HS_BRANCH_MATCH",
           sourceLevel: "branch",
           branch: branch.branch,
           branchId: branch.branchId,
@@ -506,6 +512,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         branch: branch.branch,
         branchId: branch.branchId,
         category: "commission",
+        code: "KEETA_BRANCH_ORDER_COMMISSION_VARIANCE",
         label: "فرق عمولة الطلب للفرع",
         computed:
           branch.keetaPdfOrderCommissionInclVat !== undefined &&
@@ -519,6 +526,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         branch: branch.branch,
         branchId: branch.branchId,
         category: "payment_fee",
+        code: "KEETA_BRANCH_BANK_FEE_VARIANCE",
         label: "فرق الرسوم المصرفية للفرع",
         computed:
           branch.keetaPdfBankCommissionInclVat !== undefined &&
@@ -532,6 +540,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         branch: branch.branch,
         branchId: branch.branchId,
         category: "delivery_campaign",
+        code: "KEETA_BRANCH_DELIVERY_VARIANCE",
         label: "فرق دعم توصيل كيتا للفرع",
         computed:
           branch.keetaPdfDeliveryCommissionInclVat !== undefined &&
@@ -545,6 +554,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         branch: branch.branch,
         branchId: branch.branchId,
         category: "sales",
+        code: "KEETA_BRANCH_CREDIT_SALES_VARIANCE",
         label: "فرق البيع الآجل للفرع",
         computed: branch.keetaCreditSales,
         invoiced: branch.keetaPdfCreditSales,
@@ -554,6 +564,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         branch: branch.branch,
         branchId: branch.branchId,
         category: "settlement",
+        code: "KEETA_BRANCH_NET_DUE_VARIANCE",
         label: "فرق صافي مستحق الفرع",
         computed: branch.netSales,
         invoiced: branch.keetaPdfNetDue,
@@ -568,6 +579,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         branch: branch.branch,
         branchId: branch.branchId,
         category: "settlement",
+        code: "KEETA_BRANCH_PAYABLE_VARIANCE",
         label: "فرق Payable للفرع",
         computed: branch.netSales,
         invoiced: branch.keetaExcelPayable,
@@ -585,6 +597,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
           branch: branch.branch,
           branchId: branch.branchId,
           category: "invoice_total",
+          code: "KEETA_BRANCH_INVOICE_AMOUNT_VARIANCE",
           label: "فرق Invoice amount للفرع",
           computed:
             (branch.keetaCommissionInvoiceInclVat ?? 0) +
@@ -609,6 +622,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
             : "مصادر كيتا";
       result.push(
         makeException(period, {
+          code: "KEETA_BRANCH_MATCH",
           sourceLevel: "branch",
           branch: branch.branch,
           branchId: branch.branchId,
@@ -638,6 +652,7 @@ function jahezCompensationExceptions(period: StoredPeriod): AuditException[] {
   if (Math.abs(debitDifference) > 0.01) {
     result.push(
       makeException(period, {
+        code: "JAHEZ_COMPENSATION_DEBIT_MISMATCH",
         sourceLevel: "summary",
         category: "compensation",
         label: "عدم اتساق إجمالي خصم التعويضات",
@@ -654,6 +669,7 @@ function jahezCompensationExceptions(period: StoredPeriod): AuditException[] {
   if (Math.abs(creditDifference) > 0.01) {
     result.push(
       makeException(period, {
+        code: "JAHEZ_COMPENSATION_CREDIT_MISMATCH",
         sourceLevel: "summary",
         category: "compensation",
         label: "عدم اتساق إجمالي إضافة التعويضات",
@@ -677,6 +693,7 @@ function jahezCompensationExceptions(period: StoredPeriod): AuditException[] {
     if (transaction.duplicateCandidate) {
       result.push(
         makeException(period, {
+          code: "JAHEZ_COMPENSATION_DUPLICATE",
           sourceLevel: "branch",
           branch: transaction.branch,
           branchId,
@@ -696,6 +713,7 @@ function jahezCompensationExceptions(period: StoredPeriod): AuditException[] {
     if (transaction.match === "unknown") {
       result.push(
         makeException(period, {
+          code: "JAHEZ_COMPENSATION_UNKNOWN_ORDER",
           sourceLevel: "branch",
           branch: transaction.branch,
           branchId: branchId + ":unknown",
@@ -713,6 +731,7 @@ function jahezCompensationExceptions(period: StoredPeriod): AuditException[] {
     if (transaction.branchMismatch) {
       result.push(
         makeException(period, {
+          code: "JAHEZ_COMPENSATION_BRANCH_MISMATCH",
           sourceLevel: "branch",
           branch: transaction.branch,
           branchId: branchId + ":branch",
