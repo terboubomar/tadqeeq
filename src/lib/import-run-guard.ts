@@ -11,3 +11,11 @@ export function acquireImportRun(lock: ImportRunLock): boolean {
 export function releaseImportRun(lock: ImportRunLock): void {
   lock.current = false;
 }
+
+
+export function finishImportRun(
+  lock: ImportRunLock,
+  succeeded: boolean,
+): void {
+  if (!succeeded) releaseImportRun(lock);
+}
