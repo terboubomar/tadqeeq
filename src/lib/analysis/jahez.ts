@@ -9,7 +9,12 @@ import type {
   JahezOrderReference,
   Summary,
 } from "./types";
-import { ParseError, parseAmount } from "./parse";
+import {
+  ParseError,
+  assertDateInRange,
+  parseAmount,
+  parseDate,
+} from "./parse";
 
 const VAT_FACTOR = 1.15;
 const ROUNDING_TOLERANCE = 0.05;
@@ -169,43 +174,78 @@ function jahezAmount(
 }
 
 function cleanDirectionalMarks(value: string): string {
-  return value.replace(/[\u200e\u200f\u202a-\u202e]/g, "");
+  return value.replace(/[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "");
 }
 
-function dateKey(value: string): string | null {
-  const match = cleanDirectionalMarks(value).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (!match) return null;
-  const [, day, month, year] = match;
-  return year + "-" + month!.padStart(2, "0") + "-" + day!.padStart(2, "0");
-}
-
-function compensationDateKey(value: string): string | null {
-  // Jahez Compensation Report uses US-style month/day/year timestamps,
-  // unlike the Restaurant Financial Report order dates (day/month/year).
-  const match = cleanDirectionalMarks(value).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (!match) return null;
-  const [, month, day, year] = match;
-  const monthNumber = Number(month);
-  const dayNumber = Number(day);
-  if (
-    !Number.isInteger(monthNumber) ||
-    !Number.isInteger(dayNumber) ||
-    monthNumber < 1 ||
-    monthNumber > 12 ||
-    dayNumber < 1 ||
-    dayNumber > 31
-  ) {
-    return null;
-  }
-  return year + "-" + month!.padStart(2, "0") + "-" + day!.padStart(2, "0");
-}
-
-function periodRange(value: string): { start: string | null; end: string | null } {
-  const dates = [...cleanDirectionalMarks(value).matchAll(/(\d{1,2})\/(\d{1,2})\/(\d{4})/g)].map((match) => {
-    const [, day, month, year] = match;
-    return year + "-" + month!.padStart(2, "0") + "-" + day!.padStart(2, "0");
+function dateKey(
+  value: string,
+  context: { sheet: string; row?: number; column: string },
+): string {
+  return parseDate(value, { order: "DMY" }, {
+    platform: "jahez",
+    sheet: context.sheet,
+    row: context.row,
+    column: context.column,
   });
-  return { start: dates[0] ?? null, end: dates[1] ?? dates[0] ?? null };
+}
+
+function compensationDateKey(
+  value: string,
+  context: { row?: number; column: string },
+): string {
+  return parseDate(value, { order: "MDY" }, {
+    platform: "jahez",
+    sheet: "Jahez Compensation Details",
+    row: context.row,
+    column: context.column,
+  });
+}
+
+function periodRange(
+  value: string,
+  sheet: string,
+): { start: string; end: string } {
+  const clean = cleanDirectionalMarks(value);
+  const matches = [
+    ...clean.matchAll(/(\d{1,2}[/-]\d{1,2}[/-]\d{4})/g),
+  ].map((match) => match[1]!);
+
+  if (!matches.length) {
+    throw new ParseError(
+      "تعذّر قراءة فترة التقرير من جاهز",
+      value,
+      {
+        platform: "jahez",
+        sheet,
+        column: "Date",
+      },
+    );
+  }
+
+  const start = parseDate(matches[0], { order: "DMY" }, {
+    platform: "jahez",
+    sheet,
+    column: "Date",
+  });
+  const end = parseDate(matches[1] ?? matches[0], { order: "DMY" }, {
+    platform: "jahez",
+    sheet,
+    column: "Date",
+  });
+
+  if (end < start) {
+    throw new ParseError(
+      "نهاية فترة جاهز تسبق بدايتها",
+      value,
+      {
+        platform: "jahez",
+        sheet,
+        column: "Date",
+      },
+    );
+  }
+
+  return { start, end };
 }
 
 function parseJahezCompensation(
@@ -231,6 +271,10 @@ function parseJahezCompensation(
     "Jahez Compensation Summary",
   );
   const summary = rowObject(summaryHeaders, matrix[1] ?? []);
+  const compensationRange = periodRange(
+    summary["Date"] ?? "",
+    "Jahez Compensation Summary",
+  );
   const detailHeaderIndex = matrix.findIndex((row) => row[0]?.trim() === "#");
   if (detailHeaderIndex < 0) {
     throw new Error("تعذّر العثور على جدول التعويضات التفصيلي في ملف جاهز.");
@@ -267,6 +311,25 @@ function parseJahezCompensation(
     );
     const orderId = (source["Order #"] || "").trim();
     const branch = normalizeBranch(source["Branch"] || "غير محدد");
+    const creationDate = compensationDateKey(
+      source["Creation Date"] || "",
+      {
+        row: detailHeaderIndex + detailIndex + 2,
+        column: "Creation Date",
+      },
+    );
+    assertDateInRange(
+      creationDate,
+      compensationRange.start,
+      compensationRange.end,
+      {
+        platform: "jahez",
+        sheet: "Jahez Compensation Details",
+        row: detailHeaderIndex + detailIndex + 2,
+        column: "Creation Date",
+      },
+      1,
+    );
     const currentRef = currentOrders[orderId];
     const historicalRef = !currentRef ? historicalOrders[orderId] : undefined;
     const matched = currentRef ?? historicalRef;
@@ -394,6 +457,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
     "Jahez Summary",
   );
   const summary = rowObject(summaryHeaders, matrix[1] ?? []);
+  const range = periodRange(summary["Date"] ?? "", "Jahez Summary");
   const detailHeaderIndex = matrix.findIndex((row) => row[0]?.trim() === "#");
   if (detailHeaderIndex < 0) {
     throw new Error("تعذّر العثور على جدول الطلبات التفصيلي في تقرير جاهز.");
@@ -462,7 +526,26 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
     }
 
     const orderId = (source["Order #"] || "").trim();
-    const orderDate = dateKey(source["Date"] ?? "") ?? "";
+    const orderDate = dateKey(
+      source["Date"] ?? "",
+      {
+        sheet: "Jahez Order Details",
+        row: rowNumber,
+        column: "Date",
+      },
+    );
+    assertDateInRange(
+      orderDate,
+      range.start,
+      range.end,
+      {
+        platform: "jahez",
+        sheet: "Jahez Order Details",
+        row: rowNumber,
+        column: "Date",
+      },
+      1,
+    );
     if (orderId) {
       orderIndex[orderId] = { branch: branchName, date: orderDate };
     }
@@ -508,7 +591,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
     detailDeliveryCharge += deliveryCharge;
     detailCalculatedSettlement += calculatedRestaurant;
 
-    const date = orderDate || dateKey(source["Date"] ?? "");
+    const date = orderDate;
     if (date) {
       let day = daily.get(date);
       if (!day) {
@@ -557,7 +640,12 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
     if (transaction.match === "unknown") current.unknownAmount += transaction.amount;
     compensationByBranch.set(transaction.branch, current);
 
-    const compensationDate = compensationDateKey(transaction.creationDate);
+    const compensationDate = compensationDateKey(
+      transaction.creationDate,
+      {
+        column: "Creation Date",
+      },
+    );
     if (compensationDate) {
       let day = daily.get(compensationDate);
       if (!day) {
@@ -646,9 +734,11 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
     commissionInvoiceExVat + merchantPaymentFees + deliveryOfferInvoiceExVat;
   const invoiceVatComputed = round2(invoiceExVatComputed * 0.15);
   const invoiceInclVatComputed = round2(invoiceExVatComputed + invoiceVatComputed);
-  const range = periodRange(summary["Date"] ?? "");
   if (compensationReport?.periodLabel) {
-    const compensationRange = periodRange(compensationReport.periodLabel);
+    const compensationRange = periodRange(
+      compensationReport.periodLabel,
+      "Jahez Compensation Summary",
+    );
     if (
       range.start &&
       range.end &&
