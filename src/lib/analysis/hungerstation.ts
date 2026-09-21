@@ -119,7 +119,7 @@ function normalizeBranchName(value: string | undefined): string {
     .replace(/ـ/g, "")
     .replace(/[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed]/g, "")
     .replace(/[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "")
-    .replace(/[^a-z0-9\u0600-\u06ff]+/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
