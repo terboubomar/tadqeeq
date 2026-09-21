@@ -140,7 +140,7 @@ function assertRequiredHeaders(
   for (const column of required) {
     if (!available.has(column)) {
       throw new ParseError(
-        "عمود مطلوب مفقود في ملف جاهز: " + column,
+        "عمود مطلوب مفقود في " + sheet + " بملف جاهز: " + column,
         undefined,
         {
           platform: "jahez",
