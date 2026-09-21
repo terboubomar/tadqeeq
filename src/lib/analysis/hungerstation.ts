@@ -10,6 +10,7 @@ import type {
   Summary,
 } from "./types";
 import { ParseError, parseAmount, parseDate } from "./parse";
+import { resolveSheetName } from "./sheets";
 
 const VAT = 1.15;
 
@@ -18,10 +19,11 @@ function text(value: unknown): string {
   return String(value).trim();
 }
 
-/** Match a sheet by a loose keyword, ignoring the numeric prefix HungerStation uses. */
+/** Match HungerStation sheets deterministically while allowing numeric prefixes. */
 function findSheet(wb: XLSX.WorkBook, keyword: string): string | undefined {
-  const k = keyword.toLowerCase();
-  return wb.SheetNames.find((name) => name.toLowerCase().includes(k));
+  return resolveSheetName(wb.SheetNames, keyword, {
+    platform: "hungerstation",
+  });
 }
 
 function rowsOf(wb: XLSX.WorkBook, keyword: string): Record<string, unknown>[] {
