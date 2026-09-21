@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import * as XLSX from "xlsx";
 
+import { buildPeriodExceptions, summarizeExceptions } from "../exceptions";
+import type { StoredPeriod } from "../periods";
 import { analyzeHungerStation } from "./hungerstation";
 import { parseCpcInvoice, parseHungerInvoice } from "./pdf";
 
@@ -218,6 +220,52 @@ describe("HungerStation audit rules", () => {
     expect(printerCheck?.computed).toBe(0);
     expect(printerCheck?.invoiced).toBe(500);
     expect(printerCheck?.evidence).toBe("invoice_only");
+  });
+
+  test("treats a missing invoice commission as data missing, not a zero-value variance", () => {
+    const result = analyzeHungerStation(buildWorkbook(), {
+      manualBankRate: 0.025,
+      invoice: {
+        lines: [],
+        paymentFees: 5.85,
+        othersCommission: 17.5,
+        totalExVat: 51.1,
+      },
+    });
+
+    const commissionCheck = result.checks.find(
+      (check) => check.label === "عمولة المبيعات",
+    );
+    expect(commissionCheck?.invoiced).toBeUndefined();
+
+    const period = {
+      id: "hs-missing-commission",
+      label: result.label,
+      platform: result.platform,
+      period_start: result.summary.periodStart,
+      period_end: result.summary.periodEnd,
+      created_at: "2026-09-01T00:00:00Z",
+      summary: result.summary,
+      branches: result.branches,
+      daily: result.daily,
+      invoice: {
+        ...result.invoice,
+        checks: result.checks,
+      },
+    } as StoredPeriod;
+
+    const exceptions = buildPeriodExceptions(period);
+    const missing = exceptions.filter((item) => item.category === "data_missing");
+
+    expect(exceptions.filter((item) => item.category === "commission")).toHaveLength(0);
+    expect(missing).toHaveLength(1);
+    expect(missing[0]?.label).toContain("عمولة المبيعات");
+    expect(missing[0]?.reviewAmount).toBe(0);
+    expect(missing[0]?.potentialRecovery).toBe(0);
+
+    const summary = summarizeExceptions(exceptions);
+    expect(summary.underReview).toBe(0);
+    expect(summary.potentialRecovery).toBe(0);
   });
 
   test("contract rate takes precedence over the invoice-implied rate", () => {
