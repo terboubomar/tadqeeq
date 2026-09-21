@@ -334,6 +334,53 @@ describe("Ask Tadqeeq deterministic context", () => {
     expect(serialized).not.toContain("aug-secret");
   });
 
+  test("supports fact registries larger than 999 entries", () => {
+    const current = period({
+      id: "large",
+      start: "2026-09-01",
+      end: "2026-09-30",
+      grossSales: 12000,
+      commissionPct: 0.19,
+      totalCharges: 3000,
+    });
+
+    const baseBranch = current.branches[0]!;
+    current.branches = Array.from({ length: 1005 }, (_, index) => ({
+      ...baseBranch,
+      branch: "Branch " + String(index + 1),
+      branchId: "branch-id-" + String(index + 1),
+      orders: 1,
+      grossSales: 10 + index,
+      netSales: 8 + index,
+      commission: 2,
+      totalCharges: 3,
+    }));
+    current.summary.branchCount = current.branches.length;
+
+    const context = buildAnalystContext(current, [current]);
+    const fact1000 = context.facts.find((fact) => fact.id === "F1000");
+
+    expect(fact1000).toBeDefined();
+    expect(resolveAnalystFacts(context, ["F1000"])[0]?.id).toBe("F1000");
+
+    const parsed = analystAiResponseSchema.parse({
+      answerability: "grounded",
+      answer: "تم العثور على الحقيقة المطلوبة.",
+      usedFactIds: ["F1000"],
+      presentation: {
+        type: "text",
+        title: "",
+        factIds: ["F1000"],
+      },
+      limitations: [],
+      followUpSuggestions: [],
+      confidence: "high",
+    });
+
+    expect(parsed.usedFactIds).toEqual(["F1000"]);
+    expect(parsed.presentation.factIds).toEqual(["F1000"]);
+  });
+
   test("resolves only fact IDs that exist in the current server-built registry", () => {
     const current = period({
       id: "sep",

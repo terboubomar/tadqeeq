@@ -218,7 +218,7 @@ async function callAnalyst(
       answer: { type: "string" },
       usedFactIds: {
         type: "array",
-        items: { type: "string", pattern: "^F[0-9]{3}$" },
+        items: { type: "string", pattern: "^F[0-9]{3,5}$" },
         maxItems: 12,
       },
       presentation: {
@@ -240,7 +240,7 @@ async function callAnalyst(
           title: { type: "string", maxLength: 160 },
           factIds: {
             type: "array",
-            items: { type: "string", pattern: "^F[0-9]{3}$" },
+            items: { type: "string", pattern: "^F[0-9]{3,5}$" },
             maxItems: 40,
           },
         },
