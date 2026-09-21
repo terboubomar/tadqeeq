@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { analyzeJahez } from "./jahez";
+import { ParseError } from "./parse";
 import { parseJahezInvoice } from "./pdf";
 
 function buffer(value: string): ArrayBuffer {
@@ -33,6 +34,16 @@ Past - باست,01‏/08‏/2026 - 31‏/08‏/2026,All,All,All,All,0,5,30,5
 }
 
 describe("Jahez CSV audit engine", () => {
+  test("fails loudly when Jahez order dates use an unexpected month/day order", () => {
+    const swapped = new TextDecoder()
+      .decode(buildJahezCsv())
+      .replaceAll("31/08/2026", "08/31/2026");
+
+    expect(() =>
+      analyzeJahez(buffer(swapped)),
+    ).toThrow(ParseError);
+  });
+
   test("reconstructs settlement and invoice lines from the merchant report", () => {
     const result = analyzeJahez(buildJahezCsv());
 
