@@ -1,3 +1,5 @@
+import * as XLSX from "xlsx";
+
 export interface ParseContext {
   platform?: "hungerstation" | "keeta" | "jahez";
   file?: string;
@@ -120,4 +122,217 @@ export function parseAmount(value: unknown, context: ParseContext = {}): number 
   }
 
   return negativeByParentheses ? -parsed : parsed;
+}
+
+
+export type DateOrder = "DMY" | "MDY" | "ISO";
+
+export interface DateParseOptions {
+  order: DateOrder;
+}
+
+const MONTH_NAMES: Record<string, number> = {
+  jan: 1,
+  january: 1,
+  feb: 2,
+  february: 2,
+  mar: 3,
+  march: 3,
+  apr: 4,
+  april: 4,
+  may: 5,
+  jun: 6,
+  june: 6,
+  jul: 7,
+  july: 7,
+  aug: 8,
+  august: 8,
+  sep: 9,
+  sept: 9,
+  september: 9,
+  oct: 10,
+  october: 10,
+  nov: 11,
+  november: 11,
+  dec: 12,
+  december: 12,
+};
+
+function isoDate(
+  year: number,
+  month: number,
+  day: number,
+  raw: unknown,
+  context: ParseContext,
+): string {
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    year < 1900 ||
+    year > 2200 ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return parseFailure(raw, context, "تاريخ غير صالح");
+  }
+
+  const probe = new Date(year, month - 1, day);
+  if (
+    probe.getFullYear() !== year ||
+    probe.getMonth() !== month - 1 ||
+    probe.getDate() !== day
+  ) {
+    return parseFailure(raw, context, "تاريخ غير صالح");
+  }
+
+  return (
+    String(year).padStart(4, "0") +
+    "-" +
+    String(month).padStart(2, "0") +
+    "-" +
+    String(day).padStart(2, "0")
+  );
+}
+
+/**
+ * Strict calendar-date parser.
+ *
+ * - Date objects use local Y/M/D fields; they are never converted through
+ *   toISOString(), avoiding UTC day shifts.
+ * - Excel serials use SheetJS SSF date decoding.
+ * - Numeric slash dates require an explicit DMY/MDY interpretation.
+ * - Invalid or missing required dates fail loudly with source context.
+ */
+export function parseDate(
+  value: unknown,
+  options: DateParseOptions,
+  context: ParseContext = {},
+): string {
+  if (value === null || value === undefined || value === "") {
+    if (context.optional) return "";
+    return parseFailure(value, context, "تاريخ مطلوب مفقود");
+  }
+
+  if (value instanceof Date) {
+    if (!Number.isFinite(value.getTime())) {
+      return parseFailure(value, context, "تاريخ غير صالح");
+    }
+    return isoDate(
+      value.getFullYear(),
+      value.getMonth() + 1,
+      value.getDate(),
+      value,
+      context,
+    );
+  }
+
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      return parseFailure(value, context, "تاريخ غير صالح");
+    }
+    const parsed = XLSX.SSF.parse_date_code(value);
+    if (!parsed) {
+      return parseFailure(value, context, "تعذّر قراءة تاريخ Excel");
+    }
+    return isoDate(parsed.y, parsed.m, parsed.d, value, context);
+  }
+
+  const raw = normalizeDigits(
+    String(value).replace(BIDI_MARKS, "").trim(),
+  );
+  if (!raw) {
+    if (context.optional) return "";
+    return parseFailure(value, context, "تاريخ مطلوب مفقود");
+  }
+
+  const numericSerial = Number(raw);
+  if (
+    Number.isFinite(numericSerial) &&
+    numericSerial > 20000 &&
+    numericSerial < 80000
+  ) {
+    const parsed = XLSX.SSF.parse_date_code(numericSerial);
+    if (!parsed) {
+      return parseFailure(value, context, "تعذّر قراءة تاريخ Excel");
+    }
+    return isoDate(parsed.y, parsed.m, parsed.d, value, context);
+  }
+
+  const iso = raw.match(/(?:^|\D)(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:\D|$)/);
+  if (iso) {
+    return isoDate(
+      Number(iso[1]),
+      Number(iso[2]),
+      Number(iso[3]),
+      value,
+      context,
+    );
+  }
+
+  const english = raw.match(
+    /(?:^|\D)(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})(?:\D|$)/,
+  );
+  if (english) {
+    const month = MONTH_NAMES[english[2]!.toLowerCase()];
+    if (!month) {
+      return parseFailure(value, context, "اسم الشهر غير معروف");
+    }
+    return isoDate(
+      Number(english[3]),
+      month,
+      Number(english[1]),
+      value,
+      context,
+    );
+  }
+
+  const numeric = raw.match(
+    /(?:^|\D)(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:\D|$)/,
+  );
+  if (numeric) {
+    if (options.order === "ISO") {
+      return parseFailure(
+        value,
+        context,
+        "تنسيق التاريخ الرقمي غير متوقع؛ يلزم ترتيب سنة-شهر-يوم",
+      );
+    }
+    const first = Number(numeric[1]);
+    const second = Number(numeric[2]);
+    const year = Number(numeric[3]);
+    const day = options.order === "DMY" ? first : second;
+    const month = options.order === "DMY" ? second : first;
+    return isoDate(year, month, day, value, context);
+  }
+
+  return parseFailure(value, context, "تعذّر قراءة التاريخ");
+}
+
+function isoToUtcMs(value: string): number {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) throw new Error("Expected normalized ISO date");
+  return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
+export function assertDateInRange(
+  date: string,
+  start: string,
+  end: string,
+  context: ParseContext = {},
+  toleranceDays = 1,
+): void {
+  const value = isoToUtcMs(date);
+  const min = isoToUtcMs(start) - toleranceDays * 86_400_000;
+  const max = isoToUtcMs(end) + toleranceDays * 86_400_000;
+
+  if (value < min || value > max) {
+    parseFailure(
+      date,
+      context,
+      "ترتيب اليوم/الشهر في الملف غير متوقع أو التاريخ خارج فترة التقرير",
+    );
+  }
 }
