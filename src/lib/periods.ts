@@ -87,6 +87,7 @@ export async function savePeriod(result: AnalysisResult): Promise<StoredPeriod> 
     const { data: existing, error: duplicateError } = await supabase
       .from("periods")
       .select("id, platform, period_start, period_end")
+      .eq("user_id", userId)
       .eq("platform", result.platform)
       .eq("period_start", periodStart)
       .eq("period_end", periodEnd)
@@ -124,9 +125,22 @@ export async function savePeriod(result: AnalysisResult): Promise<StoredPeriod> 
   return data as unknown as StoredPeriod;
 }
 
-export async function deletePeriod(id: string): Promise<void> {
-  const { error } = await supabase.from("periods").delete().eq("id", id);
+export async function deletePeriod(id: string): Promise<string> {
+  const { data, error } = await supabase
+    .from("periods")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
   if (error) throw new Error(error.message);
+  if (!data?.id) {
+    throw new Error(
+      "لم يتم حذف الفترة من قاعدة البيانات. حدّث الصفحة وحاول مرة أخرى.",
+    );
+  }
+
+  return data.id;
 }
 
 export function workflowPatchForRpc(
@@ -205,9 +219,13 @@ export function toAnalysis(period: StoredPeriod): AnalysisResult {
 
 const SELECTED_KEY = "tadqeeq:selected-period";
 
-export function rememberPeriod(id: string) {
+export function rememberPeriod(id: string | null) {
   try {
-    localStorage.setItem(SELECTED_KEY, id);
+    if (id) {
+      localStorage.setItem(SELECTED_KEY, id);
+    } else {
+      localStorage.removeItem(SELECTED_KEY);
+    }
   } catch {
     /* storage unavailable */
   }
