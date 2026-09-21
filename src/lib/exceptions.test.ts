@@ -207,6 +207,74 @@ describe("Exception Center", () => {
     expect(summary.potentialRecovery).toBeCloseTo(12, 6);
   });
 
+  test("does not create false exposure for a legacy one-branch unnamed invoice match", () => {
+    const period = hungerPeriod();
+    const dataBranch = {
+      ...period.branches[0]!,
+      branch: "Burger Waqf Al Jamiyin",
+      branchId: "151047",
+      orders: 603,
+      commission: 5568.196,
+      bankFeeSuccess: 805.47475,
+      bankFeeRefunded: 0,
+      rdfCampaigns: 5960.869565217392,
+      compensation: 99.1304347826087,
+      jokerFees: 0,
+      waitingTimeFees: 0,
+      totalCollections: 35422.65,
+      creditSales: 30934.63,
+      branchAuditStatus: "unmatched" as const,
+      branchAuditLabel: "غير مطابق",
+      branchAuditNote: "لم يتم العثور على اسم فرع مطابق بشكل موثوق.",
+      invoiceCommission: undefined,
+    };
+
+    const invoiceOnly = {
+      ...period.branches[0]!,
+      branch: "فرع في الفاتورة فقط 1",
+      branchId: "",
+      orders: 0,
+      grossSales: 0,
+      netSales: 0,
+      commission: 0,
+      commissionPct: 0,
+      ccSuccess: 0,
+      ccRejected: 0,
+      bankFeeSuccess: 0,
+      bankFeeRefunded: 0,
+      rdfCampaigns: 0,
+      compensation: 0,
+      jokerFees: 0,
+      waitingTimeFees: 0,
+      totalCollections: 0,
+      creditSales: 0,
+      totalCharges: 0,
+      invoiceCommission: 5568.2,
+      invoicePaymentFees: 859.14,
+      invoiceWalletFee: 53.66,
+      invoiceCardPaymentFees: 805.48,
+      invoiceOtherCharges: 6060,
+      invoiceOnlyBranchCharges: 0,
+      invoiceCollections: 35422.65,
+      invoiceCreditSales: 30934.63,
+      branchAuditStatus: "invoice_only" as const,
+      branchAuditLabel: "في الفاتورة فقط",
+      branchAuditNote: "الفرع موجود في الفاتورة لكنه غير موجود في ملف الطلبات المرفوع.",
+      invoiceBranchName: undefined,
+    };
+
+    period.branches = [dataBranch, invoiceOnly];
+    period.invoice.checks = [];
+
+    const exceptions = buildPeriodExceptions(period);
+    const summary = summarizeExceptions(exceptions);
+
+    expect(exceptions).toHaveLength(0);
+    expect(summary.openCount).toBe(0);
+    expect(summary.underReview).toBe(0);
+    expect(summary.potentialRecovery).toBe(0);
+  });
+
   test("does not turn an invoice-only fixed-charge branch into a branch mismatch exception", () => {
     const period = hungerPeriod();
     period.branches.push({
