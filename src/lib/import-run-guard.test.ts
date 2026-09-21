@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   acquireImportRun,
+  finishImportRun,
   releaseImportRun,
 } from "./import-run-guard";
 
@@ -16,4 +17,25 @@ describe("import run guard", () => {
 
     expect(acquireImportRun(lock)).toBe(true);
   });
+});
+
+
+test("keeps the lock after a successful save until the import page unmounts", () => {
+  const lock = { current: false };
+
+  expect(acquireImportRun(lock)).toBe(true);
+  finishImportRun(lock, true);
+
+  expect(lock.current).toBe(true);
+  expect(acquireImportRun(lock)).toBe(false);
+});
+
+test("releases the lock after a failed analysis so the user can retry", () => {
+  const lock = { current: false };
+
+  expect(acquireImportRun(lock)).toBe(true);
+  finishImportRun(lock, false);
+
+  expect(lock.current).toBe(false);
+  expect(acquireImportRun(lock)).toBe(true);
 });
