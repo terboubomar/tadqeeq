@@ -23,6 +23,7 @@ export type Database = {
           model: string
           period_id: string | null
           prompt_version: string
+          status: string
           user_id: string
         }
         Insert: {
@@ -33,6 +34,7 @@ export type Database = {
           model: string
           period_id?: string | null
           prompt_version: string
+          status?: string
           user_id: string
         }
         Update: {
@@ -43,6 +45,7 @@ export type Database = {
           model?: string
           period_id?: string | null
           prompt_version?: string
+          status?: string
           user_id?: string
         }
         Relationships: [
@@ -123,7 +126,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      reserve_ai_call: {
+        Args: {
+          p_exception_id: string
+          p_feature: string
+          p_limit: number
+          p_model: string
+          p_period_id: string
+          p_prompt_version: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

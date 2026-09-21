@@ -546,7 +546,7 @@ function addInvoiceCheckFacts(builder: FactBuilder, period: StoredPeriod) {
     builder.add(
       "invoice_check",
       "مطابقة فاتورة · " + check.label,
-      missing ? "لم يُقرأ من الفاتورة" : money(difference),
+      missing ? "لم يُقرأ من الفاتورة" : money(difference ?? 0),
       {
         code: check.code,
         category: check.category,
