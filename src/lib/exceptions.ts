@@ -887,6 +887,11 @@ export function buildExceptionEvidence(
   period: StoredPeriod,
   item: AuditException,
 ): ExceptionEvidenceTrail {
+  const checks = normalizeCheckMetadata(
+    period.platform,
+    period.branches ?? [],
+    period.invoice?.checks ?? [],
+  );
   const branch =
     period.branches?.find(
       (row) =>
@@ -903,7 +908,7 @@ export function buildExceptionEvidence(
   ]);
 
   if (item.sourceLevel === "summary") {
-    if (period.platform === "keeta" && item.label.includes("صافي التسوية")) {
+    if (period.platform === "keeta" && item.code === "KEETA_ORDER_SUMMARY_PAYABLE") {
       formula = "إجمالي البيع الآجل - فاتورة العمولة شامل الضريبة = صافي التسوية";
       calculatedSources = compactFields([
         definedField("إجمالي البيع الآجل", "Keeta Order Summary", period.summary.keetaCreditSales),
@@ -979,11 +984,11 @@ export function buildExceptionEvidence(
           ),
         ]);
       } else {
-        const check = period.invoice?.checks?.find((candidate) => candidate.label === item.label);
+        const check = checks.find((candidate) => candidate.code === item.code);
         formula = check?.hint ?? formula;
       }
     } else {
-      const check = period.invoice?.checks?.find((candidate) => candidate.label === item.label);
+      const check = checks.find((candidate) => candidate.code === item.code);
       formula = check?.hint ?? formula;
     }
   } else if (branch && period.platform === "hungerstation") {
@@ -1173,12 +1178,15 @@ export function buildExceptionEvidence(
       ]);
     }
   } else if (period.platform === "jahez" && item.category === "compensation") {
-    const orderId = item.label.match(/طلب\s+(\d+)/)?.[1];
+    const branchParts = item.branchId?.split(":") ?? [];
+    const orderId = branchParts[0] === "jahez-comp" ? branchParts[1] : undefined;
+    const sequence = branchParts[0] === "jahez-comp" ? branchParts[2] : undefined;
     const transaction = period.invoice?.jahezCompensation?.transactions.find(
       (row) =>
         row.orderId === orderId &&
+        row.sequence === sequence &&
         (item.branch ? row.branch === item.branch : true) &&
-        (item.label.includes("تكرار") ? row.duplicateCandidate : true),
+        (item.code === "JAHEZ_COMPENSATION_DUPLICATE" ? row.duplicateCandidate : true),
     );
     if (transaction) {
       formula = "معاملة تعويض جاهز تُراجع مقابل الطلب المصدر وحالة المطابقة والتكرار";
