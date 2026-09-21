@@ -2,6 +2,7 @@ import type { StoredPeriod } from "@/lib/periods";
 import { buildPeriodComparison } from "@/lib/period-intelligence";
 
 import { callTadqeeqAi } from "./gateway.server";
+import { runWithAiUsageReservation } from "./usage.server";
 import {
   buildPeriodIntelligenceAiPacket,
   periodIntelligenceAiSchema,
@@ -11,7 +12,7 @@ import {
 
 const FEATURE = "period_intelligence";
 const PROMPT_VERSION = "period-intelligence-v1";
-const DEFAULT_HOURLY_LIMIT = 30;
+const DEFAULT_MODEL = "gpt-5.6-luna";
 
 interface AnalyzePeriodIntelligenceInput {
   currentPeriodId: string;
@@ -83,77 +84,6 @@ async function fetchOwnedPeriod(
     throw new Error("فترة التدقيق غير موجودة أو لا تملك صلاحية الوصول إليها.");
   }
   return period;
-}
-
-async function enforceRateLimit(
-  input: AnalyzePeriodIntelligenceInput,
-  user: AuthenticatedUser,
-  supabaseUrl: string,
-  supabaseKey: string,
-): Promise<void> {
-  const configured = Number.parseInt(
-    process.env["TADQEEQ_AI_MAX_REQUESTS_PER_HOUR"] ?? "",
-    10,
-  );
-  const limit =
-    Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_HOURLY_LIMIT;
-  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-
-  const url = new URL(supabaseUrl + "/rest/v1/ai_usage");
-  url.searchParams.set("user_id", "eq." + user.id);
-  url.searchParams.set("feature", "eq." + FEATURE);
-  url.searchParams.set("created_at", "gte." + since);
-  url.searchParams.set("select", "id");
-  url.searchParams.set("limit", String(limit));
-
-  const response = await fetch(url, {
-    headers: {
-      apikey: supabaseKey,
-      Authorization: "Bearer " + input.accessToken,
-      Accept: "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("تعذّر التحقق من حد استخدام Tadqeeq AI.");
-  }
-
-  const rows = (await response.json()) as Array<{ id: string }>;
-  if (rows.length >= limit) {
-    throw new Error(
-      "تم الوصول إلى حد استخدام Tadqeeq AI لهذه الساعة. جرّب مرة أخرى لاحقاً.",
-    );
-  }
-}
-
-async function recordUsage(
-  input: AnalyzePeriodIntelligenceInput,
-  user: AuthenticatedUser,
-  model: string,
-  supabaseUrl: string,
-  supabaseKey: string,
-): Promise<void> {
-  const response = await fetch(supabaseUrl + "/rest/v1/ai_usage", {
-    method: "POST",
-    headers: {
-      apikey: supabaseKey,
-      Authorization: "Bearer " + input.accessToken,
-      "Content-Type": "application/json",
-      Prefer: "return=minimal",
-    },
-    body: JSON.stringify({
-      user_id: user.id,
-      feature: FEATURE,
-      model,
-      prompt_version: PROMPT_VERSION,
-      period_id: input.currentPeriodId,
-      exception_id: null,
-    }),
-  });
-
-  if (!response.ok) {
-    console.error("Failed to record Tadqeeq AI period-intelligence usage", response.status);
-  }
 }
 
 async function callOpenAi(
@@ -246,7 +176,6 @@ export async function analyzePeriodIntelligenceOnServer(
   const supabaseKey = requiredEnv("SUPABASE_PUBLISHABLE_KEY");
 
   const user = await authenticateUser(input.accessToken, supabaseUrl, supabaseKey);
-  await enforceRateLimit(input, user, supabaseUrl, supabaseKey);
 
   const [current, previous] = await Promise.all([
     fetchOwnedPeriod(
@@ -267,9 +196,22 @@ export async function analyzePeriodIntelligenceOnServer(
 
   const comparison = buildPeriodComparison(current, previous);
   const packet = buildPeriodIntelligenceAiPacket(comparison);
-  const { explanation, model } = await callOpenAi(packet);
-
-  await recordUsage(input, user, model, supabaseUrl, supabaseKey);
+  const expectedModel =
+    process.env["TADQEEQ_AI_MODEL"]?.trim() || DEFAULT_MODEL;
+  const { explanation, model } = await runWithAiUsageReservation(
+    {
+      accessToken: input.accessToken,
+      userId: user.id,
+      feature: FEATURE,
+      expectedModel,
+      promptVersion: PROMPT_VERSION,
+      periodId: input.currentPeriodId,
+      exceptionId: null,
+      supabaseUrl,
+      supabaseKey,
+    },
+    () => callOpenAi(packet),
+  );
 
   return {
     explanation,
