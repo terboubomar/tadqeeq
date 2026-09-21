@@ -9,6 +9,7 @@ import type {
   Summary,
 } from "./types";
 import { ParseError, parseAmount, parseDate } from "./parse";
+import { resolveSheetName } from "./sheets";
 
 const VAT_RATE = 0.15;
 const VAT_FACTOR = 1 + VAT_RATE;
@@ -55,11 +56,9 @@ function normalizeHeader(value: unknown): string {
 
 
 function findSheet(wb: XLSX.WorkBook, name: string): string | undefined {
-  const target = name.toLowerCase();
-  return (
-    wb.SheetNames.find((sheetName) => sheetName.toLowerCase() === target) ??
-    wb.SheetNames.find((sheetName) => sheetName.toLowerCase().includes(target))
-  );
+  return resolveSheetName(wb.SheetNames, name, {
+    platform: "keeta",
+  });
 }
 
 function rowsFromSheet(
