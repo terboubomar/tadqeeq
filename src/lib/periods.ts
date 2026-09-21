@@ -134,46 +134,53 @@ export async function updateExceptionWorkflow(
   exceptionId: string,
   patch: Partial<ExceptionWorkflowEntry>,
 ): Promise<StoredPeriod> {
-  const period = await getPeriod(periodId);
-  if (!period) throw new Error("تعذّر العثور على فترة التدقيق.");
+  const workflowPatch: Record<string, Json> = {};
 
-  const currentWorkflow = period.invoice?.exceptionWorkflow ?? {};
-  const current = currentWorkflow[exceptionId] ?? { status: "new" as const };
-  const updatedAt = new Date().toISOString();
-  const merged = {
-    ...current,
-    ...patch,
-  };
-  const next: ExceptionWorkflowEntry = {
-    ...merged,
-    updatedAt,
-    history: [
-      ...(current.history ?? []),
-      {
-        at: updatedAt,
-        status: merged.status,
-        note: merged.note,
-        recoveredAmount: merged.recoveredAmount,
+  if (patch.status !== undefined) workflowPatch["status"] = patch.status;
+  if (patch.note !== undefined) workflowPatch["note"] = patch.note;
+  if (patch.recoveredAmount !== undefined) {
+    workflowPatch["recoveredAmount"] = patch.recoveredAmount;
+  }
+
+  type WorkflowRpcClient = {
+    rpc: (
+      fn: "set_exception_workflow",
+      args: {
+        p_period_id: string;
+        p_exception_id: string;
+        p_patch: Json;
       },
-    ],
+    ) => PromiseLike<{
+      data: Json | null;
+      error: { message: string } | null;
+    }>;
   };
 
-  const invoice = {
-    ...period.invoice,
-    exceptionWorkflow: {
-      ...currentWorkflow,
-      [exceptionId]: next,
-    },
-  };
+  const workflowClient = supabase as unknown as WorkflowRpcClient;
+  const { data, error } = await workflowClient.rpc("set_exception_workflow", {
+    p_period_id: periodId,
+    p_exception_id: exceptionId,
+    p_patch: workflowPatch as Json,
+  });
 
-  const { data, error } = await supabase
-    .from("periods")
-    .update({ invoice: invoice as unknown as Json })
-    .eq("id", periodId)
-    .select("*")
-    .single();
+  if (error) {
+    if (error.message.includes("PERIOD_NOT_FOUND")) {
+      throw new Error("تعذّر العثور على فترة التدقيق.");
+    }
+    if (
+      error.message.includes("INVALID_WORKFLOW") ||
+      error.message.includes("INVALID_RECOVERED_AMOUNT") ||
+      error.message.includes("INVALID_EXCEPTION_ID")
+    ) {
+      throw new Error("تعذّر حفظ تحديث الاستثناء لأن بيانات التحديث غير صالحة.");
+    }
+    throw new Error(error.message);
+  }
 
-  if (error) throw new Error(error.message);
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("تعذّر قراءة فترة التدقيق بعد تحديث الاستثناء.");
+  }
+
   return data as unknown as StoredPeriod;
 }
 
