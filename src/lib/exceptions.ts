@@ -184,13 +184,21 @@ function recoveryFor(
   return 0;
 }
 
-function workflowFor(period: StoredPeriod, id: string): ExceptionWorkflowEntry | undefined {
-  return period.invoice?.exceptionWorkflow?.[id];
+function workflowFor(
+  period: StoredPeriod,
+  id: string,
+  legacyId?: string,
+): ExceptionWorkflowEntry | undefined {
+  return (
+    period.invoice?.exceptionWorkflow?.[id] ??
+    (legacyId ? period.invoice?.exceptionWorkflow?.[legacyId] : undefined)
+  );
 }
 
 function makeException(
   period: StoredPeriod,
   input: {
+    code: string;
     sourceLevel: "summary" | "branch";
     branch?: string;
     branchId?: string;
@@ -213,17 +221,24 @@ function makeException(
   const reviewAmount =
     input.forceReviewAmount ??
     (difference !== undefined ? Math.abs(difference) : Math.abs(invoiced ?? computed ?? 0));
-  const id = exceptionId(
+  const id = stableExceptionId(
+    period.id,
+    input.sourceLevel,
+    input.code,
+    input.branchId,
+  );
+  const legacyId = legacyExceptionId(
     period.id,
     input.sourceLevel,
     input.category,
     input.label,
     input.branchId,
   );
-  const workflow = workflowFor(period, id);
+  const workflow = workflowFor(period, id, legacyId);
 
   return {
     id,
+    code: input.code,
     periodId: period.id,
     periodLabel: period.label,
     platform: period.platform,
@@ -257,18 +272,23 @@ function makeException(
 
 function summaryExceptions(period: StoredPeriod): AuditException[] {
   const result: AuditException[] = [];
+  const checks = normalizeCheckMetadata(
+    period.platform,
+    period.branches ?? [],
+    period.invoice?.checks ?? [],
+  );
 
-  for (const check of period.invoice?.checks ?? []) {
-    // Non-independent checks are evidence/diagnostics, not actionable exceptions.
+  for (const check of checks) {
+    // Exception Center consumes explicit machine metadata only. Display labels
+    // never decide category, identity, branch coverage, or filtering.
     if (!isIndependentEvidence(check.evidence)) continue;
-    if (check.label.includes("فاتورة فقط")) continue;
-    if (isControlOnlyLabel(check.label)) continue;
-    if (hasBranchCoverage(period, check.label)) continue;
+    if (check.invoiceOnly || check.controlOnly || check.coveredByBranches) continue;
 
     const tolerance = toleranceFor(check);
     if (check.invoiced === undefined) {
       result.push(
         makeException(period, {
+          code: check.code,
           sourceLevel: "summary",
           category: "data_missing",
           label: "بيانات فاتورة مفقودة · " + check.label,
@@ -290,8 +310,9 @@ function summaryExceptions(period: StoredPeriod): AuditException[] {
 
     result.push(
       makeException(period, {
+        code: check.code,
         sourceLevel: "summary",
-        category: categoryForLabel(check.label),
+        category: check.category,
         label: check.label,
         computed: check.computed,
         invoiced: check.invoiced,
@@ -309,6 +330,7 @@ function pushBranchVariance(
   result: AuditException[],
   period: StoredPeriod,
   input: {
+    code: string;
     branch: string;
     branchId: string;
     category: ExceptionCategory;
@@ -325,6 +347,7 @@ function pushBranchVariance(
 
   result.push(
     makeException(period, {
+      code: input.code,
       sourceLevel: "branch",
       branch: input.branch,
       branchId: input.branchId,
