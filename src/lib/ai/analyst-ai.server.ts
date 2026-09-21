@@ -7,6 +7,10 @@ import {
   type AnalystChatResult,
   type AnalystHistoryMessage,
 } from "./analyst-ai";
+import {
+  enforceAnalystNumericGrounding,
+  userOnlyAnalystHistory,
+} from "./analyst-grounding";
 import { buildAnalystPresentation } from "./analyst-presentation";
 import { callTadqeeqAi } from "./gateway.server";
 
@@ -187,7 +191,8 @@ async function callAnalyst(
     "حقائق kind=app تشرح الشاشات، معنى كل صفحة، مصدرها، وحدودها. إذا قال المستخدم هذه الصفحة أو هنا، استخدم currentScreen=true وCURRENT_ROUTE لفهم المقصود.",
     "حقائق kind=invoice_check تمثل دفتر مطابقة الفاتورة، kind=daily تمثل الصفوف اليومية الفعلية، kind=breakdown/status تمثل تفصيل البنود وحالات الطلبات، وkind=history تمثل الفترات المحفوظة.",
     "لا تستخدم معرفتك العامة أو رسائل المحادثة السابقة كمصدر لرقم أو حقيقة تخص هذا التدقيق.",
-    "CHAT_HISTORY مخصص فقط لفهم الضمائر والمتابعة والسياق اللغوي.",
+    "CHAT_HISTORY يحتوي فقط رسائل المستخدم السابقة ومخصص لفهم الضمائر والمتابعة والسياق اللغوي.",
+    "أي رقم تكتبه في answer يجب أن يكون موجوداً من حيث القيمة في إحدى الحقائق التي تضع معرفها داخل usedFactIds؛ لا تحسب أو تقرّب أو تستنتج رقماً جديداً.",
     "لا تقم بحساب نسبة أو فرق أو ترتيب أو مجموع جديد. استخدم فقط القيم والترتيبات والدلتا المحسوبة الموجودة في FACT_REGISTRY.",
     "لا تغيّر نتائج التدقيق أو التحمّلات أو حالة الاستثناء أو potentialRecovery.",
     "potentialRecovery مبلغ محتمل فقط وليس استرداداً مؤكداً.",
@@ -271,7 +276,7 @@ async function callAnalyst(
 
   const payload = {
     QUESTION: input.question,
-    CHAT_HISTORY: input.history.slice(-8),
+    CHAT_HISTORY: userOnlyAnalystHistory(input.history),
     SCOPE: {
       platform: context.platform,
       currentRoute: context.currentRoute,
@@ -308,24 +313,32 @@ async function callAnalyst(
     return { response: fallbackUngroundedResponse(), model };
   }
 
-  return {
-    response: {
-      ...parsed,
-      usedFactIds: validIds,
-      presentation: {
-        ...parsed.presentation,
-        factIds: validPresentationIds,
-      },
-      ...(lostReferences
-        ? {
-            limitations: [
-              ...parsed.limitations,
-              "تم تجاهل مراجع أدلة غير موجودة في سجل الحقائق الموثق.",
-            ].slice(0, 5),
-            confidence: parsed.confidence === "high" ? "medium" : parsed.confidence,
-          }
-        : {}),
+  const normalizedResponse: AnalystAiResponse = {
+    ...parsed,
+    usedFactIds: validIds,
+    presentation: {
+      ...parsed.presentation,
+      factIds: validPresentationIds,
     },
+    ...(lostReferences
+      ? {
+          limitations: [
+            ...parsed.limitations,
+            "تم تجاهل مراجع أدلة غير موجودة في سجل الحقائق الموثق.",
+          ].slice(0, 5),
+          confidence: parsed.confidence === "high" ? "medium" : parsed.confidence,
+        }
+      : {}),
+  };
+
+  const groundedResponse = enforceAnalystNumericGrounding(
+    normalizedResponse,
+    factsUsed,
+    fallbackUngroundedResponse(),
+  );
+
+  return {
+    response: groundedResponse,
     model,
   };
 }
