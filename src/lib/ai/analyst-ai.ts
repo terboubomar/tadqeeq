@@ -10,7 +10,7 @@ export type AnalystHistoryMessage = z.infer<typeof analystHistoryMessageSchema>;
 export const analystAiResponseSchema = z.object({
   answerability: z.enum(["grounded", "partial", "not_available"]),
   answer: z.string().min(1).max(2400),
-  usedFactIds: z.array(z.string().regex(/^F\d{3}$/)).max(12),
+  usedFactIds: z.array(z.string().regex(/^F\d{3,5}$/)).max(12),
   presentation: z.object({
     type: z.enum([
       "text",
@@ -23,7 +23,7 @@ export const analystAiResponseSchema = z.object({
       "history_table",
     ]),
     title: z.string().max(160),
-    factIds: z.array(z.string().regex(/^F\d{3}$/)).max(40),
+    factIds: z.array(z.string().regex(/^F\d{3,5}$/)).max(40),
   }),
   limitations: z.array(z.string().min(1).max(500)).max(5),
   followUpSuggestions: z.array(z.string().min(1).max(250)).max(3),
