@@ -26,6 +26,16 @@ export function setSelectedPeriodId(id: string | null) {
   emit();
 }
 
+export function latestPeriod(periods: StoredPeriod[]): StoredPeriod | null {
+  return (
+    [...periods].sort((left, right) => {
+      const endCompare = (right.period_end ?? "").localeCompare(left.period_end ?? "");
+      if (endCompare !== 0) return endCompare;
+      return right.created_at.localeCompare(left.created_at);
+    })[0] ?? null
+  );
+}
+
 export function usePeriods() {
   return useQuery({ queryKey: ["periods"], queryFn: listPeriods });
 }
@@ -39,7 +49,7 @@ export function useSelectedPeriod() {
   );
 
   const selected: StoredPeriod | null =
-    periods.find((period) => period.id === stored) ?? periods[0] ?? null;
+    periods.find((period) => period.id === stored) ?? latestPeriod(periods);
 
   const select = useCallback((id: string) => setSelectedPeriodId(id), []);
 
