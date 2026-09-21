@@ -1,5 +1,7 @@
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_MODEL = "gpt-5.6-luna";
+const DEFAULT_MAX_OUTPUT_TOKENS = 1500;
+const REQUEST_TIMEOUT_MS = 30_000;
 
 interface GatewayCallInput {
   systemPrompt: string;
@@ -12,6 +14,10 @@ interface GatewayCallInput {
 }
 
 interface OpenAiResponse {
+  status?: "completed" | "failed" | "in_progress" | "cancelled" | "queued" | "incomplete";
+  incomplete_details?: {
+    reason?: string;
+  } | null;
   output?: Array<{
     type?: string;
     content?: Array<{
@@ -38,29 +44,18 @@ function extractOutputText(response: OpenAiResponse): string {
   throw new Error("لم يرجع نموذج الذكاء الاصطناعي نتيجة قابلة للقراءة.");
 }
 
-/**
- * Central server-only Tadqeeq AI transport.
- *
- * Uses the OpenAI Responses API directly. This intentionally avoids the
- * Lovable AI Gateway so Tadqeeq AI usage is billed only through the configured
- * OpenAI API account and never consumes Lovable AI credits.
- */
-export async function callTadqeeqAi(
-  input: GatewayCallInput,
-): Promise<{ text: string; model: string }> {
-  const apiKey = process.env["OPENAI_API_KEY"]?.trim();
-  if (!apiKey) {
-    throw new Error(
-      "خدمة Tadqeeq AI غير مفعّلة بعد. أضف OPENAI_API_KEY في أسرار بيئة النشر.",
-    );
-  }
+function nextOutputTokenLimit(current: number): number {
+  return Math.max(current + 1000, current * 2);
+}
 
-  const model =
-    input.model?.trim() ||
-    process.env["TADQEEQ_AI_MODEL"]?.trim() ||
-    DEFAULT_MODEL;
+async function requestOpenAi(
+  input: GatewayCallInput,
+  apiKey: string,
+  model: string,
+  maxOutputTokens: number,
+): Promise<OpenAiResponse> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
     const response = await fetch(OPENAI_RESPONSES_URL, {
@@ -74,7 +69,7 @@ export async function callTadqeeqAi(
         model,
         store: false,
         reasoning: { effort: input.reasoningEffort ?? "low" },
-        max_output_tokens: input.maxOutputTokens ?? 1500,
+        max_output_tokens: maxOutputTokens,
         input: [
           {
             role: "system",
@@ -105,10 +100,7 @@ export async function callTadqeeqAi(
       throw new Error("تعذّر الاتصال بخدمة Tadqeeq AI حالياً.");
     }
 
-    return {
-      text: extractOutputText(payload),
-      model,
-    };
+    return payload;
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error("استغرق Tadqeeq AI وقتاً أطول من المتوقع. حاول مرة أخرى.");
@@ -118,4 +110,69 @@ export async function callTadqeeqAi(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+/**
+ * Central server-only Tadqeeq AI transport.
+ *
+ * Uses the OpenAI Responses API directly. This intentionally avoids the
+ * Lovable AI Gateway so Tadqeeq AI usage is billed only through the configured
+ * OpenAI API account and never consumes Lovable AI credits.
+ */
+export async function callTadqeeqAi(
+  input: GatewayCallInput,
+): Promise<{ text: string; model: string }> {
+  const apiKey = process.env["OPENAI_API_KEY"]?.trim();
+  if (!apiKey) {
+    throw new Error(
+      "خدمة Tadqeeq AI غير مفعّلة بعد. أضف OPENAI_API_KEY في أسرار بيئة النشر.",
+    );
+  }
+
+  const model =
+    input.model?.trim() ||
+    process.env["TADQEEQ_AI_MODEL"]?.trim() ||
+    DEFAULT_MODEL;
+  const initialLimit = input.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS;
+
+  const first = await requestOpenAi(input, apiKey, model, initialLimit);
+
+  if (
+    first.status === "incomplete" &&
+    first.incomplete_details?.reason === "max_output_tokens"
+  ) {
+    const retryLimit = nextOutputTokenLimit(initialLimit);
+    const retry = await requestOpenAi(input, apiKey, model, retryLimit);
+
+    if (
+      retry.status === "incomplete" &&
+      retry.incomplete_details?.reason === "max_output_tokens"
+    ) {
+      throw new Error(
+        "وصل رد Tadqeeq AI إلى الحد الأقصى لطول المخرجات حتى بعد إعادة المحاولة. جرّب سؤالاً أكثر تحديداً.",
+      );
+    }
+
+    if (retry.status === "incomplete") {
+      throw new Error(
+        "لم يتمكن Tadqeeq AI من إكمال الرد. حاول مرة أخرى أو اجعل السؤال أكثر تحديداً.",
+      );
+    }
+
+    return {
+      text: extractOutputText(retry),
+      model,
+    };
+  }
+
+  if (first.status === "incomplete") {
+    throw new Error(
+      "لم يتمكن Tadqeeq AI من إكمال الرد. حاول مرة أخرى أو اجعل السؤال أكثر تحديداً.",
+    );
+  }
+
+  return {
+    text: extractOutputText(first),
+    model,
+  };
 }
