@@ -211,7 +211,7 @@ function assertRequiredOrderColumns(row: Record<string, unknown>): void {
   for (const candidates of required) {
     if (!findKey(row, ...candidates)) {
       throw new ParseError(
-        "عمود مطلوب مفقود في ملف كيتا: " + candidates.join(" / "),
+        "عمود مطلوب مفقود في ورقة Order Summary بملف كيتا: " + candidates.join(" / "),
         undefined,
         {
           platform: "keeta",
