@@ -412,6 +412,91 @@ describe("HungerStation branch identity matching", () => {
     expect(nakheel?.invoiceCommission).toBe(15);
   });
 
+  test("matches one data branch to one unnamed invoice branch without using audited amounts", () => {
+    const result = analyzeHungerStation(buildWorkbook(), {
+      manualBankRate: 0.025,
+      invoice: {
+        lines: [],
+        salesCommission: 27.75,
+        paymentFees: 7.1,
+        othersCommission: 17.5,
+        totalExVat: 52.35,
+        creditSales: 175,
+        rejectedSales: 10,
+        totalOnlineSales: 214.5,
+        branches: [
+          {
+            salesCommission: 27.75,
+            paymentFees: 7.1,
+            walletFee: 1.25,
+            walletFeeBase: 50,
+            otherCommission: 17.5,
+            totalCollections: 214.5,
+            creditSales: 175,
+          },
+        ],
+        walletFee: 1.25,
+        walletFeeBase: 50,
+      },
+    });
+
+    expect(result.branches).toHaveLength(1);
+    const branch = result.branches[0]!;
+    expect(branch.branch).toBe("Branch A");
+    expect(branch.branchAuditStatus).toBe("matched");
+    expect(branch.branchAuditNote).toContain("فرع تشغيلي واحد");
+    expect(branch.invoiceCommission).toBeCloseTo(27.75, 6);
+    expect(branch.invoiceCardPaymentFees).toBeCloseTo(5.85, 6);
+    expect(branch.invoiceOtherCharges).toBeCloseTo(17.5, 6);
+    expect(branch.invoiceCollections).toBeCloseTo(214.5, 6);
+    expect(branch.invoiceCreditSales).toBeCloseTo(175, 6);
+    expect(
+      result.branches.some((row) => row.branch.startsWith("فرع في الفاتورة فقط")),
+    ).toBe(false);
+
+    const period = {
+      id: "hs-singleton-unnamed",
+      label: result.label,
+      platform: result.platform,
+      period_start: result.summary.periodStart,
+      period_end: result.summary.periodEnd,
+      created_at: "2026-09-01T00:00:00Z",
+      summary: result.summary,
+      branches: result.branches,
+      daily: result.daily,
+      invoice: {
+        ...result.invoice,
+        checks: result.checks,
+      },
+    } as StoredPeriod;
+
+    expect(buildPeriodExceptions(period)).toHaveLength(0);
+  });
+
+  test("does not use the singleton fallback when multiple data branches exist", () => {
+    const result = analyzeHungerStation(buildArabicBranchWorkbook(), {
+      manualBankRate: 0.025,
+      invoice: {
+        lines: [],
+        branches: [
+          {
+            salesCommission: 15,
+            paymentFees: 2.5,
+            totalCollections: 100,
+            creditSales: 100,
+          },
+        ],
+      },
+    });
+
+    const operational = result.branches.filter(
+      (row) => row.branchAuditStatus !== "invoice_only",
+    );
+    expect(operational).toHaveLength(2);
+    expect(operational.every((row) => row.branchAuditStatus === "unmatched")).toBe(true);
+    expect(result.branches.some((row) => row.branchAuditStatus === "invoice_only")).toBe(true);
+  });
+
   test("does not match a different branch merely because the audited amounts are identical", () => {
     const result = analyzeHungerStation(buildArabicBranchWorkbook(), {
       manualBankRate: 0.025,
