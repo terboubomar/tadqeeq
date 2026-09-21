@@ -1128,9 +1128,9 @@ export function buildExceptionEvidence(
         definedField("مبيعات الائتمان", "HungerStation PDF · Sales Summary", branch.invoiceCreditSales),
       ]);
     } else if (item.category === "branch_match") {
-      formula = "مطابقة الفرع بواسطة HS Branch ID أولاً ثم هوية/اسم الفرع";
+      formula =
+        "تطبيع اسم الفرع العربي ثم مطابقة الاسم الكامل أولاً، وبعدها احتواء فريد فقط؛ لا تُستخدم المبالغ المالية في تحديد هوية الفرع";
       calculatedSources = compactFields([
-        definedField("HS Branch ID", "HungerStation Excel", branch.branchId),
         definedField("اسم الفرع", "HungerStation Excel", branch.branch),
       ]);
       platformSources = compactFields([

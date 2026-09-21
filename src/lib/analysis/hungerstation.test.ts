@@ -160,6 +160,37 @@ function buildWorkbook(): ArrayBuffer {
   return XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
 }
 
+function buildArabicBranchWorkbook(): ArrayBuffer {
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.json_to_sheet([
+      {
+        Status: "Successful",
+        "Branch Name": "باست - الروضة",
+        "HS Branch ID": 1001,
+        "Payment Type": "Online payment",
+        "Commissionable GMV (VAT Excluded)": 100,
+        Commission: 15,
+        "CC Amount": 100,
+        "Operation Day": "2026-08-01",
+      },
+      {
+        Status: "Successful",
+        "Branch Name": "باست - النخيل",
+        "HS Branch ID": 1002,
+        "Payment Type": "Online payment",
+        "Commissionable GMV (VAT Excluded)": 200,
+        Commission: 30,
+        "CC Amount": 200,
+        "Operation Day": "2026-08-01",
+      },
+    ]),
+    "1 Commissionable GMV",
+  );
+  return XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+}
+
 describe("HungerStation audit rules", () => {
   test("uses the validated status rules and counts only billable RDF orders", () => {
     const result = analyzeHungerStation(buildWorkbook(), {
@@ -347,7 +378,87 @@ describe("HungerStation audit rules", () => {
   });
 });
 
+describe("HungerStation branch identity matching", () => {
+  test("matches Arabic branch names even when audited amounts are swapped", () => {
+    const result = analyzeHungerStation(buildArabicBranchWorkbook(), {
+      manualBankRate: 0.025,
+      invoice: {
+        lines: [],
+        branches: [
+          {
+            branch: "بـاست - الرَّوضة",
+            salesCommission: 30,
+            paymentFees: 5,
+            totalCollections: 200,
+            creditSales: 200,
+          },
+          {
+            branch: "باست - النخيل",
+            salesCommission: 15,
+            paymentFees: 2.5,
+            totalCollections: 100,
+            creditSales: 100,
+          },
+        ],
+      },
+    });
+
+    const rawdah = result.branches.find((row) => row.branch === "باست - الروضة");
+    const nakheel = result.branches.find((row) => row.branch === "باست - النخيل");
+
+    expect(rawdah?.invoiceBranchName).toBe("بـاست - الرَّوضة");
+    expect(rawdah?.invoiceCommission).toBe(30);
+    expect(nakheel?.invoiceBranchName).toBe("باست - النخيل");
+    expect(nakheel?.invoiceCommission).toBe(15);
+  });
+
+  test("does not match a different branch merely because the audited amounts are identical", () => {
+    const result = analyzeHungerStation(buildArabicBranchWorkbook(), {
+      manualBankRate: 0.025,
+      invoice: {
+        lines: [],
+        branches: [
+          {
+            branch: "باست - الشاطئ",
+            salesCommission: 15,
+            paymentFees: 2.5,
+            totalCollections: 100,
+            creditSales: 100,
+          },
+        ],
+      },
+    });
+
+    const rawdah = result.branches.find((row) => row.branch === "باست - الروضة");
+
+    expect(rawdah?.invoiceBranchName).toBeUndefined();
+    expect(rawdah?.branchAuditStatus).toBe("unmatched");
+    expect(rawdah?.branchAuditNote).toContain("اسم فرع");
+  });
+});
+
 describe("HungerStation branch reconciliation", () => {
+  test("preserves an Arabic-only branch name from HungerStation invoice pages", () => {
+    const invoice = parseHungerInvoice(
+      "Sales Commission 15.00 2.25 17.25 " +
+        "Payment Fees 2.50 0.38 2.88 " +
+        "Others Commission 0.00 0.00 0.00 " +
+        "Total Invoice 17.50 2.63 20.13" +
+        "\n" +
+        "Invoice Details باست - الروضة Commissions " +
+        "HS delivery commission 100.00 15.0% 15.00 " +
+        "Successful Bank Fee 100.00 2.5% 2.50 " +
+        "Total Commission 17.50" +
+        "\n" +
+        "Online Payments for branch باست - الروضة " +
+        "Net Bank Cards Payments (100.00) " +
+        "Total Collections (100.00) " +
+        "Credit Sales 1.0 100.00 115.00",
+    );
+
+    expect(invoice.branches?.[0]?.branch).toBe("باست - الروضة");
+  });
+
   test("parses a branch detail pair and reconciles it to the Excel branch", () => {
     const invoice = parseHungerInvoice(
       "Sales Commission 27.75 4.16 31.91 " +

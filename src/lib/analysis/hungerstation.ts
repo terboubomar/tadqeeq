@@ -111,36 +111,43 @@ function isCommissionableOrder(cls: StatusClass): boolean {
 
 function normalizeBranchName(value: string | undefined): string {
   return (value ?? "")
+    .normalize("NFKC")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/ـ/g, "")
+    .replace(/[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed]/g, "")
+    .replace(/[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-function normalizedDifference(left: number | undefined, right: number | undefined): number {
-  if (left === undefined || right === undefined) return 0;
-  return Math.abs(left - right) / Math.max(1, Math.abs(left), Math.abs(right));
-}
-
-function branchMatchScore(row: BranchRow, invoice: HungerInvoiceBranch): number {
+function findInvoiceBranchMatch(
+  row: BranchRow,
+  invoiceBranches: HungerInvoiceBranch[],
+  available: Set<number>,
+): number {
   const rowName = normalizeBranchName(row.branch);
-  const invoiceName = normalizeBranchName(invoice.branch);
-  let namePenalty = 0.6;
-  if (rowName && invoiceName) {
-    if (rowName === invoiceName) namePenalty = 0;
-    else if (rowName.includes(invoiceName) || invoiceName.includes(rowName)) namePenalty = 0.15;
-  } else if (!invoiceName) {
-    namePenalty = 0.25;
-  }
+  if (!rowName) return -1;
 
-  const numericPenalty =
-    normalizedDifference(row.commission, invoice.salesCommission) +
-    normalizedDifference(row.ccSuccess, invoice.bankFeeSuccessBase) +
-    normalizedDifference(row.walletFeeBase, invoice.walletFeeBase) +
-    normalizedDifference(row.rdfCampaigns, invoice.rdfCampaigns) +
-    normalizedDifference(row.totalCollections, invoice.totalCollections);
+  const candidates = [...available]
+    .map((index) => ({
+      index,
+      name: normalizeBranchName(invoiceBranches[index]?.branch),
+    }))
+    .filter((candidate) => candidate.name);
 
-  return namePenalty + numericPenalty;
+  const exact = candidates.filter((candidate) => candidate.name === rowName);
+  if (exact.length === 1) return exact[0]!.index;
+  if (exact.length > 1) return -1;
+
+  const contained = candidates.filter(
+    (candidate) =>
+      candidate.name.includes(rowName) || rowName.includes(candidate.name),
+  );
+  return contained.length === 1 ? contained[0]!.index : -1;
 }
 
 function emptyBranch(branch: string, branchId: string): BranchRow {
@@ -541,36 +548,30 @@ export function analyzeHungerStation(
   const invoice = options.invoice ?? { lines: [] };
   if (options.cpcInvoice?.totalIncVat) invoice.cpc = options.cpcInvoice.totalIncVat;
 
-  // Match parsed branch invoice sections to Excel branches. Name matching is preferred,
-  // while the numeric signature makes the match resilient to spacing/wrapping differences.
+  // Branch identity must be independent from the values being audited.
+  // Match only by normalized name: exact first, then one unambiguous containment match.
   const invoiceBranches = invoice.branches ?? [];
   const unmatchedInvoiceBranches = new Set(invoiceBranches.map((_, index) => index));
 
   for (const row of branchList) {
-    let bestIndex = -1;
-    let bestScore = Number.POSITIVE_INFINITY;
+    const matchedIndex = findInvoiceBranchMatch(
+      row,
+      invoiceBranches,
+      unmatchedInvoiceBranches,
+    );
 
-    for (const index of unmatchedInvoiceBranches) {
-      const candidate = invoiceBranches[index];
-      if (!candidate) continue;
-      const score = branchMatchScore(row, candidate);
-      if (score < bestScore) {
-        bestScore = score;
-        bestIndex = index;
-      }
-    }
-
-    if (bestIndex < 0 || bestScore > 1.25) {
+    if (matchedIndex < 0) {
       if (invoiceBranches.length) {
         row.branchAuditStatus = "unmatched";
         row.branchAuditLabel = "غير مطابق";
-        row.branchAuditNote = "لم يتم العثور على فرع مطابق في صفحات تفاصيل فاتورة هنقرستيشن.";
+        row.branchAuditNote =
+          "لم يتم العثور على اسم فرع مطابق بشكل موثوق في صفحات تفاصيل فاتورة هنقرستيشن.";
       }
       continue;
     }
 
-    const matched = invoiceBranches[bestIndex]!;
-    unmatchedInvoiceBranches.delete(bestIndex);
+    const matched = invoiceBranches[matchedIndex]!;
+    unmatchedInvoiceBranches.delete(matchedIndex);
 
     row.invoiceBranchName = matched.branch;
     row.invoiceCommission = matched.salesCommission;
