@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION public.set_exception_workflow(
   p_exception_id TEXT,
   p_patch JSONB
 )
-RETURNS public.periods
+RETURNS JSONB
 LANGUAGE plpgsql
 VOLATILE
 SECURITY INVOKER
@@ -157,7 +157,7 @@ BEGIN
    WHERE id = p_period_id
   RETURNING * INTO v_period;
 
-  RETURN v_period;
+  RETURN to_jsonb(v_period);
 END;
 $$;
 
