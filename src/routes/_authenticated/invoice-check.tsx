@@ -79,30 +79,30 @@ function InvoiceCheck() {
   const independentlyComparable = checks.filter(
     (check) =>
       headlineLabels.has(check.label) &&
+      check.invoiced !== undefined &&
       (check.evidence === "data" || check.evidence === "contract" || !check.evidence),
   );
   const totalDiff = independentlyComparable.reduce((sum, check) => {
-    const diff = check.invoiced - check.computed;
+    const diff = (check.invoiced ?? check.computed) - check.computed;
     const tolerance = check.tolerance ?? DEFAULT_TOLERANCE;
     return sum + (Math.abs(diff) <= tolerance ? 0 : diff);
   }, 0);
-  const flaggedCount = checks.filter((check) => {
-    if (check.evidence === "invoice_only" || check.evidence === "invoice_derived" || check.evidence === "mixed") {
+  const needsReview = (check: (typeof checks)[number]) => {
+    if (
+      check.evidence === "invoice_only" ||
+      check.evidence === "invoice_derived" ||
+      check.evidence === "mixed"
+    ) {
       return false;
     }
+    if (check.invoiced === undefined) return true;
     return Math.abs(check.invoiced - check.computed) > (check.tolerance ?? DEFAULT_TOLERANCE);
-  }).length;
+  };
+  const flaggedCount = checks.filter(needsReview).length;
   const missingCount = checks.filter(
-    (check) => check.invoiced === 0 && check.evidence !== "invoice_only",
+    (check) => check.invoiced === undefined && check.evidence !== "invoice_only",
   ).length;
-  const visibleChecks = flaggedOnly
-    ? checks.filter((check) => {
-        if (check.evidence === "invoice_only" || check.evidence === "invoice_derived" || check.evidence === "mixed") {
-          return false;
-        }
-        return Math.abs(check.invoiced - check.computed) > (check.tolerance ?? DEFAULT_TOLERANCE);
-      })
-    : checks;
+  const visibleChecks = flaggedOnly ? checks.filter(needsReview) : checks;
 
   return (
     <div className="space-y-6">
@@ -176,9 +176,9 @@ function InvoiceCheck() {
             tone={flaggedCount ? "negative" : "default"}
           />
           <StatCard
-            label="بنود بلا مقابل في الفاتورة"
+            label="بنود لم تُقرأ من الفاتورة"
             value={String(missingCount)}
-            hint="محتسبة من البيانات ولم تُطالب بها المنصة"
+            hint="قيمة المقارنة الرسمية غير متاحة أو لم تُستخرج"
             tone="gold"
           />
           <StatCard
@@ -240,17 +240,21 @@ function InvoiceCheck() {
               const invoiceOnly = evidence === "invoice_only";
               const invoiceDerived = evidence === "invoice_derived";
               const mixed = evidence === "mixed";
-              const diff = check.invoiced - check.computed;
+              const missing = check.invoiced === undefined && !invoiceOnly;
+              const diff =
+                check.invoiced !== undefined ? check.invoiced - check.computed : undefined;
               const tolerance = check.tolerance ?? DEFAULT_TOLERANCE;
               const roundingMatch =
+                diff !== undefined &&
                 check.label === "رسوم الدفع الإلكتروني" &&
                 Math.abs(diff) > 0.005 &&
                 Math.abs(diff) <= tolerance;
-              const missing = check.invoiced === 0 && !invoiceOnly;
-              const over = diff > tolerance;
-              const under = diff < -tolerance;
-              const withinTolerance = !missing && !invoiceOnly && !over && !under;
-              const exactMatch = withinTolerance && Math.abs(diff) <= 0.005;
+              const over = diff !== undefined && diff > tolerance;
+              const under = diff !== undefined && diff < -tolerance;
+              const withinTolerance =
+                diff !== undefined && !invoiceOnly && !over && !under;
+              const exactMatch =
+                withinTolerance && Math.abs(diff) <= 0.005;
               return (
                 <tr
                   key={check.label}
@@ -273,7 +277,9 @@ function InvoiceCheck() {
                     <span className="num">{invoiceOnly ? "—" : money(check.computed)}</span>
                   </td>
                   <td className="whitespace-nowrap border-b border-border/60 px-3.5 py-2.5">
-                    <span className="num">{missing ? "—" : money(check.invoiced)}</span>
+                    <span className={missing ? "text-xs text-muted-foreground" : "num"}>
+                      {missing ? "لم يُقرأ من الفاتورة" : money(check.invoiced ?? 0)}
+                    </span>
                   </td>
                   <td className="whitespace-nowrap border-b border-border/60 px-3.5 py-2.5">
                     {missing || invoiceOnly ? (
@@ -285,7 +291,7 @@ function InvoiceCheck() {
                           over ? "text-destructive" : under ? "text-success" : "text-foreground",
                         )}
                       >
-                        {money(diff)}
+                        {money(diff ?? 0)}
                       </span>
                     )}
                   </td>
@@ -296,7 +302,7 @@ function InvoiceCheck() {
                       </span>
                     ) : missing ? (
                       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <MinusCircle className="size-4" /> غير متاح
+                        <MinusCircle className="size-4" /> بيانات مفقودة
                       </span>
                     ) : mixed && (over || under) ? (
                       <span className="flex items-center gap-1.5 text-xs font-semibold text-warning">

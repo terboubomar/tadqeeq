@@ -420,7 +420,8 @@ export type CheckEvidence =
 export interface CheckRow {
   label: string;
   computed: number;
-  invoiced: number;
+  /** Undefined means the official/source value was not extracted or not supplied. Zero is a valid value. */
+  invoiced?: number;
   /** Describes whether the comparison is independently verifiable or relies on invoice/contract inputs. */
   evidence?: CheckEvidence;
   /** Allowed absolute variance for platform rounding/precision on this check. */

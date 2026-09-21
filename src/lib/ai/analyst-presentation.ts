@@ -226,7 +226,12 @@ function invoiceTable(
       difference: money(fact.data["difference"]),
       tolerance: money(fact.data["tolerance"]),
       evidence: evidenceLabel(fact.data["evidence"]),
-      result: fact.data["withinTolerance"] === true ? "ضمن التسامح" : "يحتاج مراجعة",
+      result:
+        fact.data["missing"] === true
+          ? "لم يُقرأ من الفاتورة"
+          : fact.data["withinTolerance"] === true
+            ? "ضمن التسامح"
+            : "يحتاج مراجعة",
     })),
   };
 }
