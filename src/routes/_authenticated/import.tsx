@@ -31,7 +31,7 @@ import {
   parseKeetaInvoice,
 } from "@/lib/analysis/pdf";
 import type { Platform } from "@/lib/analysis/types";
-import { acquireImportRun, releaseImportRun } from "@/lib/import-run-guard";
+import { acquireImportRun, finishImportRun } from "@/lib/import-run-guard";
 import { DuplicatePeriodError, savePeriod } from "@/lib/periods";
 import { setSelectedPeriodId, usePeriods } from "@/lib/use-period";
 import {
@@ -231,6 +231,7 @@ function ImportPage() {
     if (!acquireImportRun(runLock)) return;
 
     setBusy(true);
+    let savedSuccessfully = false;
     try {
       const dataBuffer = await dataFile.arrayBuffer();
 
@@ -298,6 +299,7 @@ function ImportPage() {
               });
 
       const saved = await savePeriod(result);
+      savedSuccessfully = true;
       setSelectedPeriodId(saved.id);
       await queryClient.invalidateQueries({ queryKey: ["periods"] });
       toast.success(`تم تحليل ${result.branches.length} فرع و${result.daily.length} يوم.`);
@@ -320,8 +322,8 @@ function ImportPage() {
         toast.error(error instanceof Error ? error.message : "تعذّر قراءة الملفات");
       }
     } finally {
-      releaseImportRun(runLock);
-      setBusy(false);
+      finishImportRun(runLock, savedSuccessfully);
+      if (!savedSuccessfully) setBusy(false);
     }
   }
 
