@@ -27,7 +27,7 @@ import {
   parseKeetaInvoice,
 } from "@/lib/analysis/pdf";
 import type { Platform } from "@/lib/analysis/types";
-import { savePeriod } from "@/lib/periods";
+import { DuplicatePeriodError, savePeriod } from "@/lib/periods";
 import { setSelectedPeriodId, usePeriods } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
 
@@ -257,7 +257,21 @@ function ImportPage() {
       navigate({ to: "/dashboard" });
     } catch (error) {
       console.error(error);
-      toast.error(error instanceof Error ? error.message : "تعذّر قراءة الملفات");
+
+      if (error instanceof DuplicatePeriodError) {
+        toast.error(error.message, {
+          description: "يمكنك فتح الفترة المحفوظة بدلاً من إنشاء نسخة مكررة.",
+          action: {
+            label: "فتح الفترة",
+            onClick: () => {
+              setSelectedPeriodId(error.existingPeriodId);
+              navigate({ to: "/dashboard" });
+            },
+          },
+        });
+      } else {
+        toast.error(error instanceof Error ? error.message : "تعذّر قراءة الملفات");
+      }
     } finally {
       setBusy(false);
     }

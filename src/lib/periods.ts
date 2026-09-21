@@ -20,6 +20,46 @@ export interface StoredPeriod {
   };
 }
 
+export class DuplicatePeriodError extends Error {
+  readonly existingPeriodId: string;
+  readonly platform: StoredPeriod["platform"];
+  readonly periodStart: string;
+  readonly periodEnd: string;
+
+  constructor(input: {
+    existingPeriodId: string;
+    platform: StoredPeriod["platform"];
+    periodStart: string;
+    periodEnd: string;
+  }) {
+    super("هذه الفترة محفوظة مسبقاً");
+    this.name = "DuplicatePeriodError";
+    this.existingPeriodId = input.existingPeriodId;
+    this.platform = input.platform;
+    this.periodStart = input.periodStart;
+    this.periodEnd = input.periodEnd;
+  }
+}
+
+export function samePeriodRange(
+  period: Pick<StoredPeriod, "platform" | "period_start" | "period_end">,
+  input: {
+    platform: StoredPeriod["platform"];
+    periodStart: string | null;
+    periodEnd: string | null;
+  },
+): boolean {
+  return Boolean(
+    input.periodStart &&
+      input.periodEnd &&
+      period.period_start &&
+      period.period_end &&
+      period.platform === input.platform &&
+      period.period_start === input.periodStart &&
+      period.period_end === input.periodEnd,
+  );
+}
+
 export async function listPeriods(): Promise<StoredPeriod[]> {
   const { data, error } = await supabase
     .from("periods")
@@ -39,6 +79,30 @@ export async function savePeriod(result: AnalysisResult): Promise<StoredPeriod> 
   const { data: auth } = await supabase.auth.getUser();
   const userId = auth.user?.id;
   if (!userId) throw new Error("الجلسة منتهية، يرجى تسجيل الدخول مرة أخرى.");
+
+  const periodStart = result.summary.periodStart;
+  const periodEnd = result.summary.periodEnd;
+
+  if (periodStart && periodEnd) {
+    const { data: existing, error: duplicateError } = await supabase
+      .from("periods")
+      .select("id, platform, period_start, period_end")
+      .eq("platform", result.platform)
+      .eq("period_start", periodStart)
+      .eq("period_end", periodEnd)
+      .limit(1)
+      .maybeSingle();
+
+    if (duplicateError) throw new Error(duplicateError.message);
+    if (existing) {
+      throw new DuplicatePeriodError({
+        existingPeriodId: existing.id,
+        platform: result.platform,
+        periodStart,
+        periodEnd,
+      });
+    }
+  }
 
   const { data, error } = await supabase
     .from("periods")
