@@ -535,19 +535,22 @@ function addExceptionFacts(
 function addInvoiceCheckFacts(builder: FactBuilder, period: StoredPeriod) {
   const checks = period.invoice?.checks ?? [];
   for (const check of checks) {
-    const difference = check.invoiced - check.computed;
+    const missing = check.invoiced === undefined;
+    const difference = missing ? null : check.invoiced! - check.computed;
     const tolerance = check.tolerance ?? 1;
     builder.add(
       "invoice_check",
       "مطابقة فاتورة · " + check.label,
-      money(difference),
+      missing ? "لم يُقرأ من الفاتورة" : money(difference),
       {
         label: check.label,
         computed: check.computed,
-        invoiced: check.invoiced,
+        invoiced: check.invoiced ?? null,
         difference,
         tolerance,
-        withinTolerance: Math.abs(difference) <= tolerance,
+        missing,
+        withinTolerance:
+          difference !== null ? Math.abs(difference) <= tolerance : null,
         evidence: check.evidence ?? "data",
         hint: check.hint ?? null,
       },
