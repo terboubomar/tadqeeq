@@ -172,6 +172,41 @@ describe("Exception Center", () => {
     expect(after[0]?.note).toBe("stable workflow");
   });
 
+  test("data-missing exceptions never inflate amount under review", () => {
+    const period = hungerPeriod();
+    period.branches = [];
+    period.invoice.checks = [
+      {
+        code: "HS_SALES_COMMISSION",
+        category: "commission",
+        label: "عمولة المبيعات",
+        computed: 125000,
+        invoiced: undefined,
+        evidence: "data",
+        tolerance: 0.05,
+      },
+      {
+        code: "HS_CARD_PAYMENT_FEES",
+        category: "payment_fee",
+        label: "رسوم الدفع",
+        computed: 100,
+        invoiced: 112,
+        evidence: "contract",
+        tolerance: 0.1,
+      },
+    ];
+
+    const exceptions = buildPeriodExceptions(period);
+    const missing = exceptions.find((item) => item.category === "data_missing");
+    const summary = summarizeExceptions(exceptions);
+
+    expect(missing).toBeDefined();
+    expect(missing?.reviewAmount).toBe(0);
+    expect(missing?.potentialRecovery).toBe(0);
+    expect(summary.underReview).toBeCloseTo(12, 6);
+    expect(summary.potentialRecovery).toBeCloseTo(12, 6);
+  });
+
   test("does not turn an invoice-only fixed-charge branch into a branch mismatch exception", () => {
     const period = hungerPeriod();
     period.branches.push({
