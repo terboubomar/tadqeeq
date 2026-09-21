@@ -48,6 +48,8 @@ export interface ExceptionEvidenceTrail {
 export interface AuditException {
   id: string;
   code: string;
+  /** Transitional old label-hash key, present only when workflow state still lives there. */
+  legacyId?: string;
   periodId: string;
   periodLabel: string;
   platform: StoredPeriod["platform"];
@@ -234,11 +236,15 @@ function makeException(
     input.label,
     input.branchId,
   );
-  const workflow = workflowFor(period, id, legacyId);
+  const directWorkflow = workflowFor(period, id);
+  const legacyWorkflow =
+    legacyId !== id ? workflowFor(period, legacyId) : undefined;
+  const workflow = directWorkflow ?? legacyWorkflow;
 
   return {
     id,
     code: input.code,
+    legacyId: !directWorkflow && legacyWorkflow ? legacyId : undefined,
     periodId: period.id,
     periodLabel: period.label,
     platform: period.platform,
