@@ -15,6 +15,13 @@
       "when": 1789956673789,
       "tag": "0001_add_reserve_ai_call",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790034625740,
+      "tag": "0002_scope_period_duplicates_by_label",
+      "breakpoints": true
     }
   ]
 }
