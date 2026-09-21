@@ -438,6 +438,27 @@ describe("HungerStation branch identity matching", () => {
 });
 
 describe("HungerStation branch reconciliation", () => {
+  test("preserves an Arabic-only branch name from HungerStation invoice pages", () => {
+    const invoice = parseHungerInvoice(
+      "Sales Commission 15.00 2.25 17.25 " +
+        "Payment Fees 2.50 0.38 2.88 " +
+        "Others Commission 0.00 0.00 0.00 " +
+        "Total Invoice 17.50 2.63 20.13" +
+        "\n" +
+        "Invoice Details باست - الروضة Commissions " +
+        "HS delivery commission 100.00 15.0% 15.00 " +
+        "Successful Bank Fee 100.00 2.5% 2.50 " +
+        "Total Commission 17.50" +
+        "\n" +
+        "Online Payments for branch باست - الروضة " +
+        "Net Bank Cards Payments (100.00) " +
+        "Total Collections (100.00) " +
+        "Credit Sales 1.0 100.00 115.00",
+    );
+
+    expect(invoice.branches?.[0]?.branch).toBe("باست - الروضة");
+  });
+
   test("parses a branch detail pair and reconciles it to the Excel branch", () => {
     const invoice = parseHungerInvoice(
       "Sales Commission 27.75 4.16 31.91 " +
