@@ -129,11 +129,9 @@ export async function deletePeriod(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-export async function updateExceptionWorkflow(
-  periodId: string,
-  exceptionId: string,
+export function workflowPatchForRpc(
   patch: Partial<ExceptionWorkflowEntry>,
-): Promise<StoredPeriod> {
+): Json {
   const workflowPatch: Record<string, Json> = {};
 
   if (patch.status !== undefined) workflowPatch["status"] = patch.status;
@@ -142,6 +140,14 @@ export async function updateExceptionWorkflow(
     workflowPatch["recoveredAmount"] = patch.recoveredAmount;
   }
 
+  return workflowPatch as Json;
+}
+
+export async function updateExceptionWorkflow(
+  periodId: string,
+  exceptionId: string,
+  patch: Partial<ExceptionWorkflowEntry>,
+): Promise<StoredPeriod> {
   type WorkflowRpcClient = {
     rpc: (
       fn: "set_exception_workflow",
@@ -160,7 +166,7 @@ export async function updateExceptionWorkflow(
   const { data, error } = await workflowClient.rpc("set_exception_workflow", {
     p_period_id: periodId,
     p_exception_id: exceptionId,
-    p_patch: workflowPatch as Json,
+    p_patch: workflowPatchForRpc(patch),
   });
 
   if (error) {
