@@ -904,8 +904,33 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     keetaAvgOrderValueInclVat: summaryAverage(grossSales, sum((row) => row.orders)),
   };
 
+  const excelInvoiceCoveredByBranches = branchList.some(
+    (branch) => branch.keetaExcelInvoiceAmount !== undefined,
+  );
+  const excelPayableCoveredByBranches = branchList.some(
+    (branch) => branch.keetaExcelPayable !== undefined,
+  );
+  const pdfCommissionCoveredByBranches = branchList.some(
+    (branch) => branch.keetaPdfOrderCommissionInclVat !== undefined,
+  );
+  const pdfBankFeesCoveredByBranches = branchList.some(
+    (branch) => branch.keetaPdfBankCommissionInclVat !== undefined,
+  );
+  const pdfDeliveryCoveredByBranches = branchList.some(
+    (branch) => branch.keetaPdfDeliveryCommissionInclVat !== undefined,
+  );
+  const pdfCreditSalesCoveredByBranches = branchList.some(
+    (branch) => branch.keetaPdfCreditSales !== undefined,
+  );
+  const pdfNetDueCoveredByBranches = branchList.some(
+    (branch) => branch.keetaPdfNetDue !== undefined,
+  );
+
   const checks: CheckRow[] = [
     {
+      code: "KEETA_ORDER_SUMMARY_PAYABLE",
+      category: "settlement",
+      coveredByBranches: excelPayableCoveredByBranches,
       label: "صافي التسوية مقابل Order Summary Payable",
       computed: calculatedPayable,
       invoiced: sourcePayable,
@@ -918,6 +943,9 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
 
   if (invoice.keetaExcelInvoiceAmount !== undefined) {
     checks.push({
+      code: "KEETA_EXCEL_INVOICE_AMOUNT",
+      category: "invoice_total",
+      coveredByBranches: excelInvoiceCoveredByBranches,
       label: "Invoice amount مقابل Invoice Details",
       computed: excelInvoiceAmountComputed,
       invoiced: invoice.keetaExcelInvoiceAmount,
@@ -930,6 +958,9 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
 
   if (invoice.keetaExcelPayable !== undefined) {
     checks.push({
+      code: "KEETA_EXCEL_PAYABLE",
+      category: "settlement",
+      coveredByBranches: excelPayableCoveredByBranches,
       label: "صافي المستحق مقابل Invoice Details",
       computed: calculatedPayable,
       invoiced: invoice.keetaExcelPayable,
@@ -942,6 +973,9 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
 
   if (invoice.keetaBillingInvoiceAmount !== undefined) {
     checks.push({
+      code: "KEETA_BILLING_INVOICE_AMOUNT",
+      category: "invoice_total",
+      controlOnly: true,
       label: "Invoice amount مقابل Billing data summary",
       computed: excelInvoiceAmountComputed,
       invoiced: invoice.keetaBillingInvoiceAmount,
@@ -953,6 +987,9 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
 
   if (invoice.keetaBillingPayable !== undefined) {
     checks.push({
+      code: "KEETA_BILLING_PAYABLE",
+      category: "settlement",
+      controlOnly: true,
       label: "صافي المستحق مقابل Billing data summary",
       computed: calculatedPayable,
       invoiced: invoice.keetaBillingPayable,
@@ -964,6 +1001,9 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
 
   if (invoice.salesCommission !== undefined) {
     checks.push({
+      code: "KEETA_ORDER_COMMISSION",
+      category: "commission",
+      coveredByBranches: pdfCommissionCoveredByBranches,
       label: "عمولة الطلب",
       computed: summary.keetaCommissionExVat ?? 0,
       invoiced: invoice.salesCommission,
@@ -974,6 +1014,9 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
   }
   if (invoice.paymentFees !== undefined) {
     checks.push({
+      code: "KEETA_BANK_COMMISSION",
+      category: "payment_fee",
+      coveredByBranches: pdfBankFeesCoveredByBranches,
       label: "الرسوم المصرفية",
       computed: summary.keetaBankFeesExVat ?? 0,
       invoiced: invoice.paymentFees,
@@ -984,6 +1027,9 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
   }
   if (invoice.othersCommission !== undefined) {
     checks.push({
+      code: "KEETA_DELIVERY_COMMISSION",
+      category: "delivery_campaign",
+      coveredByBranches: pdfDeliveryCoveredByBranches,
       label: "عمولات أخرى - دعم توصيل كيتا",
       computed: summary.keetaDeliveryCampaignExVat ?? 0,
       invoiced: invoice.othersCommission,
@@ -994,6 +1040,9 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
   }
   if (invoice.totalExVat !== undefined) {
     checks.push({
+      code: "KEETA_COMMISSION_INVOICE_EX_VAT",
+      category: "invoice_total",
+      controlOnly: true,
       label: "إجمالي فاتورة العمولة بدون الضريبة",
       computed: commissionInvoiceExVat,
       invoiced: invoice.totalExVat,
@@ -1004,6 +1053,9 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
   }
   if (invoice.totalIncVat !== undefined) {
     checks.push({
+      code: "KEETA_COMMISSION_INVOICE_INCL_VAT",
+      category: "invoice_total",
+      controlOnly: true,
       label: "إجمالي فاتورة العمولة شامل الضريبة",
       computed: commissionInvoiceInclVat,
       invoiced: invoice.totalIncVat,
@@ -1013,6 +1065,9 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
   }
   if (invoice.creditSales !== undefined) {
     checks.push({
+      code: "KEETA_CREDIT_SALES",
+      category: "sales",
+      coveredByBranches: pdfCreditSalesCoveredByBranches,
       label: "إجمالي البيع الآجل",
       computed: creditSales,
       invoiced: invoice.creditSales,
@@ -1023,6 +1078,9 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
   }
   if (invoice.netDue !== undefined) {
     checks.push({
+      code: "KEETA_PDF_NET_DUE",
+      category: "settlement",
+      coveredByBranches: pdfNetDueCoveredByBranches,
       label: "صافي المستحق مقابل فاتورة كيتا",
       computed: calculatedPayable,
       invoiced: Math.abs(invoice.netDue),
@@ -1033,6 +1091,8 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
   }
   if (invoice.keetaMerchantSubsidyItems !== undefined) {
     checks.push({
+      code: "KEETA_MERCHANT_ITEM_SUBSIDY",
+      category: "campaign",
       label: "إعانة التاجر على الأصناف",
       computed: -((summary.keetaProductCampaignExVat ?? 0) * VAT_FACTOR),
       invoiced: invoice.keetaMerchantSubsidyItems,
@@ -1042,6 +1102,8 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
   }
   if (invoice.keetaAdvertisingCosts !== undefined) {
     checks.push({
+      code: "KEETA_ADVERTISING_COSTS",
+      category: "advertising",
       label: "تكاليف الإعلانات",
       computed: -((summary.keetaMerchantAdExVat ?? 0) * VAT_FACTOR),
       invoiced: invoice.keetaAdvertisingCosts,
@@ -1051,6 +1113,8 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
   }
   if (invoice.keetaPosMachineFees !== undefined) {
     checks.push({
+      code: "KEETA_POS_FEES",
+      category: "pos_fee",
       label: "رسوم أجهزة POS",
       computed: -((summary.keetaPosFeesExVat ?? 0) * VAT_FACTOR),
       invoiced: invoice.keetaPosMachineFees,
@@ -1063,6 +1127,9 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     const netTaxInvoiceExVat =
       invoice.keetaTaxInvoiceExVat - (invoice.keetaTaxCreditNoteExVat ?? 0);
     checks.push({
+      code: "KEETA_TAX_INVOICE_NET_EX_VAT",
+      category: "invoice_total",
+      controlOnly: true,
       label: "صافي الفاتورة الضريبية بدون الضريبة",
       computed: commissionInvoiceExVat + merchantAdExVat,
       invoiced: netTaxInvoiceExVat,
@@ -1077,6 +1144,9 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     const netTaxInvoiceInclVat =
       invoice.keetaTaxInvoiceInclVat - (invoice.keetaTaxCreditNoteInclVat ?? 0);
     checks.push({
+      code: "KEETA_TAX_INVOICE_NET_INCL_VAT",
+      category: "invoice_total",
+      controlOnly: true,
       label: "صافي الفاتورة الضريبية شامل الضريبة",
       computed: commissionInvoiceInclVat + merchantAdExVat * VAT_FACTOR,
       invoiced: netTaxInvoiceInclVat,

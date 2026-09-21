@@ -1,4 +1,5 @@
-import type { CheckEvidence, CheckRow } from "./analysis/types";
+import { normalizeCheckMetadata } from "./analysis/check-metadata";
+import type { CheckCategory, CheckEvidence, CheckRow } from "./analysis/types";
 import type { StoredPeriod } from "./periods";
 
 export type ExceptionStatus =
@@ -11,25 +12,7 @@ export type ExceptionStatus =
 
 export type ExceptionSeverity = "critical" | "high" | "medium" | "low";
 
-export type ExceptionCategory =
-  | "commission"
-  | "payment_fee"
-  | "other_fee"
-  | "delivery_campaign"
-  | "campaign"
-  | "advertising"
-  | "pos_fee"
-  | "sales"
-  | "rejected_sales"
-  | "collections"
-  | "settlement"
-  | "compensation"
-  | "tax"
-  | "invoice_total"
-  | "unsupported_charge"
-  | "branch_match"
-  | "data_missing"
-  | "other";
+export type ExceptionCategory = CheckCategory | "branch_match" | "data_missing";
 
 export interface ExceptionWorkflowEvent {
   at: string;
@@ -64,6 +47,9 @@ export interface ExceptionEvidenceTrail {
 
 export interface AuditException {
   id: string;
+  code: string;
+  /** Transitional old label-hash key, present only when workflow state still lives there. */
+  legacyId?: string;
   periodId: string;
   periodLabel: string;
   platform: StoredPeriod["platform"];
@@ -136,7 +122,17 @@ function hashString(value: string): string {
   return (hash >>> 0).toString(36);
 }
 
-function exceptionId(
+export function stableExceptionId(
+  periodId: string,
+  level: "summary" | "branch",
+  code: string,
+  branchId?: string,
+): string {
+  return `ex_${hashString([periodId, level, code, branchId ?? ""].join("|"))}`;
+}
+
+/** Legacy label-based ID used only by the one-off workflow migration/fallback. */
+export function legacyExceptionId(
   periodId: string,
   level: "summary" | "branch",
   category: ExceptionCategory,
@@ -144,50 +140,6 @@ function exceptionId(
   branchId?: string,
 ): string {
   return `ex_${hashString([periodId, level, category, branchId ?? "", label].join("|"))}`;
-}
-
-function categoryForLabel(label: string): ExceptionCategory {
-  if (
-    label.includes("عمولة المبيعات") ||
-    label.includes("عمولة الطلب") ||
-    label.includes("عمولة جاهز")
-  ) return "commission";
-  if (
-    label.includes("رسوم الدفع") ||
-    label.includes("رسوم مدفوعات") ||
-    label.includes("الرسوم المصرفية")
-  ) return "payment_fee";
-  if (label.includes("تعويض")) return "compensation";
-  if (label.includes("عروض التوصيل")) return "delivery_campaign";
-  if (label.includes("عمولات أخرى")) {
-    return label.includes("توصيل") ? "delivery_campaign" : "other_fee";
-  }
-  if (label.includes("إعانة") || label.includes("حملة")) return "campaign";
-  if (label.includes("الإعلانات")) return "advertising";
-  if (label.includes("POS")) return "pos_fee";
-  if (label.includes("مرفوض")) return "rejected_sales";
-  if (label.includes("مبيعات") || label.includes("البيع الآجل")) return "sales";
-  if (label.includes("التحصيلات")) return "collections";
-  if (label.includes("Invoice amount")) return "invoice_total";
-  if (label.includes("صافي المستحق") || label.includes("التسوية")) return "settlement";
-  return "other";
-}
-
-/**
- * Exception Center is an action queue, not a second copy of Invoice Check.
- * Aggregate controls stay in Invoice Check and must not become cases on their own.
- */
-function isControlOnlyLabel(label: string): boolean {
-  return (
-    label.includes("إجمالي الفاتورة") ||
-    label.includes("إجمالي فاتورة العمولة") ||
-    label.includes("صافي الفاتورة الضريبية") ||
-    label.includes("اتساق صافي المستحق") ||
-    label.includes("رسوم مدفوعات المحافظ") ||
-    label.includes("Billing data summary") ||
-    label.includes("إجمالي فاتورة جاهز") ||
-    label.includes("ضريبة فاتورة جاهز")
-  );
 }
 
 function isIndependentEvidence(evidence: CheckEvidence | undefined): boolean {
@@ -234,13 +186,21 @@ function recoveryFor(
   return 0;
 }
 
-function workflowFor(period: StoredPeriod, id: string): ExceptionWorkflowEntry | undefined {
-  return period.invoice?.exceptionWorkflow?.[id];
+function workflowFor(
+  period: StoredPeriod,
+  id: string,
+  legacyId?: string,
+): ExceptionWorkflowEntry | undefined {
+  return (
+    period.invoice?.exceptionWorkflow?.[id] ??
+    (legacyId ? period.invoice?.exceptionWorkflow?.[legacyId] : undefined)
+  );
 }
 
 function makeException(
   period: StoredPeriod,
   input: {
+    code: string;
     sourceLevel: "summary" | "branch";
     branch?: string;
     branchId?: string;
@@ -263,17 +223,28 @@ function makeException(
   const reviewAmount =
     input.forceReviewAmount ??
     (difference !== undefined ? Math.abs(difference) : Math.abs(invoiced ?? computed ?? 0));
-  const id = exceptionId(
+  const id = stableExceptionId(
+    period.id,
+    input.sourceLevel,
+    input.code,
+    input.branchId,
+  );
+  const legacyId = legacyExceptionId(
     period.id,
     input.sourceLevel,
     input.category,
     input.label,
     input.branchId,
   );
-  const workflow = workflowFor(period, id);
+  const directWorkflow = workflowFor(period, id);
+  const legacyWorkflow =
+    legacyId !== id ? workflowFor(period, legacyId) : undefined;
+  const workflow = directWorkflow ?? legacyWorkflow;
 
   return {
     id,
+    code: input.code,
+    legacyId: !directWorkflow && legacyWorkflow ? legacyId : undefined,
     periodId: period.id,
     periodLabel: period.label,
     platform: period.platform,
@@ -305,75 +276,25 @@ function makeException(
   };
 }
 
-function hasBranchCoverage(period: StoredPeriod, label: string): boolean {
-  const branches = period.branches ?? [];
-  if (!branches.length) return false;
-
-  if (period.platform === "hungerstation") {
-    if (label.includes("عمولة المبيعات")) {
-      return branches.some((branch) => branch.invoiceCommission !== undefined);
-    }
-    if (label.includes("رسوم الدفع الإلكتروني")) {
-      return branches.some((branch) => branch.invoicePaymentFees !== undefined);
-    }
-    if (label.includes("عمولات أخرى")) {
-      return branches.some((branch) => branch.invoiceOtherCharges !== undefined);
-    }
-    if (label.includes("مبيعات الائتمان")) {
-      return branches.some(
-        (branch) =>
-          branch.invoiceCreditSales !== undefined ||
-          branch.branchAuditNote?.includes("ملخص مبيعات الفرع مفقود"),
-      );
-    }
-    if (label.includes("إجمالي التحصيلات")) {
-      return branches.some((branch) => branch.invoiceCollections !== undefined);
-    }
-    return false;
-  }
-
-  if (label === "عمولة الطلب") {
-    return branches.some((branch) => branch.keetaPdfOrderCommissionInclVat !== undefined);
-  }
-  if (label === "الرسوم المصرفية") {
-    return branches.some((branch) => branch.keetaPdfBankCommissionInclVat !== undefined);
-  }
-  if (label.includes("عمولات أخرى")) {
-    return branches.some((branch) => branch.keetaPdfDeliveryCommissionInclVat !== undefined);
-  }
-  if (label === "إجمالي البيع الآجل") {
-    return branches.some((branch) => branch.keetaPdfCreditSales !== undefined);
-  }
-  if (label === "صافي المستحق مقابل فاتورة كيتا") {
-    return branches.some((branch) => branch.keetaPdfNetDue !== undefined);
-  }
-  if (label === "Invoice amount مقابل Invoice Details") {
-    return branches.some((branch) => branch.keetaExcelInvoiceAmount !== undefined);
-  }
-  if (label === "صافي المستحق مقابل Invoice Details") {
-    return branches.some((branch) => branch.keetaExcelPayable !== undefined);
-  }
-  if (label === "صافي التسوية مقابل Order Summary Payable") {
-    return branches.some((branch) => branch.keetaExcelPayable !== undefined);
-  }
-
-  return false;
-}
-
 function summaryExceptions(period: StoredPeriod): AuditException[] {
   const result: AuditException[] = [];
+  const checks = normalizeCheckMetadata(
+    period.platform,
+    period.branches ?? [],
+    period.invoice?.checks ?? [],
+  );
 
-  for (const check of period.invoice?.checks ?? []) {
-    // Non-independent checks are evidence/diagnostics, not actionable exceptions.
+  for (const check of checks) {
+    // Exception Center consumes explicit machine metadata only. Display labels
+    // never decide category, identity, branch coverage, or filtering.
     if (!isIndependentEvidence(check.evidence)) continue;
-    if (check.label.includes("فاتورة فقط")) continue;
-    if (isControlOnlyLabel(check.label)) continue;
-    if (hasBranchCoverage(period, check.label)) continue;
+    if (check.invoiceOnly || check.controlOnly || check.coveredByBranches) continue;
 
     const tolerance = toleranceFor(check);
     if (check.invoiced === undefined) {
       result.push(
         makeException(period, {
+          code: check.code,
           sourceLevel: "summary",
           category: "data_missing",
           label: "بيانات فاتورة مفقودة · " + check.label,
@@ -395,8 +316,9 @@ function summaryExceptions(period: StoredPeriod): AuditException[] {
 
     result.push(
       makeException(period, {
+        code: check.code,
         sourceLevel: "summary",
-        category: categoryForLabel(check.label),
+        category: check.category,
         label: check.label,
         computed: check.computed,
         invoiced: check.invoiced,
@@ -414,6 +336,7 @@ function pushBranchVariance(
   result: AuditException[],
   period: StoredPeriod,
   input: {
+    code: string;
     branch: string;
     branchId: string;
     category: ExceptionCategory;
@@ -430,6 +353,7 @@ function pushBranchVariance(
 
   result.push(
     makeException(period, {
+      code: input.code,
       sourceLevel: "branch",
       branch: input.branch,
       branchId: input.branchId,
@@ -496,6 +420,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       branch: branch.branch,
       branchId: branch.branchId,
       category: "commission",
+      code: "HS_BRANCH_COMMISSION_VARIANCE",
       label: "فرق عمولة الفرع",
       computed: branch.commission,
       invoiced: branch.invoiceCommission,
@@ -505,6 +430,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       branch: branch.branch,
       branchId: branch.branchId,
       category: "payment_fee",
+      code: "HS_BRANCH_CARD_FEE_VARIANCE",
       label: "فرق رسوم الدفع بالبطاقات للفرع",
       computed: paymentComputed,
       invoiced: invoiceCardPaymentFees,
@@ -514,6 +440,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       branch: branch.branch,
       branchId: branch.branchId,
       category: "other_fee",
+      code: "HS_BRANCH_OTHER_FEES_VARIANCE",
       label: "فرق الرسوم الأخرى للفرع",
       computed: otherComputed,
       invoiced: otherInvoiced,
@@ -523,6 +450,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       branch: branch.branch,
       branchId: branch.branchId,
       category: "collections",
+      code: "HS_BRANCH_COLLECTIONS_VARIANCE",
       label: "فرق تحصيلات الفرع",
       computed: branch.totalCollections,
       invoiced: branch.invoiceCollections,
@@ -532,6 +460,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       branch: branch.branch,
       branchId: branch.branchId,
       category: "sales",
+      code: "HS_BRANCH_CREDIT_SALES_VARIANCE",
       label: "فرق مبيعات الائتمان للفرع",
       computed: branch.creditSales,
       invoiced: branch.invoiceCreditSales,
@@ -551,6 +480,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
     ) {
       result.push(
         makeException(period, {
+          code: "HS_BRANCH_MATCH",
           sourceLevel: "branch",
           branch: branch.branch,
           branchId: branch.branchId,
@@ -588,6 +518,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         branch: branch.branch,
         branchId: branch.branchId,
         category: "commission",
+        code: "KEETA_BRANCH_ORDER_COMMISSION_VARIANCE",
         label: "فرق عمولة الطلب للفرع",
         computed:
           branch.keetaPdfOrderCommissionInclVat !== undefined &&
@@ -601,6 +532,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         branch: branch.branch,
         branchId: branch.branchId,
         category: "payment_fee",
+        code: "KEETA_BRANCH_BANK_FEE_VARIANCE",
         label: "فرق الرسوم المصرفية للفرع",
         computed:
           branch.keetaPdfBankCommissionInclVat !== undefined &&
@@ -614,6 +546,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         branch: branch.branch,
         branchId: branch.branchId,
         category: "delivery_campaign",
+        code: "KEETA_BRANCH_DELIVERY_VARIANCE",
         label: "فرق دعم توصيل كيتا للفرع",
         computed:
           branch.keetaPdfDeliveryCommissionInclVat !== undefined &&
@@ -627,6 +560,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         branch: branch.branch,
         branchId: branch.branchId,
         category: "sales",
+        code: "KEETA_BRANCH_CREDIT_SALES_VARIANCE",
         label: "فرق البيع الآجل للفرع",
         computed: branch.keetaCreditSales,
         invoiced: branch.keetaPdfCreditSales,
@@ -636,6 +570,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         branch: branch.branch,
         branchId: branch.branchId,
         category: "settlement",
+        code: "KEETA_BRANCH_NET_DUE_VARIANCE",
         label: "فرق صافي مستحق الفرع",
         computed: branch.netSales,
         invoiced: branch.keetaPdfNetDue,
@@ -650,6 +585,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         branch: branch.branch,
         branchId: branch.branchId,
         category: "settlement",
+        code: "KEETA_BRANCH_PAYABLE_VARIANCE",
         label: "فرق Payable للفرع",
         computed: branch.netSales,
         invoiced: branch.keetaExcelPayable,
@@ -667,6 +603,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
           branch: branch.branch,
           branchId: branch.branchId,
           category: "invoice_total",
+          code: "KEETA_BRANCH_INVOICE_AMOUNT_VARIANCE",
           label: "فرق Invoice amount للفرع",
           computed:
             (branch.keetaCommissionInvoiceInclVat ?? 0) +
@@ -691,6 +628,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
             : "مصادر كيتا";
       result.push(
         makeException(period, {
+          code: "KEETA_BRANCH_MATCH",
           sourceLevel: "branch",
           branch: branch.branch,
           branchId: branch.branchId,
@@ -720,6 +658,7 @@ function jahezCompensationExceptions(period: StoredPeriod): AuditException[] {
   if (Math.abs(debitDifference) > 0.01) {
     result.push(
       makeException(period, {
+        code: "JAHEZ_COMPENSATION_DEBIT_MISMATCH",
         sourceLevel: "summary",
         category: "compensation",
         label: "عدم اتساق إجمالي خصم التعويضات",
@@ -736,6 +675,7 @@ function jahezCompensationExceptions(period: StoredPeriod): AuditException[] {
   if (Math.abs(creditDifference) > 0.01) {
     result.push(
       makeException(period, {
+        code: "JAHEZ_COMPENSATION_CREDIT_MISMATCH",
         sourceLevel: "summary",
         category: "compensation",
         label: "عدم اتساق إجمالي إضافة التعويضات",
@@ -759,6 +699,7 @@ function jahezCompensationExceptions(period: StoredPeriod): AuditException[] {
     if (transaction.duplicateCandidate) {
       result.push(
         makeException(period, {
+          code: "JAHEZ_COMPENSATION_DUPLICATE",
           sourceLevel: "branch",
           branch: transaction.branch,
           branchId,
@@ -778,6 +719,7 @@ function jahezCompensationExceptions(period: StoredPeriod): AuditException[] {
     if (transaction.match === "unknown") {
       result.push(
         makeException(period, {
+          code: "JAHEZ_COMPENSATION_UNKNOWN_ORDER",
           sourceLevel: "branch",
           branch: transaction.branch,
           branchId: branchId + ":unknown",
@@ -795,6 +737,7 @@ function jahezCompensationExceptions(period: StoredPeriod): AuditException[] {
     if (transaction.branchMismatch) {
       result.push(
         makeException(period, {
+          code: "JAHEZ_COMPENSATION_BRANCH_MISMATCH",
           sourceLevel: "branch",
           branch: transaction.branch,
           branchId: branchId + ":branch",
@@ -950,6 +893,11 @@ export function buildExceptionEvidence(
   period: StoredPeriod,
   item: AuditException,
 ): ExceptionEvidenceTrail {
+  const checks = normalizeCheckMetadata(
+    period.platform,
+    period.branches ?? [],
+    period.invoice?.checks ?? [],
+  );
   const branch =
     period.branches?.find(
       (row) =>
@@ -966,7 +914,7 @@ export function buildExceptionEvidence(
   ]);
 
   if (item.sourceLevel === "summary") {
-    if (period.platform === "keeta" && item.label.includes("صافي التسوية")) {
+    if (period.platform === "keeta" && item.code === "KEETA_ORDER_SUMMARY_PAYABLE") {
       formula = "إجمالي البيع الآجل - فاتورة العمولة شامل الضريبة = صافي التسوية";
       calculatedSources = compactFields([
         definedField("إجمالي البيع الآجل", "Keeta Order Summary", period.summary.keetaCreditSales),
@@ -1042,11 +990,11 @@ export function buildExceptionEvidence(
           ),
         ]);
       } else {
-        const check = period.invoice?.checks?.find((candidate) => candidate.label === item.label);
+        const check = checks.find((candidate) => candidate.code === item.code);
         formula = check?.hint ?? formula;
       }
     } else {
-      const check = period.invoice?.checks?.find((candidate) => candidate.label === item.label);
+      const check = checks.find((candidate) => candidate.code === item.code);
       formula = check?.hint ?? formula;
     }
   } else if (branch && period.platform === "hungerstation") {
@@ -1236,12 +1184,15 @@ export function buildExceptionEvidence(
       ]);
     }
   } else if (period.platform === "jahez" && item.category === "compensation") {
-    const orderId = item.label.match(/طلب\s+(\d+)/)?.[1];
+    const branchParts = item.branchId?.split(":") ?? [];
+    const orderId = branchParts[0] === "jahez-comp" ? branchParts[1] : undefined;
+    const sequence = branchParts[0] === "jahez-comp" ? branchParts[2] : undefined;
     const transaction = period.invoice?.jahezCompensation?.transactions.find(
       (row) =>
         row.orderId === orderId &&
+        row.sequence === sequence &&
         (item.branch ? row.branch === item.branch : true) &&
-        (item.label.includes("تكرار") ? row.duplicateCandidate : true),
+        (item.code === "JAHEZ_COMPENSATION_DUPLICATE" ? row.duplicateCandidate : true),
     );
     if (transaction) {
       formula = "معاملة تعويض جاهز تُراجع مقابل الطلب المصدر وحالة المطابقة والتكرار";

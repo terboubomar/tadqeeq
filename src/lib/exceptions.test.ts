@@ -100,6 +100,78 @@ describe("Exception Center", () => {
     expect(summary.potentialRecovery).toBeCloseTo(20, 6);
   });
 
+  test("keeps exception identity, category and filters stable when display labels change", () => {
+    const period = {
+      id: "stable-check-codes",
+      label: "Stable check metadata",
+      platform: "hungerstation",
+      period_start: "2026-08-01",
+      period_end: "2026-08-31",
+      created_at: "2026-09-01T00:00:00Z",
+      summary: {} as StoredPeriod["summary"],
+      daily: [],
+      branches: [],
+      invoice: {
+        lines: [],
+        checks: [
+          {
+            code: "HS_SALES_COMMISSION",
+            category: "commission",
+            label: "Original commission label",
+            computed: 100,
+            invoiced: 110,
+            evidence: "data",
+            tolerance: 0.05,
+          },
+          {
+            code: "HS_INVOICE_TOTAL_EX_VAT",
+            category: "invoice_total",
+            controlOnly: true,
+            label: "Original control label",
+            computed: 500,
+            invoiced: 900,
+            evidence: "data",
+            tolerance: 0.05,
+          },
+          {
+            code: "HS_INVOICE_ONLY_EXTRA_1",
+            category: "unsupported_charge",
+            invoiceOnly: true,
+            label: "Original invoice-only label",
+            computed: 0,
+            invoiced: 500,
+            evidence: "invoice_only",
+          },
+        ],
+      },
+    } as StoredPeriod;
+
+    const before = buildPeriodExceptions(period);
+    expect(before).toHaveLength(1);
+    const original = before[0]!;
+    expect(original.code).toBe("HS_SALES_COMMISSION");
+    expect(original.category).toBe("commission");
+
+    period.invoice.exceptionWorkflow = {
+      [original.id]: {
+        status: "reviewing",
+        note: "stable workflow",
+      },
+    };
+    period.invoice.checks = period.invoice.checks?.map((check, index) => ({
+      ...check,
+      label: "Renamed UI label " + String(index + 1),
+    }));
+
+    const after = buildPeriodExceptions(period);
+    expect(after).toHaveLength(1);
+    expect(after[0]?.id).toBe(original.id);
+    expect(after[0]?.code).toBe(original.code);
+    expect(after[0]?.category).toBe(original.category);
+    expect(after[0]?.status).toBe("reviewing");
+    expect(after[0]?.note).toBe("stable workflow");
+  });
+
   test("does not turn an invoice-only fixed-charge branch into a branch mismatch exception", () => {
     const period = hungerPeriod();
     period.branches.push({

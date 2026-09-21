@@ -715,8 +715,29 @@ export function analyzeHungerStation(
         ? "invoice_derived"
         : "data";
 
+  const commissionCoveredByBranches = branchList.some(
+    (branch) => branch.invoiceCommission !== undefined,
+  );
+  const paymentCoveredByBranches = branchList.some(
+    (branch) => branch.invoicePaymentFees !== undefined,
+  );
+  const otherFeesCoveredByBranches = branchList.some(
+    (branch) => branch.invoiceOtherCharges !== undefined,
+  );
+  const creditSalesCoveredByBranches = branchList.some(
+    (branch) =>
+      branch.invoiceCreditSales !== undefined ||
+      branch.branchAuditNote?.includes("ملخص مبيعات الفرع مفقود"),
+  );
+  const collectionsCoveredByBranches = branchList.some(
+    (branch) => branch.invoiceCollections !== undefined,
+  );
+
   const checks: CheckRow[] = [
     {
+      code: "HS_SALES_COMMISSION",
+      category: "commission",
+      coveredByBranches: commissionCoveredByBranches,
       label: "عمولة المبيعات",
       computed: summary.commission,
       invoiced: invoice.salesCommission,
@@ -724,6 +745,9 @@ export function analyzeHungerStation(
       hint: "مجموع عمود العمولة للطلبات الناجحة والفاشلة بعد الاستلام والمرفوضة.",
     },
     {
+      code: "HS_CARD_PAYMENT_FEES",
+      category: "payment_fee",
+      coveredByBranches: paymentCoveredByBranches,
       label: "رسوم الدفع الإلكتروني القابلة للتحقق (البطاقات)",
       computed: cardPaymentFeesComputed,
       invoiced: invoiceCardPaymentFees,
@@ -735,6 +759,9 @@ export function analyzeHungerStation(
           : "تم استنتاج نسبة البطاقات بعد استبعاد Wallet Payments Fee الوارد في الفاتورة؛ النتيجة تشخيصية وليست تحققاً مستقلاً.",
     },
     {
+      code: "HS_OTHER_COMMISSION_DATA",
+      category: "other_fee",
+      coveredByBranches: otherFeesCoveredByBranches,
       label: "عمولات أخرى القابلة للتحقق من البيانات",
       computed: dataOnlyOthersComputed,
       invoiced: invoicedDataOnlyOthers,
@@ -742,6 +769,9 @@ export function analyzeHungerStation(
       hint: "RDF + تعويضات العملاء + رسوم العروض + وقت الانتظار (بدون ضريبة)، بعد استبعاد البنود الموجودة في الفاتورة فقط.",
     },
     {
+      code: "HS_INVOICE_TOTAL_EX_VAT",
+      category: "invoice_total",
+      controlOnly: true,
       label: "إجمالي الفاتورة (بدون ضريبة)",
       computed:
         summary.commission +
@@ -760,6 +790,9 @@ export function analyzeHungerStation(
 
   if (invoice.creditSales !== undefined) {
     checks.push({
+      code: "HS_CREDIT_SALES",
+      category: "sales",
+      coveredByBranches: creditSalesCoveredByBranches,
       label: "مبيعات الائتمان (بدون ضريبة)",
       computed: summary.grossSales / VAT,
       invoiced: invoice.creditSales,
@@ -770,6 +803,8 @@ export function analyzeHungerStation(
 
   if (invoice.rejectedSales !== undefined) {
     checks.push({
+      code: "HS_REJECTED_SALES",
+      category: "rejected_sales",
       label: "المبيعات المرفوضة (بدون ضريبة)",
       computed: summary.rejectedSales ?? 0,
       invoiced: invoice.rejectedSales,
@@ -785,6 +820,9 @@ export function analyzeHungerStation(
         : invoiceWalletFee;
 
     checks.push({
+      code: "HS_WALLET_PAYMENT_FEE",
+      category: "payment_fee",
+      controlOnly: true,
       label: "رسوم مدفوعات المحافظ (أساس من الفاتورة)",
       computed: walletArithmetic,
       invoiced: invoiceWalletFee,
@@ -797,6 +835,9 @@ export function analyzeHungerStation(
 
   if (invoice.totalOnlineSales !== undefined) {
     checks.push({
+      code: "HS_TOTAL_COLLECTIONS",
+      category: "collections",
+      coveredByBranches: collectionsCoveredByBranches,
       label: "إجمالي التحصيلات",
       computed: summary.totalCollections ?? 0,
       invoiced: Math.abs(invoice.totalOnlineSales),
@@ -807,8 +848,12 @@ export function analyzeHungerStation(
   }
 
   if (invoiceExtras.length) {
-    for (const extra of invoiceExtras.filter((e) => !e.label.includes("محفظة"))) {
+    const visibleExtras = invoiceExtras.filter((e) => !e.label.includes("محفظة"));
+    for (const [extraIndex, extra] of visibleExtras.entries()) {
       checks.push({
+        code: "HS_INVOICE_ONLY_EXTRA_" + String(extraIndex + 1),
+        category: "unsupported_charge",
+        invoiceOnly: true,
         label: `${extra.label} (فاتورة فقط)`,
         computed: 0,
         invoiced: extra.amount,
@@ -820,6 +865,8 @@ export function analyzeHungerStation(
 
   if (invoice.totalIncVat !== undefined && invoice.netDue !== undefined) {
     checks.push({
+      code: "HS_NET_DUE_AFTER_INVOICE",
+      category: "settlement",
       label: "صافي المستحق بعد فاتورة العمولة",
       computed: (summary.totalCollections ?? 0) - invoice.totalIncVat,
       invoiced: Math.abs(invoice.netDue),

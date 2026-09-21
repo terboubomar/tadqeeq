@@ -417,7 +417,34 @@ export type CheckEvidence =
   | "invoice_only"
   | "mixed";
 
+export type CheckCategory =
+  | "commission"
+  | "payment_fee"
+  | "other_fee"
+  | "delivery_campaign"
+  | "campaign"
+  | "advertising"
+  | "pos_fee"
+  | "sales"
+  | "rejected_sales"
+  | "collections"
+  | "settlement"
+  | "compensation"
+  | "tax"
+  | "invoice_total"
+  | "unsupported_charge"
+  | "other";
+
 export interface CheckRow {
+  /** Stable machine identity. UI labels may change without changing this code. */
+  code: string;
+  category: CheckCategory;
+  /** Exists only in the invoice/source document and has no independent audit basis. */
+  invoiceOnly?: boolean;
+  /** Diagnostic/roll-up control that must stay out of the actionable exception queue. */
+  controlOnly?: boolean;
+  /** A more granular branch-level check already owns the actionable discrepancy. */
+  coveredByBranches?: boolean;
   label: string;
   computed: number;
   /** Undefined means the official/source value was not extracted or not supplied. Zero is a valid value. */

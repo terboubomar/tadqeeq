@@ -735,6 +735,9 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
   };
   const checks: CheckRow[] = [
     {
+      code: "JAHEZ_ORDERS_SUMMARY_CONTROL",
+      category: "sales",
+      controlOnly: true,
       label: "إجمالي الطلبات مقابل ملخص جاهز",
       computed: detailGrossSales,
       invoiced: merchantGrossSales,
@@ -743,6 +746,9 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       hint: "فحص رقابي داخلي داخل CSV: مجموع Order Amount من الطلبات مقابل Orders Amount في ملخص التاجر.",
     },
     {
+      code: "JAHEZ_RESTAURANT_SETTLEMENT_CONTROL",
+      category: "settlement",
+      controlOnly: true,
       label: "صافي المطعم المعاد احتسابه",
       computed: detailCalculatedSettlement,
       invoiced: merchantRestaurantAmount,
@@ -752,6 +758,9 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
         "فحص رقابي داخلي داخل CSV: Order Amount - Jahez Commission + Delivery Charge - Payment Fees - Payment Fees VAT - Offer Amount - Delivery Offer - Delivery Coupon.",
     },
     {
+      code: "JAHEZ_COMMISSION_SUMMARY_CONTROL",
+      category: "commission",
+      controlOnly: true,
       label: "عمولة الطلبات مقابل ملخص جاهز",
       computed: detailCommissionInclVat,
       invoiced: merchantCommissionInclVat,
@@ -763,6 +772,9 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
 
   if (compensationReport) {
     checks.push({
+      code: "JAHEZ_COMPENSATION_DEBIT_CONTROL",
+      category: "compensation",
+      controlOnly: true,
       label: "تعويضات جاهز: إجمالي الخصم",
       computed: compensationReport.detailDebit,
       invoiced: compensationReport.summaryDebit,
@@ -772,6 +784,9 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
     });
     if (compensationReport.detailCredit !== 0 || compensationReport.summaryCredit !== 0) {
       checks.push({
+        code: "JAHEZ_COMPENSATION_CREDIT_CONTROL",
+        category: "compensation",
+        controlOnly: true,
         label: "تعويضات جاهز: إجمالي الإضافة",
         computed: compensationReport.detailCredit,
         invoiced: compensationReport.summaryCredit,
@@ -784,6 +799,8 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
 
   if (invoice.jahezCommissionExVat !== undefined) {
     checks.push({
+      code: "JAHEZ_PDF_COMMISSION",
+      category: "commission",
       label: "عمولة جاهز",
       computed: commissionInvoiceExVat,
       invoiced: invoice.jahezCommissionExVat,
@@ -794,6 +811,8 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
   }
   if (invoice.jahezDeliveryOfferExVat !== undefined) {
     checks.push({
+      code: "JAHEZ_DELIVERY_OFFERS",
+      category: "delivery_campaign",
       label: "عروض التوصيل",
       computed: deliveryOfferInvoiceExVat,
       invoiced: invoice.jahezDeliveryOfferExVat,
@@ -805,6 +824,8 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
   }
   if (invoice.jahezPaymentFeesExVat !== undefined) {
     checks.push({
+      code: "JAHEZ_PAYMENT_FEES",
+      category: "payment_fee",
       label: "رسوم مدفوعات جاهز",
       computed: merchantPaymentFees,
       invoiced: invoice.jahezPaymentFeesExVat,
@@ -815,6 +836,9 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
   }
   if (invoice.totalExVat !== undefined) {
     checks.push({
+      code: "JAHEZ_INVOICE_TOTAL_EX_VAT",
+      category: "invoice_total",
+      controlOnly: true,
       label: "إجمالي فاتورة جاهز بدون الضريبة",
       computed: invoiceExVatComputed,
       invoiced: invoice.totalExVat,
@@ -824,6 +848,9 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
   }
   if (invoice.vat !== undefined) {
     checks.push({
+      code: "JAHEZ_INVOICE_VAT",
+      category: "tax",
+      controlOnly: true,
       label: "ضريبة فاتورة جاهز",
       computed: invoiceVatComputed,
       invoiced: invoice.vat,
@@ -833,6 +860,9 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
   }
   if (invoice.totalIncVat !== undefined) {
     checks.push({
+      code: "JAHEZ_INVOICE_TOTAL_INCL_VAT",
+      category: "invoice_total",
+      controlOnly: true,
       label: "إجمالي فاتورة جاهز شامل الضريبة",
       computed: invoiceInclVatComputed,
       invoiced: invoice.totalIncVat,
