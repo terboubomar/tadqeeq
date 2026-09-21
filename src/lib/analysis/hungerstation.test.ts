@@ -160,6 +160,37 @@ function buildWorkbook(): ArrayBuffer {
   return XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
 }
 
+function buildArabicBranchWorkbook(): ArrayBuffer {
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.json_to_sheet([
+      {
+        Status: "Successful",
+        "Branch Name": "باست - الروضة",
+        "HS Branch ID": 1001,
+        "Payment Type": "Online payment",
+        "Commissionable GMV (VAT Excluded)": 100,
+        Commission: 15,
+        "CC Amount": 100,
+        "Operation Day": "2026-08-01",
+      },
+      {
+        Status: "Successful",
+        "Branch Name": "باست - النخيل",
+        "HS Branch ID": 1002,
+        "Payment Type": "Online payment",
+        "Commissionable GMV (VAT Excluded)": 200,
+        Commission: 30,
+        "CC Amount": 200,
+        "Operation Day": "2026-08-01",
+      },
+    ]),
+    "1 Commissionable GMV",
+  );
+  return XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+}
+
 describe("HungerStation audit rules", () => {
   test("uses the validated status rules and counts only billable RDF orders", () => {
     const result = analyzeHungerStation(buildWorkbook(), {
@@ -344,6 +375,65 @@ describe("HungerStation audit rules", () => {
       (check) => check.label === "رسوم الدفع الإلكتروني القابلة للتحقق (البطاقات)",
     );
     expect(paymentCheck?.evidence).toBe("invoice_derived");
+  });
+});
+
+describe("HungerStation branch identity matching", () => {
+  test("matches Arabic branch names even when audited amounts are swapped", () => {
+    const result = analyzeHungerStation(buildArabicBranchWorkbook(), {
+      manualBankRate: 0.025,
+      invoice: {
+        lines: [],
+        branches: [
+          {
+            branch: "بـاست - الرَّوضة",
+            salesCommission: 30,
+            paymentFees: 5,
+            totalCollections: 200,
+            creditSales: 200,
+          },
+          {
+            branch: "باست - النخيل",
+            salesCommission: 15,
+            paymentFees: 2.5,
+            totalCollections: 100,
+            creditSales: 100,
+          },
+        ],
+      },
+    });
+
+    const rawdah = result.branches.find((row) => row.branch === "باست - الروضة");
+    const nakheel = result.branches.find((row) => row.branch === "باست - النخيل");
+
+    expect(rawdah?.invoiceBranchName).toBe("بـاست - الرَّوضة");
+    expect(rawdah?.invoiceCommission).toBe(30);
+    expect(nakheel?.invoiceBranchName).toBe("باست - النخيل");
+    expect(nakheel?.invoiceCommission).toBe(15);
+  });
+
+  test("does not match a different branch merely because the audited amounts are identical", () => {
+    const result = analyzeHungerStation(buildArabicBranchWorkbook(), {
+      manualBankRate: 0.025,
+      invoice: {
+        lines: [],
+        branches: [
+          {
+            branch: "باست - الشاطئ",
+            salesCommission: 15,
+            paymentFees: 2.5,
+            totalCollections: 100,
+            creditSales: 100,
+          },
+        ],
+      },
+    });
+
+    const rawdah = result.branches.find((row) => row.branch === "باست - الروضة");
+
+    expect(rawdah?.invoiceBranchName).toBeUndefined();
+    expect(rawdah?.branchAuditStatus).toBe("unmatched");
+    expect(rawdah?.branchAuditNote).toContain("اسم فرع");
   });
 });
 
