@@ -65,7 +65,7 @@ function assertRequiredOrderColumns(row: Record<string, unknown>): void {
   for (const candidates of required) {
     if (!hasColumn(row, ...candidates)) {
       throw new ParseError(
-        "عمود مطلوب مفقود في ملف هنقرستيشن: " + candidates.join(" / "),
+        "عمود مطلوب مفقود في ورقة Commissionable GMV بملف هنقرستيشن: " + candidates.join(" / "),
         undefined,
         {
           platform: "hungerstation",
