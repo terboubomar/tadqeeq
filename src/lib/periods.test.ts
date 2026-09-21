@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   DuplicatePeriodError,
   isDuplicatePeriodConstraintError,
+  normalizePeriodLabel,
   samePeriodRange,
   workflowPatchForRpc,
   type StoredPeriod,
@@ -21,6 +22,11 @@ function period(
 }
 
 describe("period duplicate identity", () => {
+  test("normalizes restaurant labels before duplicate comparison", () => {
+    expect(normalizePeriodLabel("  Budor ")).toBe("budor");
+    expect(normalizePeriodLabel("Alize Globe")).not.toBe(normalizePeriodLabel("Budor"));
+  });
+
   test("matches only the same platform and exact date range", () => {
     const existing = period("hungerstation", "2026-08-01", "2026-08-31");
 
@@ -125,13 +131,13 @@ describe("period duplicate database guard", () => {
     expect(isDuplicatePeriodConstraintError(null)).toBe(false);
   });
 
-  test("migration uniquely guards user, platform, and exact date range", async () => {
+  test("migration uniquely guards restaurant label within an exact date range", async () => {
     const sql = await Bun.file(
-      "drizzle/migrations/0008_period_duplicate_guard.sql",
+      "drizzle/migrations/0002_scope_period_duplicates_by_label.sql",
     ).text();
 
     expect(sql).toContain("CREATE UNIQUE INDEX");
-    expect(sql).toContain("(user_id, platform, period_start, period_end)");
+    expect(sql).toContain("(user_id, platform, lower(btrim(label)), period_start, period_end)");
     expect(sql).toContain("period_start IS NOT NULL");
     expect(sql).toContain("period_end IS NOT NULL");
   });
