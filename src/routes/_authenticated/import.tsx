@@ -10,7 +10,7 @@ import {
   Settings2,
   Upload,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import {
   parseKeetaInvoice,
 } from "@/lib/analysis/pdf";
 import type { Platform } from "@/lib/analysis/types";
+import { acquireImportRun, releaseImportRun } from "@/lib/import-run-guard";
 import { DuplicatePeriodError, savePeriod } from "@/lib/periods";
 import { setSelectedPeriodId, usePeriods } from "@/lib/use-period";
 import {
@@ -170,6 +171,7 @@ function ImportPage() {
   const [bankRate, setBankRate] = useState("");
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
+  const runLock = useRef(false);
 
   let bankRateInterpretation = "";
   let bankRateValidationError = "";
@@ -225,6 +227,8 @@ function ImportPage() {
       setStep(1);
       return;
     }
+
+    if (!acquireImportRun(runLock)) return;
 
     setBusy(true);
     try {
@@ -316,6 +320,7 @@ function ImportPage() {
         toast.error(error instanceof Error ? error.message : "تعذّر قراءة الملفات");
       }
     } finally {
+      releaseImportRun(runLock);
       setBusy(false);
     }
   }
