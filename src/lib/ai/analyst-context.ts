@@ -10,6 +10,7 @@ import {
   type PeriodComparison,
 } from "@/lib/period-intelligence";
 import type { BranchRow } from "@/lib/analysis/types";
+import { normalizeCheckMetadata } from "@/lib/analysis/check-metadata";
 import type { StoredPeriod } from "@/lib/periods";
 
 import { APP_KNOWLEDGE, normalizeAppRoute } from "./app-knowledge";
@@ -533,7 +534,11 @@ function addExceptionFacts(
 
 
 function addInvoiceCheckFacts(builder: FactBuilder, period: StoredPeriod) {
-  const checks = period.invoice?.checks ?? [];
+  const checks = normalizeCheckMetadata(
+    period.platform,
+    period.branches ?? [],
+    period.invoice?.checks ?? [],
+  );
   for (const check of checks) {
     const missing = check.invoiced === undefined;
     const difference = missing ? null : check.invoiced! - check.computed;
@@ -543,6 +548,11 @@ function addInvoiceCheckFacts(builder: FactBuilder, period: StoredPeriod) {
       "مطابقة فاتورة · " + check.label,
       missing ? "لم يُقرأ من الفاتورة" : money(difference),
       {
+        code: check.code,
+        category: check.category,
+        invoiceOnly: check.invoiceOnly ?? false,
+        controlOnly: check.controlOnly ?? false,
+        coveredByBranches: check.coveredByBranches ?? false,
         label: check.label,
         computed: check.computed,
         invoiced: check.invoiced ?? null,
