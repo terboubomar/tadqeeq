@@ -454,12 +454,14 @@ export function analyzeHungerStation(
   // supplied. If no rate is supplied, derive only a diagnostic card rate after
   // removing the invoice-reported Wallet Payments Fee.
   const cardPaymentFeeBase = totalCcSuccess + totalCcRejected;
-  const invoiceCardPaymentFees = Math.max(
-    0,
-    (options.invoice?.paymentFees ?? 0) - invoiceWalletFee,
-  );
+  const invoiceCardPaymentFees =
+    options.invoice?.paymentFees !== undefined
+      ? Math.max(0, options.invoice.paymentFees - invoiceWalletFee)
+      : undefined;
   const invoiceImpliedBankRate =
-    invoiceCardPaymentFees > 0 && cardPaymentFeeBase > 0
+    invoiceCardPaymentFees !== undefined &&
+    invoiceCardPaymentFees > 0 &&
+    cardPaymentFeeBase > 0
       ? Math.round((invoiceCardPaymentFees / cardPaymentFeeBase) / 0.0005) * 0.0005
       : 0;
 
@@ -701,10 +703,10 @@ export function analyzeHungerStation(
     summary.waitingTimeFees;
   const cardPaymentFeesComputed =
     summary.bankFeeSuccess + summary.bankFeeRefunded;
-  const invoicedDataOnlyOthers = Math.max(
-    0,
-    (invoice.othersCommission ?? 0) - invoiceOnlyExtras,
-  );
+  const invoicedDataOnlyOthers =
+    invoice.othersCommission !== undefined
+      ? Math.max(0, invoice.othersCommission - invoiceOnlyExtras)
+      : undefined;
   const cardFeeEvidence =
     bankRateSource === "manual"
       ? "contract"
@@ -716,7 +718,7 @@ export function analyzeHungerStation(
     {
       label: "عمولة المبيعات",
       computed: summary.commission,
-      invoiced: invoice.salesCommission ?? 0,
+      invoiced: invoice.salesCommission,
       evidence: "data",
       hint: "مجموع عمود العمولة للطلبات الناجحة والفاشلة بعد الاستلام والمرفوضة.",
     },
@@ -746,7 +748,7 @@ export function analyzeHungerStation(
         invoiceWalletFee +
         dataOnlyOthersComputed +
         invoiceOnlyExtras,
-      invoiced: invoice.totalExVat ?? 0,
+      invoiced: invoice.totalExVat,
       evidence: invoiceOnlyExtras > 0 ? "mixed" : cardFeeEvidence,
       hint:
         invoiceOnlyExtras > 0
