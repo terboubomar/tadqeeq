@@ -20,6 +20,10 @@ import { analyzeHungerStation } from "@/lib/analysis/hungerstation";
 import { analyzeJahez } from "@/lib/analysis/jahez";
 import { analyzeKeeta } from "@/lib/analysis/keeta";
 import {
+  formatPercentRateInterpretation,
+  parsePercentRateInput,
+} from "@/lib/analysis/rates";
+import {
   extractPdfText,
   parseCpcInvoice,
   parseHungerInvoice,
@@ -145,6 +149,20 @@ function ImportPage() {
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
 
+  let bankRateInterpretation = "";
+  let bankRateValidationError = "";
+  if (platform === "hungerstation" && bankRate.trim()) {
+    try {
+      const parsed = parsePercentRateInput(bankRate);
+      if (parsed) {
+        bankRateInterpretation = formatPercentRateInterpretation(parsed);
+      }
+    } catch (error) {
+      bankRateValidationError =
+        error instanceof Error ? error.message : "نسبة رسوم الدفع غير صالحة.";
+    }
+  }
+
   function choosePlatform(next: Platform) {
     if (next === platform) return;
 
@@ -227,14 +245,17 @@ function ImportPage() {
             )
           : {};
 
-      const manualRate = Number.parseFloat(bankRate.replace(",", "."));
+      const parsedBankRate =
+        platform === "hungerstation"
+          ? parsePercentRateInput(bankRate)
+          : null;
       const result =
         platform === "hungerstation"
           ? analyzeHungerStation(dataBuffer, {
               ...(invoice ? { invoice } : {}),
               ...(cpcInvoice ? { cpcInvoice } : {}),
-              ...(Number.isFinite(manualRate) && manualRate > 0
-                ? { manualBankRate: manualRate / 100 }
+              ...(parsedBankRate
+                ? { manualBankRate: parsedBankRate.fraction }
                 : {}),
               ...(label.trim() ? { label: label.trim() } : {}),
             })
@@ -326,6 +347,8 @@ function ImportPage() {
               cpcFile={cpcFile}
               compensationFile={compensationFile}
               bankRate={bankRate}
+              bankRateInterpretation={bankRateInterpretation}
+              bankRateValidationError={bankRateValidationError}
               onInvoiceChange={setInvoiceFile}
               onCpcChange={setCpcFile}
               onCompensationChange={setCompensationFile}
@@ -583,6 +606,8 @@ function DocumentsStep({
   cpcFile,
   compensationFile,
   bankRate,
+  bankRateInterpretation,
+  bankRateValidationError,
   onInvoiceChange,
   onCpcChange,
   onCompensationChange,
@@ -593,6 +618,8 @@ function DocumentsStep({
   cpcFile: File | null;
   compensationFile: File | null;
   bankRate: string;
+  bankRateInterpretation: string;
+  bankRateValidationError: string;
   onInvoiceChange: (file: File | null) => void;
   onCpcChange: (file: File | null) => void;
   onCompensationChange: (file: File | null) => void;
@@ -659,8 +686,18 @@ function DocumentsStep({
                   value={bankRate}
                   onChange={(event) => onBankRateChange(event.target.value)}
                   placeholder="2.5"
+                  aria-invalid={Boolean(bankRateValidationError)}
                   className="num mt-3 max-w-[120px]"
                 />
+                {bankRateValidationError ? (
+                  <p className="mt-2 text-[11.5px] leading-5 text-destructive">
+                    {bankRateValidationError}
+                  </p>
+                ) : bankRateInterpretation ? (
+                  <p className="num mt-2 text-[11.5px] font-medium text-success">
+                    سيتم استخدام: {bankRateInterpretation}
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>
