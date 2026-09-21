@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   DuplicatePeriodError,
   samePeriodRange,
+  workflowPatchForRpc,
   type StoredPeriod,
 } from "./periods";
 
@@ -68,5 +69,49 @@ describe("period duplicate identity", () => {
     expect(error.message).toBe("هذه الفترة محفوظة مسبقاً");
     expect(error.existingPeriodId).toBe("period-existing");
     expect(error.platform).toBe("keeta");
+  });
+});
+
+
+describe("exception workflow atomic update contract", () => {
+  test("client sends only mutable workflow fields to the RPC", () => {
+    const patch = workflowPatchForRpc({
+      status: "reviewing",
+      note: "راجع المستند",
+      recoveredAmount: 125,
+      updatedAt: "client-authored-time",
+      history: [
+        {
+          at: "client-authored-time",
+          status: "closed",
+        },
+      ],
+    });
+
+    expect(patch).toEqual({
+      status: "reviewing",
+      note: "راجع المستند",
+      recoveredAmount: 125,
+    });
+  });
+
+  test("migration locks the row and appends history on the targeted exception path", async () => {
+    const sql = await Bun.file(
+      "drizzle/migrations/0007_exception_workflow_rpc.sql",
+    ).text();
+
+    const selectAt = sql.indexOf("SELECT *");
+    const lockAt = sql.indexOf("FOR UPDATE");
+    const updateAt = sql.indexOf("UPDATE public.periods");
+
+    expect(sql).toContain("SECURITY INVOKER");
+    expect(sql).not.toContain("SECURITY DEFINER");
+    expect(selectAt).toBeGreaterThan(-1);
+    expect(lockAt).toBeGreaterThan(selectAt);
+    expect(updateAt).toBeGreaterThan(lockAt);
+    expect(sql).toContain("ARRAY['exceptionWorkflow', p_exception_id]");
+    expect(sql).toContain("v_history || jsonb_build_array(v_event)");
+    expect(sql).toContain("clock_timestamp()");
+    expect(sql).toContain("patch_key.key NOT IN ('status', 'note', 'recoveredAmount')");
   });
 });
