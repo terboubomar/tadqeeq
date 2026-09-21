@@ -1,4 +1,5 @@
-import type { CheckEvidence, CheckRow } from "./analysis/types";
+import { normalizeCheckMetadata } from "./analysis/check-metadata";
+import type { CheckCategory, CheckEvidence, CheckRow } from "./analysis/types";
 import type { StoredPeriod } from "./periods";
 
 export type ExceptionStatus =
@@ -11,25 +12,7 @@ export type ExceptionStatus =
 
 export type ExceptionSeverity = "critical" | "high" | "medium" | "low";
 
-export type ExceptionCategory =
-  | "commission"
-  | "payment_fee"
-  | "other_fee"
-  | "delivery_campaign"
-  | "campaign"
-  | "advertising"
-  | "pos_fee"
-  | "sales"
-  | "rejected_sales"
-  | "collections"
-  | "settlement"
-  | "compensation"
-  | "tax"
-  | "invoice_total"
-  | "unsupported_charge"
-  | "branch_match"
-  | "data_missing"
-  | "other";
+export type ExceptionCategory = CheckCategory | "branch_match" | "data_missing";
 
 export interface ExceptionWorkflowEvent {
   at: string;
@@ -64,6 +47,7 @@ export interface ExceptionEvidenceTrail {
 
 export interface AuditException {
   id: string;
+  code: string;
   periodId: string;
   periodLabel: string;
   platform: StoredPeriod["platform"];
@@ -136,7 +120,17 @@ function hashString(value: string): string {
   return (hash >>> 0).toString(36);
 }
 
-function exceptionId(
+export function stableExceptionId(
+  periodId: string,
+  level: "summary" | "branch",
+  code: string,
+  branchId?: string,
+): string {
+  return `ex_${hashString([periodId, level, code, branchId ?? ""].join("|"))}`;
+}
+
+/** Legacy label-based ID used only by the one-off workflow migration/fallback. */
+export function legacyExceptionId(
   periodId: string,
   level: "summary" | "branch",
   category: ExceptionCategory,
@@ -144,50 +138,6 @@ function exceptionId(
   branchId?: string,
 ): string {
   return `ex_${hashString([periodId, level, category, branchId ?? "", label].join("|"))}`;
-}
-
-function categoryForLabel(label: string): ExceptionCategory {
-  if (
-    label.includes("عمولة المبيعات") ||
-    label.includes("عمولة الطلب") ||
-    label.includes("عمولة جاهز")
-  ) return "commission";
-  if (
-    label.includes("رسوم الدفع") ||
-    label.includes("رسوم مدفوعات") ||
-    label.includes("الرسوم المصرفية")
-  ) return "payment_fee";
-  if (label.includes("تعويض")) return "compensation";
-  if (label.includes("عروض التوصيل")) return "delivery_campaign";
-  if (label.includes("عمولات أخرى")) {
-    return label.includes("توصيل") ? "delivery_campaign" : "other_fee";
-  }
-  if (label.includes("إعانة") || label.includes("حملة")) return "campaign";
-  if (label.includes("الإعلانات")) return "advertising";
-  if (label.includes("POS")) return "pos_fee";
-  if (label.includes("مرفوض")) return "rejected_sales";
-  if (label.includes("مبيعات") || label.includes("البيع الآجل")) return "sales";
-  if (label.includes("التحصيلات")) return "collections";
-  if (label.includes("Invoice amount")) return "invoice_total";
-  if (label.includes("صافي المستحق") || label.includes("التسوية")) return "settlement";
-  return "other";
-}
-
-/**
- * Exception Center is an action queue, not a second copy of Invoice Check.
- * Aggregate controls stay in Invoice Check and must not become cases on their own.
- */
-function isControlOnlyLabel(label: string): boolean {
-  return (
-    label.includes("إجمالي الفاتورة") ||
-    label.includes("إجمالي فاتورة العمولة") ||
-    label.includes("صافي الفاتورة الضريبية") ||
-    label.includes("اتساق صافي المستحق") ||
-    label.includes("رسوم مدفوعات المحافظ") ||
-    label.includes("Billing data summary") ||
-    label.includes("إجمالي فاتورة جاهز") ||
-    label.includes("ضريبة فاتورة جاهز")
-  );
 }
 
 function isIndependentEvidence(evidence: CheckEvidence | undefined): boolean {
@@ -303,61 +253,6 @@ function makeException(
     rollup: false,
     hint: input.hint,
   };
-}
-
-function hasBranchCoverage(period: StoredPeriod, label: string): boolean {
-  const branches = period.branches ?? [];
-  if (!branches.length) return false;
-
-  if (period.platform === "hungerstation") {
-    if (label.includes("عمولة المبيعات")) {
-      return branches.some((branch) => branch.invoiceCommission !== undefined);
-    }
-    if (label.includes("رسوم الدفع الإلكتروني")) {
-      return branches.some((branch) => branch.invoicePaymentFees !== undefined);
-    }
-    if (label.includes("عمولات أخرى")) {
-      return branches.some((branch) => branch.invoiceOtherCharges !== undefined);
-    }
-    if (label.includes("مبيعات الائتمان")) {
-      return branches.some(
-        (branch) =>
-          branch.invoiceCreditSales !== undefined ||
-          branch.branchAuditNote?.includes("ملخص مبيعات الفرع مفقود"),
-      );
-    }
-    if (label.includes("إجمالي التحصيلات")) {
-      return branches.some((branch) => branch.invoiceCollections !== undefined);
-    }
-    return false;
-  }
-
-  if (label === "عمولة الطلب") {
-    return branches.some((branch) => branch.keetaPdfOrderCommissionInclVat !== undefined);
-  }
-  if (label === "الرسوم المصرفية") {
-    return branches.some((branch) => branch.keetaPdfBankCommissionInclVat !== undefined);
-  }
-  if (label.includes("عمولات أخرى")) {
-    return branches.some((branch) => branch.keetaPdfDeliveryCommissionInclVat !== undefined);
-  }
-  if (label === "إجمالي البيع الآجل") {
-    return branches.some((branch) => branch.keetaPdfCreditSales !== undefined);
-  }
-  if (label === "صافي المستحق مقابل فاتورة كيتا") {
-    return branches.some((branch) => branch.keetaPdfNetDue !== undefined);
-  }
-  if (label === "Invoice amount مقابل Invoice Details") {
-    return branches.some((branch) => branch.keetaExcelInvoiceAmount !== undefined);
-  }
-  if (label === "صافي المستحق مقابل Invoice Details") {
-    return branches.some((branch) => branch.keetaExcelPayable !== undefined);
-  }
-  if (label === "صافي التسوية مقابل Order Summary Payable") {
-    return branches.some((branch) => branch.keetaExcelPayable !== undefined);
-  }
-
-  return false;
 }
 
 function summaryExceptions(period: StoredPeriod): AuditException[] {
