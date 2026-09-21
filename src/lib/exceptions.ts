@@ -222,7 +222,7 @@ function makeException(
   const tolerance = input.tolerance ?? 0.05;
   const reviewAmount =
     input.forceReviewAmount ??
-    (difference !== undefined ? Math.abs(difference) : Math.abs(invoiced ?? computed ?? 0));
+    (difference !== undefined ? Math.abs(difference) : 0);
   const id = stableExceptionId(
     period.id,
     input.sourceLevel,
