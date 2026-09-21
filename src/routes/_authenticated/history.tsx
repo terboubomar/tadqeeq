@@ -29,7 +29,10 @@ function HistoryPage() {
 
   const remove = useMutation({
     mutationFn: deletePeriod,
-    onSuccess: async () => {
+    onSuccess: async (deletedPeriodId) => {
+      if (selected?.id === deletedPeriodId) {
+        setSelectedPeriodId(null);
+      }
       await queryClient.invalidateQueries({ queryKey: ["periods"] });
       toast.success("تم حذف الفترة");
     },

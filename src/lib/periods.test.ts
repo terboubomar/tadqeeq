@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   DuplicatePeriodError,
+  isDuplicatePeriodConstraintError,
   samePeriodRange,
   workflowPatchForRpc,
   type StoredPeriod,
@@ -113,5 +114,25 @@ describe("exception workflow atomic update contract", () => {
     expect(sql).toContain("v_history || jsonb_build_array(v_event)");
     expect(sql).toContain("clock_timestamp()");
     expect(sql).toContain("patch_key.key NOT IN ('status', 'note', 'recoveredAmount')");
+  });
+});
+
+
+describe("period duplicate database guard", () => {
+  test("recognizes PostgreSQL unique violations", () => {
+    expect(isDuplicatePeriodConstraintError({ code: "23505" })).toBe(true);
+    expect(isDuplicatePeriodConstraintError({ code: "23503" })).toBe(false);
+    expect(isDuplicatePeriodConstraintError(null)).toBe(false);
+  });
+
+  test("migration uniquely guards user, platform, and exact date range", async () => {
+    const sql = await Bun.file(
+      "drizzle/migrations/0008_period_duplicate_guard.sql",
+    ).text();
+
+    expect(sql).toContain("CREATE UNIQUE INDEX");
+    expect(sql).toContain("(user_id, platform, period_start, period_end)");
+    expect(sql).toContain("period_start IS NOT NULL");
+    expect(sql).toContain("period_end IS NOT NULL");
   });
 });

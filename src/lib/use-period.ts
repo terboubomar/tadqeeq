@@ -22,7 +22,7 @@ function subscribe(listener: () => void) {
 
 export function setSelectedPeriodId(id: string | null) {
   selectedId = id;
-  if (id) rememberPeriod(id);
+  rememberPeriod(id);
   emit();
 }
 
