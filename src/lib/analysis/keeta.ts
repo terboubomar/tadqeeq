@@ -8,7 +8,7 @@ import type {
   InvoiceFigures,
   Summary,
 } from "./types";
-import { ParseError, parseAmount } from "./parse";
+import { ParseError, parseAmount, parseDate } from "./parse";
 
 const VAT_RATE = 0.15;
 const VAT_FACTOR = 1 + VAT_RATE;
@@ -53,54 +53,6 @@ function normalizeHeader(value: unknown): string {
   return text(value).toLowerCase().replace(/\s+/g, " ");
 }
 
-function normalizeDate(value: unknown): string {
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
-
-  const raw = text(value);
-  if (!raw) return "";
-
-  const iso = raw.match(/\d{4}[-/]\d{2}[-/]\d{2}/);
-  if (iso) return iso[0].replace(/\//g, "-");
-
-  const english = raw.match(/^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})/);
-  if (english) {
-    const monthNames = [
-      "jan",
-      "feb",
-      "mar",
-      "apr",
-      "may",
-      "jun",
-      "jul",
-      "aug",
-      "sep",
-      "oct",
-      "nov",
-      "dec",
-    ];
-    const month = monthNames.indexOf(english[2]!.slice(0, 3).toLowerCase()) + 1;
-    if (month > 0) {
-      return english[3] + "-" + String(month).padStart(2, "0") + "-" +
-        String(Number(english[1])).padStart(2, "0");
-    }
-  }
-
-  const asNumber = Number(raw);
-  if (Number.isFinite(asNumber) && asNumber > 20000 && asNumber < 80000) {
-    const parsed = XLSX.SSF.parse_date_code(asNumber);
-    if (parsed) {
-      return (
-        parsed.y +
-        "-" +
-        String(parsed.m).padStart(2, "0") +
-        "-" +
-        String(parsed.d).padStart(2, "0")
-      );
-    }
-  }
-
-  return raw.slice(0, 10);
-}
 
 function findSheet(wb: XLSX.WorkBook, name: string): string | undefined {
   const target = name.toLowerCase();
@@ -562,7 +514,16 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
     branch.posRaw += posRaw;
     branch.payableRaw += payableRaw;
 
-    const date = normalizeDate(valueOf(sourceRow, "Transaction date"));
+    const date = parseDate(
+      valueOf(sourceRow, "Transaction date"),
+      { order: "DMY" },
+      {
+        platform: "keeta",
+        sheet: "Order Summary",
+        row: rowNumber,
+        column: "Transaction date",
+      },
+    );
     if (date) {
       const totalCostExVat =
         -(
