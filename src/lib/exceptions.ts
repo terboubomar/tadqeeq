@@ -399,10 +399,56 @@ function hungerInvoiceHasOperationalActivity(branch: StoredPeriod["branches"][nu
   );
 }
 
+function hungerBranchesForExceptionEvaluation(
+  period: StoredPeriod,
+): StoredPeriod["branches"] {
+  const branches = period.branches ?? [];
+  const operational = branches.filter(
+    (branch) => branch.branchAuditStatus !== "invoice_only",
+  );
+  const invoiceOnly = branches.filter(
+    (branch) => branch.branchAuditStatus === "invoice_only",
+  );
+
+  if (
+    operational.length === 1 &&
+    invoiceOnly.length === 1 &&
+    operational[0]?.branchAuditStatus === "unmatched" &&
+    !invoiceOnly[0]?.branchId &&
+    !invoiceOnly[0]?.invoiceBranchName &&
+    invoiceOnly[0]?.branch.startsWith("فرع في الفاتورة فقط") &&
+    hungerInvoiceHasOperationalActivity(invoiceOnly[0])
+  ) {
+    const dataBranch = operational[0];
+    const invoiceBranch = invoiceOnly[0];
+
+    return [
+      {
+        ...dataBranch,
+        invoiceBranchName: invoiceBranch.invoiceBranchName,
+        invoiceCommission: invoiceBranch.invoiceCommission,
+        invoicePaymentFees: invoiceBranch.invoicePaymentFees,
+        invoiceWalletFee: invoiceBranch.invoiceWalletFee,
+        invoiceCardPaymentFees: invoiceBranch.invoiceCardPaymentFees,
+        invoiceOtherCharges: invoiceBranch.invoiceOtherCharges,
+        invoiceOnlyBranchCharges: invoiceBranch.invoiceOnlyBranchCharges,
+        invoiceCollections: invoiceBranch.invoiceCollections,
+        invoiceCreditSales: invoiceBranch.invoiceCreditSales,
+        branchAuditStatus: "matched",
+        branchAuditLabel: "مطابق",
+        branchAuditNote:
+          "تمت مطابقة الفرع بشكل حتمي لأن الفترة تحتوي على فرع تشغيلي واحد وفرع فاتورة واحد بلا هوية قابلة للقراءة.",
+      },
+    ];
+  }
+
+  return branches;
+}
+
 function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
   const result: AuditException[] = [];
 
-  for (const branch of period.branches ?? []) {
+  for (const branch of hungerBranchesForExceptionEvaluation(period)) {
     const paymentComputed = branch.bankFeeSuccess + branch.bankFeeRefunded;
     const invoiceCardPaymentFees =
       branch.invoiceCardPaymentFees ??
