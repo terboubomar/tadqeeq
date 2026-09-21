@@ -9,7 +9,7 @@ import type {
   InvoiceFigures,
   Summary,
 } from "./types";
-import { parseAmount } from "./parse";
+import { ParseError, parseAmount } from "./parse";
 
 const VAT = 1.15;
 
@@ -45,6 +45,38 @@ function col(row: Record<string, unknown>, ...candidates: string[]): unknown {
   }
   return null;
 }
+function hasColumn(row: Record<string, unknown>, ...candidates: string[]): boolean {
+  const keys = Object.keys(row).map((key) => key.toLowerCase());
+  return candidates.some((candidate) => keys.includes(candidate.toLowerCase()));
+}
+
+function assertRequiredOrderColumns(row: Record<string, unknown>): void {
+  const required: string[][] = [
+    ["Status"],
+    ["Branch Name"],
+    ["HS Branch ID"],
+    ["Payment Type"],
+    ["Commissionable GMV (VAT Excluded)"],
+    ["Commission"],
+    ["CC Amount"],
+    ["Operation Day", "Creation Time"],
+  ];
+
+  for (const candidates of required) {
+    if (!hasColumn(row, ...candidates)) {
+      throw new ParseError(
+        "عمود مطلوب مفقود في ملف هنقرستيشن: " + candidates.join(" / "),
+        undefined,
+        {
+          platform: "hungerstation",
+          sheet: "Commissionable GMV",
+          column: candidates.join(" / "),
+        },
+      );
+    }
+  }
+}
+
 
 type StatusClass =
   | "successful"
@@ -185,6 +217,7 @@ export function analyzeHungerStation(
   if (orders.length === 0) {
     throw new Error("لم يتم العثور على ورقة الطلبات (Commissionable GMV) في الملف.");
   }
+  assertRequiredOrderColumns(orders[0]!);
 
   const branches = new Map<string, BranchRow>();
   const dailyMap = new Map<string, DailyRow>();
