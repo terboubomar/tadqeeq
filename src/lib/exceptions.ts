@@ -399,47 +399,70 @@ function hungerInvoiceHasOperationalActivity(branch: StoredPeriod["branches"][nu
   );
 }
 
+function hungerInvoiceOnlyHasOperationalOrders(
+  period: StoredPeriod,
+  branch: StoredPeriod["branches"][number],
+): boolean {
+  if ((branch.orders ?? 0) > 0) return true;
+
+  const invoiceBranches = period.invoice?.branches ?? [];
+  let source = branch.invoiceBranchName
+    ? invoiceBranches.find((item) => item.branch === branch.invoiceBranchName)
+    : undefined;
+
+  if (!source && invoiceBranches.length === 1) {
+    source = invoiceBranches[0];
+  }
+
+  return (
+    (source?.creditSalesOrders ?? 0) > 0 ||
+    (source?.rejectedSalesOrders ?? 0) > 0
+  );
+}
+
 function hungerBranchesForExceptionEvaluation(
   period: StoredPeriod,
 ): StoredPeriod["branches"] {
   const branches = period.branches ?? [];
-  const operational = branches.filter(
-    (branch) => branch.branchAuditStatus !== "invoice_only",
+  const unmatchedOperational = branches.filter(
+    (branch) =>
+      branch.branchAuditStatus !== "invoice_only" &&
+      branch.branchAuditStatus === "unmatched",
   );
-  const invoiceOnly = branches.filter(
-    (branch) => branch.branchAuditStatus === "invoice_only",
+  const operationalInvoiceOnly = branches.filter(
+    (branch) =>
+      branch.branchAuditStatus === "invoice_only" &&
+      hungerInvoiceOnlyHasOperationalOrders(period, branch),
   );
 
   if (
-    operational.length === 1 &&
-    invoiceOnly.length === 1 &&
-    operational[0]?.branchAuditStatus === "unmatched" &&
-    !invoiceOnly[0]?.branchId &&
-    !invoiceOnly[0]?.invoiceBranchName &&
-    invoiceOnly[0]?.branch.startsWith("فرع في الفاتورة فقط") &&
-    hungerInvoiceHasOperationalActivity(invoiceOnly[0])
+    unmatchedOperational.length === 1 &&
+    operationalInvoiceOnly.length === 1
   ) {
-    const dataBranch = operational[0];
-    const invoiceBranch = invoiceOnly[0];
+    const dataBranch = unmatchedOperational[0]!;
+    const invoiceBranch = operationalInvoiceOnly[0]!;
+    const merged = {
+      ...dataBranch,
+      invoiceBranchName: invoiceBranch.invoiceBranchName,
+      invoiceCommission: invoiceBranch.invoiceCommission,
+      invoicePaymentFees: invoiceBranch.invoicePaymentFees,
+      invoiceWalletFee: invoiceBranch.invoiceWalletFee,
+      invoiceCardPaymentFees: invoiceBranch.invoiceCardPaymentFees,
+      invoiceOtherCharges: invoiceBranch.invoiceOtherCharges,
+      invoiceOnlyBranchCharges: invoiceBranch.invoiceOnlyBranchCharges,
+      invoiceCollections: invoiceBranch.invoiceCollections,
+      invoiceCreditSales: invoiceBranch.invoiceCreditSales,
+      branchAuditStatus: "matched" as const,
+      branchAuditLabel: "مطابق",
+      branchAuditNote:
+        "تمت مطابقة الفرع المتبقي بشكل حتمي بعد مطابقة بقية الفروع؛ لم تُستخدم القيم المالية لتحديد الهوية.",
+    };
 
-    return [
-      {
-        ...dataBranch,
-        invoiceBranchName: invoiceBranch.invoiceBranchName,
-        invoiceCommission: invoiceBranch.invoiceCommission,
-        invoicePaymentFees: invoiceBranch.invoicePaymentFees,
-        invoiceWalletFee: invoiceBranch.invoiceWalletFee,
-        invoiceCardPaymentFees: invoiceBranch.invoiceCardPaymentFees,
-        invoiceOtherCharges: invoiceBranch.invoiceOtherCharges,
-        invoiceOnlyBranchCharges: invoiceBranch.invoiceOnlyBranchCharges,
-        invoiceCollections: invoiceBranch.invoiceCollections,
-        invoiceCreditSales: invoiceBranch.invoiceCreditSales,
-        branchAuditStatus: "matched",
-        branchAuditLabel: "مطابق",
-        branchAuditNote:
-          "تمت مطابقة الفرع بشكل حتمي لأن الفترة تحتوي على فرع تشغيلي واحد وفرع فاتورة واحد بلا هوية قابلة للقراءة.",
-      },
-    ];
+    return branches.flatMap((branch) => {
+      if (branch === dataBranch) return [merged];
+      if (branch === invoiceBranch) return [];
+      return [branch];
+    });
   }
 
   return branches;
