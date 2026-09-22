@@ -275,6 +275,130 @@ describe("Exception Center", () => {
     expect(summary.potentialRecovery).toBe(0);
   });
 
+  test("reconciles one residual operational invoice branch while keeping fixed-fee rows invoice-only", () => {
+    const period = hungerPeriod();
+
+    const matchedBranch = {
+      ...period.branches[0]!,
+      branch: "PAST - Al Nasim",
+      branchId: "1001",
+      commission: 100,
+      invoiceCommission: 100,
+      branchAuditStatus: "matched" as const,
+      branchAuditLabel: "مطابق",
+      branchAuditNote: "مطابق.",
+    };
+
+    const mottoData = {
+      ...period.branches[0]!,
+      branch: "Motto - al Hizam Al Akhdar (Green Belt)",
+      branchId: "163465",
+      orders: 87,
+      commission: 1258.294,
+      bankFeeSuccess: 178.57,
+      bankFeeRefunded: 0,
+      rdfCampaigns: 504.34782608695656,
+      compensation: 13.043478260869566,
+      jokerFees: 0,
+      waitingTimeFees: 0,
+      totalCollections: 7873,
+      creditSales: 6846.056,
+      branchAuditStatus: "unmatched" as const,
+      branchAuditLabel: "غير مطابق",
+      branchAuditNote: "لم يتم العثور على اسم فرع مطابق بشكل موثوق.",
+      invoiceCommission: undefined,
+    };
+
+    const mottoInvoice = {
+      ...period.branches[0]!,
+      branch: "Motto - Uhud",
+      branchId: "",
+      orders: 0,
+      grossSales: 0,
+      netSales: 0,
+      commission: 0,
+      commissionPct: 0,
+      ccSuccess: 0,
+      ccRejected: 0,
+      bankFeeSuccess: 0,
+      bankFeeRefunded: 0,
+      rdfCampaigns: 0,
+      compensation: 0,
+      jokerFees: 0,
+      waitingTimeFees: 0,
+      totalCollections: 0,
+      creditSales: 0,
+      totalCharges: 0,
+      invoiceBranchName: "Motto - Uhud",
+      invoiceCommission: 1258.3,
+      invoicePaymentFees: 179.4,
+      invoiceWalletFee: 0.83,
+      invoiceCardPaymentFees: 178.57,
+      invoiceOtherCharges: 717.39,
+      invoiceOnlyBranchCharges: 200,
+      invoiceCollections: 7873,
+      invoiceCreditSales: 6846.06,
+      branchAuditStatus: "invoice_only" as const,
+      branchAuditLabel: "في الفاتورة فقط",
+      branchAuditNote: "الفرع موجود في الفاتورة لكنه غير موجود في ملف الطلبات المرفوع.",
+    };
+
+    const fixedFee = {
+      ...period.branches[0]!,
+      branch: "PAST - Al Burj",
+      branchId: "",
+      orders: 0,
+      grossSales: 0,
+      netSales: 0,
+      commission: 0,
+      commissionPct: 0,
+      ccSuccess: 0,
+      ccRejected: 0,
+      bankFeeSuccess: 0,
+      bankFeeRefunded: 0,
+      rdfCampaigns: 0,
+      compensation: 0,
+      jokerFees: 0,
+      waitingTimeFees: 0,
+      totalCollections: 0,
+      creditSales: 0,
+      totalCharges: 0,
+      invoiceBranchName: "PAST - Al Burj",
+      invoiceCommission: 0,
+      invoicePaymentFees: 0,
+      invoiceOtherCharges: 500,
+      invoiceOnlyBranchCharges: 500,
+      invoiceCollections: 0,
+      invoiceCreditSales: 0,
+      branchAuditStatus: "invoice_only" as const,
+      branchAuditLabel: "في الفاتورة فقط",
+      branchAuditNote: "رسوم ثابتة فقط.",
+    };
+
+    period.branches = [matchedBranch, mottoData, mottoInvoice, fixedFee];
+    period.invoice.checks = [];
+    period.invoice.branches = [
+      {
+        branch: "Motto - Uhud",
+        creditSalesOrders: 87,
+        rejectedSalesOrders: 0,
+      },
+      {
+        branch: "PAST - Al Burj",
+        creditSalesOrders: 0,
+        rejectedSalesOrders: 0,
+      },
+    ];
+
+    const exceptions = buildPeriodExceptions(period);
+    const summary = summarizeExceptions(exceptions);
+
+    expect(exceptions).toHaveLength(0);
+    expect(summary.openCount).toBe(0);
+    expect(summary.underReview).toBe(0);
+    expect(summary.potentialRecovery).toBe(0);
+  });
+
   test("does not turn an invoice-only fixed-charge branch into a branch mismatch exception", () => {
     const period = hungerPeriod();
     period.branches.push({

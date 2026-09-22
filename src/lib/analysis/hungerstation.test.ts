@@ -473,6 +473,57 @@ describe("HungerStation branch identity matching", () => {
     expect(buildPeriodExceptions(period)).toHaveLength(0);
   });
 
+  test("matches one residual operational branch after all named branches are resolved", () => {
+    const result = analyzeHungerStation(buildArabicBranchWorkbook(), {
+      manualBankRate: 0.025,
+      invoice: {
+        lines: [],
+        branches: [
+          {
+            branch: "باست - الروضة",
+            salesCommission: 15,
+            paymentFees: 2.5,
+            totalCollections: 100,
+            creditSales: 100,
+            creditSalesOrders: 1,
+            rejectedSalesOrders: 0,
+          },
+          {
+            branch: "Legacy Nakheel Name",
+            salesCommission: 30,
+            paymentFees: 5,
+            totalCollections: 200,
+            creditSales: 200,
+            creditSalesOrders: 1,
+            rejectedSalesOrders: 0,
+          },
+          {
+            branch: "Fixed Fee Only",
+            salesCommission: 0,
+            paymentFees: 0,
+            otherCommission: 500,
+            invoiceOnlyCharges: 500,
+            totalCollections: 0,
+            creditSales: 0,
+            creditSalesOrders: 0,
+            rejectedSalesOrders: 0,
+          },
+        ],
+      },
+    });
+
+    const rawdah = result.branches.find((row) => row.branch === "باست - الروضة");
+    const nakheel = result.branches.find((row) => row.branch === "باست - النخيل");
+    const fixed = result.branches.find((row) => row.branch === "Fixed Fee Only");
+
+    expect(rawdah?.invoiceBranchName).toBe("باست - الروضة");
+    expect(nakheel?.invoiceBranchName).toBe("Legacy Nakheel Name");
+    expect(nakheel?.branchAuditStatus).toBe("matched");
+    expect(nakheel?.branchAuditNote).toContain("الفرع المتبقي");
+    expect(fixed?.branchAuditStatus).toBe("invoice_only");
+    expect(fixed?.orders).toBe(0);
+  });
+
   test("does not use the singleton fallback when multiple data branches exist", () => {
     const result = analyzeHungerStation(buildArabicBranchWorkbook(), {
       manualBankRate: 0.025,
