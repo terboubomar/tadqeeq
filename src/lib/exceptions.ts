@@ -414,9 +414,20 @@ function hungerInvoiceOnlyHasOperationalOrders(
     source = invoiceBranches[0];
   }
 
-  return (
+  const hasSourceOrders =
     (source?.creditSalesOrders ?? 0) > 0 ||
-    (source?.rejectedSalesOrders ?? 0) > 0
+    (source?.rejectedSalesOrders ?? 0) > 0;
+  if (hasSourceOrders) return true;
+
+  // Backward compatibility for periods saved before invoice branch order
+  // counts were copied into the branch snapshot. Keep this limited to the
+  // synthetic unnamed single-invoice-row shape; named multi-branch residual
+  // matching continues to rely on structural order-count evidence.
+  return (
+    !branch.invoiceBranchName &&
+    branch.branch.startsWith("فرع في الفاتورة فقط") &&
+    invoiceBranches.length <= 1 &&
+    hungerInvoiceHasOperationalActivity(branch)
   );
 }
 
