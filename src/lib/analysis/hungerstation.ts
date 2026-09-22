@@ -152,6 +152,111 @@ function findInvoiceBranchMatch(
   return contained.length === 1 ? contained[0]!.index : -1;
 }
 
+function invoiceBranchHasOperationalOrders(branch: HungerInvoiceBranch): boolean {
+  return (
+    (branch.creditSalesOrders ?? 0) > 0 ||
+    (branch.rejectedSalesOrders ?? 0) > 0
+  );
+}
+
+function applyInvoiceBranchMatch(
+  row: BranchRow,
+  matched: HungerInvoiceBranch,
+  invoiceBranchCount: number,
+  matchMode: "name" | "singleton" | "residual",
+): void {
+  row.invoiceBranchName = matched.branch;
+  row.invoiceCommission = matched.salesCommission;
+  row.commissionVariance =
+    matched.salesCommission !== undefined ? matched.salesCommission - row.commission : undefined;
+
+  const computedCardPaymentFees = row.bankFeeSuccess + row.bankFeeRefunded;
+  const matchedWalletFee = matched.walletFee ?? 0;
+  const matchedCardPaymentFees =
+    matched.paymentFees !== undefined ? matched.paymentFees - matchedWalletFee : undefined;
+
+  row.invoicePaymentFees = matched.paymentFees;
+  row.invoiceWalletFee = matchedWalletFee;
+  row.invoiceCardPaymentFees = matchedCardPaymentFees;
+  row.walletFeeBase = matched.walletFeeBase;
+  row.walletFee = matchedWalletFee;
+  row.totalCharges += matchedWalletFee;
+  row.paymentFeeVariance =
+    matchedCardPaymentFees !== undefined
+      ? matchedCardPaymentFees - computedCardPaymentFees
+      : undefined;
+
+  const computedOtherCharges =
+    row.rdfCampaigns + row.compensation + row.jokerFees + row.waitingTimeFees;
+  const invoiceDataOther =
+    matched.otherCommission !== undefined
+      ? matched.otherCommission - (matched.invoiceOnlyCharges ?? 0)
+      : undefined;
+  row.invoiceOtherCharges = matched.otherCommission;
+  row.invoiceOnlyBranchCharges = matched.invoiceOnlyCharges;
+  row.otherChargesVariance =
+    invoiceDataOther !== undefined ? invoiceDataOther - computedOtherCharges : undefined;
+
+  row.invoiceCollections = matched.totalCollections;
+  row.collectionsVariance =
+    matched.totalCollections !== undefined
+      ? matched.totalCollections - (row.totalCollections ?? 0)
+      : undefined;
+
+  row.invoiceCreditSales = matched.creditSales;
+  row.creditSalesVariance =
+    matched.creditSales !== undefined
+      ? matched.creditSales - (row.creditSales ?? 0)
+      : undefined;
+
+  const commissionBad = Math.abs(row.commissionVariance ?? 0) > 0.05;
+  const paymentBad = Math.abs(row.paymentFeeVariance ?? 0) > 0.1;
+  const otherBad = Math.abs(row.otherChargesVariance ?? 0) > 0.1;
+  const collectionsBad = Math.abs(row.collectionsVariance ?? 0) > 0.05;
+  const salesBad = Math.abs(row.creditSalesVariance ?? 0) > 0.05;
+  const missingBranchSales =
+    invoiceBranchCount > 1 &&
+    (row.creditSales ?? 0) > 0 &&
+    matched.creditSales === undefined;
+
+  if (commissionBad || paymentBad || otherBad || collectionsBad || salesBad || missingBranchSales) {
+    row.branchAuditStatus = "warning";
+    row.branchAuditLabel = "يحتاج مراجعة";
+    row.branchAuditNote = missingBranchSales
+      ? "الفرع موجود في تفاصيل العمولة والتحصيلات لكن ملخص مبيعات الفرع مفقود من فاتورة هنقرستيشن."
+      : "يوجد فرق يتجاوز هامش التقريب في واحد أو أكثر من بنود الفرع.";
+    return;
+  }
+
+  const hasRounding =
+    Math.abs(row.commissionVariance ?? 0) > 0.005 ||
+    Math.abs(row.paymentFeeVariance ?? 0) > 0.005 ||
+    Math.abs(row.otherChargesVariance ?? 0) > 0.005 ||
+    Math.abs(row.collectionsVariance ?? 0) > 0.005 ||
+    Math.abs(row.creditSalesVariance ?? 0) > 0.005;
+
+  row.branchAuditStatus = hasRounding ? "rounding" : "matched";
+  row.branchAuditLabel = hasRounding ? "مطابق ضمن التقريب" : "مطابق";
+
+  if (matchMode === "singleton") {
+    row.branchAuditNote = hasRounding
+      ? "تمت مطابقة الفرع بشكل حتمي لأن ملف الطلبات والفاتورة يحتوي كل منهما على فرع تشغيلي واحد فقط، مع فرق تقريب بسيط."
+      : "تمت مطابقة الفرع بشكل حتمي لأن ملف الطلبات والفاتورة يحتوي كل منهما على فرع تشغيلي واحد فقط؛ لم تُستخدم القيم المالية لتحديد هوية الفرع.";
+    return;
+  }
+
+  if (matchMode === "residual") {
+    row.branchAuditNote = hasRounding
+      ? "تمت مطابقة الفرع المتبقي بشكل حتمي بعد مطابقة جميع الفروع الأخرى، مع فرق تقريب بسيط؛ لم تُستخدم القيم المالية لتحديد الهوية."
+      : "تمت مطابقة الفرع المتبقي بشكل حتمي بعد مطابقة جميع الفروع الأخرى؛ لم تُستخدم القيم المالية لتحديد الهوية.";
+    return;
+  }
+
+  row.branchAuditNote = hasRounding
+    ? "مطابق ضمن فروق التقريب المعتادة."
+    : "مطابق.";
+}
+
 function emptyBranch(branch: string, branchId: string): BranchRow {
   return {
     branch,
@@ -556,13 +661,15 @@ export function analyzeHungerStation(
       ? 0
       : -1;
 
+  const unmatchedDataBranches: BranchRow[] = [];
+
   for (const row of branchList) {
     let matchedIndex = findInvoiceBranchMatch(
       row,
       invoiceBranches,
       unmatchedInvoiceBranches,
     );
-    let matchedBySingletonCardinality = false;
+    let matchMode: "name" | "singleton" = "name";
 
     if (
       matchedIndex < 0 &&
@@ -570,99 +677,41 @@ export function analyzeHungerStation(
       unmatchedInvoiceBranches.has(singletonUnnamedInvoiceIndex)
     ) {
       matchedIndex = singletonUnnamedInvoiceIndex;
-      matchedBySingletonCardinality = true;
+      matchMode = "singleton";
     }
 
     if (matchedIndex < 0) {
-      if (invoiceBranches.length) {
-        row.branchAuditStatus = "unmatched";
-        row.branchAuditLabel = "غير مطابق";
-        row.branchAuditNote =
-          "لم يتم العثور على اسم فرع مطابق بشكل موثوق في صفحات تفاصيل فاتورة هنقرستيشن.";
-      }
+      unmatchedDataBranches.push(row);
       continue;
     }
 
     const matched = invoiceBranches[matchedIndex]!;
     unmatchedInvoiceBranches.delete(matchedIndex);
+    applyInvoiceBranchMatch(row, matched, invoiceBranches.length, matchMode);
+  }
 
-    row.invoiceBranchName = matched.branch;
-    row.invoiceCommission = matched.salesCommission;
-    row.commissionVariance =
-      matched.salesCommission !== undefined ? matched.salesCommission - row.commission : undefined;
+  const residualOperationalInvoiceIndices = [...unmatchedInvoiceBranches].filter((index) => {
+    const branch = invoiceBranches[index];
+    return branch ? invoiceBranchHasOperationalOrders(branch) : false;
+  });
 
-    const computedCardPaymentFees = row.bankFeeSuccess + row.bankFeeRefunded;
-    const matchedWalletFee = matched.walletFee ?? 0;
-    const matchedCardPaymentFees =
-      matched.paymentFees !== undefined ? matched.paymentFees - matchedWalletFee : undefined;
+  if (
+    unmatchedDataBranches.length === 1 &&
+    residualOperationalInvoiceIndices.length === 1
+  ) {
+    const row = unmatchedDataBranches.pop()!;
+    const matchedIndex = residualOperationalInvoiceIndices[0]!;
+    const matched = invoiceBranches[matchedIndex]!;
+    unmatchedInvoiceBranches.delete(matchedIndex);
+    applyInvoiceBranchMatch(row, matched, invoiceBranches.length, "residual");
+  }
 
-    row.invoicePaymentFees = matched.paymentFees;
-    row.invoiceWalletFee = matchedWalletFee;
-    row.invoiceCardPaymentFees = matchedCardPaymentFees;
-    row.walletFeeBase = matched.walletFeeBase;
-    row.walletFee = matchedWalletFee;
-    row.totalCharges += matchedWalletFee;
-    row.paymentFeeVariance =
-      matchedCardPaymentFees !== undefined
-        ? matchedCardPaymentFees - computedCardPaymentFees
-        : undefined;
-
-    const computedOtherCharges =
-      row.rdfCampaigns + row.compensation + row.jokerFees + row.waitingTimeFees;
-    const invoiceDataOther =
-      matched.otherCommission !== undefined
-        ? matched.otherCommission - (matched.invoiceOnlyCharges ?? 0)
-        : undefined;
-    row.invoiceOtherCharges = matched.otherCommission;
-    row.invoiceOnlyBranchCharges = matched.invoiceOnlyCharges;
-    row.otherChargesVariance =
-      invoiceDataOther !== undefined ? invoiceDataOther - computedOtherCharges : undefined;
-
-    row.invoiceCollections = matched.totalCollections;
-    row.collectionsVariance =
-      matched.totalCollections !== undefined
-        ? matched.totalCollections - (row.totalCollections ?? 0)
-        : undefined;
-
-    row.invoiceCreditSales = matched.creditSales;
-    row.creditSalesVariance =
-      matched.creditSales !== undefined
-        ? matched.creditSales - (row.creditSales ?? 0)
-        : undefined;
-
-    const commissionBad = Math.abs(row.commissionVariance ?? 0) > 0.05;
-    const paymentBad = Math.abs(row.paymentFeeVariance ?? 0) > 0.1;
-    const otherBad = Math.abs(row.otherChargesVariance ?? 0) > 0.1;
-    const collectionsBad = Math.abs(row.collectionsVariance ?? 0) > 0.05;
-    const salesBad = Math.abs(row.creditSalesVariance ?? 0) > 0.05;
-    const missingBranchSales =
-      invoiceBranches.length > 1 &&
-      (row.creditSales ?? 0) > 0 &&
-      matched.creditSales === undefined;
-
-    if (commissionBad || paymentBad || otherBad || collectionsBad || salesBad || missingBranchSales) {
-      row.branchAuditStatus = "warning";
-      row.branchAuditLabel = "يحتاج مراجعة";
-      row.branchAuditNote = missingBranchSales
-        ? "الفرع موجود في تفاصيل العمولة والتحصيلات لكن ملخص مبيعات الفرع مفقود من فاتورة هنقرستيشن."
-        : "يوجد فرق يتجاوز هامش التقريب في واحد أو أكثر من بنود الفرع.";
-    } else {
-      const hasRounding =
-        Math.abs(row.commissionVariance ?? 0) > 0.005 ||
-        Math.abs(row.paymentFeeVariance ?? 0) > 0.005 ||
-        Math.abs(row.otherChargesVariance ?? 0) > 0.005 ||
-        Math.abs(row.collectionsVariance ?? 0) > 0.005 ||
-        Math.abs(row.creditSalesVariance ?? 0) > 0.005;
-      row.branchAuditStatus = hasRounding ? "rounding" : "matched";
-      row.branchAuditLabel = hasRounding ? "مطابق ضمن التقريب" : "مطابق";
-      row.branchAuditNote = matchedBySingletonCardinality
-        ? hasRounding
-          ? "تمت مطابقة الفرع بشكل حتمي لأن ملف الطلبات والفاتورة يحتوي كل منهما على فرع تشغيلي واحد فقط، مع فرق تقريب بسيط."
-          : "تمت مطابقة الفرع بشكل حتمي لأن ملف الطلبات والفاتورة يحتوي كل منهما على فرع تشغيلي واحد فقط؛ لم تُستخدم القيم المالية لتحديد هوية الفرع."
-        : hasRounding
-          ? "مطابق ضمن فروق التقريب المعتادة."
-          : "مطابق.";
-    }
+  for (const row of unmatchedDataBranches) {
+    if (!invoiceBranches.length) continue;
+    row.branchAuditStatus = "unmatched";
+    row.branchAuditLabel = "غير مطابق";
+    row.branchAuditNote =
+      "لم يتم العثور على اسم فرع مطابق بشكل موثوق في صفحات تفاصيل فاتورة هنقرستيشن.";
   }
 
   // Keep branches that exist only in the invoice visible in the branch report.
@@ -684,6 +733,8 @@ export function analyzeHungerStation(
     row.invoiceOnlyBranchCharges = unmatched.invoiceOnlyCharges;
     row.invoiceCollections = unmatched.totalCollections;
     row.invoiceCreditSales = unmatched.creditSales;
+    row.orders =
+      (unmatched.creditSalesOrders ?? 0) + (unmatched.rejectedSalesOrders ?? 0);
     row.branchAuditStatus = "invoice_only";
     row.branchAuditLabel = "في الفاتورة فقط";
     row.branchAuditNote =
