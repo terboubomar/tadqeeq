@@ -138,6 +138,7 @@ function makeTotals(input: {
   missingRuleBranches: string[];
   unsupportedRuleBranches: string[];
   tolerance: number;
+  totalsBlocked?: boolean;
 }): ContractComplianceSection["totals"] {
   const baseAmount = roundMoney(
     input.rows.reduce((sum, row) => sum + row.baseAmount, 0),
@@ -165,7 +166,8 @@ function makeTotals(input: {
   const expectedComplete =
     input.missingRuleBranches.length === 0 &&
     input.unsupportedRuleBranches.length === 0;
-  const complete = expectedComplete && observedAmount != null;
+  const complete =
+    expectedComplete && observedAmount != null && !input.totalsBlocked;
   const varianceAmount = complete
     ? roundMoney(observedAmount - expectedAmount)
     : null;
@@ -432,6 +434,9 @@ function evaluateWalletFee(
       missingRuleBranches,
       unsupportedRuleBranches,
       tolerance: HUNGERSTATION_TOLERANCES.paymentFee,
+      totalsBlocked: missingEvidenceBranches.includes(
+        "تفاصيل أسس رسوم المحافظ حسب الفرع",
+      ),
     }),
   };
 }
