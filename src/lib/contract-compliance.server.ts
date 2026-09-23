@@ -1,10 +1,18 @@
 import type { ContractRuleRecord, ContractRuleType, ContractValueKind, ContractFundingSource, ContractScopeType } from "./contract-rulebook";
-import { evaluateHungerStationContractCompliance, type HungerStationContractCompliance } from "./contract-compliance";
+import {
+  evaluateHungerStationContractCompliance,
+  evaluateKeetaContractCompliance,
+  type HungerStationContractCompliance,
+  type KeetaContractCompliance,
+} from "./contract-compliance";
 import type { StoredPeriod } from "./periods";
 import { requireServerUser } from "./server-auth.server";
 
 export type ContractComplianceResult =
-  | { status: "evaluated"; compliance: HungerStationContractCompliance }
+  | {
+      status: "evaluated";
+      compliance: HungerStationContractCompliance | KeetaContractCompliance;
+    }
   | {
       status: "not_covered";
       reason: "missing_period_dates" | "no_single_approved_version";
@@ -26,8 +34,8 @@ export async function evaluateContractComplianceOnServer(input: {
 
   if (contractError) throw new Error(contractError.message);
   if (!contract) throw new Error("تعذّر العثور على العقد.");
-  if (contract.platform !== "hungerstation") {
-    throw new Error("مطابقة العقد مع التدقيق متاحة حالياً لهنقرستيشن فقط.");
+  if (contract.platform === "jahez") {
+    throw new Error("مطابقة العقد مع تدقيق جاهز ستُفعّل في المرحلة التالية.");
   }
 
   const { data: rawPeriod, error: periodError } = await client
@@ -105,17 +113,26 @@ export async function evaluateContractComplianceOnServer(input: {
     createdAt: row.created_at,
   }));
 
+  const versionInput = {
+    id: version.id,
+    versionNumber: version.version_number,
+    effectiveFrom: version.effective_from,
+    effectiveTo: version.effective_to,
+  };
+
   return {
     status: "evaluated",
-    compliance: evaluateHungerStationContractCompliance({
-      period,
-      rules,
-      version: {
-        id: version.id,
-        versionNumber: version.version_number,
-        effectiveFrom: version.effective_from,
-        effectiveTo: version.effective_to,
-      },
-    }),
+    compliance:
+      contract.platform === "hungerstation"
+        ? evaluateHungerStationContractCompliance({
+            period,
+            rules,
+            version: versionInput,
+          })
+        : evaluateKeetaContractCompliance({
+            period,
+            rules,
+            version: versionInput,
+          }),
   };
 }
