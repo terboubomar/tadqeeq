@@ -1,0 +1,16 @@
+{
+  "platform": "hungerstation",
+  "formatIds": [
+    "hungerstation-orders-v1"
+  ],
+  "summary": {
+    "orders": 1,
+    "branchCount": 1,
+    "grossSales": 115,
+    "netSales": 100,
+    "commission": 15,
+    "totalCharges": 15,
+    "periodStart": "2026-08-01",
+    "periodEnd": "2026-08-01"
+  }
+}
