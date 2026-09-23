@@ -15,14 +15,18 @@ function requiredEnv(name: string): string {
   return value;
 }
 
-function bearerTokenFromRequest(): string {
-  const authorization = getRequestHeader("authorization")?.trim() ?? "";
+export function parseBearerAuthorizationHeader(value: string | undefined | null): string {
+  const authorization = value?.trim() ?? "";
   const match = authorization.match(/^Bearer\s+(.+)$/i);
   const token = match?.[1]?.trim();
   if (!token) {
     throw new Error("انتهت جلسة المستخدم. سجّل الدخول مرة أخرى قبل استخدام Tadqeeq AI.");
   }
   return token;
+}
+
+function bearerTokenFromRequest(): string {
+  return parseBearerAuthorizationHeader(getRequestHeader("authorization"));
 }
 
 export function aiSupabaseHeaders(
