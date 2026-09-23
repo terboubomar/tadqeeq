@@ -233,7 +233,7 @@ function makeException(
     input.forceReviewAmount ??
     (difference !== undefined ? Math.abs(difference) : 0);
   const id = stableExceptionId(
-    period.id,
+    period.lineage_id ?? period.id,
     input.sourceLevel,
     input.code,
     input.branchId,
