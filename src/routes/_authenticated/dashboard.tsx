@@ -1,9 +1,13 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Banknote,
   CreditCard,
   Percent,
   Receipt,
+  RefreshCw,
   ShoppingBag,
   Sparkles,
   Store,
@@ -26,7 +30,8 @@ import { AI_UI_ENABLED } from "@/lib/ai/config";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
 import { arabicDate, count, money, percent, sar, short } from "@/lib/format";
-import { useSelectedPeriod } from "@/lib/use-period";
+import { reanalyzeAuditPeriod } from "@/lib/reanalyze-period.functions";
+import { setSelectedPeriodId, useSelectedPeriod } from "@/lib/use-period";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -52,7 +57,9 @@ const chartStyle = {
 };
 
 function Dashboard() {
+  const queryClient = useQueryClient();
   const { selected, isLoading } = useSelectedPeriod();
+  const [reanalyzing, setReanalyzing] = useState(false);
 
   if (isLoading) {
     return <p className="py-20 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>;
@@ -73,6 +80,33 @@ function Dashboard() {
   const isJahez = selected.platform === "jahez";
   const platformLabel = isHunger ? "هنقرستيشن" : isKeeta ? "كيتا" : "جاهز";
   const costLabel = isHunger ? "عمولة" : isJahez ? "تكلفة الفاتورة" : "تكلفة المنصة";
+  async function reanalyzeCurrentPeriod() {
+    setReanalyzing(true);
+    try {
+      const response = await reanalyzeAuditPeriod({
+        data: { periodId: selected.id },
+      });
+      setSelectedPeriodId(response.periodId);
+      await queryClient.invalidateQueries({ queryKey: ["periods"] });
+      toast.success(
+        "تم إنشاء إصدار جديد من التدقيق باستخدام ملفات المصدر الأصلية.",
+        {
+          description:
+            "الإصدار السابق محفوظ كسجل تاريخي · المحرك " +
+            response.engineVersion,
+        },
+      );
+    } catch (cause) {
+      toast.error(
+        cause instanceof Error
+          ? cause.message
+          : "تعذّرت إعادة تحليل هذه الفترة.",
+      );
+    } finally {
+      setReanalyzing(false);
+    }
+  }
+
   const topBranches = [...selected.branches].slice(0, 8).map((branch) => ({
     name: branch.branch.length > 18 ? `${branch.branch.slice(0, 18)}…` : branch.branch,
     [costLabel]: Number(
@@ -110,6 +144,28 @@ function Dashboard() {
           <span className="num">{count(s.orders)}</span> طلب
         </p>
       </header>
+
+      <section className="rounded-xl border border-border bg-white px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold">نسخة التدقيق</p>
+            <p className="num mt-1 text-[11.5px] text-muted-foreground">
+              Engine {selected.engine_version}
+              {selected.supersedes_period_id ? " · إعادة تحليل" : " · الإصدار الأصلي"}
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={reanalyzing}
+            onClick={() => void reanalyzeCurrentPeriod()}
+          >
+            <RefreshCw className={reanalyzing ? "size-3.5 animate-spin" : "size-3.5"} />
+            {reanalyzing ? "جارٍ إعادة التحليل…" : "إعادة التحليل من ملفات المصدر"}
+          </Button>
+        </div>
+      </section>
 
       {AI_UI_ENABLED ? (
         <section className="rounded-xl border border-primary/15 bg-secondary/25 p-4">
