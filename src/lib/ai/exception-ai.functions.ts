@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { requireAiEnabled } from "./config.server";
 import { explainExceptionOnServer } from "./exception-ai.server";
 
 const requestSchema = z.object({
@@ -11,4 +12,7 @@ const requestSchema = z.object({
 
 export const explainExceptionWithAi = createServerFn({ method: "POST" })
   .validator(requestSchema)
-  .handler(async ({ data }) => explainExceptionOnServer(data));
+  .handler(async ({ data }) => {
+    requireAiEnabled();
+    return explainExceptionOnServer(data);
+  });
