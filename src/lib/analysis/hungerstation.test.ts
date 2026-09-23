@@ -524,6 +524,50 @@ describe("HungerStation branch identity matching", () => {
     expect(fixed?.orders).toBe(0);
   });
 
+  test("uses confirmed HS Branch ID mappings before invoice-name matching", () => {
+    const result = analyzeHungerStation(buildArabicBranchWorkbook(), {
+      manualBankRate: 0.025,
+      branchMappings: {
+        "1001": "Legacy Rawdah Invoice Name",
+        "1002": "Legacy Nakheel Invoice Name",
+      },
+      invoice: {
+        lines: [],
+        branches: [
+          {
+            branch: "Legacy Rawdah Invoice Name",
+            salesCommission: 15,
+            paymentFees: 2.5,
+            totalCollections: 100,
+            creditSales: 100,
+            creditSalesOrders: 1,
+            rejectedSalesOrders: 0,
+          },
+          {
+            branch: "Legacy Nakheel Invoice Name",
+            salesCommission: 30,
+            paymentFees: 5,
+            totalCollections: 200,
+            creditSales: 200,
+            creditSalesOrders: 1,
+            rejectedSalesOrders: 0,
+          },
+        ],
+      },
+    });
+
+    const rawdah = result.branches.find((row) => row.branchId === "1001");
+    const nakheel = result.branches.find((row) => row.branchId === "1002");
+
+    expect(rawdah?.invoiceBranchName).toBe("Legacy Rawdah Invoice Name");
+    expect(nakheel?.invoiceBranchName).toBe("Legacy Nakheel Invoice Name");
+    expect(rawdah?.branchAuditNote).toContain("ربط مؤكد");
+    expect(nakheel?.branchAuditNote).toContain("ربط مؤكد");
+    expect(
+      result.branches.some((row) => row.branchAuditStatus === "invoice_only"),
+    ).toBe(false);
+  });
+
   test("does not use the singleton fallback when multiple data branches exist", () => {
     const result = analyzeHungerStation(buildArabicBranchWorkbook(), {
       manualBankRate: 0.025,

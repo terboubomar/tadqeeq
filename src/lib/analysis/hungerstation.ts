@@ -128,6 +128,23 @@ function normalizeBranchName(value: string | undefined): string {
     .trim();
 }
 
+function findMappedInvoiceBranchMatch(
+  row: BranchRow,
+  invoiceBranches: HungerInvoiceBranch[],
+  available: Set<number>,
+  branchMappings: Readonly<Record<string, string>> | undefined,
+): number {
+  const mappedName = row.branchId ? branchMappings?.[row.branchId] : undefined;
+  const normalizedMappedName = normalizeBranchName(mappedName);
+  if (!normalizedMappedName) return -1;
+
+  const matches = [...available].filter(
+    (index) =>
+      normalizeBranchName(invoiceBranches[index]?.branch) === normalizedMappedName,
+  );
+  return matches.length === 1 ? matches[0]! : -1;
+}
+
 function findInvoiceBranchMatch(
   row: BranchRow,
   invoiceBranches: HungerInvoiceBranch[],
@@ -165,7 +182,7 @@ function applyInvoiceBranchMatch(
   row: BranchRow,
   matched: HungerInvoiceBranch,
   invoiceBranchCount: number,
-  matchMode: "name" | "singleton" | "residual",
+  matchMode: "mapping" | "name" | "singleton" | "residual",
 ): void {
   row.invoiceBranchName = matched.branch;
   row.invoiceCommission = matched.salesCommission;
@@ -240,6 +257,13 @@ function applyInvoiceBranchMatch(
   row.branchAuditStatus = hasRounding ? "rounding" : "matched";
   row.branchAuditLabel = hasRounding ? "مطابق ضمن التقريب" : "مطابق";
 
+  if (matchMode === "mapping") {
+    row.branchAuditNote = hasRounding
+      ? "تمت مطابقة الفرع عبر ربط مؤكد ومحفوظ باستخدام HS Branch ID، مع فرق تقريب بسيط؛ لم تُستخدم القيم المالية لتحديد الهوية."
+      : "تمت مطابقة الفرع عبر ربط مؤكد ومحفوظ باستخدام HS Branch ID؛ لم تُستخدم القيم المالية لتحديد الهوية.";
+    return;
+  }
+
   if (matchMode === "singleton") {
     row.branchAuditNote = hasRounding
       ? "تمت مطابقة الفرع بشكل حتمي لأن ملف الطلبات والفاتورة يحتوي كل منهما على فرع تشغيلي واحد فقط، مع فرق تقريب بسيط."
@@ -303,6 +327,11 @@ export interface HungerOptions {
   manualBankRate?: number;
   invoice?: InvoiceFigures;
   cpcInvoice?: InvoiceFigures;
+  /**
+   * User-confirmed persistent identity mapping:
+   * HS Branch ID -> branch name as it appears on the HungerStation invoice.
+   */
+  branchMappings?: Readonly<Record<string, string>>;
   label?: string;
 }
 
@@ -667,12 +696,23 @@ export function analyzeHungerStation(
   const unmatchedDataBranches: BranchRow[] = [];
 
   for (const row of branchList) {
-    let matchedIndex = findInvoiceBranchMatch(
+    let matchMode: "mapping" | "name" | "singleton" = "name";
+    let matchedIndex = findMappedInvoiceBranchMatch(
       row,
       invoiceBranches,
       unmatchedInvoiceBranches,
+      options.branchMappings,
     );
-    let matchMode: "name" | "singleton" = "name";
+
+    if (matchedIndex >= 0) {
+      matchMode = "mapping";
+    } else {
+      matchedIndex = findInvoiceBranchMatch(
+        row,
+        invoiceBranches,
+        unmatchedInvoiceBranches,
+      );
+    }
 
     if (
       matchedIndex < 0 &&
