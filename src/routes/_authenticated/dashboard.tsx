@@ -81,6 +81,7 @@ function Dashboard() {
   const platformLabel = isHunger ? "هنقرستيشن" : isKeeta ? "كيتا" : "جاهز";
   const costLabel = isHunger ? "عمولة" : isJahez ? "تكلفة الفاتورة" : "تكلفة المنصة";
   async function reanalyzeCurrentPeriod() {
+    if (!selected) return;
     setReanalyzing(true);
     try {
       const response = await reanalyzeAuditPeriod({
