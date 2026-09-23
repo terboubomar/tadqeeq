@@ -10,8 +10,15 @@ import {
   Save,
   ShieldCheck,
   Trash2,
+  Upload,
 } from "lucide-react";
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +39,7 @@ import {
   deleteContractRule,
   getContractRulebook,
   saveContractRule,
+  uploadContractDocument,
 } from "@/lib/contract-rulebook.functions";
 import {
   CONTRACT_FUNDING_SOURCES,
@@ -41,6 +49,7 @@ import {
   PLATFORM_LABELS,
   RULE_TYPE_LABELS,
   VALUE_KIND_LABELS,
+  type ContractDocumentRecord,
   type ContractFundingSource,
   type ContractPlatform,
   type ContractRuleRecord,
@@ -48,6 +57,10 @@ import {
   type ContractScopeType,
   type ContractValueKind,
 } from "@/lib/contract-rulebook";
+import {
+  MAX_UPLOAD_SIZE_LABEL,
+  uploadSizeError,
+} from "@/lib/upload-validation";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/contracts")({
@@ -133,6 +146,14 @@ function ContractsPage() {
         (rule) => rule.versionId === selectedVersion?.id,
       ),
     [data?.rules, selectedVersion?.id],
+  );
+
+  const documents = useMemo(
+    () =>
+      (data?.documents ?? []).filter(
+        (document) => document.versionId === selectedVersion?.id,
+      ),
+    [data?.documents, selectedVersion?.id],
   );
 
   const events = useMemo(
@@ -274,16 +295,17 @@ function ContractsPage() {
                     rules={rules}
                     onChanged={refreshRulebook}
                   />
+                  <ContractEvidencePanel
+                    contractId={selectedContract.id}
+                    version={selectedVersion}
+                    documents={documents}
+                    onChanged={refreshRulebook}
+                  />
                   <ApprovalPanel
                     contractId={selectedContract.id}
                     version={selectedVersion}
                     ruleCount={rules.length}
-                    documentCount={
-                      (data?.documents ?? []).filter(
-                        (document) =>
-                          document.versionId === selectedVersion.id,
-                      ).length
-                    }
+                    documentCount={documents.length}
                     onApproved={refreshRulebook}
                   />
                 </>
@@ -1049,6 +1071,141 @@ function RulesWorkspace({
   );
 }
 
+function ContractEvidencePanel({
+  contractId,
+  version,
+  documents,
+  onChanged,
+}: {
+  contractId: string;
+  version: {
+    id: string;
+    versionNumber: number;
+    status: "draft" | "approved";
+  };
+  documents: ContractDocumentRecord[];
+  onChanged: () => Promise<void>;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const locked = version.status === "approved";
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (!file) throw new Error("اختر مستند العقد أولاً.");
+      const form = new FormData();
+      form.set("contractId", contractId);
+      form.set("versionId", version.id);
+      form.set("file", file);
+      return uploadContractDocument({ data: form });
+    },
+    onSuccess: async ({ sha256 }) => {
+      toast.success("تم حفظ مستند العقد", {
+        description: `SHA-256: ${sha256.slice(0, 12)}…`,
+      });
+      setFile(null);
+      if (inputRef.current) inputRef.current.value = "";
+      await onChanged();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <section className="overflow-hidden rounded-[12px] border border-border bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <div>
+          <h3 className="text-sm font-semibold">مستندات العقد</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            يحتفظ تدقيق بالنسخة الخاصة من المستند مع بصمة SHA-256 لإثبات المصدر.
+          </p>
+        </div>
+        <span className="num rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+          {documents.length} مستند
+        </span>
+      </div>
+
+      {documents.length > 0 ? (
+        <div className="divide-y divide-border/70">
+          {documents.map((document) => (
+            <div
+              key={document.id}
+              className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5"
+            >
+              <div className="min-w-0">
+                <p className="max-w-[520px] truncate text-sm font-medium">
+                  {document.originalName}
+                </p>
+                <p className="num mt-1 text-[11px] text-muted-foreground">
+                  {formatBytes(document.sizeBytes)} · SHA-256{" "}
+                  {document.sha256.slice(0, 16)}…
+                </p>
+              </div>
+              <span className="num text-[11px] text-muted-foreground">
+                {formatDateTime(document.createdAt)}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="px-5 py-5 text-sm text-muted-foreground">
+          لا يوجد مستند إثبات مرتبط بهذه النسخة حتى الآن.
+        </p>
+      )}
+
+      {!locked ? (
+        <div className="border-t border-border bg-surface-raised/50 px-5 py-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <Field
+              label="إرفاق مستند"
+              hint={`PDF / Word / Excel / CSV / صورة · حتى ${MAX_UPLOAD_SIZE_LABEL}`}
+            >
+              <input
+                ref={inputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
+                className="block w-full text-sm file:me-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary"
+                onChange={(event) => {
+                  const next = event.target.files?.[0] ?? null;
+                  if (!next) {
+                    setFile(null);
+                    return;
+                  }
+                  const sizeError = uploadSizeError(next.size);
+                  if (sizeError) {
+                    event.currentTarget.value = "";
+                    setFile(null);
+                    toast.error(sizeError);
+                    return;
+                  }
+                  setFile(next);
+                }}
+              />
+            </Field>
+            <Button
+              type="button"
+              disabled={!file || mutation.isPending}
+              onClick={() => mutation.mutate()}
+            >
+              <Upload className="size-3.5" />
+              حفظ المستند
+            </Button>
+          </div>
+          {file ? (
+            <p className="mt-2 max-w-full truncate text-xs text-muted-foreground">
+              الملف المحدد: {file.name}
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 border-t border-border bg-success/[0.04] px-5 py-3 text-xs text-muted-foreground">
+          <Lock className="size-3.5 text-success" />
+          مستندات النسخة المعتمدة مقفلة ولا يمكن تغييرها.
+        </div>
+      )}
+    </section>
+  );
+}
+
 function ApprovalPanel({
   contractId,
   version,
@@ -1268,6 +1425,12 @@ function formatRuleValue(rule: ContractRuleRecord): string {
     return rule.textValue === "true" ? "نعم" : "لا";
   }
   return rule.textValue ?? "—";
+}
+
+function formatBytes(value: number): string {
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatNumber(value: number): string {
