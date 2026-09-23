@@ -120,6 +120,27 @@ export function workflowPatchForRpc(
   if (patch.recoveredAmount !== undefined) {
     workflowPatch["recoveredAmount"] = patch.recoveredAmount;
   }
+  if (patch.claimReference !== undefined) {
+    workflowPatch["claimReference"] = patch.claimReference;
+  }
+  if (patch.approvedClaimAmount !== undefined) {
+    workflowPatch["approvedClaimAmount"] = patch.approvedClaimAmount;
+  }
+  if (patch.submittedAmount !== undefined) {
+    workflowPatch["submittedAmount"] = patch.submittedAmount;
+  }
+  if (patch.acceptedAmount !== undefined) {
+    workflowPatch["acceptedAmount"] = patch.acceptedAmount;
+  }
+  if (patch.submittedOn !== undefined) {
+    workflowPatch["submittedOn"] = patch.submittedOn;
+  }
+  if (patch.responseOn !== undefined) {
+    workflowPatch["responseOn"] = patch.responseOn;
+  }
+  if (patch.recoveredOn !== undefined) {
+    workflowPatch["recoveredOn"] = patch.recoveredOn;
+  }
 
   return workflowPatch as Json;
 }
@@ -157,7 +178,10 @@ export async function updateExceptionWorkflow(
     if (
       error.message.includes("INVALID_WORKFLOW") ||
       error.message.includes("INVALID_RECOVERED_AMOUNT") ||
-      error.message.includes("INVALID_EXCEPTION_ID")
+      error.message.includes("INVALID_EXCEPTION_ID") ||
+      error.message.includes("INVALID_CLAIM_REFERENCE") ||
+      error.message.includes("INVALID_RECOVERY_AMOUNT") ||
+      error.message.includes("INVALID_RECOVERY_DATE")
     ) {
       throw new Error("تعذّر حفظ تحديث الاستثناء لأن بيانات التحديث غير صالحة.");
     }
