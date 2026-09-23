@@ -9,6 +9,7 @@ import type {
   JahezOrderReference,
   Summary,
 } from "./types";
+import { detectJahezFormat } from "./formats";
 import {
   ParseError,
   assertDateInRange,
@@ -432,6 +433,7 @@ function deliveryInvoiceUnitExVat(deliveryOfferInclVat: number): number {
 export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): AnalysisResult {
   const text = new TextDecoder("utf-8").decode(file).replace(/^\uFEFF/, "");
   const matrix = parseCsv(text);
+  const formatId = detectJahezFormat(matrix);
 
   if (matrix.length < 5) {
     throw new Error("ملف جاهز لا يحتوي البيانات المتوقعة.");
@@ -960,6 +962,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
 
   return {
     platform: "jahez",
+    formatIds: [formatId],
     label:
       options.label?.trim() ||
       (range.start && range.end ? "جاهز · " + range.start + " — " + range.end : "جاهز"),
