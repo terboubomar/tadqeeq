@@ -10,9 +10,11 @@ import {
   type ContractRuleType,
   type ContractRulebookSnapshot,
   type ContractScopeType,
+  type ContractTermsResolution,
   type ContractValueKind,
   type ContractVersionRecord,
 } from "./contract-rulebook";
+import { resolveContractRulePrecedence } from "./contract-rulebook-resolver";
 import { requireServerUser, type ServerUserClient } from "./server-auth.server";
 import { safeStorageFileName, sha256Hex } from "./source-file-utils";
 import { MAX_UPLOAD_SIZE_BYTES } from "./upload-validation";
@@ -42,6 +44,12 @@ export interface CreateContractVersionInput {
   effectiveFrom: string;
   effectiveTo?: string | null;
   sourceNote?: string | null;
+}
+
+export interface ResolveContractTermsInput {
+  contractId: string;
+  onDate: string;
+  branchKey?: string | null;
 }
 
 export interface SaveContractRuleInput {
@@ -632,4 +640,100 @@ export async function uploadContractDocumentOnServer(
   }
 
   return { documentId, sha256 };
+}
+
+
+export async function resolveContractTermsOnServer(
+  input: ResolveContractTermsInput,
+): Promise<ContractTermsResolution> {
+  const { client, userId } = await requireServerUser();
+  await assertOwnedContract(client, userId, input.contractId);
+
+  const { data: versionRows, error: versionsError } = await client
+    .from("contract_versions")
+    .select("id, version_number, effective_from, effective_to")
+    .eq("user_id", userId)
+    .eq("contract_id", input.contractId)
+    .eq("status", "approved")
+    .lte("effective_from", input.onDate)
+    .or(`effective_to.is.null,effective_to.gte.${input.onDate}`)
+    .order("effective_from", { ascending: false })
+    .limit(2);
+
+  if (versionsError) {
+    throw explainDatabaseError(
+      versionsError,
+      "تعذّر تحديد نسخة العقد السارية.",
+    );
+  }
+
+  if (!versionRows?.length) {
+    return {
+      status: "not_found",
+      contractId: input.contractId,
+      onDate: input.onDate,
+      branchKey: textOrNull(input.branchKey),
+    };
+  }
+
+  if (versionRows.length > 1) {
+    throw new Error(
+      "وجدت أكثر من نسخة عقد معتمدة سارية لنفس التاريخ. راجع تواريخ العقد قبل الاستخدام.",
+    );
+  }
+
+  const version = versionRows[0];
+  if (!version) {
+    throw new Error("تعذّر تحديد نسخة العقد السارية.");
+  }
+
+  const { data: ruleRows, error: rulesError } = await client
+    .from("contract_fee_rules")
+    .select(
+      "id, contract_id, version_id, rule_key, rule_type, value_kind, numeric_value, text_value, currency, funding_source, scope_type, scope_key, notes, created_at",
+    )
+    .eq("user_id", userId)
+    .eq("contract_id", input.contractId)
+    .eq("version_id", version.id)
+    .order("created_at", { ascending: true });
+
+  if (rulesError) {
+    throw explainDatabaseError(
+      rulesError,
+      "تعذّر قراءة شروط نسخة العقد السارية.",
+    );
+  }
+
+  const rules: ContractRuleRecord[] = (ruleRows ?? []).map((row) => ({
+    id: row.id,
+    contractId: row.contract_id,
+    versionId: row.version_id,
+    ruleKey: row.rule_key,
+    ruleType: row.rule_type as ContractRuleType,
+    valueKind: row.value_kind as ContractValueKind,
+    numericValue: row.numeric_value,
+    textValue: row.text_value,
+    currency: row.currency,
+    fundingSource: row.funding_source as ContractFundingSource | null,
+    scopeType: row.scope_type as ContractScopeType,
+    scopeKey: row.scope_key,
+    notes: row.notes,
+    createdAt: row.created_at,
+  }));
+
+  const branchKey = textOrNull(input.branchKey);
+
+  return {
+    status: "resolved",
+    contractId: input.contractId,
+    onDate: input.onDate,
+    branchKey,
+    version: {
+      id: version.id,
+      versionNumber: version.version_number,
+      effectiveFrom: version.effective_from,
+      effectiveTo: version.effective_to,
+    },
+    rules: resolveContractRulePrecedence(rules, branchKey),
+  };
 }
