@@ -2,7 +2,6 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
 import type { AnalysisResult, BranchRow, DailyRow, InvoiceFigures, Summary } from "./analysis/types";
-import { ENGINE_VERSION } from "./analysis/version";
 import type { ExceptionWorkflowEntry } from "./exceptions";
 
 export interface StoredPeriod {
@@ -86,85 +85,6 @@ export async function getPeriod(id: string): Promise<StoredPeriod | null> {
   const { data, error } = await supabase.from("periods").select("*").eq("id", id).maybeSingle();
   if (error) throw new Error(error.message);
   return (data as unknown as StoredPeriod) ?? null;
-}
-
-export async function savePeriod(result: AnalysisResult): Promise<StoredPeriod> {
-  const { data: auth } = await supabase.auth.getUser();
-  const userId = auth.user?.id;
-  if (!userId) throw new Error("الجلسة منتهية، يرجى تسجيل الدخول مرة أخرى.");
-
-  const periodStart = result.summary.periodStart;
-  const periodEnd = result.summary.periodEnd;
-  const normalizedLabel = normalizePeriodLabel(result.label);
-
-  if (periodStart && periodEnd) {
-    const { data: matchingRanges, error: duplicateError } = await supabase
-      .from("periods")
-      .select("id, label")
-      .eq("user_id", userId)
-      .eq("platform", result.platform)
-      .eq("period_start", periodStart)
-      .eq("period_end", periodEnd);
-
-    if (duplicateError) throw new Error(duplicateError.message);
-    const existing = matchingRanges?.find(
-      (period) => normalizePeriodLabel(period.label) === normalizedLabel,
-    );
-    if (existing) {
-      throw new DuplicatePeriodError({
-        existingPeriodId: existing.id,
-        platform: result.platform,
-        periodStart,
-        periodEnd,
-      });
-    }
-  }
-
-  const { data, error } = await supabase
-    .from("periods")
-    .insert({
-      user_id: userId,
-      platform: result.platform,
-      label: result.label,
-      period_start: result.summary.periodStart,
-      period_end: result.summary.periodEnd,
-      engine_version: ENGINE_VERSION,
-      format_ids: (result.formatIds ?? []) as unknown as Json,
-      summary: result.summary as unknown as Json,
-      branches: result.branches as unknown as Json,
-      daily: result.daily as unknown as Json,
-      invoice: { ...result.invoice, checks: result.checks } as unknown as Json,
-    })
-    .select("*")
-    .single();
-
-  if (error) {
-    if (isDuplicatePeriodConstraintError(error) && periodStart && periodEnd) {
-      const { data: matchingRanges } = await supabase
-        .from("periods")
-        .select("id, label")
-        .eq("user_id", userId)
-        .eq("platform", result.platform)
-        .eq("period_start", periodStart)
-        .eq("period_end", periodEnd);
-
-      const existing = matchingRanges?.find(
-        (period) => normalizePeriodLabel(period.label) === normalizedLabel,
-      );
-
-      if (existing?.id) {
-        throw new DuplicatePeriodError({
-          existingPeriodId: existing.id,
-          platform: result.platform,
-          periodStart,
-          periodEnd,
-        });
-      }
-    }
-
-    throw new Error(error.message);
-  }
-  return data as unknown as StoredPeriod;
 }
 
 export async function deletePeriod(id: string): Promise<string> {
