@@ -11,7 +11,8 @@
     "test": "bun test",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "format:check": "prettier --check ."
   },
   "overrides": {
     "rolldown": "1.2.1"
