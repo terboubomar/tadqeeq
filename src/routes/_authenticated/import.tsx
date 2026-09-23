@@ -467,7 +467,15 @@ function ImportPage() {
           ) : null}
 
           {step === 1 ? (
-            <DataFileStep platform={platform} dataFile={dataFile} onChange={setDataFile} />
+            <DataFileStep
+              platform={platform}
+              dataFile={dataFile}
+              onChange={(file) => {
+                setDataFile(file);
+                setMappingReview(null);
+                setMappingSelections({});
+              }}
+            />
           ) : null}
 
           {step === 2 ? (
@@ -479,9 +487,21 @@ function ImportPage() {
               bankRate={bankRate}
               bankRateInterpretation={bankRateInterpretation}
               bankRateValidationError={bankRateValidationError}
-              onInvoiceChange={setInvoiceFile}
-              onCpcChange={setCpcFile}
-              onCompensationChange={setCompensationFile}
+              onInvoiceChange={(file) => {
+                setInvoiceFile(file);
+                setMappingReview(null);
+                setMappingSelections({});
+              }}
+              onCpcChange={(file) => {
+                setCpcFile(file);
+                setMappingReview(null);
+                setMappingSelections({});
+              }}
+              onCompensationChange={(file) => {
+                setCompensationFile(file);
+                setMappingReview(null);
+                setMappingSelections({});
+              }}
               onBankRateChange={setBankRate}
             />
           ) : null}
