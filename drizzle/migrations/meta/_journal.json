@@ -127,6 +127,13 @@
       "when": 1790125200006,
       "tag": "0015_contract_fee_rulebook",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790125200007,
+      "tag": "0016_contract_rulebook_security",
+      "breakpoints": true
     }
   ]
 }
