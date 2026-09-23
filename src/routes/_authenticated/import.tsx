@@ -32,7 +32,8 @@ import {
 } from "@/lib/analysis/pdf";
 import type { Platform } from "@/lib/analysis/types";
 import { acquireImportRun, finishImportRun } from "@/lib/import-run-guard";
-import { DuplicatePeriodError, savePeriod } from "@/lib/periods";
+import { deletePeriod, DuplicatePeriodError, savePeriod } from "@/lib/periods";
+import { storePeriodSourceFiles } from "@/lib/source-files";
 import { setSelectedPeriodId, usePeriods } from "@/lib/use-period";
 import {
   MAX_UPLOAD_SIZE_LABEL,
@@ -232,6 +233,7 @@ function ImportPage() {
 
     setBusy(true);
     let savedSuccessfully = false;
+    let createdPeriodId: string | null = null;
     try {
       const dataBuffer = await dataFile.arrayBuffer();
 
@@ -299,6 +301,30 @@ function ImportPage() {
               });
 
       const saved = await savePeriod(result);
+      createdPeriodId = saved.id;
+
+      await storePeriodSourceFiles({
+        periodId: saved.id,
+        platform: result.platform,
+        files: [
+          {
+            kind: "data",
+            file: dataFile,
+            formatId: result.formatIds?.[0],
+          },
+          ...(invoiceFile
+            ? [{ kind: "invoice" as const, file: invoiceFile }]
+            : []),
+          ...(cpcFile
+            ? [{ kind: "cpc_invoice" as const, file: cpcFile }]
+            : []),
+          ...(compensationFile
+            ? [{ kind: "compensation" as const, file: compensationFile }]
+            : []),
+        ],
+      });
+
+      createdPeriodId = null;
       savedSuccessfully = true;
       setSelectedPeriodId(saved.id);
       await queryClient.invalidateQueries({ queryKey: ["periods"] });
@@ -306,6 +332,21 @@ function ImportPage() {
       navigate({ to: "/dashboard" });
     } catch (error) {
       console.error(error);
+
+      if (createdPeriodId) {
+        try {
+          await deletePeriod(createdPeriodId);
+          createdPeriodId = null;
+        } catch (cleanupError) {
+          console.error(
+            "Failed to roll back unreproducible Tadqeeq period",
+            cleanupError,
+          );
+          toast.error(
+            "تعذّر حفظ ملفات المصدر وتعذّر التراجع عن الفترة الجديدة. راجع الفترة قبل استخدامها.",
+          );
+        }
+      }
 
       if (error instanceof DuplicatePeriodError) {
         toast.error(error.message, {
@@ -431,8 +472,8 @@ function ImportPage() {
       </section>
 
       <p className="px-1 text-[11.5px] leading-6 text-muted-foreground">
-        كل الحسابات تتم داخل متصفحك ثم تُحفظ النتائج في حسابك. ملفات Excel وCSV وPDF نفسها لا تُرفع
-        إلى قاعدة البيانات.
+        تُجرى الحسابات الحتمية ثم تُحفظ النتائج وملفات المصدر الأصلية بشكل خاص مع بصمة SHA-256
+        لإمكانية إعادة التدقيق والتحقق لاحقاً. ملفات المصدر لا تُرسل إلى Tadqeeq AI.
       </p>
     </div>
   );
