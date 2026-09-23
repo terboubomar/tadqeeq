@@ -12,11 +12,12 @@ import {
   userOnlyAnalystHistory,
 } from "./analyst-grounding";
 import { buildAnalystPresentation } from "./analyst-presentation";
+import { selectAnalystFacts } from "./analyst-retrieval";
 import { callTadqeeqAi } from "./gateway.server";
 import { runWithAiUsageReservation } from "./usage.server";
 
 const FEATURE = "analyst_chat";
-const PROMPT_VERSION = "ask-tadqeeq-v3-app-intelligence";
+const PROMPT_VERSION = "ask-tadqeeq-v4-intent-retrieval";
 const DEFAULT_ANALYST_MODEL = "gpt-5.6-terra";
 
 interface AskTadqeeqInput {
@@ -209,6 +210,8 @@ async function callAnalyst(
     additionalProperties: false,
   };
 
+  const retrievedFacts = selectAnalystFacts(context, input.question);
+
   const payload = {
     QUESTION: input.question,
     CHAT_HISTORY: userOnlyAnalystHistory(input.history),
@@ -219,7 +222,11 @@ async function callAnalyst(
       hasPreviousPeriod: context.hasPreviousPeriod,
       coverage: context.coverage,
     },
-    FACT_REGISTRY: context.facts,
+    RETRIEVAL: {
+      includedFacts: retrievedFacts.length,
+      totalFacts: context.facts.length,
+    },
+    FACT_REGISTRY: retrievedFacts,
   };
 
   const { text, model } = await callTadqeeqAi({
