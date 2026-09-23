@@ -404,7 +404,7 @@ function hungerInvoiceHasOperationalActivity(branch: StoredPeriod["branches"][nu
     (value) =>
       typeof value === "number" &&
       Number.isFinite(value) &&
-      Math.abs(value) > HUNGERSTATION_TOLERANCES.commission,
+      Math.abs(value) > DEFAULT_DATA_TOLERANCE,
   );
 }
 
@@ -533,7 +533,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       label: "فرق الرسوم الأخرى للفرع",
       computed: otherComputed,
       invoiced: otherInvoiced,
-      tolerance: HUNGERSTATION_TOLERANCES.paymentFee,
+      tolerance: HUNGERSTATION_TOLERANCES.otherFee,
     });
     pushBranchVariance(result, period, {
       branch: branch.branch,
@@ -543,7 +543,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       label: "فرق تحصيلات الفرع",
       computed: branch.totalCollections,
       invoiced: branch.invoiceCollections,
-      tolerance: HUNGERSTATION_TOLERANCES.commission,
+      tolerance: HUNGERSTATION_TOLERANCES.collections,
     });
     pushBranchVariance(result, period, {
       branch: branch.branch,
@@ -553,7 +553,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       label: "فرق مبيعات الائتمان للفرع",
       computed: branch.creditSales,
       invoiced: branch.invoiceCreditSales,
-      tolerance: HUNGERSTATION_TOLERANCES.commission,
+      tolerance: HUNGERSTATION_TOLERANCES.creditSales,
     });
 
     // invoiceOnlyBranchCharges means "not independently verifiable", not
