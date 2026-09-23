@@ -134,6 +134,13 @@
       "when": 1790125200007,
       "tag": "0016_contract_rulebook_security",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790125200008,
+      "tag": "0017_recovery_claim_lifecycle",
+      "breakpoints": true
     }
   ]
 }
