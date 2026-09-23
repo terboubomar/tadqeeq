@@ -120,6 +120,13 @@
       "when": 1790125200005,
       "tag": "0014_period_reanalysis",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790125200006,
+      "tag": "0015_contract_fee_rulebook",
+      "breakpoints": true
     }
   ]
 }
