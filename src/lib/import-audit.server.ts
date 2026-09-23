@@ -371,16 +371,20 @@ async function findDuplicate(
 
   const { data, error } = await client
     .from("periods")
-    .select("id")
+    .select("id, label")
     .eq("user_id", userId)
     .eq("platform", result.platform)
     .eq("period_start", start)
     .eq("period_end", end)
-    .limit(1)
-    .maybeSingle();
+    .is("superseded_at", null);
 
   if (error) throw new Error("تعذّر التحقق من تكرار فترة التدقيق.");
-  return data?.id ?? null;
+
+  const label = normalizePeriodLabel(result.label);
+  const existing = (data ?? []).find(
+    (row) => normalizePeriodLabel(row.label) === label,
+  );
+  return existing?.id ?? null;
 }
 
 async function insertPeriod(
