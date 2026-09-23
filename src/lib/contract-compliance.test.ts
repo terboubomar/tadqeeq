@@ -237,6 +237,28 @@ describe("HungerStation contract compliance", () => {
     expect(result.paymentFee.totals.varianceAmount).toBeNull();
   });
 
+  test("uses the all-branch wallet rate for an aggregate base residual when allocation is partial", () => {
+    const p = period();
+    p.branches[0]!.walletFeeBase = 60;
+    p.branches[0]!.invoiceWalletFee = 1.8;
+
+    const result = evaluateHungerStationContractCompliance({
+      period: p,
+      rules: [
+        rule({ ruleType: "commission_rate", rate: 18 }),
+        rule({ ruleType: "wallet_fee", rate: 3 }),
+      ],
+      version: VERSION,
+    });
+
+    expect(result.walletFee.rows).toHaveLength(2);
+    expect(result.walletFee.totals.baseAmount).toBe(100);
+    expect(result.walletFee.totals.expectedAmount).toBe(3);
+    expect(result.walletFee.totals.observedAmount).toBe(3);
+    expect(result.walletFee.totals.varianceAmount).toBe(0);
+    expect(result.walletFee.totals.complete).toBe(true);
+  });
+
   test("does not invent a total wallet rate when branch overrides exist but branch bases are absent", () => {
     const p = period();
     p.branches[0]!.walletFeeBase = undefined;
