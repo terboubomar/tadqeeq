@@ -26,12 +26,26 @@ export interface ExceptionWorkflowEvent {
   status: ExceptionStatus;
   note?: string;
   recoveredAmount?: number;
+  claimReference?: string;
+  approvedClaimAmount?: number;
+  submittedAmount?: number;
+  acceptedAmount?: number;
+  submittedOn?: string;
+  responseOn?: string;
+  recoveredOn?: string;
 }
 
 export interface ExceptionWorkflowEntry {
   status: ExceptionStatus;
   note?: string;
   recoveredAmount?: number;
+  claimReference?: string;
+  approvedClaimAmount?: number;
+  submittedAmount?: number;
+  acceptedAmount?: number;
+  submittedOn?: string;
+  responseOn?: string;
+  recoveredOn?: string;
   updatedAt?: string;
   history?: ExceptionWorkflowEvent[];
 }
@@ -79,6 +93,13 @@ export interface AuditException {
   status: ExceptionStatus;
   note?: string;
   recoveredAmount: number;
+  claimReference?: string;
+  approvedClaimAmount?: number;
+  submittedAmount?: number;
+  acceptedAmount?: number;
+  submittedOn?: string;
+  responseOn?: string;
+  recoveredOn?: string;
   rollup: boolean;
   hint?: string;
 }
@@ -280,6 +301,13 @@ function makeException(
     status: workflow?.status ?? "new",
     note: workflow?.note,
     recoveredAmount: workflow?.recoveredAmount ?? 0,
+    claimReference: workflow?.claimReference,
+    approvedClaimAmount: workflow?.approvedClaimAmount,
+    submittedAmount: workflow?.submittedAmount,
+    acceptedAmount: workflow?.acceptedAmount,
+    submittedOn: workflow?.submittedOn,
+    responseOn: workflow?.responseOn,
+    recoveredOn: workflow?.recoveredOn,
     rollup: false,
     hint: input.hint,
   };
