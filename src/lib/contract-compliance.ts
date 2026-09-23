@@ -1,5 +1,5 @@
 import { roundMoney } from "./analysis/parse";
-import { HUNGERSTATION_TOLERANCES } from "./analysis/tolerances";
+import { HUNGERSTATION_TOLERANCES, KEETA_TOLERANCES } from "./analysis/tolerances";
 import type { ContractRuleRecord, ContractRuleType } from "./contract-rulebook";
 import {
   normalizeContractScopeKey,
@@ -31,7 +31,8 @@ export interface ContractComplianceSection {
   evidence:
     | "contract_plus_order_data"
     | "contract_plus_invoice"
-    | "contract_plus_invoice_derived_base";
+    | "contract_plus_invoice_derived_base"
+    | "contract_plus_platform_data";
   evidenceNote: string;
   rows: ContractComplianceRow[];
   missingRuleBranches: string[];
@@ -61,6 +62,19 @@ export interface HungerStationContractCompliance {
   commission: ContractComplianceSection;
   paymentFee: ContractComplianceSection;
   walletFee: ContractComplianceSection;
+}
+
+export interface KeetaContractCompliance {
+  platform: "keeta";
+  versionId: string;
+  versionNumber: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  periodId: string;
+  periodLabel: string;
+  periodStart: string;
+  periodEnd: string;
+  commission: ContractComplianceSection;
 }
 
 type PercentageRuleResolution =
@@ -452,6 +466,98 @@ function evaluateWalletFee(
       tolerance: HUNGERSTATION_TOLERANCES.paymentFee,
       totalsBlocked,
     }),
+  };
+}
+
+function evaluateKeetaCommission(
+  period: StoredPeriod,
+  rules: ContractRuleRecord[],
+): ContractComplianceSection {
+  const rows: ContractComplianceRow[] = [];
+  const missingRuleBranches: string[] = [];
+  const unsupportedRuleBranches: string[] = [];
+
+  for (const branch of period.branches ?? []) {
+    if (branch.branchAuditStatus === "invoice_only") continue;
+
+    const baseAmount = branch.keetaSalesExVat ?? 0;
+    if (baseAmount <= 0) continue;
+
+    const resolved = canonicalPercentageRuleForBranch(
+      rules,
+      branch.branch,
+      "commission_rate",
+      "commission_rate",
+    );
+
+    if (resolved.status === "missing") {
+      missingRuleBranches.push(branch.branch);
+      continue;
+    }
+    if (resolved.status === "unsupported") {
+      unsupportedRuleBranches.push(branch.branch);
+      continue;
+    }
+
+    rows.push(
+      makeRow({
+        branch: branch.branch,
+        rule: resolved.rule,
+        baseAmount,
+        observedAmount: branch.keetaCommissionExVat ?? null,
+        tolerance: KEETA_TOLERANCES.check,
+      }),
+    );
+  }
+
+  return {
+    ruleType: "commission_rate",
+    ruleKey: "commission_rate",
+    evidence: "contract_plus_platform_data",
+    evidenceNote:
+      "أساس العمولة والعمولة المرصودة مأخوذان من Order Summary في ملف كيتا، ويُقارن المبلغ المرصود بما تسمح به نسبة العمولة المعتمدة في العقد.",
+    rows,
+    missingRuleBranches,
+    unsupportedRuleBranches,
+    missingEvidenceBranches: [],
+    totals: makeTotals({
+      rows,
+      missingRuleBranches,
+      unsupportedRuleBranches,
+      tolerance: KEETA_TOLERANCES.check,
+    }),
+  };
+}
+
+export function evaluateKeetaContractCompliance(input: {
+  period: StoredPeriod;
+  rules: ContractRuleRecord[];
+  version: {
+    id: string;
+    versionNumber: number;
+    effectiveFrom: string;
+    effectiveTo: string | null;
+  };
+}): KeetaContractCompliance {
+  const { period, rules, version } = input;
+  if (period.platform !== "keeta") {
+    throw new Error("Keeta contract compliance requires a Keeta audit period.");
+  }
+  if (!period.period_start || !period.period_end) {
+    throw new Error("Audit period dates are required for contract compliance.");
+  }
+
+  return {
+    platform: "keeta",
+    versionId: version.id,
+    versionNumber: version.versionNumber,
+    effectiveFrom: version.effectiveFrom,
+    effectiveTo: version.effectiveTo,
+    periodId: period.id,
+    periodLabel: period.label,
+    periodStart: period.period_start,
+    periodEnd: period.period_end,
+    commission: evaluateKeetaCommission(period, rules),
   };
 }
 
