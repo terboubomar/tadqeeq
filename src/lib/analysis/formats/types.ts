@@ -22,7 +22,9 @@ export class UnsupportedFormatError extends ParseError {
     missing: string[];
   }) {
     super(
-      "صيغة الملف تغيّرت من المنصة. تم إيقاف التحليل لحماية دقة النتائج.",
+      "صيغة الملف تغيّرت من المنصة. تم إيقاف التحليل لحماية دقة النتائج. المصدر: " +
+        input.source +
+        (input.missing.length ? " · مفقود: " + input.missing.join("، ") : ""),
       undefined,
       {
         platform: input.platform,
