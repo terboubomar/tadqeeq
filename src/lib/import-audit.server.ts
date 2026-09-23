@@ -1,5 +1,6 @@
 import type { Json } from "@/integrations/supabase/types";
 
+import { UnsupportedFormatError } from "./analysis/formats/types";
 import { analyzeHungerStation } from "./analysis/hungerstation";
 import { analyzeJahez } from "./analysis/jahez";
 import { analyzeKeeta } from "./analysis/keeta";
@@ -477,6 +478,68 @@ async function storeSources(
   }
 }
 
+async function recordFormatChangeAlert(
+  client: ServerUserClient,
+  userId: string,
+  platform: Platform,
+  file: File,
+  error: UnsupportedFormatError,
+): Promise<string> {
+  const alertId = crypto.randomUUID();
+  const path =
+    userId +
+    "/format-alerts/" +
+    alertId +
+    "/data-" +
+    safeStorageFileName(file.name);
+  const digest = await sha256Hex(file);
+
+  const { error: uploadError } = await client.storage
+    .from(SOURCE_BUCKET)
+    .upload(path, file, {
+      upsert: false,
+      contentType: file.type || "application/octet-stream",
+    });
+
+  if (uploadError) {
+    throw new Error("تعذّر حفظ ملف الصيغة غير المدعومة للمراجعة.");
+  }
+
+  const { error: metadataError } = await client
+    .from("format_change_alerts")
+    .insert({
+      id: alertId,
+      user_id: userId,
+      platform,
+      source_kind: "data",
+      expected_format_id: error.formatId,
+      source_name: error.source,
+      missing_fields: error.missing as unknown as Json,
+      observed_fields: error.observed as unknown as Json,
+      original_name: file.name,
+      sha256: digest,
+      size_bytes: file.size,
+      storage_path: path,
+      status: "new",
+    });
+
+  if (metadataError) {
+    await client.storage.from(SOURCE_BUCKET).remove([path]);
+    throw new Error("تعذّر تسجيل تنبيه تغيّر صيغة المنصة.");
+  }
+
+  console.error("Tadqeeq format change alert", {
+    alertId,
+    platform,
+    expectedFormatId: error.formatId,
+    source: error.source,
+    missing: error.missing,
+    observed: error.observed,
+  });
+
+  return alertId;
+}
+
 async function rollbackPeriod(
   client: ServerUserClient,
   userId: string,
@@ -500,13 +563,46 @@ export async function importAuditOnServer(
   const approvedMappings =
     platform === "hungerstation" ? parseApprovedMappings(form) : {};
 
-  const { result, sources } = await buildAnalysis(
-    form,
-    platform,
-    client,
-    userId,
-    approvedMappings,
-  );
+  let result: AnalysisResult;
+  let sources: SourceFile[];
+  try {
+    ({ result, sources } = await buildAnalysis(
+      form,
+      platform,
+      client,
+      userId,
+      approvedMappings,
+    ));
+  } catch (cause) {
+    if (cause instanceof UnsupportedFormatError) {
+      const sourceFile = formFile(form, "dataFile");
+      let alertId: string | null = null;
+
+      if (sourceFile) {
+        try {
+          alertId = await recordFormatChangeAlert(
+            client,
+            userId,
+            platform,
+            sourceFile,
+            cause,
+          );
+        } catch (alertError) {
+          console.error("Failed to record Tadqeeq format change alert", alertError);
+        }
+      }
+
+      throw new Error(
+        cause.message +
+          (alertId
+            ? " تم حفظ الملف بأمان وتسجيل تنبيه تغيير الصيغة للمراجعة. مرجع التنبيه: " +
+              alertId.slice(0, 8)
+            : " تعذّر تسجيل تنبيه الدعم تلقائياً؛ احتفظ بالملف وأرسله للمراجعة."),
+      );
+    }
+
+    throw cause;
+  }
 
   if (platform === "hungerstation") {
     assertApprovedMappingsBelongToAnalysis(result, approvedMappings);
