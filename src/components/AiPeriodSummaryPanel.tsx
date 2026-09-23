@@ -2,7 +2,6 @@ import { Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
 import { AI_UI_ENABLED } from "@/lib/ai/config";
 import type { PeriodSummaryAiResult } from "@/lib/ai/period-summary-ai";
 import { summarizePeriodWithAi } from "@/lib/ai/period-summary-ai.functions";
@@ -21,17 +20,10 @@ export function AiPeriodSummaryPanel({ periodId }: { periodId: string }) {
     setError(null);
 
     try {
-      const { data, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
-      const accessToken = data.session?.access_token;
-      if (!accessToken) {
-        throw new Error("الجلسة منتهية، سجّل الدخول مرة أخرى لاستخدام Tadqeeq AI.");
-      }
 
       const response = await summarizePeriodWithAi({
         data: {
           periodId,
-          accessToken,
         },
       });
       setResult(response);
