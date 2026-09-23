@@ -1,4 +1,6 @@
 import type { StoredPeriod } from "@/lib/periods";
+
+import { aiSupabaseHeaders, type AiServerAuth } from "./auth.server";
 import { buildPeriodComparison } from "@/lib/period-intelligence";
 
 import { callTadqeeqAi } from "./gateway.server";
@@ -17,61 +19,20 @@ const DEFAULT_MODEL = "gpt-5.6-luna";
 interface AnalyzePeriodIntelligenceInput {
   currentPeriodId: string;
   previousPeriodId: string;
-  accessToken: string;
-}
-
-interface AuthenticatedUser {
-  id: string;
-}
-
-function requiredEnv(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    throw new Error("إعدادات الخادم غير مكتملة لخدمة Tadqeeq AI.");
-  }
-  return value;
-}
-
-async function authenticateUser(
-  accessToken: string,
-  supabaseUrl: string,
-  supabaseKey: string,
-): Promise<AuthenticatedUser> {
-  const response = await fetch(supabaseUrl + "/auth/v1/user", {
-    headers: {
-      apikey: supabaseKey,
-      Authorization: "Bearer " + accessToken,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("انتهت جلسة المستخدم. سجّل الدخول مرة أخرى قبل استخدام Tadqeeq AI.");
-  }
-
-  const user = (await response.json()) as Partial<AuthenticatedUser>;
-  if (!user.id) throw new Error("تعذّر التحقق من هوية المستخدم.");
-  return { id: user.id };
 }
 
 async function fetchOwnedPeriod(
   periodId: string,
-  accessToken: string,
-  user: AuthenticatedUser,
-  supabaseUrl: string,
-  supabaseKey: string,
+  auth: AiServerAuth,
 ): Promise<StoredPeriod> {
-  const url = new URL(supabaseUrl + "/rest/v1/periods");
+  const url = new URL(auth.supabaseUrl + "/rest/v1/periods");
   url.searchParams.set("id", "eq." + periodId);
-  url.searchParams.set("user_id", "eq." + user.id);
+  url.searchParams.set("user_id", "eq." + auth.userId);
   url.searchParams.set("select", "*");
   url.searchParams.set("limit", "1");
 
   const response = await fetch(url, {
-    headers: {
-      apikey: supabaseKey,
-      Authorization: "Bearer " + accessToken,
-      Accept: "application/json",
-    },
+    headers: aiSupabaseHeaders(auth),
   });
 
   if (!response.ok) {
@@ -171,27 +132,11 @@ async function callOpenAi(
 
 export async function analyzePeriodIntelligenceOnServer(
   input: AnalyzePeriodIntelligenceInput,
+  auth: AiServerAuth,
 ): Promise<PeriodIntelligenceAiResult> {
-  const supabaseUrl = requiredEnv("SUPABASE_URL");
-  const supabaseKey = requiredEnv("SUPABASE_PUBLISHABLE_KEY");
-
-  const user = await authenticateUser(input.accessToken, supabaseUrl, supabaseKey);
-
   const [current, previous] = await Promise.all([
-    fetchOwnedPeriod(
-      input.currentPeriodId,
-      input.accessToken,
-      user,
-      supabaseUrl,
-      supabaseKey,
-    ),
-    fetchOwnedPeriod(
-      input.previousPeriodId,
-      input.accessToken,
-      user,
-      supabaseUrl,
-      supabaseKey,
-    ),
+    fetchOwnedPeriod(input.currentPeriodId, auth),
+    fetchOwnedPeriod(input.previousPeriodId, auth),
   ]);
 
   const comparison = buildPeriodComparison(current, previous);
@@ -200,15 +145,15 @@ export async function analyzePeriodIntelligenceOnServer(
     process.env["TADQEEQ_AI_MODEL"]?.trim() || DEFAULT_MODEL;
   const { explanation, model } = await runWithAiUsageReservation(
     {
-      accessToken: input.accessToken,
-      userId: user.id,
+      accessToken: auth.accessToken,
+      userId: auth.userId,
       feature: FEATURE,
       expectedModel,
       promptVersion: PROMPT_VERSION,
       periodId: input.currentPeriodId,
       exceptionId: null,
-      supabaseUrl,
-      supabaseKey,
+      supabaseUrl: auth.supabaseUrl,
+      supabaseKey: auth.supabaseKey,
     },
     () => callOpenAi(packet),
   );
