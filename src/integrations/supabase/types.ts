@@ -551,8 +551,11 @@ export type Database = {
           id: string
           lineage_id: string
           platform_case_reference: string | null
+          recovered_on: string | null
+          response_on: string | null
           source_period_id: string
           submitted_amount: number | null
+          submitted_on: string | null
           updated_at: string
           user_id: string
         }
@@ -564,8 +567,11 @@ export type Database = {
           id?: string
           lineage_id: string
           platform_case_reference?: string | null
+          recovered_on?: string | null
+          response_on?: string | null
           source_period_id: string
           submitted_amount?: number | null
+          submitted_on?: string | null
           updated_at?: string
           user_id: string
         }
@@ -577,8 +583,11 @@ export type Database = {
           id?: string
           lineage_id?: string
           platform_case_reference?: string | null
+          recovered_on?: string | null
+          response_on?: string | null
           source_period_id?: string
           submitted_amount?: number | null
+          submitted_on?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -588,6 +597,53 @@ export type Database = {
             columns: ["source_period_id"]
             isOneToOne: false
             referencedRelation: "periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recovery_case_documents: {
+        Row: {
+          created_at: string
+          exception_id: string
+          id: string
+          lineage_id: string
+          original_name: string
+          recovery_case_id: string
+          sha256: string
+          size_bytes: number
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          exception_id: string
+          id?: string
+          lineage_id: string
+          original_name: string
+          recovery_case_id: string
+          sha256: string
+          size_bytes: number
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          exception_id?: string
+          id?: string
+          lineage_id?: string
+          original_name?: string
+          recovery_case_id?: string
+          sha256?: string
+          size_bytes?: number
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recovery_case_documents_recovery_case_id_fkey"
+            columns: ["recovery_case_id"]
+            isOneToOne: false
+            referencedRelation: "recovery_case_details"
             referencedColumns: ["id"]
           },
         ]
