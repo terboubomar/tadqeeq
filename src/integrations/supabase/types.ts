@@ -58,47 +58,258 @@ export type Database = {
           },
         ]
       }
+      audit_source_files: {
+        Row: {
+          created_at: string
+          format_id: string | null
+          id: string
+          original_name: string
+          period_id: string
+          platform: string
+          sha256: string
+          size_bytes: number
+          source_kind: string
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          format_id?: string | null
+          id?: string
+          original_name: string
+          period_id: string
+          platform: string
+          sha256: string
+          size_bytes: number
+          source_kind: string
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          format_id?: string | null
+          id?: string
+          original_name?: string
+          period_id?: string
+          platform?: string
+          sha256?: string
+          size_bytes?: number
+          source_kind?: string
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_source_files_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exception_events: {
+        Row: {
+          created_at: string
+          event_source: string
+          exception_id: string
+          id: string
+          note: string | null
+          period_id: string
+          recovered_amount: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_source?: string
+          exception_id: string
+          id?: string
+          note?: string | null
+          period_id: string
+          recovered_amount?: number
+          status: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_source?: string
+          exception_id?: string
+          id?: string
+          note?: string | null
+          period_id?: string
+          recovered_amount?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exception_events_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      format_change_alerts: {
+        Row: {
+          created_at: string
+          expected_format_id: string
+          id: string
+          missing_fields: Json
+          observed_fields: Json
+          original_name: string
+          platform: string
+          resolved_at: string | null
+          sha256: string
+          size_bytes: number
+          source_kind: string
+          source_name: string
+          status: string
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expected_format_id: string
+          id?: string
+          missing_fields?: Json
+          observed_fields?: Json
+          original_name: string
+          platform: string
+          resolved_at?: string | null
+          sha256: string
+          size_bytes: number
+          source_kind?: string
+          source_name: string
+          status?: string
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expected_format_id?: string
+          id?: string
+          missing_fields?: Json
+          observed_fields?: Json
+          original_name?: string
+          platform?: string
+          resolved_at?: string | null
+          sha256?: string
+          size_bytes?: number
+          source_kind?: string
+          source_name?: string
+          status?: string
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      hungerstation_branch_mappings: {
+        Row: {
+          confirmed_at: string
+          created_at: string
+          hs_branch_id: string
+          id: string
+          invoice_branch_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confirmed_at?: string
+          created_at?: string
+          hs_branch_id: string
+          id?: string
+          invoice_branch_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confirmed_at?: string
+          created_at?: string
+          hs_branch_id?: string
+          id?: string
+          invoice_branch_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       periods: {
         Row: {
           branches: Json
           created_at: string
           daily: Json
+          engine_version: string
+          format_ids: Json
           id: string
           invoice: Json
           label: string
+          lineage_id: string
           period_end: string | null
           period_start: string | null
           platform: string
           summary: Json
+          superseded_at: string | null
+          superseded_by: string | null
+          supersedes_period_id: string | null
           user_id: string
         }
         Insert: {
           branches?: Json
           created_at?: string
           daily?: Json
+          engine_version?: string
+          format_ids?: Json
           id?: string
           invoice?: Json
           label: string
+          lineage_id?: string
           period_end?: string | null
           period_start?: string | null
           platform: string
           summary?: Json
+          superseded_at?: string | null
+          superseded_by?: string | null
+          supersedes_period_id?: string | null
           user_id: string
         }
         Update: {
           branches?: Json
           created_at?: string
           daily?: Json
+          engine_version?: string
+          format_ids?: Json
           id?: string
           invoice?: Json
           label?: string
+          lineage_id?: string
           period_end?: string | null
           period_start?: string | null
           platform?: string
           summary?: Json
+          superseded_at?: string | null
+          superseded_by?: string | null
+          supersedes_period_id?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "periods_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "periods_supersedes_period_id_fkey"
+            columns: ["supersedes_period_id"]
+            isOneToOne: false
+            referencedRelation: "periods"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -126,6 +337,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_period_reanalysis: {
+        Args: {
+          p_branches: Json
+          p_daily: Json
+          p_engine_version: string
+          p_format_ids: Json
+          p_invoice: Json
+          p_old_period_id: string
+          p_summary: Json
+        }
+        Returns: string
+      }
       reserve_ai_call: {
         Args: {
           p_exception_id: string
@@ -136,6 +359,14 @@ export type Database = {
           p_prompt_version: string
         }
         Returns: string
+      }
+      rollback_period_reanalysis: {
+        Args: { p_new_period_id: string; p_old_period_id: string }
+        Returns: undefined
+      }
+      set_exception_workflow: {
+        Args: { p_exception_id: string; p_patch: Json; p_period_id: string }
+        Returns: Json
       }
     }
     Enums: {
