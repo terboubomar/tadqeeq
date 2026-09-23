@@ -98,9 +98,9 @@ CREATE POLICY recovery_case_details_insert_own
     AND EXISTS (
       SELECT 1
       FROM public.periods p
-      WHERE p.id = source_period_id
+      WHERE p.id = recovery_case_details.source_period_id
         AND p.user_id = (select auth.uid())
-        AND p.lineage_id = lineage_id
+        AND p.lineage_id = recovery_case_details.lineage_id
     )
   );
 
@@ -115,9 +115,9 @@ CREATE POLICY recovery_case_details_update_own
     AND EXISTS (
       SELECT 1
       FROM public.periods p
-      WHERE p.id = source_period_id
+      WHERE p.id = recovery_case_details.source_period_id
         AND p.user_id = (select auth.uid())
-        AND p.lineage_id = lineage_id
+        AND p.lineage_id = recovery_case_details.lineage_id
     )
   );
 
