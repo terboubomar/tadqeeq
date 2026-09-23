@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_source_files: {
+        Row: {
+          created_at: string
+          format_id: string | null
+          id: string
+          original_name: string
+          period_id: string
+          platform: string
+          sha256: string
+          size_bytes: number
+          source_kind: string
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          format_id?: string | null
+          id?: string
+          original_name: string
+          period_id: string
+          platform: string
+          sha256: string
+          size_bytes: number
+          source_kind: string
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          format_id?: string | null
+          id?: string
+          original_name?: string
+          period_id?: string
+          platform?: string
+          sha256?: string
+          size_bytes?: number
+          source_kind?: string
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_source_files_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_usage: {
         Row: {
           created_at: string
