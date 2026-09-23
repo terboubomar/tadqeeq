@@ -8,6 +8,7 @@ import {
   Pencil,
   Plus,
   Save,
+  Search,
   ShieldCheck,
   Trash2,
   Upload,
@@ -38,6 +39,7 @@ import {
   createContractVersion,
   deleteContractRule,
   getContractRulebook,
+  resolveContractTerms,
   saveContractRule,
   uploadContractDocument,
 } from "@/lib/contract-rulebook.functions";
@@ -275,6 +277,10 @@ function ContractsPage() {
           {selectedContract ? (
             <main className="min-w-0 space-y-5">
               <ContractHeader contract={selectedContract} />
+              <EffectiveTermsPreview
+                key={selectedContract.id}
+                contractId={selectedContract.id}
+              />
 
               <VersionWorkspace
                 contractId={selectedContract.id}
@@ -479,6 +485,132 @@ function ContractHeader({
           المطابقة.
         </div>
       </div>
+    </section>
+  );
+}
+
+function EffectiveTermsPreview({
+  contractId,
+}: {
+  contractId: string;
+}) {
+  const [onDate, setOnDate] = useState("");
+  const [branchKey, setBranchKey] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (!onDate) throw new Error("اختر تاريخاً للمعاينة.");
+      return resolveContractTerms({
+        data: {
+          contractId,
+          onDate,
+          branchKey: branchKey.trim() || null,
+        },
+      });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const result = mutation.data;
+
+  return (
+    <section className="overflow-hidden rounded-[12px] border border-border bg-white">
+      <div className="border-b border-border px-5 py-4">
+        <div className="flex items-center gap-2">
+          <Search className="size-4 text-muted-foreground" />
+          <div>
+            <h3 className="text-sm font-semibold">معاينة الشروط السارية</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              اختبر النسخة المعتمدة والبنود التي ستنطبق على تاريخ وفرع محددين.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 px-5 py-5 md:grid-cols-[180px_minmax(0,1fr)_auto] md:items-end">
+        <Field label="التاريخ">
+          <Input
+            type="date"
+            value={onDate}
+            onChange={(event) => setOnDate(event.target.value)}
+          />
+        </Field>
+        <Field label="الفرع" hint="اختياري">
+          <Input
+            value={branchKey}
+            onChange={(event) => setBranchKey(event.target.value)}
+            placeholder="اتركه فارغاً لاستخدام شروط كل الفروع"
+            maxLength={160}
+          />
+        </Field>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={mutation.isPending || !onDate}
+          onClick={() => mutation.mutate()}
+        >
+          <Search className="size-3.5" />
+          معاينة
+        </Button>
+      </div>
+
+      {result?.status === "not_found" ? (
+        <div className="border-t border-amber-200 bg-amber-50/60 px-5 py-4 text-sm text-amber-800">
+          لا توجد نسخة عقد معتمدة سارية في هذا التاريخ.
+        </div>
+      ) : null}
+
+      {result?.status === "resolved" ? (
+        <div className="border-t border-border">
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-success/[0.04] px-5 py-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="size-4 text-success" />
+              <span className="text-sm font-semibold">
+                النسخة {result.version.versionNumber}
+              </span>
+              <span className="num text-xs text-muted-foreground">
+                {result.version.effectiveFrom} —{" "}
+                {result.version.effectiveTo ?? "مفتوح"}
+              </span>
+            </div>
+            <span className="num text-xs text-muted-foreground">
+              {result.rules.length} بند ساري
+            </span>
+          </div>
+
+          {result.rules.length > 0 ? (
+            <div className="divide-y divide-border/70">
+              {result.rules.map((rule) => (
+                <div
+                  key={rule.id}
+                  className="grid gap-2 px-5 py-3 text-sm sm:grid-cols-[minmax(0,1fr)_160px_160px]"
+                >
+                  <div>
+                    <p className="font-medium">
+                      {RULE_TYPE_LABELS[rule.ruleType]}
+                    </p>
+                    <p className="num mt-0.5 text-[11px] text-muted-foreground">
+                      {rule.ruleKey}
+                    </p>
+                  </div>
+                  <span className="num font-semibold">
+                    {formatRuleValue(rule)}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {rule.scopeType === "branch"
+                      ? `تجاوز فرع: ${rule.scopeKey ?? "—"}`
+                      : "كل الفروع"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="px-5 py-4 text-sm text-muted-foreground">
+              النسخة سارية لكن لا توجد بنود قابلة للتطبيق على هذا النطاق.
+            </p>
+          )}
+        </div>
+      ) : null}
     </section>
   );
 }
