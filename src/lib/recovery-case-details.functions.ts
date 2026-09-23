@@ -4,9 +4,15 @@ import { z } from "zod";
 import {
   listRecoveryCaseDetailsOnServer,
   saveRecoveryCaseDetailOnServer,
+  uploadRecoveryCaseDocumentOnServer,
 } from "./recovery-case-details.server";
 
 const nullableMoney = z.number().finite().nonnegative().nullable().optional();
+const nullableDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .nullable()
+  .optional();
 
 export const getRecoveryCaseDetails = createServerFn({ method: "POST" })
   .validator(z.object({}))
@@ -21,6 +27,19 @@ export const saveRecoveryCaseDetail = createServerFn({ method: "POST" })
       approvedClaimAmount: nullableMoney,
       submittedAmount: nullableMoney,
       acceptedAmount: nullableMoney,
+      submittedOn: nullableDate,
+      responseOn: nullableDate,
+      recoveredOn: nullableDate,
     }),
   )
   .handler(async ({ data }) => saveRecoveryCaseDetailOnServer(data));
+
+
+export const uploadRecoveryCaseDocument = createServerFn({ method: "POST" })
+  .validator((data) => {
+    if (!(data instanceof FormData)) {
+      throw new Error("بيانات مستند المطالبة غير صالحة.");
+    }
+    return data;
+  })
+  .handler(async ({ data }) => uploadRecoveryCaseDocumentOnServer(data));
