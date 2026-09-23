@@ -1,3 +1,4 @@
+import { ParseError } from "../parse";
 import type { Platform } from "../types";
 
 export interface FormatFingerprint {
@@ -8,7 +9,7 @@ export interface FormatFingerprint {
   optionalSources?: readonly string[];
 }
 
-export class UnsupportedFormatError extends Error {
+export class UnsupportedFormatError extends ParseError {
   readonly platform: Platform;
   readonly source: string;
   readonly formatId: string;
@@ -22,6 +23,11 @@ export class UnsupportedFormatError extends Error {
   }) {
     super(
       "صيغة الملف تغيّرت من المنصة. تم إيقاف التحليل لحماية دقة النتائج.",
+      undefined,
+      {
+        platform: input.platform,
+        sheet: input.source,
+      },
     );
     this.name = "UnsupportedFormatError";
     this.platform = input.platform;
