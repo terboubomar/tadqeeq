@@ -305,6 +305,9 @@ export type Database = {
       }
       exception_events: {
         Row: {
+          accepted_amount: number | null
+          approved_claim_amount: number | null
+          claim_reference: string | null
           created_at: string
           event_source: string
           exception_id: string
@@ -312,10 +315,17 @@ export type Database = {
           note: string | null
           period_id: string
           recovered_amount: number
+          recovered_on: string | null
+          response_on: string | null
           status: string
+          submitted_amount: number | null
+          submitted_on: string | null
           user_id: string
         }
         Insert: {
+          accepted_amount?: number | null
+          approved_claim_amount?: number | null
+          claim_reference?: string | null
           created_at?: string
           event_source?: string
           exception_id: string
@@ -323,10 +333,17 @@ export type Database = {
           note?: string | null
           period_id: string
           recovered_amount?: number
+          recovered_on?: string | null
+          response_on?: string | null
           status: string
+          submitted_amount?: number | null
+          submitted_on?: string | null
           user_id: string
         }
         Update: {
+          accepted_amount?: number | null
+          approved_claim_amount?: number | null
+          claim_reference?: string | null
           created_at?: string
           event_source?: string
           exception_id?: string
@@ -334,12 +351,60 @@ export type Database = {
           note?: string | null
           period_id?: string
           recovered_amount?: number
+          recovered_on?: string | null
+          response_on?: string | null
           status?: string
+          submitted_amount?: number | null
+          submitted_on?: string | null
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "exception_events_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recovery_documents: {
+        Row: {
+          created_at: string
+          exception_id: string
+          id: string
+          original_name: string
+          period_id: string
+          sha256: string
+          size_bytes: number
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          exception_id: string
+          id?: string
+          original_name: string
+          period_id: string
+          sha256: string
+          size_bytes: number
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          exception_id?: string
+          id?: string
+          original_name?: string
+          period_id?: string
+          sha256?: string
+          size_bytes?: number
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recovery_documents_period_id_fkey"
             columns: ["period_id"]
             isOneToOne: false
             referencedRelation: "periods"
