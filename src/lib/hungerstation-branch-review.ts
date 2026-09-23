@@ -21,9 +21,7 @@ function isResidualSuggestion(branch: BranchRow): boolean {
 
 function isUnmatchedOperationalBranch(branch: BranchRow): boolean {
   return Boolean(
-    branch.branchId &&
-      branch.branchAuditStatus === "unmatched" &&
-      branch.branchAuditStatus !== "invoice_only",
+    branch.branchId && branch.branchAuditStatus === "unmatched",
   );
 }
 
