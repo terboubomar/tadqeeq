@@ -1,5 +1,7 @@
 import type { StoredPeriod } from "@/lib/periods";
 
+import { aiSupabaseHeaders, type AiServerAuth } from "./auth.server";
+
 import { buildAnalystContext, resolveAnalystFacts } from "./analyst-context";
 import {
   analystAiResponseSchema,
@@ -25,60 +27,20 @@ interface AskTadqeeqInput {
   question: string;
   currentRoute: string;
   history: AnalystHistoryMessage[];
-  accessToken: string;
-}
-
-interface AuthenticatedUser {
-  id: string;
-}
-
-function requiredEnv(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    throw new Error("إعدادات الخادم غير مكتملة لخدمة Tadqeeq AI.");
-  }
-  return value;
-}
-
-async function authenticateUser(
-  accessToken: string,
-  supabaseUrl: string,
-  supabaseKey: string,
-): Promise<AuthenticatedUser> {
-  const response = await fetch(supabaseUrl + "/auth/v1/user", {
-    headers: {
-      apikey: supabaseKey,
-      Authorization: "Bearer " + accessToken,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("انتهت جلسة المستخدم. سجّل الدخول مرة أخرى قبل استخدام Tadqeeq AI.");
-  }
-
-  const user = (await response.json()) as Partial<AuthenticatedUser>;
-  if (!user.id) throw new Error("تعذّر التحقق من هوية المستخدم.");
-  return { id: user.id };
 }
 
 async function fetchOwnedPeriods(
   input: AskTadqeeqInput,
-  user: AuthenticatedUser,
-  supabaseUrl: string,
-  supabaseKey: string,
+  auth: AiServerAuth,
 ): Promise<{ current: StoredPeriod; periods: StoredPeriod[] }> {
-  const url = new URL(supabaseUrl + "/rest/v1/periods");
-  url.searchParams.set("user_id", "eq." + user.id);
+  const url = new URL(auth.supabaseUrl + "/rest/v1/periods");
+  url.searchParams.set("user_id", "eq." + auth.userId);
   url.searchParams.set("select", "*");
   url.searchParams.set("order", "period_end.desc.nullslast,created_at.desc");
   url.searchParams.set("limit", "100");
 
   const response = await fetch(url, {
-    headers: {
-      apikey: supabaseKey,
-      Authorization: "Bearer " + input.accessToken,
-      Accept: "application/json",
-    },
+    headers: aiSupabaseHeaders(auth),
   });
 
   if (!response.ok) {
@@ -285,27 +247,25 @@ async function callAnalyst(
   };
 }
 
-export async function askTadqeeqOnServer(input: AskTadqeeqInput): Promise<AnalystChatResult> {
-  const supabaseUrl = requiredEnv("SUPABASE_URL");
-  const supabaseKey = requiredEnv("SUPABASE_PUBLISHABLE_KEY");
-
-  const user = await authenticateUser(input.accessToken, supabaseUrl, supabaseKey);
-
-  const { current, periods } = await fetchOwnedPeriods(input, user, supabaseUrl, supabaseKey);
+export async function askTadqeeqOnServer(
+  input: AskTadqeeqInput,
+  auth: AiServerAuth,
+): Promise<AnalystChatResult> {
+  const { current, periods } = await fetchOwnedPeriods(input, auth);
   const context = buildAnalystContext(current, periods, input.currentRoute);
   const expectedModel =
     process.env["TADQEEQ_ANALYST_MODEL"]?.trim() || DEFAULT_ANALYST_MODEL;
   const { response, model } = await runWithAiUsageReservation(
     {
-      accessToken: input.accessToken,
-      userId: user.id,
+      accessToken: auth.accessToken,
+      userId: auth.userId,
       feature: FEATURE,
       expectedModel,
       promptVersion: PROMPT_VERSION,
       periodId: input.periodId,
       exceptionId: null,
-      supabaseUrl,
-      supabaseKey,
+      supabaseUrl: auth.supabaseUrl,
+      supabaseKey: auth.supabaseKey,
     },
     () => callAnalyst(input, context),
   );
