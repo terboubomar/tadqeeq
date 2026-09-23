@@ -703,7 +703,7 @@ function ContractCompliancePanel({
 
       {!periodsQuery.isLoading && periods.length === 0 ? (
         <p className="border-t border-border px-5 py-4 text-sm text-muted-foreground">
-          لا توجد فترة تدقيق ${PLATFORM_LABELS[platform]} محفوظة لاستخدامها في المطابقة.
+          لا توجد فترة تدقيق {PLATFORM_LABELS[platform]} محفوظة لاستخدامها في المطابقة.
         </p>
       ) : null}
 
