@@ -108,6 +108,36 @@ export type Database = {
           },
         ]
       }
+      hungerstation_branch_mappings: {
+        Row: {
+          confirmed_at: string
+          created_at: string
+          hs_branch_id: string
+          id: string
+          invoice_branch_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confirmed_at?: string
+          created_at?: string
+          hs_branch_id: string
+          id?: string
+          invoice_branch_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confirmed_at?: string
+          created_at?: string
+          hs_branch_id?: string
+          id?: string
+          invoice_branch_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       periods: {
         Row: {
           branches: Json
