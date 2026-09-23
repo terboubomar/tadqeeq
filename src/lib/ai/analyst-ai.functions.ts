@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { requireAiEnabled } from "./config.server";
 import { askTadqeeqOnServer } from "./analyst-ai.server";
 import { analystHistoryMessageSchema } from "./analyst-ai";
 
@@ -14,4 +15,7 @@ const requestSchema = z.object({
 
 export const askTadqeeq = createServerFn({ method: "POST" })
   .validator(requestSchema)
-  .handler(async ({ data }) => askTadqeeqOnServer(data));
+  .handler(async ({ data }) => {
+    requireAiEnabled();
+    return askTadqeeqOnServer(data);
+  });
