@@ -21,6 +21,7 @@ import { toast } from "sonner";
 
 import { EmptyState } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
+import { AI_UI_ENABLED } from "@/lib/ai/config";
 import { explainExceptionWithAi } from "@/lib/ai/exception-ai.functions";
 import type { ExceptionAiResult } from "@/lib/ai/exception-ai";
 import { StatCard } from "@/components/StatCard";
@@ -595,6 +596,8 @@ function AiExplanationPanel({ item }: { item: AuditException }) {
   const [result, setResult] = useState<ExceptionAiResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (!AI_UI_ENABLED) return null;
 
   async function explain() {
     setLoading(true);
