@@ -14,12 +14,14 @@ export class UnsupportedFormatError extends ParseError {
   readonly source: string;
   readonly formatId: string;
   readonly missing: string[];
+  readonly observed: string[];
 
   constructor(input: {
     platform: Platform;
     source: string;
     formatId: string;
     missing: string[];
+    observed?: string[];
   }) {
     super(
       "صيغة الملف تغيّرت من المنصة. تم إيقاف التحليل لحماية دقة النتائج. المصدر: " +
@@ -36,6 +38,7 @@ export class UnsupportedFormatError extends ParseError {
     this.source = input.source;
     this.formatId = input.formatId;
     this.missing = input.missing;
+    this.observed = input.observed ?? [];
   }
 }
 
@@ -68,8 +71,9 @@ export function assertSupportedHeaders(
   fingerprint: FormatFingerprint,
   headers: Iterable<unknown>,
 ): void {
+  const observed = [...headers].map((header) => String(header ?? "").trim()).filter(Boolean);
   const missing = missingHeaderGroups(
-    headers,
+    observed,
     fingerprint.requiredHeaderGroups,
   );
   if (!missing.length) return;
@@ -79,5 +83,6 @@ export function assertSupportedHeaders(
     source: fingerprint.source,
     formatId: fingerprint.id,
     missing,
+    observed,
   });
 }

@@ -108,6 +108,60 @@ export type Database = {
           },
         ]
       }
+      format_change_alerts: {
+        Row: {
+          created_at: string
+          expected_format_id: string
+          id: string
+          missing_fields: Json
+          observed_fields: Json
+          original_name: string
+          platform: string
+          resolved_at: string | null
+          sha256: string
+          size_bytes: number
+          source_kind: string
+          source_name: string
+          status: string
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expected_format_id: string
+          id?: string
+          missing_fields?: Json
+          observed_fields?: Json
+          original_name: string
+          platform: string
+          resolved_at?: string | null
+          sha256: string
+          size_bytes: number
+          source_kind?: string
+          source_name: string
+          status?: string
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expected_format_id?: string
+          id?: string
+          missing_fields?: Json
+          observed_fields?: Json
+          original_name?: string
+          platform?: string
+          resolved_at?: string | null
+          sha256?: string
+          size_bytes?: number
+          source_kind?: string
+          source_name?: string
+          status?: string
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       hungerstation_branch_mappings: {
         Row: {
           confirmed_at: string
