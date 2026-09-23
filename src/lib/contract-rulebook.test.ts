@@ -46,7 +46,7 @@ describe("contract fee rulebook foundation", () => {
 
     expect(sql).toContain("value_kind IN ('percentage', 'amount', 'boolean', 'text')");
     expect(sql).toContain("numeric_value >= 0 AND numeric_value <= 100");
-    expect(sql).toContain("value_kind <> 'amount' OR currency IS NOT NULL");
+    expect(sql).toContain("value_kind <> 'amount' OR (currency IS NOT NULL AND numeric_value >= 0)");
     expect(sql).toContain("scope_type IN ('all', 'branch')");
     expect(sql).toContain("18.000000 means 18%");
   });
