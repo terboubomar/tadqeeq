@@ -15,7 +15,15 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { StatCard } from "@/components/StatCard";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -31,6 +39,11 @@ import {
 } from "@/lib/exceptions";
 import { arabicDate, sar } from "@/lib/format";
 import { listPeriods, updateExceptionWorkflow } from "@/lib/periods";
+import {
+  getRecoveryCaseDetails,
+  saveRecoveryCaseDetail,
+} from "@/lib/recovery-case-details.functions";
+import type { RecoveryCaseDetail } from "@/lib/recovery-case-details.server";
 import {
   buildRecoveryCandidates,
   recoveryOutstanding,
@@ -63,10 +76,36 @@ function RecoveryPage() {
   const [query, setQuery] = useState("");
   const [platform, setPlatform] = useState("all");
   const [status, setStatus] = useState("open");
+  const [selectedClaim, setSelectedClaim] = useState<AuditException | null>(
+    null,
+  );
 
   const periodsQuery = useQuery({
     queryKey: ["periods"],
     queryFn: listPeriods,
+  });
+
+  const claimDetailsQuery = useQuery({
+    queryKey: ["recovery-case-details"],
+    queryFn: () => getRecoveryCaseDetails({ data: {} }),
+  });
+
+  const saveClaimDetails = useMutation({
+    mutationFn: (input: {
+      periodId: string;
+      exceptionId: string;
+      platformCaseReference: string | null;
+      approvedClaimAmount: number | null;
+      submittedAmount: number | null;
+      acceptedAmount: number | null;
+    }) => saveRecoveryCaseDetail({ data: input }),
+    onSuccess: async () => {
+      toast.success("تم حفظ تفاصيل المطالبة");
+      await queryClient.invalidateQueries({
+        queryKey: ["recovery-case-details"],
+      });
+    },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const updateWorkflow = useMutation({
@@ -83,6 +122,35 @@ function RecoveryPage() {
     [periodsQuery.data],
   );
   const summary = useMemo(() => summarizeRecovery(cases), [cases]);
+
+  const periodLineageById = useMemo(
+    () =>
+      new Map(
+        (periodsQuery.data ?? []).map((period) => [
+          period.id,
+          period.lineage_id ?? period.id,
+        ]),
+      ),
+    [periodsQuery.data],
+  );
+
+  const claimDetailsByKey = useMemo(
+    () =>
+      new Map(
+        (claimDetailsQuery.data?.details ?? []).map((detail) => [
+          detail.lineageId + "|" + detail.exceptionId,
+          detail,
+        ]),
+      ),
+    [claimDetailsQuery.data?.details],
+  );
+
+  const detailFor = (item: AuditException) => {
+    const lineageId = periodLineageById.get(item.periodId);
+    return lineageId
+      ? claimDetailsByKey.get(lineageId + "|" + item.id) ?? null
+      : null;
+  };
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -213,6 +281,14 @@ function RecoveryPage() {
         </div>
       </section>
 
+      {claimDetailsQuery.error ? (
+        <div className="rounded-[10px] border border-amber-200 bg-amber-50/60 p-4 text-sm text-amber-800">
+          تعذّر تحميل تفاصيل المطالبات الإضافية. قائمة الاسترداد الأساسية ما زالت
+          متاحة، لكن مرجع المنصة ومبالغ المطالبة لن تظهر حتى تتوفر جداول Recovery
+          Center.
+        </div>
+      ) : null}
+
       {cases.length === 0 ? (
         <section className="panel px-6 py-14 text-center">
           <CheckCircle2 className="mx-auto mb-3 size-9 text-success" />
@@ -238,6 +314,7 @@ function RecoveryPage() {
                   <Th>المسترد</Th>
                   <Th>المتبقي</Th>
                   <Th>المتابعة</Th>
+                  <Th>المطالبة</Th>
                   <Th>ملاحظة</Th>
                 </tr>
               </thead>
@@ -247,6 +324,8 @@ function RecoveryPage() {
                     key={item.id}
                     item={item}
                     saving={updateWorkflow.isPending}
+                    claimDetail={detailFor(item)}
+                    onClaimDetails={() => setSelectedClaim(item)}
                     onUpdate={(patch) =>
                       updateWorkflow.mutate({
                         periodId: item.periodId,
@@ -259,7 +338,7 @@ function RecoveryPage() {
                 {filtered.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={11}
+                      colSpan={12}
                       className="px-5 py-16 text-center text-muted-foreground"
                     >
                       لا توجد حالات مطابقة للفلاتر الحالية.
@@ -271,6 +350,25 @@ function RecoveryPage() {
           </div>
         </section>
       )}
+
+      <RecoveryClaimSheet
+        item={selectedClaim}
+        detail={selectedClaim ? detailFor(selectedClaim) : null}
+        events={
+          selectedClaim
+            ? (claimDetailsQuery.data?.events ?? []).filter(
+                (event) =>
+                  event.recoveryCaseId === detailFor(selectedClaim)?.id,
+              )
+            : []
+        }
+        open={Boolean(selectedClaim)}
+        saving={saveClaimDetails.isPending}
+        onOpenChange={(open) => {
+          if (!open) setSelectedClaim(null);
+        }}
+        onSave={(input) => saveClaimDetails.mutate(input)}
+      />
     </div>
   );
 }
@@ -278,10 +376,14 @@ function RecoveryPage() {
 function RecoveryRow({
   item,
   saving,
+  claimDetail,
+  onClaimDetails,
   onUpdate,
 }: {
   item: AuditException;
   saving: boolean;
+  claimDetail: RecoveryCaseDetail | null;
+  onClaimDetails: () => void;
   onUpdate: (patch: Partial<ExceptionWorkflowEntry>) => void;
 }) {
   const [note, setNote] = useState(item.note ?? "");
@@ -387,6 +489,24 @@ function RecoveryRow({
         </span>
       </Td>
       <Td>
+        <div className="flex min-w-44 items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={onClaimDetails}
+          >
+            {claimDetail ? "تعديل المطالبة" : "إضافة مطالبة"}
+          </Button>
+          {claimDetail?.platformCaseReference ? (
+            <span className="num max-w-32 truncate text-[11px] text-muted-foreground">
+              {claimDetail.platformCaseReference}
+            </span>
+          ) : null}
+        </div>
+      </Td>
+      <Td>
         <Input
           value={note}
           disabled={saving}
@@ -403,6 +523,228 @@ function RecoveryRow({
       </Td>
     </tr>
   );
+}
+
+function RecoveryClaimSheet({
+  item,
+  detail,
+  events,
+  open,
+  saving,
+  onOpenChange,
+  onSave,
+}: {
+  item: AuditException | null;
+  detail: RecoveryCaseDetail | null;
+  events: Array<{
+    id: string;
+    eventType: "insert" | "update";
+    createdAt: string;
+  }>;
+  open: boolean;
+  saving: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: (input: {
+    periodId: string;
+    exceptionId: string;
+    platformCaseReference: string | null;
+    approvedClaimAmount: number | null;
+    submittedAmount: number | null;
+    acceptedAmount: number | null;
+  }) => void;
+}) {
+  const [reference, setReference] = useState("");
+  const [approved, setApproved] = useState("");
+  const [submitted, setSubmitted] = useState("");
+  const [accepted, setAccepted] = useState("");
+
+  useEffect(() => {
+    setReference(detail?.platformCaseReference ?? "");
+    setApproved(
+      detail?.approvedClaimAmount == null
+        ? ""
+        : String(detail.approvedClaimAmount),
+    );
+    setSubmitted(
+      detail?.submittedAmount == null ? "" : String(detail.submittedAmount),
+    );
+    setAccepted(
+      detail?.acceptedAmount == null ? "" : String(detail.acceptedAmount),
+    );
+  }, [
+    detail?.acceptedAmount,
+    detail?.approvedClaimAmount,
+    detail?.id,
+    detail?.platformCaseReference,
+    detail?.submittedAmount,
+    item?.id,
+  ]);
+
+  if (!item) return null;
+
+  const parseMoney = (value: string): number | null => {
+    if (!value.trim()) return null;
+    const parsed = Number(value.replace(/,/g, ""));
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="left"
+        className="w-full overflow-y-auto sm:max-w-xl"
+        dir="rtl"
+      >
+        <SheetHeader className="pe-7 text-start">
+          <SheetTitle>تفاصيل مطالبة الاسترداد</SheetTitle>
+          <SheetDescription>
+            {item.periodLabel}
+            {item.branch ? " · " + item.branch : " · إجمالي الفترة"}
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="mt-6 space-y-5">
+          <section className="grid gap-3 sm:grid-cols-2">
+            <ClaimMetric label="رقم الحالة" value={item.id} />
+            <ClaimMetric
+              label="الاسترداد المحتمل من Tadqeeq"
+              value={sar(item.potentialRecovery)}
+            />
+          </section>
+
+          <section className="rounded-xl border border-border p-4">
+            <p className="text-sm font-bold">بيانات المطالبة لدى المنصة</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              هذه الحقول بشرية ولا تغيّر مبلغ الاسترداد المحتمل الذي حسبه محرك
+              التدقيق.
+            </p>
+
+            <div className="mt-4 space-y-4">
+              <label className="block space-y-1.5">
+                <span className="text-xs font-medium">مرجع / رقم مطالبة المنصة</span>
+                <Input
+                  value={reference}
+                  maxLength={160}
+                  onChange={(event) => setReference(event.target.value)}
+                  placeholder="مثال: HS-CASE-12345"
+                />
+              </label>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <ClaimMoneyInput
+                  label="المبلغ المعتمد"
+                  value={approved}
+                  onChange={setApproved}
+                />
+                <ClaimMoneyInput
+                  label="المبلغ المرسل"
+                  value={submitted}
+                  onChange={setSubmitted}
+                />
+                <ClaimMoneyInput
+                  label="المبلغ المقبول"
+                  value={accepted}
+                  onChange={setAccepted}
+                />
+              </div>
+
+              <p className="text-[11px] leading-5 text-muted-foreground">
+                المبلغ المعتمد ≤ الاسترداد المحتمل، المرسل ≤ المعتمد، والمقبول ≤
+                المرسل. الخادم يعيد التحقق من هذه الحدود من نتيجة التدقيق قبل
+                الحفظ.
+              </p>
+
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  disabled={saving}
+                  onClick={() =>
+                    onSave({
+                      periodId: item.periodId,
+                      exceptionId: item.id,
+                      platformCaseReference: reference.trim() || null,
+                      approvedClaimAmount: parseMoney(approved),
+                      submittedAmount: parseMoney(submitted),
+                      acceptedAmount: parseMoney(accepted),
+                    })
+                  }
+                >
+                  حفظ تفاصيل المطالبة
+                </Button>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-border p-4">
+            <p className="text-sm font-bold">سجل تفاصيل المطالبة</p>
+            {events.length ? (
+              <ol className="mt-3 space-y-2">
+                {events.map((event) => (
+                  <li
+                    key={event.id}
+                    className="flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-3 py-2 text-xs"
+                  >
+                    <span>
+                      {event.eventType === "insert"
+                        ? "إنشاء تفاصيل المطالبة"
+                        : "تحديث تفاصيل المطالبة"}
+                    </span>
+                    <span className="num text-muted-foreground">
+                      {formatClaimTimestamp(event.createdAt)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="mt-3 text-xs text-muted-foreground">
+                لا توجد تغييرات محفوظة لتفاصيل المطالبة بعد.
+              </p>
+            )}
+          </section>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function ClaimMoneyInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-xs font-medium">{label}</span>
+      <Input
+        inputMode="decimal"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="0.00"
+      />
+    </label>
+  );
+}
+
+function ClaimMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-surface-raised p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="num mt-1 break-all text-sm font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function formatClaimTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 function Th({ children }: { children: ReactNode }) {
