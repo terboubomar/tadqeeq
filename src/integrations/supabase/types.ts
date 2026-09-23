@@ -108,6 +108,50 @@ export type Database = {
           },
         ]
       }
+      exception_events: {
+        Row: {
+          created_at: string
+          event_source: string
+          exception_id: string
+          id: string
+          note: string | null
+          period_id: string
+          recovered_amount: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_source?: string
+          exception_id: string
+          id?: string
+          note?: string | null
+          period_id: string
+          recovered_amount?: number
+          status: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_source?: string
+          exception_id?: string
+          id?: string
+          note?: string | null
+          period_id?: string
+          recovered_amount?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exception_events_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       format_change_alerts: {
         Row: {
           created_at: string
