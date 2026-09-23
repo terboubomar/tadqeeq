@@ -139,3 +139,25 @@ export interface ContractRulebookSnapshot {
   documents: ContractDocumentRecord[];
   events: ContractRuleEventRecord[];
 }
+
+
+export type ContractTermsResolution =
+  | {
+      status: "resolved";
+      contractId: string;
+      onDate: string;
+      branchKey: string | null;
+      version: {
+        id: string;
+        versionNumber: number;
+        effectiveFrom: string;
+        effectiveTo: string | null;
+      };
+      rules: ContractRuleRecord[];
+    }
+  | {
+      status: "not_found";
+      contractId: string;
+      onDate: string;
+      branchKey: string | null;
+    };
