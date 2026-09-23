@@ -45,7 +45,7 @@ export type ImportAuditResult =
       review: HungerStationMappingReview;
     };
 
-interface SourceFile {
+export interface SourceFile {
   kind: "data" | "invoice" | "cpc_invoice" | "compensation";
   file: File;
   formatId?: string;
@@ -197,12 +197,19 @@ async function saveConfirmedHungerStationMappings(
 async function historicalJahezOrders(
   client: ServerUserClient,
   userId: string,
+  excludePeriodId?: string,
 ): Promise<Record<string, JahezOrderReference>> {
-  const { data, error } = await client
+  let query = client
     .from("periods")
-    .select("label, invoice")
+    .select("id, label, invoice")
     .eq("user_id", userId)
     .eq("platform", "jahez");
+
+  if (excludePeriodId) {
+    query = query.neq("id", excludePeriodId);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw new Error("تعذّر قراءة سجل فترات جاهز السابقة.");
 
@@ -222,12 +229,13 @@ async function historicalJahezOrders(
   );
 }
 
-async function buildAnalysis(
+export async function buildAnalysis(
   form: FormData,
   platform: Platform,
   client: ServerUserClient,
   userId: string,
   approvedMappings: Record<string, string>,
+  excludeHistoricalPeriodId?: string,
 ): Promise<{ result: AnalysisResult; sources: SourceFile[] }> {
   const dataFile = formFile(form, "dataFile");
   const invoiceFile = formFile(form, "invoiceFile");
@@ -302,7 +310,11 @@ async function buildAnalysis(
       ...(compensationFile
         ? { compensationFile: await compensationFile.arrayBuffer() }
         : {}),
-      historicalOrders: await historicalJahezOrders(client, userId),
+      historicalOrders: await historicalJahezOrders(
+        client,
+        userId,
+        excludeHistoricalPeriodId,
+      ),
       ...(label ? { label } : {}),
     });
   }
@@ -406,7 +418,7 @@ async function insertPeriod(
   return data.id;
 }
 
-async function storeSources(
+export async function storeSources(
   client: ServerUserClient,
   userId: string,
   periodId: string,

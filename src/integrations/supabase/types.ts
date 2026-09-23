@@ -245,11 +245,15 @@ export type Database = {
           format_ids: Json
           id: string
           invoice: Json
+          lineage_id: string
           label: string
           period_end: string | null
           period_start: string | null
           platform: string
           summary: Json
+          superseded_at: string | null
+          superseded_by: string | null
+          supersedes_period_id: string | null
           user_id: string
         }
         Insert: {
@@ -260,11 +264,15 @@ export type Database = {
           format_ids?: Json
           id?: string
           invoice?: Json
+          lineage_id?: string
           label: string
           period_end?: string | null
           period_start?: string | null
           platform: string
           summary?: Json
+          superseded_at?: string | null
+          superseded_by?: string | null
+          supersedes_period_id?: string | null
           user_id: string
         }
         Update: {
@@ -275,11 +283,15 @@ export type Database = {
           format_ids?: Json
           id?: string
           invoice?: Json
+          lineage_id?: string
           label?: string
           period_end?: string | null
           period_start?: string | null
           platform?: string
           summary?: Json
+          superseded_at?: string | null
+          superseded_by?: string | null
+          supersedes_period_id?: string | null
           user_id?: string
         }
         Relationships: []
@@ -310,6 +322,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_period_reanalysis: {
+        Args: {
+          p_branches: Json
+          p_daily: Json
+          p_engine_version: string
+          p_format_ids: Json
+          p_invoice: Json
+          p_old_period_id: string
+          p_summary: Json
+        }
+        Returns: string
+      }
+      rollback_period_reanalysis: {
+        Args: {
+          p_new_period_id: string
+          p_old_period_id: string
+        }
+        Returns: undefined
+      }
       reserve_ai_call: {
         Args: {
           p_exception_id: string

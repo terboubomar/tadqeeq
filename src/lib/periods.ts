@@ -13,6 +13,10 @@ export interface StoredPeriod {
   created_at: string;
   engine_version: string;
   format_ids: string[];
+  lineage_id?: string;
+  supersedes_period_id?: string | null;
+  superseded_by?: string | null;
+  superseded_at?: string | null;
   summary: Summary;
   branches: BranchRow[];
   daily: DailyRow[];
@@ -76,6 +80,7 @@ export async function listPeriods(): Promise<StoredPeriod[]> {
   const { data, error } = await supabase
     .from("periods")
     .select("*")
+    .is("superseded_at", null)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as StoredPeriod[];
