@@ -1,0 +1,20 @@
+{
+  "platform": "keeta",
+  "formatIds": [
+    "keeta-order-summary-v1"
+  ],
+  "summary": {
+    "orders": 2,
+    "branchCount": 1,
+    "grossSales": 172.5,
+    "keetaSalesExVat": 150,
+    "keetaCommissionExVat": 22.5,
+    "keetaBankFeesExVat": 3.75,
+    "keetaDeliveryCampaignExVat": 15,
+    "keetaCommissionInvoiceExVat": 42.25,
+    "keetaTotalCostExVat": 49.25,
+    "netSales": 115.8625,
+    "periodStart": "2026-08-01",
+    "periodEnd": "2026-08-02"
+  }
+}
