@@ -22,7 +22,7 @@ import {
   buildHungerStationMappingReview,
   type HungerStationMappingReview,
 } from "./hungerstation-branch-review";
-import type { StoredPeriod } from "./periods";
+import { normalizePeriodLabel, type StoredPeriod } from "./periods";
 import { requireServerUser, type ServerUserClient } from "./server-auth.server";
 import { safeStorageFileName, sha256Hex } from "./source-file-utils";
 import { MAX_UPLOAD_SIZE_BYTES } from "./upload-validation";
@@ -371,16 +371,20 @@ async function findDuplicate(
 
   const { data, error } = await client
     .from("periods")
-    .select("id")
+    .select("id, label")
     .eq("user_id", userId)
     .eq("platform", result.platform)
     .eq("period_start", start)
     .eq("period_end", end)
-    .limit(1)
-    .maybeSingle();
+    .is("superseded_at", null);
 
   if (error) throw new Error("تعذّر التحقق من تكرار فترة التدقيق.");
-  return data?.id ?? null;
+
+  const label = normalizePeriodLabel(result.label);
+  const existing = (data ?? []).find(
+    (row) => normalizePeriodLabel(row.label) === label,
+  );
+  return existing?.id ?? null;
 }
 
 async function insertPeriod(
