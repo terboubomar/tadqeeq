@@ -265,7 +265,6 @@ export type Database = {
           id?: string
           invoice?: Json
           lineage_id?: string
-          lineage_id?: string
           label: string
           period_end?: string | null
           period_start?: string | null
@@ -284,6 +283,7 @@ export type Database = {
           format_ids?: Json
           id?: string
           invoice?: Json
+          lineage_id?: string
           label?: string
           period_end?: string | null
           period_start?: string | null
