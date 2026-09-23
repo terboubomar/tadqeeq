@@ -375,22 +375,30 @@ function evaluateWalletFee(
     );
   }
 
-  if (
-    branchesWithWalletBase.length === 0 &&
-    (period.invoice?.walletFeeBase ?? 0) > 0
-  ) {
-    const canonicalWalletRules = rules.filter(
-      (rule) =>
-        rule.ruleType === "wallet_fee" &&
-        normalizeContractScopeKey(rule.ruleKey) === "wallet_fee",
-    );
-    const hasBranchOverride = canonicalWalletRules.some(
-      (rule) => rule.scopeType === "branch",
-    );
+  const canonicalWalletRules = rules.filter(
+    (rule) =>
+      rule.ruleType === "wallet_fee" &&
+      normalizeContractScopeKey(rule.ruleKey) === "wallet_fee",
+  );
+  const hasBranchOverride = canonicalWalletRules.some(
+    (rule) => rule.scopeType === "branch",
+  );
+  const aggregateBaseAmount = period.invoice?.walletFeeBase ?? 0;
+  const branchBaseAmount = roundMoney(
+    branchesWithWalletBase.reduce(
+      (sum, branch) => sum + (branch.walletFeeBase ?? 0),
+      0,
+    ),
+  );
+  const residualBaseAmount = roundMoney(
+    aggregateBaseAmount - branchBaseAmount,
+  );
+  let totalsBlocked = false;
 
-    if (hasBranchOverride) {
-      missingEvidenceBranches.push("تفاصيل أسس رسوم المحافظ حسب الفرع");
-    } else {
+  if (
+    Math.abs(residualBaseAmount) > HUNGERSTATION_TOLERANCES.paymentFee
+  ) {
+    if (residualBaseAmount > 0 && !hasBranchOverride) {
       const resolved = canonicalPercentageRuleForBranch(
         rules,
         null,
@@ -399,20 +407,28 @@ function evaluateWalletFee(
       );
 
       if (resolved.status === "missing") {
-        missingRuleBranches.push("إجمالي الفاتورة");
+        missingRuleBranches.push("الجزء غير الموزع من أساس المحافظ");
       } else if (resolved.status === "unsupported") {
-        unsupportedRuleBranches.push("إجمالي الفاتورة");
+        unsupportedRuleBranches.push("الجزء غير الموزع من أساس المحافظ");
       } else {
         rows.push(
           makeRow({
-            branch: "إجمالي الفاتورة",
+            branch: "أساس محافظ غير موزع على الفروع",
             rule: resolved.rule,
-            baseAmount: period.invoice.walletFeeBase ?? 0,
-            observedAmount: period.invoice.walletFee ?? null,
+            baseAmount: residualBaseAmount,
+            observedAmount: null,
             tolerance: HUNGERSTATION_TOLERANCES.paymentFee,
           }),
         );
+        missingEvidenceBranches.push(
+          "تفاصيل توزيع جزء من أساس رسوم المحافظ على الفروع",
+        );
       }
+    } else {
+      totalsBlocked = true;
+      missingEvidenceBranches.push(
+        "تفاصيل توزيع أساس رسوم المحافظ على الفروع",
+      );
     }
   }
 
@@ -434,9 +450,7 @@ function evaluateWalletFee(
       missingRuleBranches,
       unsupportedRuleBranches,
       tolerance: HUNGERSTATION_TOLERANCES.paymentFee,
-      totalsBlocked: missingEvidenceBranches.includes(
-        "تفاصيل أسس رسوم المحافظ حسب الفرع",
-      ),
+      totalsBlocked,
     }),
   };
 }
