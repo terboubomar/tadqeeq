@@ -14,6 +14,21 @@ import {
   type ContractVersionRecord,
 } from "./contract-rulebook";
 import { requireServerUser, type ServerUserClient } from "./server-auth.server";
+import { safeStorageFileName, sha256Hex } from "./source-file-utils";
+import { MAX_UPLOAD_SIZE_BYTES } from "./upload-validation";
+
+const CONTRACT_DOCUMENT_BUCKET = "contract-files";
+const CONTRACT_DOCUMENT_EXTENSIONS = new Set([
+  ".pdf",
+  ".doc",
+  ".docx",
+  ".xls",
+  ".xlsx",
+  ".csv",
+  ".png",
+  ".jpg",
+  ".jpeg",
+]);
 
 export interface CreateContractInput {
   platform: ContractPlatform;
@@ -495,4 +510,126 @@ export async function approveContractVersionOnServer(input: {
 
   if (error) throw explainDatabaseError(error, "تعذّر اعتماد نسخة العقد.");
   return { versionId: data.id };
+}
+
+
+function contractDocumentExtension(fileName: string): string {
+  const normalized = fileName.toLowerCase();
+  const index = normalized.lastIndexOf(".");
+  return index >= 0 ? normalized.slice(index) : "";
+}
+
+function contractDocumentFormString(form: FormData, key: string): string {
+  const value = form.get(key);
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function contractDocumentFormFile(form: FormData, key: string): File | null {
+  const value = form.get(key);
+  return value && typeof value !== "string" ? value : null;
+}
+
+export async function uploadContractDocumentOnServer(
+  form: FormData,
+): Promise<{ documentId: string; sha256: string }> {
+  const { client, userId } = await requireServerUser();
+  const contractId = contractDocumentFormString(form, "contractId");
+  const versionId = contractDocumentFormString(form, "versionId");
+  const file = contractDocumentFormFile(form, "file");
+
+  if (!contractId || !versionId) {
+    throw new Error("مرجع العقد أو النسخة غير صالح.");
+  }
+
+  await assertDraftVersion(client, userId, contractId, versionId);
+
+  if (!file || !file.name.trim()) {
+    throw new Error("اختر مستند العقد أولاً.");
+  }
+  if (
+    !Number.isFinite(file.size) ||
+    file.size <= 0 ||
+    file.size > MAX_UPLOAD_SIZE_BYTES
+  ) {
+    throw new Error("حجم مستند العقد غير صالح أو يتجاوز 25 MB.");
+  }
+
+  const extension = contractDocumentExtension(file.name);
+  if (!CONTRACT_DOCUMENT_EXTENSIONS.has(extension)) {
+    throw new Error(
+      "صيغة مستند العقد غير مدعومة. استخدم PDF أو Word أو Excel أو CSV أو صورة.",
+    );
+  }
+
+  const sha256 = await sha256Hex(file);
+  const { data: existing, error: duplicateError } = await client
+    .from("contract_documents")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("contract_id", contractId)
+    .eq("version_id", versionId)
+    .eq("sha256", sha256)
+    .limit(1)
+    .maybeSingle();
+
+  if (duplicateError) {
+    throw explainDatabaseError(
+      duplicateError,
+      "تعذّر التحقق من مستندات العقد السابقة.",
+    );
+  }
+  if (existing) {
+    throw new Error("هذا المستند مرفوع مسبقاً لهذه النسخة.");
+  }
+
+  const documentId = crypto.randomUUID();
+  const storagePath = [
+    userId,
+    contractId,
+    versionId,
+    `${documentId}-${safeStorageFileName(file.name)}`,
+  ].join("/");
+
+  const { error: uploadError } = await client.storage
+    .from(CONTRACT_DOCUMENT_BUCKET)
+    .upload(storagePath, file, {
+      contentType: file.type || "application/octet-stream",
+      upsert: false,
+    });
+
+  if (uploadError) {
+    throw new Error("تعذّر حفظ مستند العقد في التخزين الخاص.");
+  }
+
+  const { error: metadataError } = await client.from("contract_documents").insert({
+    id: documentId,
+    user_id: userId,
+    contract_id: contractId,
+    version_id: versionId,
+    original_name: file.name.trim(),
+    sha256,
+    size_bytes: file.size,
+    storage_path: storagePath,
+  });
+
+  if (metadataError) {
+    const { error: cleanupError } = await client.storage
+      .from(CONTRACT_DOCUMENT_BUCKET)
+      .remove([storagePath]);
+
+    if (cleanupError) {
+      console.error("Failed to clean up orphan contract document", {
+        documentId,
+        storagePath,
+        cleanupError: cleanupError.message,
+      });
+    }
+
+    throw explainDatabaseError(
+      metadataError,
+      "تعذّر تسجيل بيانات مستند العقد.",
+    );
+  }
+
+  return { documentId, sha256 };
 }

@@ -8,6 +8,7 @@ import {
   deleteContractRuleOnServer,
   listContractRulebookOnServer,
   saveContractRuleOnServer,
+  uploadContractDocumentOnServer,
 } from "./contract-rulebook.server";
 
 const uuid = z.string().uuid();
@@ -91,3 +92,13 @@ export const deleteContractRule = createServerFn({ method: "POST" })
 export const approveContractVersion = createServerFn({ method: "POST" })
   .validator(versionIdentitySchema)
   .handler(async ({ data }) => approveContractVersionOnServer(data));
+
+
+export const uploadContractDocument = createServerFn({ method: "POST" })
+  .validator((data) => {
+    if (!(data instanceof FormData)) {
+      throw new Error("بيانات مستند العقد غير صالحة.");
+    }
+    return data;
+  })
+  .handler(async ({ data }) => uploadContractDocumentOnServer(data));
