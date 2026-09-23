@@ -488,6 +488,11 @@ export async function importAuditOnServer(
     approvedMappings,
   );
 
+  const duplicate = await findDuplicate(client, userId, result);
+  if (duplicate) {
+    return { status: "duplicate", existingPeriodId: duplicate };
+  }
+
   if (
     platform === "hungerstation" &&
     !formBoolean(form, "skipMappingReview")
@@ -499,11 +504,6 @@ export async function importAuditOnServer(
         review,
       };
     }
-  }
-
-  const duplicate = await findDuplicate(client, userId, result);
-  if (duplicate) {
-    return { status: "duplicate", existingPeriodId: duplicate };
   }
 
   let periodId: string;
