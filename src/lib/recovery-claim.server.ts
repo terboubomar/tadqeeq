@@ -1,3 +1,4 @@
+import type { RecoveryDocumentRecord } from "./recovery-claim";
 import { requireServerUser } from "./server-auth.server";
 import { safeStorageFileName, sha256Hex } from "./source-file-utils";
 import { MAX_UPLOAD_SIZE_BYTES } from "./upload-validation";
@@ -14,16 +15,6 @@ const RECOVERY_DOCUMENT_EXTENSIONS = new Set([
   "jpg",
   "jpeg",
 ]);
-
-export interface RecoveryDocumentRecord {
-  id: string;
-  periodId: string;
-  exceptionId: string;
-  originalName: string;
-  sha256: string;
-  sizeBytes: number;
-  createdAt: string;
-}
 
 function fileExtension(name: string): string {
   const parts = name.trim().toLowerCase().split(".");
