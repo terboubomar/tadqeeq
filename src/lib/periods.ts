@@ -11,6 +11,10 @@ export interface StoredPeriod {
   period_start: string | null;
   period_end: string | null;
   created_at: string;
+  audit_lineage_id: string;
+  supersedes_period_id: string | null;
+  superseded_at: string | null;
+  analysis_revision: number;
   engine_version: string;
   format_ids: string[];
   summary: Summary;
@@ -76,7 +80,21 @@ export async function listPeriods(): Promise<StoredPeriod[]> {
   const { data, error } = await supabase
     .from("periods")
     .select("*")
+    .is("superseded_at", null)
     .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as StoredPeriod[];
+}
+
+export async function listPeriodVersions(
+  auditLineageId: string,
+): Promise<StoredPeriod[]> {
+  const { data, error } = await supabase
+    .from("periods")
+    .select("*")
+    .eq("audit_lineage_id", auditLineageId)
+    .order("analysis_revision", { ascending: false });
+
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as StoredPeriod[];
 }
