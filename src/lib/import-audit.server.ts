@@ -45,7 +45,7 @@ export type ImportAuditResult =
       review: HungerStationMappingReview;
     };
 
-interface SourceFile {
+export interface SourceFile {
   kind: "data" | "invoice" | "cpc_invoice" | "compensation";
   file: File;
   formatId?: string;
@@ -222,7 +222,7 @@ async function historicalJahezOrders(
   );
 }
 
-async function buildAnalysis(
+export async function buildAnalysis(
   form: FormData,
   platform: Platform,
   client: ServerUserClient,
@@ -406,7 +406,7 @@ async function insertPeriod(
   return data.id;
 }
 
-async function storeSources(
+export async function storeSources(
   client: ServerUserClient,
   userId: string,
   periodId: string,
