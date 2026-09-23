@@ -259,7 +259,7 @@ describe("HungerStation contract compliance", () => {
 
     expect(result.walletFee.rows).toHaveLength(0);
     expect(result.walletFee.missingEvidenceBranches).toContain(
-      "تفاصيل أسس رسوم المحافظ حسب الفرع",
+      "تفاصيل توزيع أساس رسوم المحافظ على الفروع",
     );
     expect(result.walletFee.totals.complete).toBe(false);
   });
