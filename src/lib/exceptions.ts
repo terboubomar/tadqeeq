@@ -1,5 +1,12 @@
 import { normalizeCheckMetadata } from "./analysis/check-metadata";
 import type { CheckCategory, CheckEvidence, CheckRow } from "./analysis/types";
+import {
+  DEFAULT_CONTRACT_TOLERANCE,
+  DEFAULT_DATA_TOLERANCE,
+  HUNGERSTATION_TOLERANCES,
+  JAHEZ_TOLERANCES,
+  KEETA_TOLERANCES,
+} from "./analysis/tolerances";
 import type { StoredPeriod } from "./periods";
 
 export type ExceptionStatus =
@@ -148,7 +155,9 @@ function isIndependentEvidence(evidence: CheckEvidence | undefined): boolean {
 
 function toleranceFor(check: CheckRow): number {
   if (typeof check.tolerance === "number") return check.tolerance;
-  return check.evidence === "contract" ? 0.1 : 0.05;
+  return check.evidence === "contract"
+    ? DEFAULT_CONTRACT_TOLERANCE
+    : DEFAULT_DATA_TOLERANCE;
 }
 
 function severityFor(amount: number, category: ExceptionCategory): ExceptionSeverity {
@@ -219,7 +228,7 @@ function makeException(
   const invoiced = input.invoiced;
   const difference =
     computed !== undefined && invoiced !== undefined ? invoiced - computed : undefined;
-  const tolerance = input.tolerance ?? 0.05;
+  const tolerance = input.tolerance ?? DEFAULT_DATA_TOLERANCE;
   const reviewAmount =
     input.forceReviewAmount ??
     (difference !== undefined ? Math.abs(difference) : 0);
@@ -395,7 +404,7 @@ function hungerInvoiceHasOperationalActivity(branch: StoredPeriod["branches"][nu
     (value) =>
       typeof value === "number" &&
       Number.isFinite(value) &&
-      Math.abs(value) > 0.05,
+      Math.abs(value) > DEFAULT_DATA_TOLERANCE,
   );
 }
 
@@ -504,7 +513,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       label: "فرق عمولة الفرع",
       computed: branch.commission,
       invoiced: branch.invoiceCommission,
-      tolerance: 0.05,
+      tolerance: HUNGERSTATION_TOLERANCES.commission,
     });
     pushBranchVariance(result, period, {
       branch: branch.branch,
@@ -514,7 +523,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       label: "فرق رسوم الدفع بالبطاقات للفرع",
       computed: paymentComputed,
       invoiced: invoiceCardPaymentFees,
-      tolerance: 0.1,
+      tolerance: HUNGERSTATION_TOLERANCES.paymentFee,
     });
     pushBranchVariance(result, period, {
       branch: branch.branch,
@@ -524,7 +533,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       label: "فرق الرسوم الأخرى للفرع",
       computed: otherComputed,
       invoiced: otherInvoiced,
-      tolerance: 0.1,
+      tolerance: HUNGERSTATION_TOLERANCES.otherFee,
     });
     pushBranchVariance(result, period, {
       branch: branch.branch,
@@ -534,7 +543,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       label: "فرق تحصيلات الفرع",
       computed: branch.totalCollections,
       invoiced: branch.invoiceCollections,
-      tolerance: 0.05,
+      tolerance: HUNGERSTATION_TOLERANCES.collections,
     });
     pushBranchVariance(result, period, {
       branch: branch.branch,
@@ -544,7 +553,7 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       label: "فرق مبيعات الائتمان للفرع",
       computed: branch.creditSales,
       invoiced: branch.invoiceCreditSales,
-      tolerance: 0.05,
+      tolerance: HUNGERSTATION_TOLERANCES.creditSales,
     });
 
     // invoiceOnlyBranchCharges means "not independently verifiable", not
@@ -606,7 +615,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
             ? branch.keetaPdfOrderCommissionInclVat + branch.keetaPdfOrderCommissionVariance
             : (branch.keetaCommissionExVat ?? 0) * vatFactor,
         invoiced: branch.keetaPdfOrderCommissionInclVat,
-        tolerance: 0.06,
+        tolerance: KEETA_TOLERANCES.branchRounding,
       });
       pushBranchVariance(result, period, {
         branch: branch.branch,
@@ -620,7 +629,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
             ? branch.keetaPdfBankCommissionInclVat + branch.keetaPdfBankCommissionVariance
             : (branch.keetaBankFeesExVat ?? 0) * vatFactor,
         invoiced: branch.keetaPdfBankCommissionInclVat,
-        tolerance: 0.06,
+        tolerance: KEETA_TOLERANCES.branchRounding,
       });
       pushBranchVariance(result, period, {
         branch: branch.branch,
@@ -634,7 +643,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
             ? branch.keetaPdfDeliveryCommissionInclVat + branch.keetaPdfDeliveryCommissionVariance
             : (branch.keetaDeliveryCampaignExVat ?? 0) * vatFactor,
         invoiced: branch.keetaPdfDeliveryCommissionInclVat,
-        tolerance: 0.06,
+        tolerance: KEETA_TOLERANCES.branchRounding,
       });
       pushBranchVariance(result, period, {
         branch: branch.branch,
@@ -644,7 +653,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         label: "فرق البيع الآجل للفرع",
         computed: branch.keetaCreditSales,
         invoiced: branch.keetaPdfCreditSales,
-        tolerance: 0.06,
+        tolerance: KEETA_TOLERANCES.branchRounding,
       });
       pushBranchVariance(result, period, {
         branch: branch.branch,
@@ -654,7 +663,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         label: "فرق صافي مستحق الفرع",
         computed: branch.netSales,
         invoiced: branch.keetaPdfNetDue,
-        tolerance: 0.06,
+        tolerance: KEETA_TOLERANCES.branchRounding,
       });
     } else {
       const excelPayableVariance =
@@ -669,7 +678,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
         label: "فرق Payable للفرع",
         computed: branch.netSales,
         invoiced: branch.keetaExcelPayable,
-        tolerance: 0.02,
+        tolerance: KEETA_TOLERANCES.branchMatch,
       });
 
       // Invoice amount and Payable usually express the same financial mismatch in
@@ -677,7 +686,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
       // itself is already clean, avoiding double-counting the same exposure.
       if (
         excelPayableVariance === undefined ||
-        Math.abs(excelPayableVariance) <= 0.02
+        Math.abs(excelPayableVariance) <= KEETA_TOLERANCES.branchMatch
       ) {
         pushBranchVariance(result, period, {
           branch: branch.branch,
@@ -689,7 +698,7 @@ function keetaBranchExceptions(period: StoredPeriod): AuditException[] {
             (branch.keetaCommissionInvoiceInclVat ?? 0) +
             (branch.keetaMerchantAdExVat ?? 0) * vatFactor,
           invoiced: branch.keetaExcelInvoiceAmount,
-          tolerance: 0.02,
+          tolerance: KEETA_TOLERANCES.branchMatch,
         });
       }
     }
@@ -735,7 +744,7 @@ function jahezCompensationExceptions(period: StoredPeriod): AuditException[] {
   if (!compensation) return result;
 
   const debitDifference = compensation.summaryDebit - compensation.detailDebit;
-  if (Math.abs(debitDifference) > 0.01) {
+  if (Math.abs(debitDifference) > JAHEZ_TOLERANCES.compensation) {
     result.push(
       makeException(period, {
         code: "JAHEZ_COMPENSATION_DEBIT_MISMATCH",
@@ -745,14 +754,14 @@ function jahezCompensationExceptions(period: StoredPeriod): AuditException[] {
         computed: compensation.detailDebit,
         invoiced: compensation.summaryDebit,
         evidence: "data",
-        tolerance: 0.01,
+        tolerance: JAHEZ_TOLERANCES.compensation,
         hint: "مجموع معاملات debit في تفاصيل ملف التعويضات لا يساوي إجمالي الخصم في رأس الملف.",
       }),
     );
   }
 
   const creditDifference = compensation.summaryCredit - compensation.detailCredit;
-  if (Math.abs(creditDifference) > 0.01) {
+  if (Math.abs(creditDifference) > JAHEZ_TOLERANCES.compensation) {
     result.push(
       makeException(period, {
         code: "JAHEZ_COMPENSATION_CREDIT_MISMATCH",
@@ -762,7 +771,7 @@ function jahezCompensationExceptions(period: StoredPeriod): AuditException[] {
         computed: compensation.detailCredit,
         invoiced: compensation.summaryCredit,
         evidence: "data",
-        tolerance: 0.01,
+        tolerance: JAHEZ_TOLERANCES.compensation,
         hint: "مجموع معاملات credit في تفاصيل ملف التعويضات لا يساوي إجمالي الإضافة في رأس الملف.",
       }),
     );

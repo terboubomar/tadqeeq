@@ -16,9 +16,9 @@ import {
   parseDate,
   roundMoney,
 } from "./parse";
+import { JAHEZ_TOLERANCES } from "./tolerances";
 
 const VAT_FACTOR = 1.15;
-const ROUNDING_TOLERANCE = 0.05;
 
 interface CsvRow {
   [key: string]: string;
@@ -698,7 +698,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       row.jahezCompensationUnknownAmount = branchCompensation.unknownAmount;
     }
 
-    if (Math.abs(row.jahezSettlementVariance) <= 0.01) {
+    if (Math.abs(row.jahezSettlementVariance) <= JAHEZ_TOLERANCES.settlement) {
       row.branchAuditStatus = "matched";
       row.branchAuditLabel = "مطابق";
       row.branchAuditNote = "معادلة صافي المطعم مطابقة لكل طلبات الفرع.";
@@ -829,7 +829,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       computed: detailGrossSales,
       invoiced: merchantGrossSales,
       evidence: "mixed",
-      tolerance: ROUNDING_TOLERANCE,
+      tolerance: JAHEZ_TOLERANCES.check,
       hint: "فحص رقابي داخلي داخل CSV: مجموع Order Amount من الطلبات مقابل Orders Amount في ملخص التاجر.",
     },
     {
@@ -840,7 +840,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       computed: detailCalculatedSettlement,
       invoiced: merchantRestaurantAmount,
       evidence: "mixed",
-      tolerance: ROUNDING_TOLERANCE,
+      tolerance: JAHEZ_TOLERANCES.check,
       hint:
         "فحص رقابي داخلي داخل CSV: Order Amount - Jahez Commission + Delivery Charge - Payment Fees - Payment Fees VAT - Offer Amount - Delivery Offer - Delivery Coupon.",
     },
@@ -852,7 +852,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       computed: detailCommissionInclVat,
       invoiced: merchantCommissionInclVat,
       evidence: "mixed",
-      tolerance: ROUNDING_TOLERANCE,
+      tolerance: JAHEZ_TOLERANCES.check,
       hint: "فحص رقابي داخلي داخل CSV: مجموع العمولة المقربة لكل طلب مقابل عمولة التاجر الدقيقة في رأس التقرير.",
     },
   ];
@@ -866,7 +866,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       computed: compensationReport.detailDebit,
       invoiced: compensationReport.summaryDebit,
       evidence: "mixed",
-      tolerance: 0.01,
+      tolerance: JAHEZ_TOLERANCES.settlement,
       hint: "فحص داخلي لملف التعويضات: مجموع معاملات debit مقابل إجمالي الخصم في رأس الملف.",
     });
     if (compensationReport.detailCredit !== 0 || compensationReport.summaryCredit !== 0) {
@@ -878,7 +878,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
         computed: compensationReport.detailCredit,
         invoiced: compensationReport.summaryCredit,
         evidence: "mixed",
-        tolerance: 0.01,
+        tolerance: JAHEZ_TOLERANCES.settlement,
         hint: "فحص داخلي لملف التعويضات: مجموع معاملات credit مقابل إجمالي الإضافة في رأس الملف.",
       });
     }
@@ -892,7 +892,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       computed: commissionInvoiceExVat,
       invoiced: invoice.jahezCommissionExVat,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: JAHEZ_TOLERANCES.check,
       hint: "عمولة التاجر في CSV ÷ 1.15، مقربة إلى هللتين، مقابل الفاتورة الضريبية.",
     });
   }
@@ -904,7 +904,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       computed: deliveryOfferInvoiceExVat,
       invoiced: invoice.jahezDeliveryOfferExVat,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: JAHEZ_TOLERANCES.check,
       hint:
         "كل Tier في CSV يتحول إلى سعر وحدة بدون الضريبة (مثال 10→8.70 و4→3.48) ثم يضرب في عدد الطلبات.",
     });
@@ -917,7 +917,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       computed: merchantPaymentFees,
       invoiced: invoice.jahezPaymentFeesExVat,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: JAHEZ_TOLERANCES.check,
       hint: "Payment Fees من ملخص CSV مقابل Payment Fees في الفاتورة.",
     });
   }
@@ -930,7 +930,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       computed: invoiceExVatComputed,
       invoiced: invoice.totalExVat,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: JAHEZ_TOLERANCES.check,
     });
   }
   if (invoice.vat !== undefined) {
@@ -942,7 +942,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       computed: invoiceVatComputed,
       invoiced: invoice.vat,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: JAHEZ_TOLERANCES.check,
     });
   }
   if (invoice.totalIncVat !== undefined) {
@@ -954,7 +954,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       computed: invoiceInclVatComputed,
       invoiced: invoice.totalIncVat,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: JAHEZ_TOLERANCES.check,
     });
   }
 

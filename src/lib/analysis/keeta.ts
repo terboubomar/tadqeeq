@@ -10,11 +10,10 @@ import type {
 } from "./types";
 import { ParseError, parseAmount, parseDate } from "./parse";
 import { resolveSheetName } from "./sheets";
+import { KEETA_TOLERANCES } from "./tolerances";
 
 const VAT_RATE = 0.15;
 const VAT_FACTOR = 1 + VAT_RATE;
-const BRANCH_MATCH_TOLERANCE = 0.02;
-const BRANCH_ROUNDING_TOLERANCE = 0.06;
 
 const SALES_COLUMNS = [
   "Original item price (VAT included)",
@@ -359,14 +358,14 @@ function auditState(
   maxVariance: number,
   sourceLabel: string,
 ): Pick<BranchRow, "branchAuditStatus" | "branchAuditLabel" | "branchAuditNote"> {
-  if (maxVariance <= BRANCH_MATCH_TOLERANCE) {
+  if (maxVariance <= KEETA_TOLERANCES.branchMatch) {
     return {
       branchAuditStatus: "matched",
       branchAuditLabel: "مطابق",
       branchAuditNote: "مطابقة كاملة مع " + sourceLabel + ".",
     };
   }
-  if (maxVariance <= BRANCH_ROUNDING_TOLERANCE) {
+  if (maxVariance <= KEETA_TOLERANCES.branchRounding) {
     return {
       branchAuditStatus: "rounding",
       branchAuditLabel: "مطابق ضمن التقريب",
@@ -895,7 +894,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: calculatedPayable,
       invoiced: sourcePayable,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
       hint:
         "إعادة بناء التسوية من المبيعات والخصومات والرسوم، مقارنةً بعمود Payable to Restaurant داخل Order Summary.",
     },
@@ -910,7 +909,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: excelInvoiceAmountComputed,
       invoiced: invoice.keetaExcelInvoiceAmount,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
       hint:
         "عمولة الطلب + رسوم البنك + دعم توصيل كيتا + بنود الفاتورة الإضافية + Merchant ad spend، مقارنةً بورقة Invoice Details.",
     });
@@ -925,7 +924,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: calculatedPayable,
       invoiced: invoice.keetaExcelPayable,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
       hint:
         "صافي التسوية المعاد احتسابه من Order Summary مقابل Payable to Restaurant في Invoice Details.",
     });
@@ -940,7 +939,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: excelInvoiceAmountComputed,
       invoiced: invoice.keetaBillingInvoiceAmount,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
       hint: "تحقق يومي تجميعي من ورقة Billing data summary.",
     });
   }
@@ -954,7 +953,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: calculatedPayable,
       invoiced: invoice.keetaBillingPayable,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
       hint: "صافي التسوية مقابل Total Payable to Restaurant في Billing data summary.",
     });
   }
@@ -968,7 +967,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: summary.keetaCommissionExVat ?? 0,
       invoiced: invoice.salesCommission,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
       hint: "عمولة الطلب بدون الضريبة من Order Summary مقابل Simple invoice.",
     });
   }
@@ -981,7 +980,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: summary.keetaBankFeesExVat ?? 0,
       invoiced: invoice.paymentFees,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
       hint: "رسوم البنك بدون الضريبة من Order Summary مقابل Simple invoice.",
     });
   }
@@ -994,7 +993,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: summary.keetaDeliveryCampaignExVat ?? 0,
       invoiced: invoice.othersCommission,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
       hint: "Delivery promotion subsidy (Keeta delivery) بدون الضريبة.",
     });
   }
@@ -1007,7 +1006,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: commissionInvoiceExVat,
       invoiced: invoice.totalExVat,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
       hint: "العمولة + رسوم البنك + دعم توصيل كيتا + أي بنود فاتورة إضافية.",
     });
   }
@@ -1020,7 +1019,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: commissionInvoiceInclVat,
       invoiced: invoice.totalIncVat,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
     });
   }
   if (invoice.creditSales !== undefined) {
@@ -1032,7 +1031,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: creditSales,
       invoiced: invoice.creditSales,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
       hint: "الإيرادات بعد دعم الأصناف والإعلانات وبقية بنود Credit Sales وقبل فاتورة العمولة.",
     });
   }
@@ -1045,7 +1044,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: calculatedPayable,
       invoiced: Math.abs(invoice.netDue),
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
       hint: "صافي التسوية المعاد احتسابه من Order Summary مقابل Net Due في الفاتورة.",
     });
   }
@@ -1057,7 +1056,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: -((summary.keetaProductCampaignExVat ?? 0) * VAT_FACTOR),
       invoiced: invoice.keetaMerchantSubsidyItems,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
     });
   }
   if (invoice.keetaAdvertisingCosts !== undefined) {
@@ -1068,7 +1067,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: -((summary.keetaMerchantAdExVat ?? 0) * VAT_FACTOR),
       invoiced: invoice.keetaAdvertisingCosts,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
     });
   }
   if (invoice.keetaPosMachineFees !== undefined) {
@@ -1079,7 +1078,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: -((summary.keetaPosFeesExVat ?? 0) * VAT_FACTOR),
       invoiced: invoice.keetaPosMachineFees,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
     });
   }
 
@@ -1094,7 +1093,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: commissionInvoiceExVat + merchantAdExVat,
       invoiced: netTaxInvoiceExVat,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
       hint:
         "فاتورة العمولة بدون الضريبة + Promotion service fee، بعد طرح أي Tax Credit Note.",
     });
@@ -1111,7 +1110,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
       computed: commissionInvoiceInclVat + merchantAdExVat * VAT_FACTOR,
       invoiced: netTaxInvoiceInclVat,
       evidence: "data",
-      tolerance: 0.05,
+      tolerance: KEETA_TOLERANCES.check,
     });
   }
 
