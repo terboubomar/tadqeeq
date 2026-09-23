@@ -68,9 +68,9 @@ const versionIdentitySchema = z.object({
   versionId: uuid,
 });
 
-export const getContractRulebook = createServerFn({ method: "POST" }).handler(
-  async () => listContractRulebookOnServer(),
-);
+export const getContractRulebook = createServerFn({ method: "POST" })
+  .validator(z.object({}))
+  .handler(async () => listContractRulebookOnServer());
 
 export const createContract = createServerFn({ method: "POST" })
   .validator(contractSchema)
