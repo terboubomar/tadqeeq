@@ -40,7 +40,10 @@ const NAV_GROUPS = [
   },
   {
     title: "الإعداد",
-    items: [{ to: "/import", label: "رفع البيانات" }],
+    items: [
+      { to: "/import", label: "رفع البيانات" },
+      { to: "/contracts", label: "العقود وشروط المنصات" },
+    ],
   },
 ];
 
