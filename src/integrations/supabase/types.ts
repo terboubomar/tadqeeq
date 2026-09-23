@@ -140,6 +140,8 @@ export type Database = {
       }
       periods: {
         Row: {
+          analysis_revision: number
+          audit_lineage_id: string
           branches: Json
           created_at: string
           daily: Json
@@ -152,9 +154,13 @@ export type Database = {
           period_start: string | null
           platform: string
           summary: Json
+          superseded_at: string | null
+          supersedes_period_id: string | null
           user_id: string
         }
         Insert: {
+          analysis_revision?: number
+          audit_lineage_id?: string
           branches?: Json
           created_at?: string
           daily?: Json
@@ -167,9 +173,13 @@ export type Database = {
           period_start?: string | null
           platform: string
           summary?: Json
+          superseded_at?: string | null
+          supersedes_period_id?: string | null
           user_id: string
         }
         Update: {
+          analysis_revision?: number
+          audit_lineage_id?: string
           branches?: Json
           created_at?: string
           daily?: Json
@@ -182,9 +192,19 @@ export type Database = {
           period_start?: string | null
           platform?: string
           summary?: Json
+          superseded_at?: string | null
+          supersedes_period_id?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "periods_supersedes_period_id_fkey"
+            columns: ["supersedes_period_id"]
+            isOneToOne: false
+            referencedRelation: "periods"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -212,6 +232,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_reanalysis_period: {
+        Args: {
+          p_branches: Json
+          p_daily: Json
+          p_engine_version: string
+          p_format_ids: Json
+          p_invoice: Json
+          p_new_period_id: string
+          p_source_period_id: string
+          p_summary: Json
+        }
+        Returns: string
+      }
       reserve_ai_call: {
         Args: {
           p_exception_id: string
