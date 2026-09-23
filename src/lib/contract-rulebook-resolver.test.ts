@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
 import type { ContractRuleRecord } from "./contract-rulebook";
 import {
@@ -32,6 +34,22 @@ function rule(
 }
 
 describe("effective contract term resolution", () => {
+  test("server lookup uses only approved versions whose date range contains the request", async () => {
+    const source = await readFile(
+      path.resolve(process.cwd(), "src/lib/contract-rulebook.server.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain('.eq("status", "approved")');
+    expect(source).toContain('.lte("effective_from", input.onDate)');
+    expect(source).toContain(
+      '.or(`effective_to.is.null,effective_to.gte.${input.onDate}`)',
+    );
+    expect(source).toContain("if (versionRows.length > 1)");
+    expect(source).toContain("resolveContractRulePrecedence(rules, branchKey)");
+  });
+
+
   test("branch-specific rules override the all-branches value for the same key", () => {
     const resolved = resolveContractRulePrecedence(
       [
