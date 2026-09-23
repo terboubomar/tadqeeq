@@ -653,17 +653,6 @@ function ContractCompliancePanel({
     onError: (error: Error) => toast.error(error.message),
   });
 
-  if (platform === "jahez") {
-    return (
-      <section className="rounded-[12px] border border-border bg-white px-5 py-4">
-        <h3 className="text-sm font-semibold">مطابقة العقد مع التدقيق</h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          الربط التعاقدي مع نتائج تدقيق جاهز سيُفعّل في المرحلة التالية.
-        </p>
-      </section>
-    );
-  }
-
   const result = mutation.data;
   const compliance = result?.status === "evaluated" ? result.compliance : null;
 
@@ -676,7 +665,9 @@ function ContractCompliancePanel({
         <p className="mt-1 text-xs text-muted-foreground">
           {platform === "hungerstation"
             ? "فحص العمولة ورسوم البطاقات ورسوم المحافظ مقابل الشروط المعتمدة، بدون تعديل نتائج محرك التدقيق."
-            : "فحص نسبة عمولة كيتا مقابل الأساس والعمولة المعاد بناؤهما من Order Summary، بدون تعديل نتائج محرك التدقيق."}
+            : platform === "keeta"
+              ? "فحص نسبة عمولة كيتا مقابل الأساس والعمولة المعاد بناؤهما من Order Summary، بدون تعديل نتائج محرك التدقيق."
+              : "فحص نسبة عمولة جاهز مقابل إجمالي قيمة الطلبات والعمولة شامل الضريبة من تفاصيل الطلبات، بدون تعديل نتائج محرك التدقيق."}
         </p>
       </div>
 
@@ -712,7 +703,7 @@ function ContractCompliancePanel({
 
       {!periodsQuery.isLoading && periods.length === 0 ? (
         <p className="border-t border-border px-5 py-4 text-sm text-muted-foreground">
-          لا توجد فترة تدقيق هنقرستيشن محفوظة لاستخدامها في المطابقة.
+          لا توجد فترة تدقيق {PLATFORM_LABELS[platform]} محفوظة لاستخدامها في المطابقة.
         </p>
       ) : null}
 
@@ -749,10 +740,16 @@ function ContractCompliancePanel({
                   section={compliance.walletFee}
                 />
               </>
-            ) : (
+            ) : compliance.platform === "keeta" ? (
               <ContractComplianceSectionPanel
                 title="عمولة الطلب — كيتا"
                 baseLabel="المبيعات بدون الضريبة"
+                section={compliance.commission}
+              />
+            ) : (
+              <ContractComplianceSectionPanel
+                title="عمولة الطلب — جاهز"
+                baseLabel="إجمالي الطلبات شامل الضريبة"
                 section={compliance.commission}
               />
             )}

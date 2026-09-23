@@ -1,5 +1,5 @@
 import { roundMoney } from "./analysis/parse";
-import { HUNGERSTATION_TOLERANCES, KEETA_TOLERANCES } from "./analysis/tolerances";
+import { HUNGERSTATION_TOLERANCES, JAHEZ_TOLERANCES, KEETA_TOLERANCES } from "./analysis/tolerances";
 import type { ContractRuleRecord, ContractRuleType } from "./contract-rulebook";
 import {
   normalizeContractScopeKey,
@@ -66,6 +66,19 @@ export interface HungerStationContractCompliance {
 
 export interface KeetaContractCompliance {
   platform: "keeta";
+  versionId: string;
+  versionNumber: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  periodId: string;
+  periodLabel: string;
+  periodStart: string;
+  periodEnd: string;
+  commission: ContractComplianceSection;
+}
+
+export interface JahezContractCompliance {
+  platform: "jahez";
   versionId: string;
   versionNumber: number;
   effectiveFrom: string;
@@ -526,6 +539,105 @@ function evaluateKeetaCommission(
       unsupportedRuleBranches,
       tolerance: KEETA_TOLERANCES.check,
     }),
+  };
+}
+
+function evaluateJahezCommission(
+  period: StoredPeriod,
+  rules: ContractRuleRecord[],
+): ContractComplianceSection {
+  const rows: ContractComplianceRow[] = [];
+  const missingRuleBranches: string[] = [];
+  const unsupportedRuleBranches: string[] = [];
+  const missingEvidenceBranches: string[] = [];
+
+  for (const branch of period.branches ?? []) {
+    if (branch.branchAuditStatus === "invoice_only") continue;
+
+    const baseAmount = branch.grossSales;
+    if (baseAmount <= 0) continue;
+
+    const resolved = canonicalPercentageRuleForBranch(
+      rules,
+      branch.branch,
+      "commission_rate",
+      "commission_rate",
+    );
+
+    if (resolved.status === "missing") {
+      missingRuleBranches.push(branch.branch);
+      continue;
+    }
+    if (resolved.status === "unsupported") {
+      unsupportedRuleBranches.push(branch.branch);
+      continue;
+    }
+
+    const observedAmount = branch.jahezCommissionInclVat ?? null;
+    if (observedAmount == null) {
+      missingEvidenceBranches.push(branch.branch);
+    }
+
+    rows.push(
+      makeRow({
+        branch: branch.branch,
+        rule: resolved.rule,
+        baseAmount,
+        observedAmount,
+        tolerance: JAHEZ_TOLERANCES.check,
+      }),
+    );
+  }
+
+  return {
+    ruleType: "commission_rate",
+    ruleKey: "commission_rate",
+    evidence: "contract_plus_platform_data",
+    evidenceNote:
+      "تعريف نسبة عمولة جاهز الحالي في محرك تدقيق هو العمولة شامل الضريبة ÷ إجمالي قيمة الطلبات. تتم مقارنة العمولة المرصودة من تفاصيل الطلبات بما تسمح به نسبة العقد المعتمدة.",
+    rows,
+    missingRuleBranches,
+    unsupportedRuleBranches,
+    missingEvidenceBranches,
+    totals: makeTotals({
+      rows,
+      missingRuleBranches,
+      unsupportedRuleBranches,
+      tolerance: JAHEZ_TOLERANCES.check,
+      totalsBlocked: missingEvidenceBranches.length > 0,
+    }),
+  };
+}
+
+export function evaluateJahezContractCompliance(input: {
+  period: StoredPeriod;
+  rules: ContractRuleRecord[];
+  version: {
+    id: string;
+    versionNumber: number;
+    effectiveFrom: string;
+    effectiveTo: string | null;
+  };
+}): JahezContractCompliance {
+  const { period, rules, version } = input;
+  if (period.platform !== "jahez") {
+    throw new Error("Jahez contract compliance requires a Jahez audit period.");
+  }
+  if (!period.period_start || !period.period_end) {
+    throw new Error("Audit period dates are required for contract compliance.");
+  }
+
+  return {
+    platform: "jahez",
+    versionId: version.id,
+    versionNumber: version.versionNumber,
+    effectiveFrom: version.effectiveFrom,
+    effectiveTo: version.effectiveTo,
+    periodId: period.id,
+    periodLabel: period.label,
+    periodStart: period.period_start,
+    periodEnd: period.period_end,
+    commission: evaluateJahezCommission(period, rules),
   };
 }
 

@@ -2,8 +2,10 @@ import type { ContractRuleRecord, ContractRuleType, ContractValueKind, ContractF
 import {
   evaluateHungerStationContractCompliance,
   evaluateKeetaContractCompliance,
+  evaluateJahezContractCompliance,
   type HungerStationContractCompliance,
   type KeetaContractCompliance,
+  type JahezContractCompliance,
 } from "./contract-compliance";
 import type { StoredPeriod } from "./periods";
 import { requireServerUser } from "./server-auth.server";
@@ -11,7 +13,7 @@ import { requireServerUser } from "./server-auth.server";
 export type ContractComplianceResult =
   | {
       status: "evaluated";
-      compliance: HungerStationContractCompliance | KeetaContractCompliance;
+      compliance: HungerStationContractCompliance | KeetaContractCompliance | JahezContractCompliance;
     }
   | {
       status: "not_covered";
@@ -34,10 +36,6 @@ export async function evaluateContractComplianceOnServer(input: {
 
   if (contractError) throw new Error(contractError.message);
   if (!contract) throw new Error("تعذّر العثور على العقد.");
-  if (contract.platform === "jahez") {
-    throw new Error("مطابقة العقد مع تدقيق جاهز ستُفعّل في المرحلة التالية.");
-  }
-
   const { data: rawPeriod, error: periodError } = await client
     .from("periods")
     .select("*")
@@ -129,10 +127,16 @@ export async function evaluateContractComplianceOnServer(input: {
             rules,
             version: versionInput,
           })
-        : evaluateKeetaContractCompliance({
-            period,
-            rules,
-            version: versionInput,
-          }),
+        : contract.platform === "keeta"
+          ? evaluateKeetaContractCompliance({
+              period,
+              rules,
+              version: versionInput,
+            })
+          : evaluateJahezContractCompliance({
+              period,
+              rules,
+              version: versionInput,
+            }),
   };
 }
