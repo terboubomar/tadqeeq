@@ -11,6 +11,7 @@ import type {
 } from "./types";
 import { ParseError, parseAmount, parseDate } from "./parse";
 import { resolveSheetName } from "./sheets";
+import { HUNGERSTATION_TOLERANCES } from "./tolerances";
 
 const VAT = 1.15;
 
@@ -209,11 +210,11 @@ function applyInvoiceBranchMatch(
       ? matched.creditSales - (row.creditSales ?? 0)
       : undefined;
 
-  const commissionBad = Math.abs(row.commissionVariance ?? 0) > 0.05;
-  const paymentBad = Math.abs(row.paymentFeeVariance ?? 0) > 0.1;
-  const otherBad = Math.abs(row.otherChargesVariance ?? 0) > 0.1;
-  const collectionsBad = Math.abs(row.collectionsVariance ?? 0) > 0.05;
-  const salesBad = Math.abs(row.creditSalesVariance ?? 0) > 0.05;
+  const commissionBad = Math.abs(row.commissionVariance ?? 0) > HUNGERSTATION_TOLERANCES.commission;
+  const paymentBad = Math.abs(row.paymentFeeVariance ?? 0) > HUNGERSTATION_TOLERANCES.paymentFee;
+  const otherBad = Math.abs(row.otherChargesVariance ?? 0) > HUNGERSTATION_TOLERANCES.otherFee;
+  const collectionsBad = Math.abs(row.collectionsVariance ?? 0) > HUNGERSTATION_TOLERANCES.collections;
+  const salesBad = Math.abs(row.creditSalesVariance ?? 0) > HUNGERSTATION_TOLERANCES.creditSales;
   const missingBranchSales =
     invoiceBranchCount > 1 &&
     (row.creditSales ?? 0) > 0 &&
@@ -229,11 +230,11 @@ function applyInvoiceBranchMatch(
   }
 
   const hasRounding =
-    Math.abs(row.commissionVariance ?? 0) > 0.005 ||
-    Math.abs(row.paymentFeeVariance ?? 0) > 0.005 ||
-    Math.abs(row.otherChargesVariance ?? 0) > 0.005 ||
-    Math.abs(row.collectionsVariance ?? 0) > 0.005 ||
-    Math.abs(row.creditSalesVariance ?? 0) > 0.005;
+    Math.abs(row.commissionVariance ?? 0) > HUNGERSTATION_TOLERANCES.rounding ||
+    Math.abs(row.paymentFeeVariance ?? 0) > HUNGERSTATION_TOLERANCES.rounding ||
+    Math.abs(row.otherChargesVariance ?? 0) > HUNGERSTATION_TOLERANCES.rounding ||
+    Math.abs(row.collectionsVariance ?? 0) > HUNGERSTATION_TOLERANCES.rounding ||
+    Math.abs(row.creditSalesVariance ?? 0) > HUNGERSTATION_TOLERANCES.rounding;
 
   row.branchAuditStatus = hasRounding ? "rounding" : "matched";
   row.branchAuditLabel = hasRounding ? "مطابق ضمن التقريب" : "مطابق";
@@ -822,7 +823,7 @@ export function analyzeHungerStation(
       computed: cardPaymentFeesComputed,
       invoiced: invoiceCardPaymentFees,
       evidence: cardFeeEvidence,
-      tolerance: 0.1,
+      tolerance: HUNGERSTATION_TOLERANCES.paymentFee,
       hint:
         bankRateSource === "manual"
           ? "نسبة العقد × (أساس البطاقات الناجحة + أساس البطاقات المرتجعة). Wallet Payments Fee مستبعد لأنه لا يملك أساساً مستقلاً موثوقاً في ملف الطلبات."
@@ -897,7 +898,7 @@ export function analyzeHungerStation(
       computed: walletArithmetic,
       invoiced: invoiceWalletFee,
       evidence: bankRateSource === "manual" ? "mixed" : "invoice_derived",
-      tolerance: 0.1,
+      tolerance: HUNGERSTATION_TOLERANCES.paymentFee,
       hint:
         "أساس Wallet Payments Fee مأخوذ من تفاصيل فاتورة هنقرستيشن؛ ملف الطلبات لا يحدد بشكل موثوق أي جزء من Wallet Amount / Transmitter Amount يخضع لهذه الرسوم. لذلك هذا فحص اتساق وليس تحققاً مستقلاً من الأساس.",
     });
