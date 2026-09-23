@@ -1,23 +1,34 @@
 import { describe, expect, test } from "bun:test";
 
-import type { ContractRuleRecord } from "./contract-rulebook";
-import { evaluateHungerStationCommissionCompliance } from "./contract-compliance";
+import type {
+  ContractRuleRecord,
+  ContractRuleType,
+} from "./contract-rulebook";
+import { evaluateHungerStationContractCompliance } from "./contract-compliance";
 import type { StoredPeriod } from "./periods";
 
-function rule(scopeType: "all" | "branch", scopeKey: string | null, rate: number): ContractRuleRecord {
+function rule(input: {
+  id?: string;
+  ruleType: ContractRuleType;
+  ruleKey?: string;
+  scopeType?: "all" | "branch";
+  scopeKey?: string | null;
+  rate: number;
+  valueKind?: "percentage" | "amount";
+}): ContractRuleRecord {
   return {
-    id: scopeKey ?? "all",
+    id: input.id ?? `${input.ruleType}-${input.scopeKey ?? "all"}`,
     contractId: "contract-1",
     versionId: "version-1",
-    ruleKey: "commission_rate",
-    ruleType: "commission_rate",
-    valueKind: "percentage",
-    numericValue: rate,
+    ruleKey: input.ruleKey ?? input.ruleType,
+    ruleType: input.ruleType,
+    valueKind: input.valueKind ?? "percentage",
+    numericValue: input.rate,
     textValue: null,
-    currency: null,
+    currency: input.valueKind === "amount" ? "SAR" : null,
     fundingSource: null,
-    scopeType,
-    scopeKey,
+    scopeType: input.scopeType ?? "all",
+    scopeKey: input.scopeKey ?? null,
     notes: null,
     createdAt: "2026-09-23T00:00:00.000Z",
   };
@@ -43,10 +54,13 @@ function period(): StoredPeriod {
         netSales: 1000,
         commission: 180,
         commissionPct: 0.18,
-        ccSuccess: 0,
+        ccSuccess: 1000,
         ccRejected: 0,
         walletAmount: 0,
         riderWallet: 0,
+        walletFeeBase: 100,
+        invoiceWalletFee: 3,
+        invoiceCardPaymentFees: 20,
         rdfCampaigns: 0,
         freeDeliveryOrders: 0,
         compensation: 0,
@@ -61,7 +75,7 @@ function period(): StoredPeriod {
         waitingTimeFees: 0,
         bankFeeSuccess: 0,
         bankFeeRefunded: 0,
-        totalCharges: 180,
+        totalCharges: 203,
       },
       {
         branch: "Dammam",
@@ -71,10 +85,11 @@ function period(): StoredPeriod {
         netSales: 800,
         commission: 152,
         commissionPct: 0.19,
-        ccSuccess: 0,
-        ccRejected: 0,
+        ccSuccess: 700,
+        ccRejected: 100,
         walletAmount: 0,
         riderWallet: 0,
+        invoiceCardPaymentFees: 16,
         rdfCampaigns: 0,
         freeDeliveryOrders: 0,
         compensation: 0,
@@ -89,67 +104,163 @@ function period(): StoredPeriod {
         waitingTimeFees: 0,
         bankFeeSuccess: 0,
         bankFeeRefunded: 0,
-        totalCharges: 152,
+        totalCharges: 168,
       },
     ],
     daily: [],
-    invoice: { lines: [] },
+    invoice: {
+      lines: [],
+      paymentFees: 39,
+      walletFeeBase: 100,
+      walletFee: 3,
+    },
   };
 }
 
+const VERSION = {
+  id: "version-1",
+  versionNumber: 1,
+  effectiveFrom: "2026-01-01",
+  effectiveTo: null,
+};
+
 describe("HungerStation contract compliance", () => {
-  test("uses branch overrides before the all-branch commission rate", () => {
-    const result = evaluateHungerStationCommissionCompliance({
+  test("keeps commission compliance and branch overrides deterministic", () => {
+    const result = evaluateHungerStationContractCompliance({
       period: period(),
-      rules: [rule("all", null, 18), rule("branch", "Dammam", 19)],
-      version: {
-        id: "version-1",
-        versionNumber: 1,
-        effectiveFrom: "2026-01-01",
-        effectiveTo: null,
-      },
+      rules: [
+        rule({ ruleType: "commission_rate", rate: 18 }),
+        rule({
+          ruleType: "commission_rate",
+          scopeType: "branch",
+          scopeKey: "Dammam",
+          rate: 19,
+        }),
+      ],
+      version: VERSION,
     });
 
-    expect(result.rows).toHaveLength(2);
-    expect(result.rows.every((row) => row.status === "matched")).toBe(true);
-    expect(result.totals.varianceAmount).toBe(0);
+    expect(result.commission.rows).toHaveLength(2);
+    expect(
+      result.commission.rows.every((row) => row.status === "matched"),
+    ).toBe(true);
+    expect(result.commission.totals.varianceAmount).toBe(0);
   });
 
-  test("reports overcharge amount without changing the stored audit", () => {
+  test("checks card payment fees from order-data base against invoice fees", () => {
+    const result = evaluateHungerStationContractCompliance({
+      period: period(),
+      rules: [
+        rule({ ruleType: "commission_rate", rate: 18 }),
+        rule({ ruleType: "payment_fee", rate: 2 }),
+        rule({ ruleType: "wallet_fee", rate: 3 }),
+      ],
+      version: VERSION,
+    });
+
+    expect(result.paymentFee.rows.map((row) => row.expectedAmount)).toEqual([
+      20,
+      16,
+    ]);
+    expect(result.paymentFee.totals.expectedAmount).toBe(36);
+    expect(result.paymentFee.totals.observedAmount).toBe(36);
+    expect(result.paymentFee.totals.varianceAmount).toBe(0);
+    expect(result.paymentFee.totals.complete).toBe(true);
+  });
+
+  test("uses branch-specific payment fee rules before the default", () => {
     const p = period();
-    p.branches[0]!.commission = 190;
+    p.branches[1]!.invoiceCardPaymentFees = 20;
+    p.invoice.paymentFees = 43;
 
-    const result = evaluateHungerStationCommissionCompliance({
+    const result = evaluateHungerStationContractCompliance({
       period: p,
-      rules: [rule("all", null, 18)],
-      version: {
-        id: "version-1",
-        versionNumber: 1,
-        effectiveFrom: "2026-01-01",
-        effectiveTo: null,
-      },
+      rules: [
+        rule({ ruleType: "commission_rate", rate: 18 }),
+        rule({ ruleType: "payment_fee", rate: 2 }),
+        rule({
+          ruleType: "payment_fee",
+          scopeType: "branch",
+          scopeKey: "Dammam",
+          rate: 2.5,
+        }),
+        rule({ ruleType: "wallet_fee", rate: 3 }),
+      ],
+      version: VERSION,
     });
 
-    expect(result.rows[0]?.expectedAmount).toBe(180);
-    expect(result.rows[0]?.observedAmount).toBe(190);
-    expect(result.rows[0]?.varianceAmount).toBe(10);
-    expect(result.rows[0]?.status).toBe("overcharged");
-    expect(p.branches[0]!.commission).toBe(190);
+    expect(result.paymentFee.rows[1]?.contractRatePct).toBe(2.5);
+    expect(result.paymentFee.rows[1]?.expectedAmount).toBe(20);
+    expect(result.paymentFee.totals.expectedAmount).toBe(40);
+    expect(result.paymentFee.totals.observedAmount).toBe(40);
   });
 
-  test("fails visibly for branches without an applicable canonical commission rule", () => {
-    const result = evaluateHungerStationCommissionCompliance({
+  test("labels wallet compliance as invoice-derived-base evidence", () => {
+    const result = evaluateHungerStationContractCompliance({
       period: period(),
-      rules: [rule("branch", "Rakah", 18)],
-      version: {
-        id: "version-1",
-        versionNumber: 1,
-        effectiveFrom: "2026-01-01",
-        effectiveTo: null,
-      },
+      rules: [
+        rule({ ruleType: "commission_rate", rate: 18 }),
+        rule({ ruleType: "payment_fee", rate: 2 }),
+        rule({ ruleType: "wallet_fee", rate: 3 }),
+      ],
+      version: VERSION,
     });
 
-    expect(result.missingRuleBranches).toEqual(["Dammam"]);
-    expect(result.rows).toHaveLength(1);
+    expect(result.walletFee.evidence).toBe(
+      "contract_plus_invoice_derived_base",
+    );
+    expect(result.walletFee.rows[0]?.baseAmount).toBe(100);
+    expect(result.walletFee.rows[0]?.expectedAmount).toBe(3);
+    expect(result.walletFee.totals.observedAmount).toBe(3);
+    expect(result.walletFee.totals.varianceAmount).toBe(0);
+  });
+
+  test("refuses to treat amount rules as percentage fee rules", () => {
+    const result = evaluateHungerStationContractCompliance({
+      period: period(),
+      rules: [
+        rule({ ruleType: "commission_rate", rate: 18 }),
+        rule({
+          ruleType: "payment_fee",
+          rate: 2,
+          valueKind: "amount",
+        }),
+      ],
+      version: VERSION,
+    });
+
+    expect(result.paymentFee.unsupportedRuleBranches).toEqual([
+      "Rakah",
+      "Dammam",
+    ]);
+    expect(result.paymentFee.totals.complete).toBe(false);
+    expect(result.paymentFee.totals.varianceAmount).toBeNull();
+  });
+
+  test("does not invent a total wallet rate when branch overrides exist but branch bases are absent", () => {
+    const p = period();
+    p.branches[0]!.walletFeeBase = undefined;
+    p.branches[0]!.invoiceWalletFee = undefined;
+
+    const result = evaluateHungerStationContractCompliance({
+      period: p,
+      rules: [
+        rule({ ruleType: "commission_rate", rate: 18 }),
+        rule({ ruleType: "wallet_fee", rate: 3 }),
+        rule({
+          ruleType: "wallet_fee",
+          scopeType: "branch",
+          scopeKey: "Rakah",
+          rate: 4,
+        }),
+      ],
+      version: VERSION,
+    });
+
+    expect(result.walletFee.rows).toHaveLength(0);
+    expect(result.walletFee.missingEvidenceBranches).toContain(
+      "تفاصيل أسس رسوم المحافظ حسب الفرع",
+    );
+    expect(result.walletFee.totals.complete).toBe(false);
   });
 });
