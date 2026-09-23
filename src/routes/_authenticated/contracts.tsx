@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
+import { evaluateContractCompliance } from "@/lib/contract-compliance.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,6 +64,7 @@ import {
   MAX_UPLOAD_SIZE_LABEL,
   uploadSizeError,
 } from "@/lib/upload-validation";
+import { listPeriods } from "@/lib/periods";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/contracts")({
@@ -280,6 +282,11 @@ function ContractsPage() {
               <EffectiveTermsPreview
                 key={selectedContract.id}
                 contractId={selectedContract.id}
+              />
+              <ContractCompliancePanel
+                key={`compliance-${selectedContract.id}`}
+                contractId={selectedContract.id}
+                platform={selectedContract.platform}
               />
 
               <VersionWorkspace
@@ -613,6 +620,208 @@ function EffectiveTermsPreview({
       ) : null}
     </section>
   );
+}
+
+
+function ContractCompliancePanel({
+  contractId,
+  platform,
+}: {
+  contractId: string;
+  platform: ContractPlatform;
+}) {
+  const [periodId, setPeriodId] = useState("");
+
+  const periodsQuery = useQuery({
+    queryKey: ["periods", "contract-compliance"],
+    queryFn: listPeriods,
+  });
+
+  const periods = (periodsQuery.data ?? []).filter(
+    (period) => period.platform === platform,
+  );
+  const selectedPeriodId = periodId || periods[0]?.id || "";
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (!selectedPeriodId) throw new Error("اختر فترة تدقيق أولاً.");
+      return evaluateContractCompliance({
+        data: { contractId, periodId: selectedPeriodId },
+      });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  if (platform !== "hungerstation") {
+    return (
+      <section className="rounded-[12px] border border-border bg-white px-5 py-4">
+        <h3 className="text-sm font-semibold">مطابقة العقد مع التدقيق</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          الربط التعاقدي مع نتائج التدقيق سيُفعّل لكيتا وجاهز في المراحل التالية.
+        </p>
+      </section>
+    );
+  }
+
+  const result = mutation.data;
+  const compliance = result?.status === "evaluated" ? result.compliance : null;
+
+  return (
+    <section className="overflow-hidden rounded-[12px] border border-border bg-white">
+      <div className="border-b border-border px-5 py-4">
+        <h3 className="text-sm font-semibold">مطابقة العقد مع تدقيق هنقرستيشن</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          مقارنة عمولة كل فرع مع نسبة العمولة المعتمدة في العقد، بدون تعديل نتائج
+          محرك التدقيق.
+        </p>
+      </div>
+
+      <div className="grid gap-4 px-5 py-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+        <Field label="فترة التدقيق">
+          <Select value={selectedPeriodId} onValueChange={setPeriodId}>
+            <SelectTrigger>
+              <SelectValue placeholder="اختر فترة هنقرستيشن" />
+            </SelectTrigger>
+            <SelectContent>
+              {periods.map((period) => (
+                <SelectItem key={period.id} value={period.id}>
+                  {period.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={
+            mutation.isPending ||
+            periodsQuery.isLoading ||
+            !selectedPeriodId
+          }
+          onClick={() => mutation.mutate()}
+        >
+          <ShieldCheck className="size-3.5" />
+          فحص الالتزام بالعقد
+        </Button>
+      </div>
+
+      {!periodsQuery.isLoading && periods.length === 0 ? (
+        <p className="border-t border-border px-5 py-4 text-sm text-muted-foreground">
+          لا توجد فترة تدقيق هنقرستيشن محفوظة لاستخدامها في المطابقة.
+        </p>
+      ) : null}
+
+      {result?.status === "not_covered" ? (
+        <div className="border-t border-amber-200 bg-amber-50/60 px-5 py-4 text-sm text-amber-800">
+          {result.message}
+        </div>
+      ) : null}
+
+      {compliance ? (
+        <div className="border-t border-border">
+          <div className="grid gap-3 bg-surface-raised/40 px-5 py-4 sm:grid-cols-2 xl:grid-cols-4">
+            <ComplianceMetric
+              label="العمولة حسب العقد"
+              value={formatSar(compliance.totals.expectedAmount)}
+            />
+            <ComplianceMetric
+              label="العمولة المرصودة"
+              value={formatSar(compliance.totals.observedAmount)}
+            />
+            <ComplianceMetric
+              label="زيادة محتملة"
+              value={formatSar(compliance.totals.overchargedAmount)}
+            />
+            <ComplianceMetric
+              label="فرق صافي"
+              value={formatSignedSar(compliance.totals.varianceAmount)}
+            />
+          </div>
+
+          <div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+            نسخة العقد {compliance.versionNumber} · {compliance.effectiveFrom} —{" "}
+            {compliance.effectiveTo ?? "مفتوح"} · فترة التدقيق{" "}
+            {compliance.periodStart} — {compliance.periodEnd}
+          </div>
+
+          {compliance.missingRuleBranches.length > 0 ? (
+            <div className="border-t border-amber-200 bg-amber-50/60 px-5 py-3 text-xs text-amber-800">
+              لا يوجد بند commission_rate قابل للتطبيق على:{" "}
+              {compliance.missingRuleBranches.join("، ")}. لم يتم افتراض أي نسبة
+              لهذه الفروع.
+            </div>
+          ) : null}
+
+          <div className="divide-y divide-border/70">
+            {compliance.rows.map((row) => (
+              <div
+                key={row.branch}
+                className="grid gap-2 px-5 py-3 text-sm md:grid-cols-[minmax(0,1fr)_110px_130px_130px_110px]"
+              >
+                <div>
+                  <p className="font-medium">{row.branch}</p>
+                  <p className="num mt-0.5 text-[11px] text-muted-foreground">
+                    أساس العمولة {formatSar(row.salesBase)}
+                  </p>
+                </div>
+                <span className="num">
+                  عقد {row.contractRatePct.toFixed(2)}%
+                </span>
+                <span className="num">
+                  متوقع {formatSar(row.expectedAmount)}
+                </span>
+                <span className="num">
+                  مرصود {formatSar(row.observedAmount)}
+                </span>
+                <span
+                  className={cn(
+                    "num font-semibold",
+                    row.status === "overcharged"
+                      ? "text-destructive"
+                      : row.status === "matched"
+                        ? "text-success"
+                        : "text-amber-700",
+                  )}
+                >
+                  {formatSignedSar(row.varianceAmount)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function ComplianceMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[9px] border border-border bg-white px-3.5 py-3">
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="num mt-1 text-base font-bold">{value}</p>
+    </div>
+  );
+}
+
+const SAR_FORMATTER = new Intl.NumberFormat("en-SA", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+function formatSar(value: number): string {
+  return `${SAR_FORMATTER.format(value)} SAR`;
+}
+
+function formatSignedSar(value: number): string {
+  if (Math.abs(value) < 0.005) return "0.00 SAR";
+  return `${value > 0 ? "+" : "-"}${SAR_FORMATTER.format(Math.abs(value))} SAR`;
 }
 
 function VersionWorkspace({
