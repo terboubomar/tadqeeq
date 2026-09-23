@@ -11,7 +11,7 @@ import {
   Search,
   ShieldCheck,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { StatCard } from "@/components/StatCard";
@@ -405,7 +405,7 @@ function RecoveryRow({
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
+function Th({ children }: { children: ReactNode }) {
   return (
     <th className="whitespace-nowrap border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold">
       {children}
@@ -417,7 +417,7 @@ function Td({
   children,
   mono = false,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   mono?: boolean;
 }) {
   return (
