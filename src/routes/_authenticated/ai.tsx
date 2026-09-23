@@ -4,6 +4,7 @@ import { Bot, GitCompareArrows, Sparkles } from "lucide-react";
 import { AiPeriodSummaryPanel } from "@/components/AiPeriodSummaryPanel";
 import { EmptyState } from "@/components/AppShell";
 import { PeriodIntelligencePanel } from "@/components/PeriodIntelligencePanel";
+import { AI_UI_ENABLED } from "@/lib/ai/config";
 import { arabicDate } from "@/lib/format";
 import { useSelectedPeriod } from "@/lib/use-period";
 
@@ -23,6 +24,17 @@ export const Route = createFileRoute("/_authenticated/ai")({
 
 function TadqeeqAiPage() {
   const { periods, selected, isLoading } = useSelectedPeriod();
+
+  if (!AI_UI_ENABLED) {
+    return (
+      <section className="mx-auto mt-10 max-w-xl rounded-xl border border-border bg-white p-8 text-center">
+        <h1 className="text-lg font-bold">Tadqeeq AI غير مفعّل</h1>
+        <p className="mt-2 text-sm leading-7 text-muted-foreground">
+          التدقيق الحتمي والتقارير ومركز الاستثناءات تعمل بشكل طبيعي بدون الذكاء الاصطناعي.
+        </p>
+      </section>
+    );
+  }
 
   if (isLoading) {
     return <p className="py-20 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>;
