@@ -1,4 +1,3 @@
-import type { BranchRow } from "./analysis/types";
 import { HUNGERSTATION_TOLERANCES } from "./analysis/tolerances";
 import { roundMoney } from "./analysis/parse";
 import type { ContractRuleRecord } from "./contract-rulebook";
