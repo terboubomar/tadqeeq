@@ -1,0 +1,19 @@
+{
+  "platform": "jahez",
+  "formatIds": [
+    "jahez-financial-report-v1"
+  ],
+  "summary": {
+    "orders": 2,
+    "branchCount": 2,
+    "grossSales": 150,
+    "netSales": 105.85,
+    "jahezSettlementVariance": 0,
+    "jahezCommissionInvoiceExVat": 23.48,
+    "jahezDeliveryOfferInvoiceExVat": 12.18,
+    "jahezPaymentFeesExVat": 2.75,
+    "jahezInvoiceExVatComputed": 38.41,
+    "jahezInvoiceVatComputed": 5.76,
+    "jahezInvoiceInclVatComputed": 44.17
+  }
+}
