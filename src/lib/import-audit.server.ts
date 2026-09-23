@@ -196,12 +196,20 @@ async function saveConfirmedHungerStationMappings(
 async function historicalJahezOrders(
   client: ServerUserClient,
   userId: string,
+  excludePeriodId?: string,
 ): Promise<Record<string, JahezOrderReference>> {
-  const { data, error } = await client
+  let query = client
     .from("periods")
-    .select("label, invoice")
+    .select("id, label, invoice")
     .eq("user_id", userId)
-    .eq("platform", "jahez");
+    .eq("platform", "jahez")
+    .is("superseded_at", null);
+
+  if (excludePeriodId) {
+    query = query.neq("id", excludePeriodId);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw new Error("تعذّر قراءة سجل فترات جاهز السابقة.");
 
@@ -221,13 +229,20 @@ async function historicalJahezOrders(
   );
 }
 
-async function buildAnalysis(
+export interface BuildAuditAnalysisOptions {
+  approvedMappings?: Record<string, string>;
+  branchMappingsOverride?: Record<string, string>;
+  excludeHistoricalPeriodId?: string;
+}
+
+export async function buildAuditAnalysisFromForm(
   form: FormData,
   platform: Platform,
   client: ServerUserClient,
   userId: string,
-  approvedMappings: Record<string, string>,
+  options: BuildAuditAnalysisOptions = {},
 ): Promise<{ result: AnalysisResult; sources: SourceFile[] }> {
+  const approvedMappings = options.approvedMappings ?? {};
   const dataFile = formFile(form, "dataFile");
   const invoiceFile = formFile(form, "invoiceFile");
   const cpcFile = formFile(form, "cpcFile");
@@ -286,6 +301,7 @@ async function buildAnalysis(
       ...(bankRate ? { manualBankRate: bankRate.fraction } : {}),
       branchMappings: {
         ...persistedMappings,
+        ...(options.branchMappingsOverride ?? {}),
         ...approvedMappings,
       },
       ...(label ? { label } : {}),
@@ -301,7 +317,11 @@ async function buildAnalysis(
       ...(compensationFile
         ? { compensationFile: await compensationFile.arrayBuffer() }
         : {}),
-      historicalOrders: await historicalJahezOrders(client, userId),
+      historicalOrders: await historicalJahezOrders(
+        client,
+        userId,
+        options.excludeHistoricalPeriodId,
+      ),
       ...(label ? { label } : {}),
     });
   }
@@ -363,6 +383,7 @@ async function findDuplicate(
     .eq("platform", result.platform)
     .eq("period_start", start)
     .eq("period_end", end)
+    .is("superseded_at", null)
     .limit(1)
     .maybeSingle();
 
@@ -375,9 +396,13 @@ async function insertPeriod(
   userId: string,
   result: AnalysisResult,
 ): Promise<string> {
+  const periodId = crypto.randomUUID();
   const { data, error } = await client
     .from("periods")
     .insert({
+      id: periodId,
+      audit_lineage_id: periodId,
+      analysis_revision: 1,
       user_id: userId,
       platform: result.platform,
       label: result.label,
@@ -500,12 +525,12 @@ export async function importAuditOnServer(
   const approvedMappings =
     platform === "hungerstation" ? parseApprovedMappings(form) : {};
 
-  const { result, sources } = await buildAnalysis(
+  const { result, sources } = await buildAuditAnalysisFromForm(
     form,
     platform,
     client,
     userId,
-    approvedMappings,
+    { approvedMappings },
   );
 
   if (platform === "hungerstation") {
