@@ -327,6 +327,26 @@ async function buildAnalysis(
   };
 }
 
+function assertApprovedMappingsBelongToAnalysis(
+  result: AnalysisResult,
+  mappings: Record<string, string>,
+): void {
+  for (const [hsBranchId, invoiceBranchName] of Object.entries(mappings)) {
+    const confirmed = result.branches.some(
+      (branch) =>
+        branch.branchAuditStatus !== "invoice_only" &&
+        branch.branchId === hsBranchId &&
+        branch.invoiceBranchName === invoiceBranchName,
+    );
+
+    if (!confirmed) {
+      throw new Error(
+        "تعذّر تأكيد ربط فرع هنقرستيشن لأن الربط لا يطابق ملفات هذه الفترة.",
+      );
+    }
+  }
+}
+
 async function findDuplicate(
   client: ServerUserClient,
   userId: string,
@@ -487,6 +507,10 @@ export async function importAuditOnServer(
     userId,
     approvedMappings,
   );
+
+  if (platform === "hungerstation") {
+    assertApprovedMappingsBelongToAnalysis(result, approvedMappings);
+  }
 
   const duplicate = await findDuplicate(client, userId, result);
   if (duplicate) {
