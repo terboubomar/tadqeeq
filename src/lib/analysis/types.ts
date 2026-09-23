@@ -458,6 +458,8 @@ export interface CheckRow {
 
 export interface AnalysisResult {
   platform: Platform;
+  /** Source format fingerprints detected before deterministic analysis. */
+  formatIds?: string[];
   label: string;
   summary: Summary;
   branches: BranchRow[];

@@ -9,6 +9,7 @@ import type {
   InvoiceFigures,
   Summary,
 } from "./types";
+import { detectHungerStationFormat } from "./formats";
 import { ParseError, parseAmount, parseDate } from "./parse";
 import { resolveSheetName } from "./sheets";
 import { HUNGERSTATION_TOLERANCES } from "./tolerances";
@@ -310,6 +311,7 @@ export function analyzeHungerStation(
   options: HungerOptions = {},
 ): AnalysisResult {
   const wb = XLSX.read(file, { type: "array" });
+  const formatId = detectHungerStationFormat(wb);
 
   const orders = rowsOf(wb, "commissionable gmv");
   if (orders.length === 0) {
@@ -955,6 +957,7 @@ export function analyzeHungerStation(
 
   return {
     platform: "hungerstation",
+    formatIds: [formatId],
     label,
     summary,
     branches: branchList,
