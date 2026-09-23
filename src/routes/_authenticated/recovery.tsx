@@ -8,13 +8,16 @@ import {
   BadgeDollarSign,
   CheckCircle2,
   CircleDollarSign,
+  Paperclip,
   Search,
   ShieldCheck,
+  Upload,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { StatCard } from "@/components/StatCard";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -31,6 +34,11 @@ import {
 } from "@/lib/exceptions";
 import { arabicDate, sar } from "@/lib/format";
 import { listPeriods, updateExceptionWorkflow } from "@/lib/periods";
+import {
+  getRecoveryDocuments,
+  uploadRecoveryDocument,
+} from "@/lib/recovery-claim.functions";
+import type { RecoveryDocumentRecord } from "@/lib/recovery-claim";
 import {
   buildRecoveryCandidates,
   recoveryOutstanding,
@@ -67,6 +75,34 @@ function RecoveryPage() {
   const periodsQuery = useQuery({
     queryKey: ["periods"],
     queryFn: listPeriods,
+  });
+
+  const documentsQuery = useQuery({
+    queryKey: ["recovery-documents"],
+    queryFn: () => getRecoveryDocuments({ data: {} }),
+  });
+
+  const uploadDocument = useMutation({
+    mutationFn: ({
+      periodId,
+      exceptionId,
+      file,
+    }: {
+      periodId: string;
+      exceptionId: string;
+      file: File;
+    }) => {
+      const formData = new FormData();
+      formData.set("periodId", periodId);
+      formData.set("exceptionId", exceptionId);
+      formData.set("file", file);
+      return uploadRecoveryDocument({ data: formData });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["recovery-documents"] });
+      toast.success("تم حفظ مستند المطالبة");
+    },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const updateWorkflow = useMutation({
@@ -108,6 +144,7 @@ function RecoveryPage() {
         item.categoryLabel,
         item.label,
         item.note,
+        item.claimReference,
       ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(needle));
@@ -239,6 +276,7 @@ function RecoveryPage() {
                   <Th>المتبقي</Th>
                   <Th>المتابعة</Th>
                   <Th>ملاحظة</Th>
+                  <Th>المطالبة</Th>
                 </tr>
               </thead>
               <tbody>
@@ -254,12 +292,25 @@ function RecoveryPage() {
                         patch,
                       })
                     }
+                    documents={(documentsQuery.data ?? []).filter(
+                      (document) =>
+                        document.periodId === item.periodId &&
+                        document.exceptionId === item.id,
+                    )}
+                    uploading={uploadDocument.isPending}
+                    onUpload={(file) =>
+                      uploadDocument.mutate({
+                        periodId: item.periodId,
+                        exceptionId: item.id,
+                        file,
+                      })
+                    }
                   />
                 ))}
                 {filtered.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={11}
+                      colSpan={12}
                       className="px-5 py-16 text-center text-muted-foreground"
                     >
                       لا توجد حالات مطابقة للفلاتر الحالية.
@@ -279,20 +330,63 @@ function RecoveryRow({
   item,
   saving,
   onUpdate,
+  documents,
+  uploading,
+  onUpload,
 }: {
   item: AuditException;
   saving: boolean;
   onUpdate: (patch: Partial<ExceptionWorkflowEntry>) => void;
+  documents: RecoveryDocumentRecord[];
+  uploading: boolean;
+  onUpload: (file: File) => void;
 }) {
   const [note, setNote] = useState(item.note ?? "");
   const [recovered, setRecovered] = useState(
     item.recoveredAmount ? String(item.recoveredAmount) : "",
   );
+  const [claimReference, setClaimReference] = useState(item.claimReference ?? "");
+  const [approvedClaimAmount, setApprovedClaimAmount] = useState(
+    item.approvedClaimAmount != null ? String(item.approvedClaimAmount) : "",
+  );
+  const [submittedAmount, setSubmittedAmount] = useState(
+    item.submittedAmount != null ? String(item.submittedAmount) : "",
+  );
+  const [acceptedAmount, setAcceptedAmount] = useState(
+    item.acceptedAmount != null ? String(item.acceptedAmount) : "",
+  );
+  const [submittedOn, setSubmittedOn] = useState(item.submittedOn ?? "");
+  const [responseOn, setResponseOn] = useState(item.responseOn ?? "");
+  const [recoveredOn, setRecoveredOn] = useState(item.recoveredOn ?? "");
 
   useEffect(() => {
     setNote(item.note ?? "");
     setRecovered(item.recoveredAmount ? String(item.recoveredAmount) : "");
-  }, [item.id, item.note, item.recoveredAmount]);
+    setClaimReference(item.claimReference ?? "");
+    setApprovedClaimAmount(
+      item.approvedClaimAmount != null ? String(item.approvedClaimAmount) : "",
+    );
+    setSubmittedAmount(
+      item.submittedAmount != null ? String(item.submittedAmount) : "",
+    );
+    setAcceptedAmount(
+      item.acceptedAmount != null ? String(item.acceptedAmount) : "",
+    );
+    setSubmittedOn(item.submittedOn ?? "");
+    setResponseOn(item.responseOn ?? "");
+    setRecoveredOn(item.recoveredOn ?? "");
+  }, [
+    item.id,
+    item.note,
+    item.recoveredAmount,
+    item.claimReference,
+    item.approvedClaimAmount,
+    item.submittedAmount,
+    item.acceptedAmount,
+    item.submittedOn,
+    item.responseOn,
+    item.recoveredOn,
+  ]);
 
   return (
     <tr className="align-top hover:bg-secondary/35">
@@ -397,12 +491,199 @@ function RecoveryRow({
               onUpdate({ note: trimmed || undefined });
             }
           }}
-          placeholder="رقم اعتراض / ملاحظة متابعة…"
+          placeholder="ملاحظة متابعة…"
           className="h-8 w-60 text-xs"
         />
       </Td>
+      <Td>
+        <details className="w-[360px] rounded-[8px] border border-border bg-background">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-xs font-semibold">
+            <span className="flex items-center gap-1.5">
+              <Paperclip className="size-3.5" />
+              ملف المطالبة
+            </span>
+            <span className="num text-[10px] text-muted-foreground">
+              {documents.length} مستند
+            </span>
+          </summary>
+          <div className="grid gap-3 border-t border-border p-3">
+            <Input
+              value={claimReference}
+              disabled={saving}
+              onChange={(event) => setClaimReference(event.target.value)}
+              onBlur={() => {
+                const value = claimReference.trim();
+                if (value !== (item.claimReference ?? "")) {
+                  onUpdate({ claimReference: value || null });
+                }
+              }}
+              placeholder="رقم اعتراض / مرجع المنصة"
+              className="h-8 text-xs"
+            />
+
+            <div className="grid grid-cols-3 gap-2">
+              <ClaimAmountInput
+                label="المعتمد"
+                value={approvedClaimAmount}
+                disabled={saving}
+                onChange={setApprovedClaimAmount}
+                onSave={(value) => onUpdate({ approvedClaimAmount: value })}
+              />
+              <ClaimAmountInput
+                label="المرسل"
+                value={submittedAmount}
+                disabled={saving}
+                onChange={setSubmittedAmount}
+                onSave={(value) => onUpdate({ submittedAmount: value })}
+              />
+              <ClaimAmountInput
+                label="المقبول"
+                value={acceptedAmount}
+                disabled={saving}
+                onChange={setAcceptedAmount}
+                onSave={(value) => onUpdate({ acceptedAmount: value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <ClaimDateInput
+                label="تاريخ الإرسال"
+                value={submittedOn}
+                disabled={saving}
+                onChange={(value) => {
+                  setSubmittedOn(value);
+                  onUpdate({ submittedOn: value || null });
+                }}
+              />
+              <ClaimDateInput
+                label="تاريخ الرد"
+                value={responseOn}
+                disabled={saving}
+                onChange={(value) => {
+                  setResponseOn(value);
+                  onUpdate({ responseOn: value || null });
+                }}
+              />
+              <ClaimDateInput
+                label="تاريخ الاسترداد"
+                value={recoveredOn}
+                disabled={saving}
+                onChange={(value) => {
+                  setRecoveredOn(value);
+                  onUpdate({ recoveredOn: value || null });
+                }}
+              />
+            </div>
+
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-[8px] border border-dashed border-border px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50">
+              <Upload className="size-3.5" />
+              {uploading ? "جارٍ رفع المستند…" : "رفع مستند دعم"}
+              <input
+                type="file"
+                className="hidden"
+                disabled={uploading}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) onUpload(file);
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
+
+            {documents.length > 0 ? (
+              <div className="space-y-1.5">
+                {documents.slice(0, 4).map((document) => (
+                  <div
+                    key={document.id}
+                    className="flex items-center justify-between gap-2 rounded-[7px] bg-muted/50 px-2.5 py-2 text-[11px]"
+                  >
+                    <span className="truncate">{document.originalName}</span>
+                    <span className="num shrink-0 text-muted-foreground">
+                      {formatBytes(document.sizeBytes)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </details>
+      </Td>
     </tr>
   );
+}
+
+
+function ClaimAmountInput({
+  label,
+  value,
+  disabled,
+  onChange,
+  onSave,
+}: {
+  label: string;
+  value: string;
+  disabled: boolean;
+  onChange: (value: string) => void;
+  onSave: (value: number | null) => void;
+}) {
+  return (
+    <label className="grid gap-1 text-[10px] text-muted-foreground">
+      {label}
+      <Input
+        inputMode="decimal"
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={() => {
+          const trimmed = value.trim();
+          if (!trimmed) {
+            onSave(null);
+            return;
+          }
+          const amount = Number(trimmed.replace(/,/g, ""));
+          if (!Number.isFinite(amount) || amount < 0) {
+            toast.error("أدخل مبلغ مطالبة صالحاً.");
+            return;
+          }
+          onSave(amount);
+        }}
+        placeholder="0.00"
+        className="h-8 text-xs"
+      />
+    </label>
+  );
+}
+
+function ClaimDateInput({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  disabled: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="grid gap-1 text-[10px] text-muted-foreground">
+      {label}
+      <Input
+        type="date"
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-8 text-xs"
+      />
+    </label>
+  );
+}
+
+function formatBytes(value: number): string {
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function Th({ children }: { children: ReactNode }) {
