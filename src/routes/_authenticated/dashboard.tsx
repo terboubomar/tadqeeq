@@ -22,6 +22,7 @@ import {
   YAxis,
 } from "recharts";
 import { EmptyState } from "@/components/AppShell";
+import { AI_UI_ENABLED } from "@/lib/ai/config";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
 import { arabicDate, count, money, percent, sar, short } from "@/lib/format";
@@ -110,25 +111,28 @@ function Dashboard() {
         </p>
       </header>
 
-      <section className="rounded-xl border border-primary/15 bg-secondary/25 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <Sparkles className="size-4 text-primary" />
-              <h2 className="text-sm font-bold">إجراء سريع</h2>
+      {AI_UI_ENABLED ? (
+        <section className="rounded-xl border border-primary/15 bg-secondary/25 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Sparkles className="size-4 text-primary" />
+                <h2 className="text-sm font-bold">إجراء سريع</h2>
+              </div>
+              <p className="mt-1.5 text-xs leading-6 text-muted-foreground">
+                افتح مساحة Tadqeeq AI للحصول على ملخص الفترة، مقارنة الفترة السابقة، وتفسير التغيّرات.
+              </p>
             </div>
-            <p className="mt-1.5 text-xs leading-6 text-muted-foreground">
-              افتح مساحة Tadqeeq AI للحصول على ملخص الفترة، مقارنة الفترة السابقة، وتفسير التغيّرات.
-            </p>
+            <Button asChild size="sm" className="shrink-0">
+              <Link to="/ai">
+                <Sparkles className="size-3.5" />
+                فتح Tadqeeq AI
+              </Link>
+            </Button>
           </div>
-          <Button asChild size="sm" className="shrink-0">
-            <Link to="/ai">
-              <Sparkles className="size-3.5" />
-              فتح Tadqeeq AI
-            </Link>
-          </Button>
-        </div>
-      </section>
+        </section>
+  
+      ) : null}
 
       <section className="audit-kpi-strip grid gap-0 sm:grid-cols-2 xl:grid-cols-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0">
         <StatCard
