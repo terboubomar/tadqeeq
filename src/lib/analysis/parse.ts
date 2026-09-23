@@ -125,6 +125,24 @@ export function parseAmount(value: unknown, context: ParseContext = {}): number 
 }
 
 
+/**
+ * Round accounting money to the requested decimal precision.
+ *
+ * This is the shared monetary rounding primitive for deterministic engines.
+ * It rejects non-finite inputs instead of quietly propagating NaN/Infinity.
+ */
+export function roundMoney(value: number, decimals = 2): number {
+  if (!Number.isFinite(value)) {
+    throw new ParseError("قيمة مالية غير صالحة للتقريب", value);
+  }
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 6) {
+    throw new ParseError("عدد المنازل العشرية غير صالح", decimals);
+  }
+
+  const factor = 10 ** decimals;
+  return Math.round((value + Number.EPSILON) * factor) / factor;
+}
+
 export type DateOrder = "DMY" | "MDY" | "ISO";
 
 export interface DateParseOptions {

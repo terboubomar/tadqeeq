@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { ParseError, assertDateInRange, parseAmount, parseDate } from "./parse";
+import { ParseError, assertDateInRange, parseAmount, parseDate, roundMoney } from "./parse";
 
 describe("parseAmount", () => {
   test("parses accounting parentheses as a negative amount", () => {
@@ -96,5 +96,18 @@ describe("parseDate", () => {
         { platform: "jahez" },
       ),
     ).not.toThrow();
+  });
+});
+
+describe("roundMoney", () => {
+  test("rounds deterministic accounting values to two decimals by default", () => {
+    expect(roundMoney(10.005)).toBe(10.01);
+    expect(roundMoney(12.344)).toBe(12.34);
+  });
+
+  test("supports explicit precision and rejects invalid input", () => {
+    expect(roundMoney(1.23456, 4)).toBe(1.2346);
+    expect(() => roundMoney(Number.NaN)).toThrow(ParseError);
+    expect(() => roundMoney(1, 7)).toThrow(ParseError);
   });
 });

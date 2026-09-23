@@ -14,6 +14,7 @@ import {
   assertDateInRange,
   parseAmount,
   parseDate,
+  roundMoney,
 } from "./parse";
 
 const VAT_FACTOR = 1.15;
@@ -42,10 +43,6 @@ export interface JahezOptions {
   label?: string;
   compensationFile?: ArrayBuffer;
   historicalOrders?: Record<string, JahezOrderReference>;
-}
-
-function round2(value: number): number {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
 function normalizeBranch(value: string): string {
@@ -429,7 +426,7 @@ function settlementFromDetail(row: CsvRow, rowNumber?: number): number {
 
 function deliveryInvoiceUnitExVat(deliveryOfferInclVat: number): number {
   if (!deliveryOfferInclVat) return 0;
-  return round2(deliveryOfferInclVat / VAT_FACTOR);
+  return roundMoney(deliveryOfferInclVat / VAT_FACTOR);
 }
 
 export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): AnalysisResult {
@@ -724,7 +721,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
   const merchantDeliveryOffer = jahezAmount(summary["Delivery Offer"], "Jahez Summary", "Delivery Offer", 2);
   const merchantDeliveryCoupon = jahezAmount(summary["Delivery Coupon"], "Jahez Summary", "Delivery Coupon", 2);
 
-  const commissionInvoiceExVat = round2(merchantCommissionInclVat / VAT_FACTOR);
+  const commissionInvoiceExVat = roundMoney(merchantCommissionInclVat / VAT_FACTOR);
   const deliveryOfferInvoiceExVat = [...deliveryTiers.entries()].reduce(
     (total, [tierInclVat, quantity]) =>
       total + deliveryInvoiceUnitExVat(tierInclVat) * quantity,
@@ -732,8 +729,8 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
   );
   const invoiceExVatComputed =
     commissionInvoiceExVat + merchantPaymentFees + deliveryOfferInvoiceExVat;
-  const invoiceVatComputed = round2(invoiceExVatComputed * 0.15);
-  const invoiceInclVatComputed = round2(invoiceExVatComputed + invoiceVatComputed);
+  const invoiceVatComputed = roundMoney(invoiceExVatComputed * 0.15);
+  const invoiceInclVatComputed = roundMoney(invoiceExVatComputed + invoiceVatComputed);
   if (compensationReport?.periodLabel) {
     const compensationRange = periodRange(
       compensationReport.periodLabel,
