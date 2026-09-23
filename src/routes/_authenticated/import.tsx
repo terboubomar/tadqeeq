@@ -31,6 +31,14 @@ import {
   parseKeetaInvoice,
 } from "@/lib/analysis/pdf";
 import type { Platform } from "@/lib/analysis/types";
+import {
+  buildHungerStationMappingReview,
+  type HungerStationMappingReview,
+} from "@/lib/hungerstation-branch-review";
+import {
+  listHungerStationBranchMappings,
+  saveHungerStationBranchMappings,
+} from "@/lib/hungerstation-branch-mappings";
 import { acquireImportRun, finishImportRun } from "@/lib/import-run-guard";
 import { deletePeriod, DuplicatePeriodError, savePeriod } from "@/lib/periods";
 import { storePeriodSourceFiles } from "@/lib/source-files";
@@ -172,6 +180,11 @@ function ImportPage() {
   const [bankRate, setBankRate] = useState("");
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mappingReview, setMappingReview] =
+    useState<HungerStationMappingReview | null>(null);
+  const [mappingSelections, setMappingSelections] = useState<
+    Record<string, string>
+  >({});
   const runLock = useRef(false);
 
   let bankRateInterpretation = "";
@@ -197,6 +210,8 @@ function ImportPage() {
     setCpcFile(null);
     setCompensationFile(null);
     setBankRate("");
+    setMappingReview(null);
+    setMappingSelections({});
     setMaxStepReached(0);
     setStep(0);
   }
@@ -222,7 +237,12 @@ function ImportPage() {
     setStep((current) => Math.max(0, current - 1));
   }
 
-  async function run() {
+  async function run(
+    options: {
+      approvedMappings?: Record<string, string>;
+      skipMappingReview?: boolean;
+    } = {},
+  ) {
     if (!dataFile) {
       toast.error("اختر ملف بيانات الطلبات أولاً");
       setStep(1);
@@ -232,6 +252,7 @@ function ImportPage() {
     if (!acquireImportRun(runLock)) return;
 
     setBusy(true);
+    setMappingReview(null);
     let savedSuccessfully = false;
     let createdPeriodId: string | null = null;
     try {
@@ -278,6 +299,14 @@ function ImportPage() {
         platform === "hungerstation"
           ? parsePercentRateInput(bankRate)
           : null;
+      const persistedBranchMappings =
+        platform === "hungerstation"
+          ? await listHungerStationBranchMappings()
+          : {};
+      const branchMappings = {
+        ...persistedBranchMappings,
+        ...(options.approvedMappings ?? {}),
+      };
       const result =
         platform === "hungerstation"
           ? analyzeHungerStation(dataBuffer, {
@@ -286,6 +315,7 @@ function ImportPage() {
               ...(parsedBankRate
                 ? { manualBankRate: parsedBankRate.fraction }
                 : {}),
+              branchMappings,
               ...(label.trim() ? { label: label.trim() } : {}),
             })
           : platform === "keeta"
@@ -300,8 +330,38 @@ function ImportPage() {
                 ...(label.trim() ? { label: label.trim() } : {}),
               });
 
+      if (platform === "hungerstation" && !options.skipMappingReview) {
+        const review = buildHungerStationMappingReview(result.branches);
+        if (review) {
+          const suggestedSelections = Object.fromEntries(
+            review.branches
+              .filter((branch) => branch.suggestedInvoiceBranchName)
+              .map((branch) => [
+                branch.branchId,
+                branch.suggestedInvoiceBranchName!,
+              ]),
+          );
+          setMappingReview(review);
+          setMappingSelections(suggestedSelections);
+          toast.info(
+            "تحتاج مطابقة فروع هنقرستيشن إلى تأكيدك قبل حفظ الفترة.",
+          );
+          return;
+        }
+      }
+
       const saved = await savePeriod(result);
       createdPeriodId = saved.id;
+
+      const confirmedMappings = Object.entries(
+        options.approvedMappings ?? {},
+      ).map(([hsBranchId, invoiceBranchName]) => ({
+        hsBranchId,
+        invoiceBranchName,
+      }));
+      if (confirmedMappings.length) {
+        await saveHungerStationBranchMappings(confirmedMappings);
+      }
 
       await storePeriodSourceFiles({
         periodId: saved.id,
@@ -427,6 +487,18 @@ function ImportPage() {
           ) : null}
 
           {step === 3 ? (
+            mappingReview ? (
+              <HungerStationBranchMappingReviewPanel
+                review={mappingReview}
+                selections={mappingSelections}
+                onSelectionChange={(branchId, invoiceBranchName) =>
+                  setMappingSelections((current) => ({
+                    ...current,
+                    [branchId]: invoiceBranchName,
+                  }))
+                }
+              />
+            ) : (
             <ReviewStep
               platform={platform}
               label={label}
@@ -437,6 +509,7 @@ function ImportPage() {
               bankRate={bankRate}
               onEdit={setStep}
             />
+            )
           ) : null}
         </div>
 
@@ -462,8 +535,54 @@ function ImportPage() {
               التالي
               <ArrowLeft className="size-4" />
             </Button>
+          ) : mappingReview ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void run({ skipMappingReview: true })}
+              >
+                متابعة بدون ربط
+              </Button>
+              <Button
+                type="button"
+                disabled={
+                  busy ||
+                  mappingReview.branches.some(
+                    (branch) => !mappingSelections[branch.branchId]?.trim(),
+                  ) ||
+                  new Set(
+                    mappingReview.branches.map(
+                      (branch) => mappingSelections[branch.branchId]?.trim(),
+                    ),
+                  ).size !== mappingReview.branches.length
+                }
+                onClick={() =>
+                  void run({
+                    approvedMappings: Object.fromEntries(
+                      mappingReview.branches.map((branch) => [
+                        branch.branchId,
+                        mappingSelections[branch.branchId]!.trim(),
+                      ]),
+                    ),
+                  })
+                }
+              >
+                {busy ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Check className="size-4" />
+                )}
+                {busy ? "جارٍ إعادة التحليل…" : "تأكيد الربط وإعادة التحليل"}
+              </Button>
+            </>
           ) : (
-            <Button type="button" onClick={run} disabled={busy || !dataFile}>
+            <Button
+              type="button"
+              onClick={() => void run()}
+              disabled={busy || !dataFile}
+            >
               {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
               {busy ? "جارٍ التحليل…" : "بدء التحليل وحفظ الفترة"}
             </Button>
@@ -474,6 +593,92 @@ function ImportPage() {
       <p className="px-1 text-[11.5px] leading-6 text-muted-foreground">
         تُجرى الحسابات الحتمية ثم تُحفظ النتائج وملفات المصدر الأصلية بشكل خاص مع بصمة SHA-256
         لإمكانية إعادة التدقيق والتحقق لاحقاً. ملفات المصدر لا تُرسل إلى Tadqeeq AI.
+      </p>
+    </div>
+  );
+}
+
+function HungerStationBranchMappingReviewPanel({
+  review,
+  selections,
+  onSelectionChange,
+}: {
+  review: HungerStationMappingReview;
+  selections: Record<string, string>;
+  onSelectionChange: (branchId: string, invoiceBranchName: string) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-[10px] border border-warning/30 bg-warning/[0.06] p-4">
+        <h3 className="text-[15px] font-semibold">
+          تأكيد ربط فروع هنقرستيشن
+        </h3>
+        <p className="mt-1.5 text-[12.5px] leading-6 text-muted-foreground">
+          بعض أسماء الفروع في الفاتورة لا تطابق أسماء ملف الطلبات بشكل موثوق.
+          اختر اسم فرع الفاتورة المقابل لكل HS Branch ID. سيُحفظ الربط بعد
+          تأكيدك ويُستخدم في الفترات القادمة، بدون استخدام المبيعات أو الرسوم
+          أو العمولات لتحديد الهوية.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {review.branches.map((branch) => (
+          <div
+            key={branch.branchId}
+            className="grid gap-3 rounded-[10px] border border-border bg-white p-4 sm:grid-cols-[minmax(0,1fr)_minmax(240px,1fr)] sm:items-center"
+          >
+            <div>
+              <p className="text-sm font-semibold">{branch.branch}</p>
+              <p className="num mt-1 text-[11.5px] text-muted-foreground">
+                HS Branch ID: {branch.branchId}
+              </p>
+              {branch.suggestedInvoiceBranchName ? (
+                <p className="mt-1 text-[11.5px] text-muted-foreground">
+                  اقتراح حتمي من الفرع المتبقي:{" "}
+                  <span className="font-medium text-foreground">
+                    {branch.suggestedInvoiceBranchName}
+                  </span>
+                </p>
+              ) : null}
+            </div>
+
+            <label>
+              <span className="mb-1.5 block text-[12px] font-semibold">
+                اسم الفرع في الفاتورة
+              </span>
+              <select
+                value={selections[branch.branchId] ?? ""}
+                onChange={(event) =>
+                  onSelectionChange(branch.branchId, event.target.value)
+                }
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">اختر الفرع…</option>
+                {review.invoiceBranchNames.map((invoiceBranchName) => {
+                  const usedByOtherBranch = review.branches.some(
+                    (candidate) =>
+                      candidate.branchId !== branch.branchId &&
+                      selections[candidate.branchId] === invoiceBranchName,
+                  );
+                  return (
+                    <option
+                      key={invoiceBranchName}
+                      value={invoiceBranchName}
+                      disabled={usedByOtherBranch}
+                    >
+                      {invoiceBranchName}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-[11.5px] leading-6 text-muted-foreground">
+        إذا لم تكن متأكداً من الربط، اختر «متابعة بدون ربط» وسيبقى الفرع غير
+        مطابق بدلاً من أن يخمّن Tadqeeq.
       </p>
     </div>
   );
