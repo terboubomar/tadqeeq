@@ -8,8 +8,10 @@ import {
   BadgeDollarSign,
   CheckCircle2,
   CircleDollarSign,
+  FileText,
   Search,
   ShieldCheck,
+  Upload,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -42,8 +44,12 @@ import { listPeriods, updateExceptionWorkflow } from "@/lib/periods";
 import {
   getRecoveryCaseDetails,
   saveRecoveryCaseDetail,
+  uploadRecoveryCaseDocument,
 } from "@/lib/recovery-case-details.functions";
-import type { RecoveryCaseDetail } from "@/lib/recovery-case-details.server";
+import type {
+  RecoveryCaseDetail,
+  RecoveryCaseDocument,
+} from "@/lib/recovery-case-details.server";
 import {
   buildRecoveryCandidates,
   recoveryOutstanding,
@@ -98,9 +104,34 @@ function RecoveryPage() {
       approvedClaimAmount: number | null;
       submittedAmount: number | null;
       acceptedAmount: number | null;
+      submittedOn: string | null;
+      responseOn: string | null;
+      recoveredOn: string | null;
     }) => saveRecoveryCaseDetail({ data: input }),
     onSuccess: async () => {
       toast.success("تم حفظ تفاصيل المطالبة");
+      await queryClient.invalidateQueries({
+        queryKey: ["recovery-case-details"],
+      });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const uploadClaimDocument = useMutation({
+    mutationFn: ({
+      recoveryCaseId,
+      file,
+    }: {
+      recoveryCaseId: string;
+      file: File;
+    }) => {
+      const formData = new FormData();
+      formData.set("recoveryCaseId", recoveryCaseId);
+      formData.set("file", file);
+      return uploadRecoveryCaseDocument({ data: formData });
+    },
+    onSuccess: async () => {
+      toast.success("تم حفظ مستند المطالبة");
       await queryClient.invalidateQueries({
         queryKey: ["recovery-case-details"],
       });
@@ -362,12 +393,24 @@ function RecoveryPage() {
               )
             : []
         }
+        documents={
+          selectedClaim
+            ? (claimDetailsQuery.data?.documents ?? []).filter(
+                (document) =>
+                  document.recoveryCaseId === detailFor(selectedClaim)?.id,
+              )
+            : []
+        }
         open={Boolean(selectedClaim)}
         saving={saveClaimDetails.isPending}
+        uploading={uploadClaimDocument.isPending}
         onOpenChange={(open) => {
           if (!open) setSelectedClaim(null);
         }}
         onSave={(input) => saveClaimDetails.mutate(input)}
+        onUpload={(recoveryCaseId, file) =>
+          uploadClaimDocument.mutate({ recoveryCaseId, file })
+        }
       />
     </div>
   );
@@ -529,10 +572,13 @@ function RecoveryClaimSheet({
   item,
   detail,
   events,
+  documents,
   open,
   saving,
+  uploading,
   onOpenChange,
   onSave,
+  onUpload,
 }: {
   item: AuditException | null;
   detail: RecoveryCaseDetail | null;
@@ -541,8 +587,10 @@ function RecoveryClaimSheet({
     eventType: "insert" | "update";
     createdAt: string;
   }>;
+  documents: RecoveryCaseDocument[];
   open: boolean;
   saving: boolean;
+  uploading: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (input: {
     periodId: string;
@@ -551,12 +599,19 @@ function RecoveryClaimSheet({
     approvedClaimAmount: number | null;
     submittedAmount: number | null;
     acceptedAmount: number | null;
+    submittedOn: string | null;
+    responseOn: string | null;
+    recoveredOn: string | null;
   }) => void;
+  onUpload: (recoveryCaseId: string, file: File) => void;
 }) {
   const [reference, setReference] = useState("");
   const [approved, setApproved] = useState("");
   const [submitted, setSubmitted] = useState("");
   const [accepted, setAccepted] = useState("");
+  const [submittedOn, setSubmittedOn] = useState("");
+  const [responseOn, setResponseOn] = useState("");
+  const [recoveredOn, setRecoveredOn] = useState("");
 
   useEffect(() => {
     setReference(detail?.platformCaseReference ?? "");
@@ -571,12 +626,18 @@ function RecoveryClaimSheet({
     setAccepted(
       detail?.acceptedAmount == null ? "" : String(detail.acceptedAmount),
     );
+    setSubmittedOn(detail?.submittedOn ?? "");
+    setResponseOn(detail?.responseOn ?? "");
+    setRecoveredOn(detail?.recoveredOn ?? "");
   }, [
     detail?.acceptedAmount,
     detail?.approvedClaimAmount,
     detail?.id,
     detail?.platformCaseReference,
     detail?.submittedAmount,
+    detail?.submittedOn,
+    detail?.responseOn,
+    detail?.recoveredOn,
     item?.id,
   ]);
 
@@ -654,6 +715,24 @@ function RecoveryClaimSheet({
                 الحفظ.
               </p>
 
+              <div className="grid gap-3 sm:grid-cols-3">
+                <ClaimDateField
+                  label="تاريخ الإرسال"
+                  value={submittedOn}
+                  onChange={setSubmittedOn}
+                />
+                <ClaimDateField
+                  label="تاريخ الرد"
+                  value={responseOn}
+                  onChange={setResponseOn}
+                />
+                <ClaimDateField
+                  label="تاريخ الاسترداد"
+                  value={recoveredOn}
+                  onChange={setRecoveredOn}
+                />
+              </div>
+
               <div className="flex justify-end">
                 <Button
                   type="button"
@@ -666,6 +745,9 @@ function RecoveryClaimSheet({
                       approvedClaimAmount: parseMoney(approved),
                       submittedAmount: parseMoney(submitted),
                       acceptedAmount: parseMoney(accepted),
+                      submittedOn: submittedOn || null,
+                      responseOn: responseOn || null,
+                      recoveredOn: recoveredOn || null,
                     })
                   }
                 >
@@ -673,6 +755,62 @@ function RecoveryClaimSheet({
                 </Button>
               </div>
             </div>
+          </section>
+
+
+          <section className="rounded-xl border border-border p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold">مستندات المطالبة</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  تحفظ الملفات في تخزين خاص مع بصمة SHA-256. احفظ تفاصيل المطالبة
+                  أولاً قبل رفع المستندات.
+                </p>
+              </div>
+              <label
+                className={cn(
+                  "inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-xs font-medium",
+                  (!detail || uploading) && "pointer-events-none opacity-50",
+                )}
+              >
+                <Upload className="size-3.5" />
+                {uploading ? "جارٍ الرفع…" : "رفع مستند"}
+                <input
+                  type="file"
+                  className="hidden"
+                  disabled={!detail || uploading}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (detail && file) onUpload(detail.id, file);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+            </div>
+
+            {documents.length ? (
+              <div className="mt-3 space-y-2">
+                {documents.map((document) => (
+                  <div
+                    key={document.id}
+                    className="flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-3 py-2 text-xs"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{document.originalName}</span>
+                    </span>
+                    <span className="num shrink-0 text-[10px] text-muted-foreground">
+                      {formatFileSize(document.sizeBytes)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-xs text-muted-foreground">
+                لا توجد مستندات دعم محفوظة لهذه المطالبة بعد.
+              </p>
+            )}
           </section>
 
           <section className="rounded-xl border border-border p-4">
@@ -705,6 +843,34 @@ function RecoveryClaimSheet({
       </SheetContent>
     </Sheet>
   );
+}
+
+
+function ClaimDateField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-xs font-medium">{label}</span>
+      <Input
+        type="date"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
+  );
+}
+
+function formatFileSize(value: number): string {
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function ClaimMoneyInput({
