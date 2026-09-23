@@ -20,7 +20,6 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/AppShell";
-import { supabase } from "@/integrations/supabase/client";
 import { AI_UI_ENABLED } from "@/lib/ai/config";
 import { explainExceptionWithAi } from "@/lib/ai/exception-ai.functions";
 import type { ExceptionAiResult } from "@/lib/ai/exception-ai";
@@ -604,18 +603,11 @@ function AiExplanationPanel({ item }: { item: AuditException }) {
     setError(null);
 
     try {
-      const { data, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
-      const accessToken = data.session?.access_token;
-      if (!accessToken) {
-        throw new Error("الجلسة منتهية، سجّل الدخول مرة أخرى لاستخدام Tadqeeq AI.");
-      }
 
       const response = await explainExceptionWithAi({
         data: {
           periodId: item.periodId,
           exceptionId: item.id,
-          accessToken,
         },
       });
       setResult(response);
