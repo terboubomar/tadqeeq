@@ -63,6 +63,8 @@ export type Database = {
           branches: Json
           created_at: string
           daily: Json
+          engine_version: string
+          format_ids: Json
           id: string
           invoice: Json
           label: string
@@ -76,6 +78,8 @@ export type Database = {
           branches?: Json
           created_at?: string
           daily?: Json
+          engine_version?: string
+          format_ids?: Json
           id?: string
           invoice?: Json
           label: string
@@ -89,6 +93,8 @@ export type Database = {
           branches?: Json
           created_at?: string
           daily?: Json
+          engine_version?: string
+          format_ids?: Json
           id?: string
           invoice?: Json
           label?: string
