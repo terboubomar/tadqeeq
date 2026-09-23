@@ -16,33 +16,15 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { analyzeHungerStation } from "@/lib/analysis/hungerstation";
-import { analyzeJahez } from "@/lib/analysis/jahez";
-import { analyzeKeeta } from "@/lib/analysis/keeta";
 import {
   formatPercentRateInterpretation,
   parsePercentRateInput,
 } from "@/lib/analysis/rates";
-import {
-  extractPdfText,
-  parseCpcInvoice,
-  parseHungerInvoice,
-  parseJahezInvoice,
-  parseKeetaInvoice,
-} from "@/lib/analysis/pdf";
 import type { Platform } from "@/lib/analysis/types";
-import {
-  buildHungerStationMappingReview,
-  type HungerStationMappingReview,
-} from "@/lib/hungerstation-branch-review";
-import {
-  listHungerStationBranchMappings,
-  saveHungerStationBranchMappings,
-} from "@/lib/hungerstation-branch-mappings";
+import type { HungerStationMappingReview } from "@/lib/hungerstation-branch-review";
+import { importAuditPeriod } from "@/lib/import-audit.functions";
 import { acquireImportRun, finishImportRun } from "@/lib/import-run-guard";
-import { deletePeriod, DuplicatePeriodError, savePeriod } from "@/lib/periods";
-import { storePeriodSourceFiles } from "@/lib/source-files";
-import { setSelectedPeriodId, usePeriods } from "@/lib/use-period";
+import { setSelectedPeriodId } from "@/lib/use-period";
 import {
   MAX_UPLOAD_SIZE_LABEL,
   uploadSizeError,
@@ -168,8 +150,6 @@ function FileField({
 function ImportPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: periods = [] } = usePeriods();
-
   const [step, setStep] = useState(0);
   const [maxStepReached, setMaxStepReached] = useState(0);
   const [platform, setPlatform] = useState<Platform>("hungerstation");
@@ -254,174 +234,71 @@ function ImportPage() {
     setBusy(true);
     setMappingReview(null);
     let savedSuccessfully = false;
-    let createdPeriodId: string | null = null;
+
     try {
-      const dataBuffer = await dataFile.arrayBuffer();
-
-      let invoice;
-      if (invoiceFile) {
-        const text = await extractPdfText(
-          await invoiceFile.arrayBuffer(),
-          platform === "hungerstation" ? 80 : platform === "keeta" ? 200 : 3,
+      const form = new FormData();
+      form.set("platform", platform);
+      form.set("dataFile", dataFile);
+      if (label.trim()) form.set("label", label.trim());
+      if (invoiceFile) form.set("invoiceFile", invoiceFile);
+      if (cpcFile) form.set("cpcFile", cpcFile);
+      if (compensationFile) form.set("compensationFile", compensationFile);
+      if (bankRate.trim()) form.set("bankRate", bankRate.trim());
+      if (options.approvedMappings) {
+        form.set(
+          "approvedMappings",
+          JSON.stringify(options.approvedMappings),
         );
-        invoice =
-          platform === "hungerstation"
-            ? parseHungerInvoice(text)
-            : platform === "keeta"
-              ? parseKeetaInvoice(text)
-              : parseJahezInvoice(text);
+      }
+      if (options.skipMappingReview) {
+        form.set("skipMappingReview", "true");
       }
 
-      let cpcInvoice;
-      if (cpcFile) {
-        cpcInvoice = parseCpcInvoice(await extractPdfText(await cpcFile.arrayBuffer(), 3));
+      const response = await importAuditPeriod({ data: form });
+
+      if (response.status === "mapping_review") {
+        const suggestedSelections = Object.fromEntries(
+          response.review.branches
+            .filter((branch) => branch.suggestedInvoiceBranchName)
+            .map((branch) => [
+              branch.branchId,
+              branch.suggestedInvoiceBranchName!,
+            ]),
+        );
+        setMappingReview(response.review);
+        setMappingSelections(suggestedSelections);
+        toast.info(
+          "تحتاج مطابقة فروع هنقرستيشن إلى تأكيدك قبل حفظ الفترة.",
+        );
+        return;
       }
 
-      const compensationBuffer =
-        platform === "jahez" && compensationFile
-          ? await compensationFile.arrayBuffer()
-          : undefined;
-      const historicalOrders =
-        platform === "jahez"
-          ? Object.fromEntries(
-              periods
-                .filter((period) => period.platform === "jahez")
-                .flatMap((period) =>
-                  Object.entries(period.invoice?.jahezOrderIndex ?? {}).map(([orderId, ref]) => [
-                    orderId,
-                    { ...ref, periodLabel: period.label },
-                  ]),
-                ),
-            )
-          : {};
-
-      const parsedBankRate =
-        platform === "hungerstation"
-          ? parsePercentRateInput(bankRate)
-          : null;
-      const persistedBranchMappings =
-        platform === "hungerstation"
-          ? await listHungerStationBranchMappings()
-          : {};
-      const branchMappings = {
-        ...persistedBranchMappings,
-        ...(options.approvedMappings ?? {}),
-      };
-      const result =
-        platform === "hungerstation"
-          ? analyzeHungerStation(dataBuffer, {
-              ...(invoice ? { invoice } : {}),
-              ...(cpcInvoice ? { cpcInvoice } : {}),
-              ...(parsedBankRate
-                ? { manualBankRate: parsedBankRate.fraction }
-                : {}),
-              branchMappings,
-              ...(label.trim() ? { label: label.trim() } : {}),
-            })
-          : platform === "keeta"
-            ? analyzeKeeta(dataBuffer, {
-                ...(invoice ? { invoice } : {}),
-                ...(label.trim() ? { label: label.trim() } : {}),
-              })
-            : analyzeJahez(dataBuffer, {
-                ...(invoice ? { invoice } : {}),
-                ...(compensationBuffer ? { compensationFile: compensationBuffer } : {}),
-                historicalOrders,
-                ...(label.trim() ? { label: label.trim() } : {}),
-              });
-
-      if (platform === "hungerstation" && !options.skipMappingReview) {
-        const review = buildHungerStationMappingReview(result.branches);
-        if (review) {
-          const suggestedSelections = Object.fromEntries(
-            review.branches
-              .filter((branch) => branch.suggestedInvoiceBranchName)
-              .map((branch) => [
-                branch.branchId,
-                branch.suggestedInvoiceBranchName!,
-              ]),
-          );
-          setMappingReview(review);
-          setMappingSelections(suggestedSelections);
-          toast.info(
-            "تحتاج مطابقة فروع هنقرستيشن إلى تأكيدك قبل حفظ الفترة.",
-          );
-          return;
-        }
-      }
-
-      const saved = await savePeriod(result);
-      createdPeriodId = saved.id;
-
-      const confirmedMappings = Object.entries(
-        options.approvedMappings ?? {},
-      ).map(([hsBranchId, invoiceBranchName]) => ({
-        hsBranchId,
-        invoiceBranchName,
-      }));
-      if (confirmedMappings.length) {
-        await saveHungerStationBranchMappings(confirmedMappings);
-      }
-
-      await storePeriodSourceFiles({
-        periodId: saved.id,
-        platform: result.platform,
-        files: [
-          {
-            kind: "data",
-            file: dataFile,
-            formatId: result.formatIds?.[0],
-          },
-          ...(invoiceFile
-            ? [{ kind: "invoice" as const, file: invoiceFile }]
-            : []),
-          ...(cpcFile
-            ? [{ kind: "cpc_invoice" as const, file: cpcFile }]
-            : []),
-          ...(compensationFile
-            ? [{ kind: "compensation" as const, file: compensationFile }]
-            : []),
-        ],
-      });
-
-      createdPeriodId = null;
-      savedSuccessfully = true;
-      setSelectedPeriodId(saved.id);
-      await queryClient.invalidateQueries({ queryKey: ["periods"] });
-      toast.success(`تم تحليل ${result.branches.length} فرع و${result.daily.length} يوم.`);
-      navigate({ to: "/dashboard" });
-    } catch (error) {
-      console.error(error);
-
-      if (createdPeriodId) {
-        try {
-          await deletePeriod(createdPeriodId);
-          createdPeriodId = null;
-        } catch (cleanupError) {
-          console.error(
-            "Failed to roll back unreproducible Tadqeeq period",
-            cleanupError,
-          );
-          toast.error(
-            "تعذّر حفظ ملفات المصدر وتعذّر التراجع عن الفترة الجديدة. راجع الفترة قبل استخدامها.",
-          );
-        }
-      }
-
-      if (error instanceof DuplicatePeriodError) {
-        toast.error(error.message, {
+      if (response.status === "duplicate") {
+        toast.error("هذه الفترة محفوظة مسبقاً", {
           description: "يمكنك فتح الفترة المحفوظة بدلاً من إنشاء نسخة مكررة.",
           action: {
             label: "فتح الفترة",
             onClick: () => {
-              setSelectedPeriodId(error.existingPeriodId);
+              setSelectedPeriodId(response.existingPeriodId);
               navigate({ to: "/dashboard" });
             },
           },
         });
-      } else {
-        toast.error(error instanceof Error ? error.message : "تعذّر قراءة الملفات");
+        return;
       }
+
+      savedSuccessfully = true;
+      setSelectedPeriodId(response.periodId);
+      await queryClient.invalidateQueries({ queryKey: ["periods"] });
+      toast.success(
+        `تم تحليل ${response.branchCount} فرع و${response.dailyCount} يوم على الخادم.`,
+      );
+      navigate({ to: "/dashboard" });
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "تعذّر تحليل وحفظ الملفات",
+      );
     } finally {
       finishImportRun(runLock, savedSuccessfully);
       if (!savedSuccessfully) setBusy(false);
@@ -611,8 +488,8 @@ function ImportPage() {
       </section>
 
       <p className="px-1 text-[11.5px] leading-6 text-muted-foreground">
-        تُجرى الحسابات الحتمية ثم تُحفظ النتائج وملفات المصدر الأصلية بشكل خاص مع بصمة SHA-256
-        لإمكانية إعادة التدقيق والتحقق لاحقاً. ملفات المصدر لا تُرسل إلى Tadqeeq AI.
+        تُرفع ملفات المصدر إلى خادم Tadqeeq الخاص، ثم ينفّذ الخادم التحليل الحتمي ويحفظ النتيجة
+        والملفات الأصلية مع بصمة SHA-256. ملفات المصدر لا تُرسل إلى Tadqeeq AI.
       </p>
     </div>
   );
