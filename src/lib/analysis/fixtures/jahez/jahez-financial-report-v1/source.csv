@@ -1,0 +1,6 @@
+Restaurant,Date,Orders Amount,Jahez Commision,Restaurant Amount,Payment Fees,Payment Fees Vat,Offer Amount,Delivery Offer,Delivery Coupon
+Past - باست,01/08/2026 12:00:00 AM - 31/08/2026 11:59:59 PM,150.00,27.00000,105.85,2.750,0.400,0.0,14.00,0.0
+
+#,Branch Name,Order #,Date,Order Amount,Jahez Commision,Delivery Charge,Restaurant Amount,Payment Fees,Payment Fees Vat,Offer Amount,Delivery Offer,Offer Type,Delivery Coupon
+1,Branch A,10001,31/08/2026 11:59:17 PM,100.00,18.00,0,70.28,1.500,0.220,0.0,10.0,-,0.0
+2,Branch B,10002,31/08/2026 11:49:12 PM,50.00,9.00,0,35.57,1.250,0.180,0.0,4.0,-,0.0
