@@ -22,7 +22,7 @@ import {
   buildHungerStationMappingReview,
   type HungerStationMappingReview,
 } from "./hungerstation-branch-review";
-import type { StoredPeriod } from "./periods";
+import { normalizePeriodLabel, type StoredPeriod } from "./periods";
 import { requireServerUser, type ServerUserClient } from "./server-auth.server";
 import { safeStorageFileName, sha256Hex } from "./source-file-utils";
 import { MAX_UPLOAD_SIZE_BYTES } from "./upload-validation";
