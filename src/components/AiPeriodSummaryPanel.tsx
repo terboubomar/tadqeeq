@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import { AI_UI_ENABLED } from "@/lib/ai/config";
 import type { PeriodSummaryAiResult } from "@/lib/ai/period-summary-ai";
 import { summarizePeriodWithAi } from "@/lib/ai/period-summary-ai.functions";
 
@@ -12,6 +13,8 @@ export function AiPeriodSummaryPanel({ periodId }: { periodId: string }) {
   const [result, setResult] = useState<PeriodSummaryAiResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (!AI_UI_ENABLED) return null;
 
   async function summarize() {
     setLoading(true);
