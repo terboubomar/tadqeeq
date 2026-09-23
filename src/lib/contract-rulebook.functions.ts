@@ -7,6 +7,7 @@ import {
   createContractVersionOnServer,
   deleteContractRuleOnServer,
   listContractRulebookOnServer,
+  resolveContractTermsOnServer,
   saveContractRuleOnServer,
   uploadContractDocumentOnServer,
 } from "./contract-rulebook.server";
@@ -58,6 +59,12 @@ const ruleSchema = z.object({
   notes: z.string().max(1000).nullish(),
 });
 
+const resolutionSchema = z.object({
+  contractId: uuid,
+  onDate: isoDate,
+  branchKey: z.string().max(160).nullish(),
+});
+
 const ruleIdentitySchema = z.object({
   contractId: uuid,
   versionId: uuid,
@@ -102,3 +109,8 @@ export const uploadContractDocument = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }) => uploadContractDocumentOnServer(data));
+
+
+export const resolveContractTerms = createServerFn({ method: "POST" })
+  .validator(resolutionSchema)
+  .handler(async ({ data }) => resolveContractTermsOnServer(data));
