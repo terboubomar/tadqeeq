@@ -1,5 +1,5 @@
 import type { ContractRuleRecord, ContractRuleType, ContractValueKind, ContractFundingSource, ContractScopeType } from "./contract-rulebook";
-import { evaluateHungerStationCommissionCompliance, type HungerStationContractCompliance } from "./contract-compliance";
+import { evaluateHungerStationContractCompliance, type HungerStationContractCompliance } from "./contract-compliance";
 import type { StoredPeriod } from "./periods";
 import { requireServerUser } from "./server-auth.server";
 
@@ -107,7 +107,7 @@ export async function evaluateContractComplianceOnServer(input: {
 
   return {
     status: "evaluated",
-    compliance: evaluateHungerStationCommissionCompliance({
+    compliance: evaluateHungerStationContractCompliance({
       period,
       rules,
       version: {
