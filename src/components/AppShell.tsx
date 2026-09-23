@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { AI_UI_ENABLED } from "@/lib/ai/config";
 import { buildPeriodExceptions, summarizeExceptions } from "@/lib/exceptions";
 import { arabicDate } from "@/lib/format";
 import { useSelectedPeriod } from "@/lib/use-period";
@@ -23,7 +24,7 @@ const NAV_GROUPS = [
     title: "التدقيق",
     items: [
       { to: "/dashboard", label: "اللوحة التنفيذية" },
-      { to: "/ai", label: "Tadqeeq AI" },
+      ...(AI_UI_ENABLED ? [{ to: "/ai", label: "Tadqeeq AI" }] : []),
       { to: "/invoice-check", label: "مطابقة الفاتورة" },
       { to: "/exceptions", label: "مركز الاستثناءات" },
     ],

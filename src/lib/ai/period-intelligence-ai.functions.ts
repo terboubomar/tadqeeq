@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { requireAiEnabled } from "./config.server";
 import { analyzePeriodIntelligenceOnServer } from "./period-intelligence-ai.server";
 
 const requestSchema = z.object({
@@ -11,4 +12,7 @@ const requestSchema = z.object({
 
 export const analyzePeriodIntelligenceWithAi = createServerFn({ method: "POST" })
   .validator(requestSchema)
-  .handler(async ({ data }) => analyzePeriodIntelligenceOnServer(data));
+  .handler(async ({ data }) => {
+    requireAiEnabled();
+    return analyzePeriodIntelligenceOnServer(data);
+  });

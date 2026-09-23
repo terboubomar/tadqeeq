@@ -11,6 +11,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import { AI_UI_ENABLED } from "@/lib/ai/config";
 import { analyzePeriodIntelligenceWithAi } from "@/lib/ai/period-intelligence-ai.functions";
 import type { PeriodIntelligenceAiResult } from "@/lib/ai/period-intelligence-ai";
 import {
@@ -162,23 +163,25 @@ function PeriodComparisonView({
             </p>
           </div>
 
-          <Button
-            type="button"
-            size="sm"
-            variant={aiResult ? "outline" : "default"}
-            onClick={analyzeWithAi}
-            disabled={aiLoading}
-            className="shrink-0"
-          >
-            {aiLoading ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : aiResult ? (
-              <RefreshCw className="size-3.5" />
-            ) : (
-              <Sparkles className="size-3.5" />
-            )}
-            {aiLoading ? "جارٍ تفسير التغيّرات…" : aiResult ? "تحديث تفسير AI" : "فسّر التغيّرات بـ AI"}
-          </Button>
+          {AI_UI_ENABLED ? (
+            <Button
+              type="button"
+              size="sm"
+              variant={aiResult ? "outline" : "default"}
+              onClick={analyzeWithAi}
+              disabled={aiLoading}
+              className="shrink-0"
+            >
+              {aiLoading ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : aiResult ? (
+                <RefreshCw className="size-3.5" />
+              ) : (
+                <Sparkles className="size-3.5" />
+              )}
+              {aiLoading ? "جارٍ تفسير التغيّرات…" : aiResult ? "تحديث تفسير AI" : "فسّر التغيّرات بـ AI"}
+            </Button>
+          ) : null}
         </div>
 
         {comparison.warnings.length ? (
@@ -314,13 +317,13 @@ function PeriodComparisonView({
           </div>
         </div>
 
-        {aiError && !aiResult ? (
+        {AI_UI_ENABLED && aiError && !aiResult ? (
           <div className="rounded-lg border border-destructive/20 bg-destructive/[0.04] px-3 py-2.5 text-xs leading-6 text-destructive">
             {aiError}
           </div>
         ) : null}
 
-        {aiResult ? <AiInterpretation result={aiResult} /> : null}
+        {AI_UI_ENABLED && aiResult ? <AiInterpretation result={aiResult} /> : null}
       </div>
     </section>
   );

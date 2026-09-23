@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { requireAiEnabled } from "./config.server";
 import { summarizePeriodOnServer } from "./period-summary-ai.server";
 
 const requestSchema = z.object({
@@ -10,4 +11,7 @@ const requestSchema = z.object({
 
 export const summarizePeriodWithAi = createServerFn({ method: "POST" })
   .validator(requestSchema)
-  .handler(async ({ data }) => summarizePeriodOnServer(data));
+  .handler(async ({ data }) => {
+    requireAiEnabled();
+    return summarizePeriodOnServer(data);
+  });
