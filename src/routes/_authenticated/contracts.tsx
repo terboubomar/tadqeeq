@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   Trash2,
 } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -342,22 +342,23 @@ function CreateContractPanel({
 
   return (
     <section className="rounded-[12px] border border-border bg-white">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-start"
-      >
+      <div className="flex w-full items-center justify-between gap-3 px-5 py-4">
         <div>
           <p className="text-sm font-semibold">إضافة عقد منصة</p>
           <p className="mt-1 text-xs text-muted-foreground">
             العقد هو الحاوية، وكل تغيير تجاري يُحفظ كنسخة مؤرخة داخله.
           </p>
         </div>
-        <Button type="button" size="sm" variant={open ? "outline" : "default"}>
+        <Button
+          type="button"
+          size="sm"
+          variant={open ? "outline" : "default"}
+          onClick={() => setOpen((value) => !value)}
+        >
           <Plus className="size-3.5" />
           عقد جديد
         </Button>
-      </button>
+      </div>
 
       {open ? (
         <form
@@ -1213,7 +1214,7 @@ function Field({
 }: {
   label: string;
   hint?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div className="space-y-1.5">
@@ -1228,7 +1229,7 @@ function Field({
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
+function Th({ children }: { children: ReactNode }) {
   return (
     <th className="whitespace-nowrap px-3.5 py-2.5 text-start">{children}</th>
   );
@@ -1239,7 +1240,7 @@ function Td({
   mono = false,
   className,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   mono?: boolean;
   className?: string;
 }) {
