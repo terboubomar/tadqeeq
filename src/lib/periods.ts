@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
 import type { AnalysisResult, BranchRow, DailyRow, InvoiceFigures, Summary } from "./analysis/types";
+import { ENGINE_VERSION } from "./analysis/version";
 import type { ExceptionWorkflowEntry } from "./exceptions";
 
 export interface StoredPeriod {
@@ -11,6 +12,8 @@ export interface StoredPeriod {
   period_start: string | null;
   period_end: string | null;
   created_at: string;
+  engine_version: string;
+  format_ids: string[];
   summary: Summary;
   branches: BranchRow[];
   daily: DailyRow[];
@@ -125,6 +128,8 @@ export async function savePeriod(result: AnalysisResult): Promise<StoredPeriod> 
       label: result.label,
       period_start: result.summary.periodStart,
       period_end: result.summary.periodEnd,
+      engine_version: ENGINE_VERSION,
+      format_ids: (result.formatIds ?? []) as unknown as Json,
       summary: result.summary as unknown as Json,
       branches: result.branches as unknown as Json,
       daily: result.daily as unknown as Json,
@@ -245,6 +250,7 @@ export function toAnalysis(period: StoredPeriod): AnalysisResult {
   const { checks, ...invoice } = period.invoice ?? { lines: [] };
   return {
     platform: period.platform,
+    formatIds: period.format_ids ?? [],
     label: period.label,
     summary: period.summary,
     branches: period.branches ?? [],
