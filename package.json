@@ -1,5 +1,5 @@
 {
-  "name": "tanstack_start_ts",
+  "name": "tadqeeq",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:migrate": "drizzle-kit migrate"
   },
   "overrides": {
     "rolldown": "1.2.1"
