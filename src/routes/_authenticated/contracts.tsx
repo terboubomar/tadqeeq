@@ -653,12 +653,12 @@ function ContractCompliancePanel({
     onError: (error: Error) => toast.error(error.message),
   });
 
-  if (platform !== "hungerstation") {
+  if (platform === "jahez") {
     return (
       <section className="rounded-[12px] border border-border bg-white px-5 py-4">
         <h3 className="text-sm font-semibold">مطابقة العقد مع التدقيق</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          الربط التعاقدي مع نتائج التدقيق سيُفعّل لكيتا وجاهز في المراحل التالية.
+          الربط التعاقدي مع نتائج تدقيق جاهز سيُفعّل في المرحلة التالية.
         </p>
       </section>
     );
@@ -670,10 +670,13 @@ function ContractCompliancePanel({
   return (
     <section className="overflow-hidden rounded-[12px] border border-border bg-white">
       <div className="border-b border-border px-5 py-4">
-        <h3 className="text-sm font-semibold">مطابقة العقد مع تدقيق هنقرستيشن</h3>
+        <h3 className="text-sm font-semibold">
+          مطابقة العقد مع تدقيق {PLATFORM_LABELS[platform]}
+        </h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          فحص العمولة ورسوم البطاقات ورسوم المحافظ مقابل الشروط المعتمدة، بدون
-          تعديل نتائج محرك التدقيق.
+          {platform === "hungerstation"
+            ? "فحص العمولة ورسوم البطاقات ورسوم المحافظ مقابل الشروط المعتمدة، بدون تعديل نتائج محرك التدقيق."
+            : "فحص نسبة عمولة كيتا مقابل الأساس والعمولة المعاد بناؤهما من Order Summary، بدون تعديل نتائج محرك التدقيق."}
         </p>
       </div>
 
@@ -681,7 +684,7 @@ function ContractCompliancePanel({
         <Field label="فترة التدقيق">
           <Select value={selectedPeriodId} onValueChange={setPeriodId}>
             <SelectTrigger>
-              <SelectValue placeholder="اختر فترة هنقرستيشن" />
+              <SelectValue placeholder={`اختر فترة ${PLATFORM_LABELS[platform]}`} />
             </SelectTrigger>
             <SelectContent>
               {periods.map((period) => (
@@ -728,21 +731,31 @@ function ContractCompliancePanel({
           </div>
 
           <div className="space-y-5 border-t border-border p-5">
-            <ContractComplianceSectionPanel
-              title="عمولة المبيعات"
-              baseLabel="أساس العمولة"
-              section={compliance.commission}
-            />
-            <ContractComplianceSectionPanel
-              title="رسوم الدفع الإلكتروني — البطاقات"
-              baseLabel="أساس رسوم البطاقات"
-              section={compliance.paymentFee}
-            />
-            <ContractComplianceSectionPanel
-              title="رسوم مدفوعات المحافظ"
-              baseLabel="أساس رسوم المحافظ"
-              section={compliance.walletFee}
-            />
+            {compliance.platform === "hungerstation" ? (
+              <>
+                <ContractComplianceSectionPanel
+                  title="عمولة المبيعات"
+                  baseLabel="أساس العمولة"
+                  section={compliance.commission}
+                />
+                <ContractComplianceSectionPanel
+                  title="رسوم الدفع الإلكتروني — البطاقات"
+                  baseLabel="أساس رسوم البطاقات"
+                  section={compliance.paymentFee}
+                />
+                <ContractComplianceSectionPanel
+                  title="رسوم مدفوعات المحافظ"
+                  baseLabel="أساس رسوم المحافظ"
+                  section={compliance.walletFee}
+                />
+              </>
+            ) : (
+              <ContractComplianceSectionPanel
+                title="عمولة الطلب — كيتا"
+                baseLabel="المبيعات بدون الضريبة"
+                section={compliance.commission}
+              />
+            )}
           </div>
         </div>
       ) : null}
