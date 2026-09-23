@@ -108,6 +108,201 @@ export type Database = {
           },
         ]
       }
+      contract_documents: {
+        Row: {
+          contract_id: string
+          created_at: string
+          id: string
+          original_name: string
+          sha256: string
+          size_bytes: number
+          storage_path: string
+          user_id: string
+          version_id: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          id?: string
+          original_name: string
+          sha256: string
+          size_bytes: number
+          storage_path: string
+          user_id: string
+          version_id: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          id?: string
+          original_name?: string
+          sha256?: string
+          size_bytes?: number
+          storage_path?: string
+          user_id?: string
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_documents_version_owner_fkey"
+            columns: ["version_id", "contract_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "contract_versions"
+            referencedColumns: ["id", "contract_id", "user_id"]
+          },
+        ]
+      }
+      contract_fee_rules: {
+        Row: {
+          contract_id: string
+          created_at: string
+          currency: string | null
+          funding_source: string | null
+          id: string
+          notes: string | null
+          numeric_value: number | null
+          rule_key: string
+          rule_type: string
+          scope_key: string | null
+          scope_type: string
+          text_value: string | null
+          updated_at: string
+          user_id: string
+          value_kind: string
+          version_id: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          currency?: string | null
+          funding_source?: string | null
+          id?: string
+          notes?: string | null
+          numeric_value?: number | null
+          rule_key: string
+          rule_type: string
+          scope_key?: string | null
+          scope_type?: string
+          text_value?: string | null
+          updated_at?: string
+          user_id: string
+          value_kind: string
+          version_id: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          currency?: string | null
+          funding_source?: string | null
+          id?: string
+          notes?: string | null
+          numeric_value?: number | null
+          rule_key?: string
+          rule_type?: string
+          scope_key?: string | null
+          scope_type?: string
+          text_value?: string | null
+          updated_at?: string
+          user_id?: string
+          value_kind?: string
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_fee_rules_version_owner_fkey"
+            columns: ["version_id", "contract_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "contract_versions"
+            referencedColumns: ["id", "contract_id", "user_id"]
+          },
+        ]
+      }
+      contract_rule_events: {
+        Row: {
+          after_data: Json | null
+          before_data: Json | null
+          contract_id: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          event_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          after_data?: Json | null
+          before_data?: Json | null
+          contract_id: string
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          event_type: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          after_data?: Json | null
+          before_data?: Json | null
+          contract_id?: string
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          event_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      contract_versions: {
+        Row: {
+          approved_at: string | null
+          contract_id: string
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          source_note: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          version_number: number
+        }
+        Insert: {
+          approved_at?: string | null
+          contract_id: string
+          created_at?: string
+          effective_from: string
+          effective_to?: string | null
+          id?: string
+          source_note?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          version_number: number
+        }
+        Update: {
+          approved_at?: string | null
+          contract_id?: string
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          source_note?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_versions_contract_owner_fkey"
+            columns: ["contract_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "platform_contracts"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       exception_events: {
         Row: {
           created_at: string
@@ -310,6 +505,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_contracts: {
+        Row: {
+          archived_at: string | null
+          counterparty: string | null
+          created_at: string
+          external_reference: string | null
+          id: string
+          name: string
+          platform: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          counterparty?: string | null
+          created_at?: string
+          external_reference?: string | null
+          id?: string
+          name: string
+          platform: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          counterparty?: string | null
+          created_at?: string
+          external_reference?: string | null
+          id?: string
+          name?: string
+          platform?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
