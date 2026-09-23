@@ -104,12 +104,16 @@ CREATE TABLE IF NOT EXISTS public.contract_fee_rules (
     value_kind <> 'percentage' OR (numeric_value >= 0 AND numeric_value <= 100)
   ),
   CONSTRAINT contract_fee_rules_amount_currency_check CHECK (
-    value_kind <> 'amount' OR currency IS NOT NULL
+    value_kind <> 'amount' OR (currency IS NOT NULL AND numeric_value >= 0)
   ),
   CONSTRAINT contract_fee_rules_scope_check CHECK (
     (scope_type = 'all' AND scope_key IS NULL)
     OR
-    (scope_type = 'branch' AND length(btrim(scope_key)) > 0)
+    (
+      scope_type = 'branch'
+      AND scope_key IS NOT NULL
+      AND length(btrim(scope_key)) > 0
+    )
   )
 );
 
