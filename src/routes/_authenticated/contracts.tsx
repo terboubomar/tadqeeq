@@ -24,6 +24,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { evaluateContractCompliance } from "@/lib/contract-compliance.functions";
+import type { ContractComplianceSection } from "@/lib/contract-compliance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -671,8 +672,8 @@ function ContractCompliancePanel({
       <div className="border-b border-border px-5 py-4">
         <h3 className="text-sm font-semibold">مطابقة العقد مع تدقيق هنقرستيشن</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          مقارنة عمولة كل فرع مع نسبة العمولة المعتمدة في العقد، بدون تعديل نتائج
-          محرك التدقيق.
+          فحص العمولة ورسوم البطاقات ورسوم المحافظ مقابل الشروط المعتمدة، بدون
+          تعديل نتائج محرك التدقيق.
         </p>
       </div>
 
@@ -720,78 +721,152 @@ function ContractCompliancePanel({
 
       {compliance ? (
         <div className="border-t border-border">
-          <div className="grid gap-3 bg-surface-raised/40 px-5 py-4 sm:grid-cols-2 xl:grid-cols-4">
-            <ComplianceMetric
-              label="العمولة حسب العقد"
-              value={formatSar(compliance.totals.expectedAmount)}
-            />
-            <ComplianceMetric
-              label="العمولة المرصودة"
-              value={formatSar(compliance.totals.observedAmount)}
-            />
-            <ComplianceMetric
-              label="زيادة محتملة"
-              value={formatSar(compliance.totals.overchargedAmount)}
-            />
-            <ComplianceMetric
-              label="فرق صافي"
-              value={formatSignedSar(compliance.totals.varianceAmount)}
-            />
-          </div>
-
-          <div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+          <div className="bg-surface-raised/40 px-5 py-3 text-xs text-muted-foreground">
             نسخة العقد {compliance.versionNumber} · {compliance.effectiveFrom} —{" "}
             {compliance.effectiveTo ?? "مفتوح"} · فترة التدقيق{" "}
             {compliance.periodStart} — {compliance.periodEnd}
           </div>
 
-          {compliance.missingRuleBranches.length > 0 ? (
-            <div className="border-t border-amber-200 bg-amber-50/60 px-5 py-3 text-xs text-amber-800">
-              لا يوجد بند commission_rate قابل للتطبيق على:{" "}
-              {compliance.missingRuleBranches.join("، ")}. لم يتم افتراض أي نسبة
-              لهذه الفروع.
-            </div>
-          ) : null}
-
-          <div className="divide-y divide-border/70">
-            {compliance.rows.map((row) => (
-              <div
-                key={row.branch}
-                className="grid gap-2 px-5 py-3 text-sm md:grid-cols-[minmax(0,1fr)_110px_130px_130px_110px]"
-              >
-                <div>
-                  <p className="font-medium">{row.branch}</p>
-                  <p className="num mt-0.5 text-[11px] text-muted-foreground">
-                    أساس العمولة {formatSar(row.salesBase)}
-                  </p>
-                </div>
-                <span className="num">
-                  عقد {row.contractRatePct.toFixed(2)}%
-                </span>
-                <span className="num">
-                  متوقع {formatSar(row.expectedAmount)}
-                </span>
-                <span className="num">
-                  مرصود {formatSar(row.observedAmount)}
-                </span>
-                <span
-                  className={cn(
-                    "num font-semibold",
-                    row.status === "overcharged"
-                      ? "text-destructive"
-                      : row.status === "matched"
-                        ? "text-success"
-                        : "text-amber-700",
-                  )}
-                >
-                  {formatSignedSar(row.varianceAmount)}
-                </span>
-              </div>
-            ))}
+          <div className="space-y-5 border-t border-border p-5">
+            <ContractComplianceSectionPanel
+              title="عمولة المبيعات"
+              baseLabel="أساس العمولة"
+              section={compliance.commission}
+            />
+            <ContractComplianceSectionPanel
+              title="رسوم الدفع الإلكتروني — البطاقات"
+              baseLabel="أساس رسوم البطاقات"
+              section={compliance.paymentFee}
+            />
+            <ContractComplianceSectionPanel
+              title="رسوم مدفوعات المحافظ"
+              baseLabel="أساس رسوم المحافظ"
+              section={compliance.walletFee}
+            />
           </div>
         </div>
       ) : null}
     </section>
+  );
+}
+
+function ContractComplianceSectionPanel({
+  title,
+  baseLabel,
+  section,
+}: {
+  title: string;
+  baseLabel: string;
+  section: ContractComplianceSection;
+}) {
+  return (
+    <div className="overflow-hidden rounded-[10px] border border-border bg-white">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3.5">
+        <div>
+          <h4 className="text-sm font-semibold">{title}</h4>
+          <p className="mt-1 max-w-3xl text-[11px] leading-5 text-muted-foreground">
+            {section.evidenceNote}
+          </p>
+        </div>
+        <Badge variant={section.totals.complete ? "secondary" : "outline"}>
+          {section.totals.complete ? "قابل للمطابقة" : "بيانات غير مكتملة"}
+        </Badge>
+      </div>
+
+      <div className="grid gap-3 bg-surface-raised/40 px-4 py-4 sm:grid-cols-2 xl:grid-cols-4">
+        <ComplianceMetric
+          label="المتوقع حسب العقد"
+          value={formatSar(section.totals.expectedAmount)}
+        />
+        <ComplianceMetric
+          label="المرصود"
+          value={formatOptionalSar(section.totals.observedAmount)}
+        />
+        <ComplianceMetric
+          label="زيادة محتملة"
+          value={formatOptionalSar(section.totals.overchargedAmount)}
+        />
+        <ComplianceMetric
+          label="فرق صافي"
+          value={formatOptionalSignedSar(section.totals.varianceAmount)}
+        />
+      </div>
+
+      {section.missingRuleBranches.length > 0 ? (
+        <ComplianceWarning>
+          لا يوجد بند {section.ruleKey} قابل للتطبيق على:{" "}
+          {section.missingRuleBranches.join("، ")}. لم يتم افتراض أي نسبة.
+        </ComplianceWarning>
+      ) : null}
+
+      {section.unsupportedRuleBranches.length > 0 ? (
+        <ComplianceWarning>
+          بند {section.ruleKey} موجود لكنه ليس نسبة مئوية قابلة للتطبيق على:{" "}
+          {section.unsupportedRuleBranches.join("، ")}. يحتاج البند إلى تعريف
+          حسابي صريح قبل استخدامه.
+        </ComplianceWarning>
+      ) : null}
+
+      {section.missingEvidenceBranches.length > 0 ? (
+        <ComplianceWarning>
+          الأدلة غير كافية للمطابقة التفصيلية في:{" "}
+          {section.missingEvidenceBranches.join("، ")}.
+        </ComplianceWarning>
+      ) : null}
+
+      {section.rows.length > 0 ? (
+        <div className="divide-y divide-border/70">
+          {section.rows.map((row) => (
+            <div
+              key={`${section.ruleKey}-${row.branch}`}
+              className="grid gap-2 px-4 py-3 text-sm md:grid-cols-[minmax(0,1fr)_110px_130px_130px_110px]"
+            >
+              <div>
+                <p className="font-medium">{row.branch}</p>
+                <p className="num mt-0.5 text-[11px] text-muted-foreground">
+                  {baseLabel} {formatSar(row.baseAmount)}
+                </p>
+              </div>
+              <span className="num">
+                عقد {row.contractRatePct.toFixed(2)}%
+              </span>
+              <span className="num">
+                متوقع {formatSar(row.expectedAmount)}
+              </span>
+              <span className="num">
+                مرصود {formatOptionalSar(row.observedAmount)}
+              </span>
+              <span
+                className={cn(
+                  "num font-semibold",
+                  row.status === "overcharged"
+                    ? "text-destructive"
+                    : row.status === "matched"
+                      ? "text-success"
+                      : row.status === "evidence_missing"
+                        ? "text-muted-foreground"
+                        : "text-amber-700",
+                )}
+              >
+                {formatOptionalSignedSar(row.varianceAmount)}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="border-t border-border px-4 py-4 text-sm text-muted-foreground">
+          لا توجد حركة قابلة للحساب لهذا البند ضمن الأدلة المتاحة.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ComplianceWarning({ children }: { children: ReactNode }) {
+  return (
+    <div className="border-t border-amber-200 bg-amber-50/60 px-4 py-3 text-xs leading-5 text-amber-800">
+      {children}
+    </div>
   );
 }
 
@@ -819,9 +894,17 @@ function formatSar(value: number): string {
   return `${SAR_FORMATTER.format(value)} SAR`;
 }
 
+function formatOptionalSar(value: number | null): string {
+  return value == null ? "—" : formatSar(value);
+}
+
 function formatSignedSar(value: number): string {
   if (Math.abs(value) < 0.005) return "0.00 SAR";
   return `${value > 0 ? "+" : "-"}${SAR_FORMATTER.format(Math.abs(value))} SAR`;
+}
+
+function formatOptionalSignedSar(value: number | null): string {
+  return value == null ? "—" : formatSignedSar(value);
 }
 
 function VersionWorkspace({
