@@ -16,6 +16,7 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { supabase } from "@/integrations/supabase/client";
+import { AI_UI_ENABLED } from "@/lib/ai/config";
 import type {
   AnalystChatResult,
   AnalystHistoryMessage,
@@ -58,6 +59,8 @@ export function AskTadqeeqWidget({
   useEffect(() => {
     if (defaultOpen) setOpen(true);
   }, [defaultOpen]);
+
+  if (!AI_UI_ENABLED) return null;
 
   return (
     <div data-noprint dir="rtl">
