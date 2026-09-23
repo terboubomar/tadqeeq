@@ -8,6 +8,7 @@ import type {
   InvoiceFigures,
   Summary,
 } from "./types";
+import { detectKeetaFormat } from "./formats";
 import { ParseError, parseAmount, parseDate } from "./parse";
 import { resolveSheetName } from "./sheets";
 import { KEETA_TOLERANCES } from "./tolerances";
@@ -381,6 +382,7 @@ function auditState(
 
 export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): AnalysisResult {
   const wb = XLSX.read(file, { type: "array" });
+  const formatId = detectKeetaFormat(wb);
   const sheetName = findSheet(wb, "Order Summary");
 
   if (!sheetName || !wb.Sheets[sheetName]) {
@@ -1120,6 +1122,7 @@ export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): Ana
 
   return {
     platform: "keeta",
+    formatIds: [formatId],
     label,
     summary,
     branches: branchList,
