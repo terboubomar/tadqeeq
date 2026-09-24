@@ -170,8 +170,7 @@ export function CompensationFileScanner({
     });
     const { error } = wasDone
       ? await marks().delete().eq("order_number", key)
-      : await (marks() as any)
-          .from("compensation_appeal_marks")
+      : await marks()
           .upsert({ order_number: key, submitted_at: stamp }, { onConflict: "user_id,order_number" });
     if (error) {
       toast.error("تعذّر حفظ الحالة.");
