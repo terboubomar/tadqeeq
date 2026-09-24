@@ -162,6 +162,13 @@
       "when": 1790218800000,
       "tag": "0020_promotion_audits",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790305200000,
+      "tag": "0021_telegram_compensation_evidence",
+      "breakpoints": true
     }
   ]
 }
