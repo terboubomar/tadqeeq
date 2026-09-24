@@ -478,7 +478,7 @@ export async function searchCompensationEvidenceOnServer(
     throw new Error("أدخل رقم طلب صالحاً.");
   }
 
-  const suffixPattern = `${lookupKey.replace(/[%_]/g, (char) => `\\${char}`)}%`;
+  const suffixPattern = `%${lookupKey.replace(/[%_]/g, (char) => `\\${char}`)}`;
 
   const [{ data: evidenceRows, error: evidenceError }, { data: periodRows, error: periodError }] =
     await Promise.all([
