@@ -33,7 +33,7 @@ export function extractOrderNumber(value: string | null | undefined): string | n
   const candidate = withoutLabel.trim().split(/\s+/, 1)[0]?.replace(/^#/, "") ?? "";
 
   if (candidate.length < 3 || candidate.length > 120) return null;
-  if (!/^[\p{L}\p{N}][\p{L}\p{N}._\/-]*$/u.test(candidate)) return null;
+  if (!/^[\p{L}\p{N}][\p{L}\p{N}._/-]*$/u.test(candidate)) return null;
   return candidate;
 }
 
