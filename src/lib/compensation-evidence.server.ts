@@ -130,17 +130,22 @@ function requiredTelegramEnv(name: "TELEGRAM_BOT_TOKEN" | "TELEGRAM_WEBHOOK_SECR
   return value;
 }
 
+const STABLE_PUBLIC_ORIGIN =
+  "https://project--c8c8cb97-1c44-4eef-aea1-bca4bc93f7a1-dev.lovable.app";
+
 function optionalPublicOrigin(): string | null {
   const configured = process.env["TADQEEQ_PUBLIC_URL"]?.trim();
   const origin = configured || getRequestHeader("origin")?.trim() || "";
-  if (!origin) return null;
 
   try {
     const parsed = new URL(origin);
-    if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") return null;
+    // Telegram requires a public HTTPS URL; editor preview hosts are auth-gated.
+    if (parsed.protocol !== "https:" || parsed.hostname.startsWith("id-preview--")) {
+      return STABLE_PUBLIC_ORIGIN;
+    }
     return parsed.origin;
   } catch {
-    return null;
+    return STABLE_PUBLIC_ORIGIN;
   }
 }
 
