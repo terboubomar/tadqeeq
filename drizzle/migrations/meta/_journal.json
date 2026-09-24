@@ -148,6 +148,13 @@
       "when": 1790125200009,
       "tag": "0018_recovery_case_evidence",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790217000000,
+      "tag": "0019_recovery_case_document_privileges",
+      "breakpoints": true
     }
   ]
 }
