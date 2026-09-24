@@ -116,8 +116,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <nav className="pb-5">
               {NAV_GROUPS.map((group) => {
-                const containsActive = group.items.some((item) => item.to === pathname);
-                const open = openGroups.includes(group.title) || containsActive;
+                const open = openGroups.includes(group.title);
                 return (
                 <div key={group.title} className="mt-[18px]">
                   <button
