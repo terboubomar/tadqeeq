@@ -279,6 +279,9 @@ export async function listBranchNameOptionsOnServer(): Promise<string[]> {
   return Array.from(names).sort((a, b) => a.localeCompare(b, "ar"));
 }
 
+export async function createTelegramBranchConnectionOnServer(
+  branchNameInput: string,
+): Promise<{ connection: TelegramBranchConnection; code: string }> {
   const { client, userId } = await requireServerUser();
   const branchName = branchNameInput.trim().replace(/\s+/g, " ");
   if (!branchName || branchName.length > 160) {
