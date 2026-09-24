@@ -52,6 +52,8 @@ interface TelegramMessage {
   video?: TelegramVideo;
   document?: TelegramDocument;
   reply_to_message?: TelegramMessage;
+  migrate_to_chat_id?: number;
+  migrate_from_chat_id?: number;
 }
 
 interface TelegramUpdate {
@@ -360,7 +362,43 @@ async function storeEvidence(
   );
 }
 
+async function migrateChat(fromId: number, toId: number): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("telegram_branch_chats")
+    .update({ telegram_chat_id: toId })
+    .eq("telegram_chat_id", fromId);
+  if (error) throw new Error(error.message);
+}
+
+async function recoverUpgradedChat(chat: TelegramChat): Promise<void> {
+  // A group promoted to supergroup gets a new id (-100...). If we missed the
+  // migration update, re-link the single active legacy group with the same title.
+  if (chat.type !== "supergroup" || !chat.title) return;
+  const { data } = await supabaseAdmin
+    .from("telegram_branch_chats")
+    .select("id, telegram_chat_id")
+    .eq("active", true)
+    .eq("telegram_chat_title", chat.title);
+  const legacy = (data ?? []).filter(
+    (row) => Number(row.telegram_chat_id) > -1_000_000_000_000,
+  );
+  if (legacy.length !== 1 || !legacy[0]) return;
+  await supabaseAdmin
+    .from("telegram_branch_chats")
+    .update({ telegram_chat_id: chat.id })
+    .eq("id", legacy[0].id);
+}
+
 async function handleMessage(message: TelegramMessage): Promise<void> {
+  if (message.migrate_to_chat_id) {
+    await migrateChat(message.chat.id, message.migrate_to_chat_id);
+    return;
+  }
+  if (message.migrate_from_chat_id) {
+    await migrateChat(message.migrate_from_chat_id, message.chat.id);
+    return;
+  }
+
   const connectMatch = message.text
     ?.trim()
     .match(/^\/connect(?:@[A-Za-z0-9_]+)?\s+([A-Za-z0-9]{6,16})\s*$/i);
@@ -369,6 +407,8 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
     await connectBranch(message, connectMatch[1]);
     return;
   }
+
+  await recoverUpgradedChat(message.chat);
 
   const directMedia = mediaFrom(message);
   if (directMedia) {
