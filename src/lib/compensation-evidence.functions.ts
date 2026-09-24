@@ -4,7 +4,7 @@ import { z } from "zod";
 import {
   configureTelegramWebhookOnServer,
   createTelegramBranchConnectionOnServer,
-  getBranchNameOptionsOnServer,
+  listBranchNameOptionsOnServer,
   getEvidenceMediaOnServer,
   getTelegramIntegrationStatusOnServer,
   listCompensationCasesOnServer,
