@@ -325,7 +325,7 @@ export async function getTelegramIntegrationStatusOnServer(): Promise<TelegramIn
   const token = process.env["TELEGRAM_BOT_TOKEN"]?.trim();
   const secret = process.env["TELEGRAM_WEBHOOK_SECRET"]?.trim();
   const origin = optionalPublicOrigin();
-  const expectedWebhookUrl = origin ? origin + "/api/telegram-webhook" : null;
+  const expectedWebhookUrl = origin ? origin + "/api/public/telegram-webhook" : null;
 
   if (!token || !secret) {
     return {
@@ -372,7 +372,7 @@ export async function configureTelegramWebhookOnServer(): Promise<TelegramIntegr
     throw new Error("تعذّر تحديد رابط Tadqeeq العام. اضبط TADQEEQ_PUBLIC_URL.");
   }
 
-  const webhookUrl = origin + "/api/telegram-webhook";
+  const webhookUrl = origin + "/api/public/telegram-webhook";
   await telegramApi<boolean>("setWebhook", {
     url: webhookUrl,
     secret_token: secret,

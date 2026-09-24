@@ -28,6 +28,20 @@ describe("Telegram compensation evidence workflow", () => {
     expect(sql).toContain("telegram_evidence_thumbnails_select_own");
   });
 
+
+  test("registers Telegram against the public webhook route", async () => {
+    const server = await Bun.file(
+      "src/lib/compensation-evidence.server.ts",
+    ).text();
+    const route = await Bun.file(
+      "src/routes/api/public/telegram-webhook.ts",
+    ).text();
+
+    expect(server).toContain("/api/public/telegram-webhook");
+    expect(server).not.toContain('origin + "/api/telegram-webhook"');
+    expect(route).toContain('createFileRoute("/api/public/telegram-webhook")');
+  });
+
   test("does not couple Telegram evidence to marketplace audit engines", async () => {
     const route = await Bun.file(
       "src/routes/_authenticated/compensation.tsx",
