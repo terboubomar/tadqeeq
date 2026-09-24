@@ -24,8 +24,9 @@ Never expose the bot token or webhook secret to browser code.
 1. Enter the branch name in Tadqeeq.
 2. Generate a one-time code.
 3. In the branch's private Telegram group, add the Tadqeeq bot.
-4. Send `/connect CODE`.
-5. The code expires after 30 minutes and is cleared after successful use.
+4. Make the bot a group admin (minimal required admin rights are fine), **or** disable Group Privacy for the bot in @BotFather and re-add it to the group. Telegram privacy mode is enabled by default and otherwise ordinary cashier video messages will not reach the bot.
+5. Send `/connect CODE`.
+6. The code expires after 30 minutes and is cleared after successful use.
 
 One Telegram group can be connected to only one Tadqeeq branch mapping.
 
