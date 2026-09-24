@@ -108,6 +108,39 @@ export type Database = {
           },
         ]
       }
+      branch_registry: {
+        Row: {
+          created_at: string
+          hungerstation_id: string | null
+          id: string
+          jahez_id: string | null
+          keeta_id: string | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hungerstation_id?: string | null
+          id?: string
+          jahez_id?: string | null
+          keeta_id?: string | null
+          name: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          hungerstation_id?: string | null
+          id?: string
+          jahez_id?: string | null
+          keeta_id?: string | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       compensation_cases: {
         Row: {
           aggregator_case_reference: string | null

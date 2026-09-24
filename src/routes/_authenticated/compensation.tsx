@@ -71,7 +71,7 @@ function CompensationPage() {
   const [orderNumber, setOrderNumber] = useState("");
   const [selectedEvidence, setSelectedEvidence] =
     useState<CompensationEvidenceRecord | null>(null);
-  const [platform, setPlatform] = useState<Platform>("jahez");
+  const [platform, setPlatform] = useState<Platform | "">("");
   const [periodId, setPeriodId] = useState<string | null>(null);
   const [caseBranch, setCaseBranch] = useState("");
   const [amount, setAmount] = useState("");
@@ -152,6 +152,7 @@ function CompensationPage() {
 
   const saveMutation = useMutation({
     mutationFn: () => {
+      if (!platform) throw new Error("اختر المنصة أولاً.");
       const compensationAmount = Number(amount.replace(/,/g, ""));
       if (!Number.isFinite(compensationAmount) || compensationAmount < 0) {
         throw new Error("أدخل مبلغ تعويض صالحاً.");
@@ -415,7 +416,7 @@ function CompensationPage() {
               }}
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="اختر المنصة" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="hungerstation">هنقرستيشن</SelectItem>

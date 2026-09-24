@@ -423,14 +423,7 @@ async function storeEvidence(
   const evidenceId = crypto.randomUUID();
   const capturedAt = new Date(mediaMessage.date * 1000).toISOString();
   const sender = mediaMessage.from ?? incomingMessage.from;
-  // Keep image evidence compatible with databases created before image media
-  // types were added. The thumbnail and Telegram file still preserve the
-  // actual image, while the legacy values satisfy the existing constraint.
-  const storedMediaType = media.mediaType === "photo"
-    ? "video"
-    : media.mediaType === "image_document"
-      ? "video_document"
-      : media.mediaType;
+  const storedMediaType = media.mediaType;
   const { error: insertError } = await supabaseAdmin
     .from("telegram_order_evidence")
     .insert({
