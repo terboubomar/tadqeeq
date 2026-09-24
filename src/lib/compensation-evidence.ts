@@ -26,11 +26,13 @@ export function extractOrderNumber(value: string | null | undefined): string | n
   const firstLine = value.trim().split(/\r?\n/, 1)[0]?.trim() ?? "";
   if (!firstLine) return null;
 
-  const withoutLabel = firstLine.replace(
-    /^(?:#?\s*)?(?:order(?:\s*(?:id|no|number))?|رقم\s*الطلب)\s*[:#-]?\s*/iu,
-    "",
+  const labeled = firstLine.match(
+    /^(?:#?\s*)?(?:order\s*(?:id|no\.?|number)|order(?=\s*[:#-])|رقم\s*الطلب)\s*[:#-]?\s*([^\s]+)\s*$/iu,
   );
-  const candidate = withoutLabel.trim().split(/\s+/, 1)[0]?.replace(/^#/, "") ?? "";
+  const bare = /^#?[^\s]+$/u.test(firstLine)
+    ? firstLine.replace(/^#/, "")
+    : null;
+  const candidate = labeled?.[1] ?? bare ?? "";
 
   if (candidate.length < 3 || candidate.length > 120) return null;
   if (!/^[\p{L}\p{N}][\p{L}\p{N}._/-]*$/u.test(candidate)) return null;
