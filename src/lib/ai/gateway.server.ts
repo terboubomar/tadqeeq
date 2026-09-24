@@ -11,6 +11,7 @@ interface GatewayCallInput {
   maxOutputTokens?: number;
   model?: string;
   reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh" | "max";
+  imageDataUrls?: string[];
 }
 
 interface OpenAiResponse {
@@ -77,7 +78,14 @@ async function requestOpenAi(
           },
           {
             role: "user",
-            content: [{ type: "input_text", text: input.userText }],
+            content: [
+              { type: "input_text", text: input.userText },
+              ...(input.imageDataUrls ?? []).map((url) => ({
+                type: "input_image",
+                image_url: url,
+                detail: "high",
+              })),
+            ],
           },
         ],
         text: {
