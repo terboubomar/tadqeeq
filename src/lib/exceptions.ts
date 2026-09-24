@@ -7,6 +7,7 @@ import {
   JAHEZ_TOLERANCES,
   KEETA_TOLERANCES,
 } from "./analysis/tolerances";
+import { buildMarketplaceChargeMap } from "./charges-mapper";
 import type { StoredPeriod } from "./periods";
 
 export type ExceptionStatus =
@@ -847,9 +848,34 @@ function jahezCompensationExceptions(period: StoredPeriod): AuditException[] {
   return result;
 }
 
+function marketplaceChargeExceptions(period: StoredPeriod): AuditException[] {
+  const map = buildMarketplaceChargeMap(period);
+  if (map.unmappedAuditAmount <= DEFAULT_DATA_TOLERANCE) return [];
+
+  return [
+    makeException(period, {
+      code: "MARKETPLACE_UNMAPPED_CHARGES",
+      sourceLevel: "summary",
+      category: "unsupported_charge",
+      label: "بنود خصم غير مصنفة في خريطة الرسوم",
+      tolerance: DEFAULT_DATA_TOLERANCE,
+      evidence: "invoice_only",
+      hint:
+        "وجد Tadqeeq " +
+        String(map.unmappedLineCount) +
+        " بند أو رصيد غير مصنف بإجمالي " +
+        map.unmappedAuditAmount.toFixed(2) +
+        " SAR. يحتاج إلى مستند أو قاعدة تصنيف قبل اعتباره رسماً صحيحاً أو مبلغاً قابلاً للاسترداد.",
+      forceReviewAmount: map.unmappedAuditAmount,
+      forcePotentialRecovery: 0,
+    }),
+  ];
+}
+
 export function buildPeriodExceptions(period: StoredPeriod): AuditException[] {
   const result = [
     ...summaryExceptions(period),
+    ...marketplaceChargeExceptions(period),
     ...(period.platform === "hungerstation"
       ? hungerBranchExceptions(period)
       : period.platform === "keeta"
