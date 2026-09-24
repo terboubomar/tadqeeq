@@ -212,6 +212,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/api/telegram-webhook'
     | '/ai'
     | '/ask'
     | '/branches'
@@ -232,6 +233,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/api/telegram-webhook'
     | '/_authenticated/ai'
     | '/_authenticated/ask'
     | '/_authenticated/branches'
