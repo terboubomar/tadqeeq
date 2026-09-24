@@ -17,7 +17,7 @@ Never expose the bot token or webhook secret to browser code.
 1. Open **مركز التعويضات**.
 2. Confirm the bot is detected.
 3. Click **تفعيل Webhook**.
-4. Tadqeeq registers `/api/telegram-webhook` with Telegram using the configured secret token.
+4. Tadqeeq registers `/api/public/telegram-webhook` with Telegram using the configured secret token.
 
 ## Connect a branch group
 
