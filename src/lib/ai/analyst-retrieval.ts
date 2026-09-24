@@ -7,7 +7,6 @@ import type {
 const ROUTE_KINDS: Record<string, AnalystFactKind[]> = {
   "/branches": ["branch", "ranking"],
   "/exceptions": ["exception", "evidence"],
-  "/recovery": ["exception", "evidence"],
   "/invoice-check": ["invoice_check"],
   "/daily": ["daily"],
   "/breakdown": ["breakdown", "status"],
