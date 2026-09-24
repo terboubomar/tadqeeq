@@ -51,6 +51,7 @@ interface TelegramMessage {
   from?: TelegramUser;
   text?: string;
   caption?: string;
+  photo?: TelegramPhotoSize[];
   video?: TelegramVideo;
   document?: TelegramDocument;
   reply_to_message?: TelegramMessage;
@@ -69,7 +70,7 @@ interface TelegramMedia {
   thumbnailFileId: string | null;
   durationSeconds: number | null;
   fileSizeBytes: number | null;
-  mediaType: "video" | "video_document";
+  mediaType: "video" | "video_document" | "photo" | "image_document";
 }
 
 function requiredEnv(name: "TELEGRAM_BOT_TOKEN" | "TELEGRAM_WEBHOOK_SECRET"): string {
