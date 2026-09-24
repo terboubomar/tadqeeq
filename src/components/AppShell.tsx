@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ChevronDown, LogOut, Upload } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, LogOut, PanelRightClose, PanelRightOpen, Upload } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { AskTadqeeqWidget } from "@/components/AskTadqeeqWidget";
@@ -64,6 +64,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { periods, selected, select } = useSelectedPeriod();
+  const [sidebarHidden, setSidebarHidden] = useState(false);
+
+  useEffect(() => {
+    setSidebarHidden(window.localStorage.getItem("tadqeeq-sidebar-hidden") === "1");
+  }, []);
+
+  const toggleSidebar = () =>
+    setSidebarHidden((prev) => {
+      window.localStorage.setItem("tadqeeq-sidebar-hidden", prev ? "0" : "1");
+      return !prev;
+    });
+
   const [openGroups, setOpenGroups] = useState<string[]>(() =>
     NAV_GROUPS
       .filter((group) => group.items.some((item) => item.to === pathname))
@@ -94,10 +106,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <div className="flex min-h-screen">
-        <aside
+        <div
           data-noprint
-          className="sticky top-0 hidden h-screen w-[246px] shrink-0 overflow-y-auto border-s border-border bg-white px-3.5 pb-4 pt-5 min-[881px]:block"
+          className={cn(
+            "sticky top-0 hidden h-screen shrink-0 overflow-hidden transition-[width] duration-200 ease-out min-[881px]:block",
+            sidebarHidden ? "w-0" : "w-[246px]",
+          )}
         >
+          <aside className="h-full w-[246px] overflow-y-auto border-s border-border bg-white px-3.5 pb-4 pt-5">
           <div className="flex min-h-full flex-col">
             <Link
               to="/dashboard"
@@ -179,13 +195,22 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             </div>
           </div>
-        </aside>
+          </aside>
+        </div>
 
         <main className="min-w-0 flex-1">
           <header
             data-noprint
             className="sticky top-0 z-20 flex flex-wrap items-center gap-2.5 border-b border-border bg-background/90 px-4 py-2.5 backdrop-blur-md sm:px-5"
           >
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              aria-label={sidebarHidden ? "إظهار القائمة الجانبية" : "إخفاء القائمة الجانبية"}
+              className="hidden size-8 shrink-0 place-items-center rounded-[7px] border border-input bg-white text-foreground/80 transition-colors hover:bg-muted min-[881px]:grid"
+            >
+              {sidebarHidden ? <PanelRightOpen className="size-4" /> : <PanelRightClose className="size-4" />}
+            </button>
             {selected ? (
               <>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
