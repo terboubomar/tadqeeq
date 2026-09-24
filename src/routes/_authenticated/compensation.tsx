@@ -88,6 +88,11 @@ function CompensationPage() {
     queryFn: () => getTelegramBranchConnections({ data: {} }),
   });
 
+  const branchOptionsQuery = useQuery({
+    queryKey: ["branch-name-options"],
+    queryFn: () => getBranchNameOptions({ data: {} }),
+  });
+
   const casesQuery = useQuery({
     queryKey: ["compensation-cases"],
     queryFn: () => getCompensationCases({ data: {} }),
