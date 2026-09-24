@@ -65,6 +65,7 @@ type Platform = "hungerstation" | "keeta" | "jahez";
 function CompensationPage() {
   const queryClient = useQueryClient();
   const [branchName, setBranchName] = useState("");
+  const [newBranchMode, setNewBranchMode] = useState(false);
   const [connectionCode, setConnectionCode] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState("");
   const [selectedEvidence, setSelectedEvidence] =
@@ -526,27 +527,48 @@ function CompensationPage() {
             <label className="text-xs font-semibold text-muted-foreground">
               اسم الفرع
             </label>
-            <Select
-              value={branchName}
-              onValueChange={(value) => setBranchName(value)}
-            >
-              <SelectTrigger className="mt-2 w-full">
-                <SelectValue
-                  placeholder={
-                    (branchOptionsQuery.data ?? []).length > 0
-                      ? "اختر الفرع من القائمة"
-                      : "لا توجد فروع مسجلة بعد"
-                  }
+            {newBranchMode ? (
+              <div className="mt-2 flex gap-2">
+                <Input
+                  autoFocus
+                  value={branchName}
+                  onChange={(e) => setBranchName(e.target.value)}
+                  placeholder="اكتب اسم الفرع الجديد"
                 />
-              </SelectTrigger>
-              <SelectContent>
-                {(branchOptionsQuery.data ?? []).map((name) => (
-                  <SelectItem key={name} value={name}>
-                    {name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setNewBranchMode(false);
+                    setBranchName("");
+                  }}
+                >
+                  القائمة
+                </Button>
+              </div>
+            ) : (
+              <Select
+                value={branchName}
+                onValueChange={(value) => {
+                  if (value === "__new__") {
+                    setNewBranchMode(true);
+                    setBranchName("");
+                  } else setBranchName(value);
+                }}
+              >
+                <SelectTrigger className="mt-2 w-full">
+                  <SelectValue placeholder="اختر الفرع أو أضف فرعاً جديداً" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(branchOptionsQuery.data ?? []).map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__new__">+ إضافة فرع جديد</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <Button
             type="button"

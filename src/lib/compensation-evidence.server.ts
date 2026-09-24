@@ -276,6 +276,22 @@ export async function listBranchNameOptionsOnServer(): Promise<string[]> {
     if (name) names.add(name);
   }
 
+  const periods = await client
+    .from("periods")
+    .select("branches")
+    .eq("user_id", userId)
+    .is("superseded_at", null);
+  if (!periods.error) {
+    for (const row of periods.data ?? []) {
+      const list = Array.isArray(row.branches) ? row.branches : [];
+      for (const b of list as Array<Record<string, unknown>>) {
+        const raw = b?.["name"] ?? b?.["branch"] ?? b?.["branchName"];
+        const name = typeof raw === "string" ? raw.trim() : "";
+        if (name) names.add(name);
+      }
+    }
+  }
+
   return Array.from(names).sort((a, b) => a.localeCompare(b, "ar"));
 }
 
