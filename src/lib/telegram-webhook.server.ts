@@ -4,6 +4,7 @@ import {
   extractOrderNumber,
   normalizeOrderLookupKey,
 } from "./compensation-evidence";
+import { detectOrderNumberFromImage } from "./ai/order-number-vision.server";
 
 const THUMBNAIL_BUCKET = "telegram-evidence-thumbnails";
 
@@ -285,6 +286,70 @@ async function uploadThumbnail(
   }
 }
 
+async function downloadTelegramFile(
+  fileId: string,
+  maxBytes: number,
+): Promise<{ bytes: ArrayBuffer; filePath: string } | null> {
+  const file = await telegramCall<{ file_path?: string; file_size?: number }>("getFile", {
+    file_id: fileId,
+  });
+  if (!file.file_path) return null;
+  if (file.file_size && file.file_size > maxBytes) return null;
+  const token = requiredEnv("TELEGRAM_BOT_TOKEN");
+  const response = await fetch(`https://api.telegram.org/file/bot${token}/${file.file_path}`);
+  if (!response.ok) return null;
+  const bytes = await response.arrayBuffer();
+  if (bytes.byteLength <= 0 || bytes.byteLength > maxBytes) return null;
+  return { bytes, filePath: file.file_path };
+}
+
+export function mimeFromPath(path: string): string {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  const map: Record<string, string> = {
+    jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
+    gif: "image/gif", heic: "image/heic", mp4: "video/mp4", mov: "video/quicktime",
+    webm: "video/webm", mkv: "video/x-matroska",
+  };
+  return map[ext] ?? "application/octet-stream";
+}
+
+async function detectOrderNumber(media: TelegramMedia): Promise<string | null> {
+  const isImage = media.mediaType === "photo" || media.mediaType === "image_document";
+  const sourceId = isImage ? media.fileId : media.thumbnailFileId;
+  if (!sourceId) return null;
+  try {
+    const file = await downloadTelegramFile(sourceId, 8_000_000);
+    if (!file) return null;
+    let mime = mimeFromPath(file.filePath);
+    if (!mime.startsWith("image/") || mime === "image/heic") mime = "image/jpeg";
+    return await detectOrderNumberFromImage(file.bytes, mime);
+  } catch (error) {
+    console.error("AI order number detection failed", error);
+    return null;
+  }
+}
+
+async function archiveOriginalMedia(
+  userId: string,
+  evidenceId: string,
+  media: TelegramMedia,
+): Promise<void> {
+  try {
+    const file = await downloadTelegramFile(media.fileId, 20_000_000);
+    if (!file) return;
+    const ext = file.filePath.split(".").pop()?.toLowerCase() || "bin";
+    const { error } = await supabaseAdmin.storage
+      .from(THUMBNAIL_BUCKET)
+      .upload(`${userId}/media/${evidenceId}.${ext}`, file.bytes, {
+        contentType: mimeFromPath(file.filePath),
+        upsert: true,
+      });
+    if (error) console.error("Evidence media archive failed", error.message);
+  } catch (error) {
+    console.error("Evidence media archive failed", error);
+  }
+}
+
 async function storeEvidence(
   incomingMessage: TelegramMessage,
   mediaMessage: TelegramMessage,
@@ -308,11 +373,16 @@ async function storeEvidence(
     return;
   }
 
-  const orderNumber = extractOrderNumber(orderText);
+  let orderNumber = extractOrderNumber(orderText);
+  let detectedByAi = false;
+  if (!orderNumber) {
+    orderNumber = await detectOrderNumber(media);
+    detectedByAi = Boolean(orderNumber);
+  }
   if (!orderNumber) {
     await sendMessage(
       incomingMessage.chat.id,
-      "أرسل رقم الطلب فقط في تعليق الدليل، أو رد على هذا الدليل برقم الطلب.",
+      "لم أتمكن من قراءة رقم الطلب من الدليل. رد على هذه الرسالة الأصلية برقم الطلب، أو أرسل صورة أوضح للفاتورة.",
       mediaMessage.message_id,
     );
     return;
@@ -376,6 +446,8 @@ async function storeEvidence(
     media.thumbnailFileId,
   );
 
+  await archiveOriginalMedia(connection.user_id, evidenceId, media);
+
   if (thumbnailPath) {
     const { error: thumbnailUpdateError } = await supabaseAdmin
       .from("telegram_order_evidence")
@@ -399,7 +471,7 @@ async function storeEvidence(
 
   await sendMessage(
     incomingMessage.chat.id,
-    `✅ Evidence received\nOrder: ${orderNumber}\nBranch: ${connection.branch_name}\nEvidence saved in Tadqeeq.`,
+    `✅ تم حفظ الدليل\nرقم الطلب: ${orderNumber}${detectedByAi ? " (قرأه Tadqeeq AI)" : ""}\nالفرع: ${connection.branch_name}\n\nإذا كان الرقم خاطئاً، رد على الدليل بالرقم الصحيح.`,
     incomingMessage.message_id,
   );
 }
