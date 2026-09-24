@@ -206,31 +206,38 @@ function normalizeRule(input: SaveContractRuleInput) {
 export async function listContractRulebookOnServer(): Promise<ContractRulebookSnapshot> {
   const { client, userId } = await requireServerUser();
 
-  const { data: contractRows, error: contractsError } = await client
+  const { data: allContractRows, error: contractsError } = await client
     .from("platform_contracts")
     .select(
       "id, platform, name, external_reference, counterparty, created_at, archived_at",
     )
     .eq("user_id", userId)
-    .is("archived_at", null)
     .order("created_at", { ascending: false });
 
   if (contractsError) {
     throw explainDatabaseError(contractsError, "تعذّر تحميل العقود.");
   }
 
-  const contracts: ContractRecord[] = (contractRows ?? []).map((row) => ({
+  const toRecord = (row: NonNullable<typeof allContractRows>[number]): ContractRecord => ({
     id: row.id,
     platform: row.platform as ContractPlatform,
     name: row.name,
     externalReference: row.external_reference,
     counterparty: row.counterparty,
     createdAt: row.created_at,
-  }));
+    archivedAt: row.archived_at,
+  });
+  const archivedContracts = (allContractRows ?? [])
+    .filter((row) => row.archived_at)
+    .map(toRecord);
+  const contracts: ContractRecord[] = (allContractRows ?? [])
+    .filter((row) => !row.archived_at)
+    .map(toRecord);
 
   if (contracts.length === 0) {
     return {
       contracts: [],
+      archivedContracts,
       versions: [],
       rules: [],
       documents: [],
