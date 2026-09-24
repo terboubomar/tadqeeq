@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { searchCompensationEvidence } from "@/lib/compensation-evidence.functions";
 import type { CompensationEvidenceRecord } from "@/lib/compensation-evidence.server";
 import { sar } from "@/lib/format";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface CompensatedOrder {
   key: string;
@@ -136,25 +137,47 @@ export function CompensationFileScanner({
       if (saved) {
         setOrders(saved.orders ?? null);
         setFileNames(saved.fileNames ?? []);
-        setDone(saved.done ?? {});
       }
     } catch { /* ignore */ }
     setHydrated(true);
+    void supabase
+      .from("compensation_appeal_marks")
+      .select("order_number,submitted_at")
+      .then(({ data, error }) => {
+        if (error) return toast.error("تعذّر تحميل حالات الاعتراض.");
+        setDone(Object.fromEntries((data ?? []).map((r) => [r.order_number, r.submitted_at])));
+      });
   }, []);
 
   useEffect(() => {
     if (!hydrated) return;
     if (!orders) localStorage.removeItem(STORE_KEY);
-    else localStorage.setItem(STORE_KEY, JSON.stringify({ orders, fileNames, done }));
-  }, [orders, fileNames, done, hydrated]);
+    else localStorage.setItem(STORE_KEY, JSON.stringify({ orders, fileNames }));
+  }, [orders, fileNames, hydrated]);
 
-  function toggleDone(key: string) {
+  async function toggleDone(key: string) {
+    const wasDone = Boolean(done[key]);
+    const stamp = new Date().toISOString();
     setDone((prev) => {
       const next = { ...prev };
-      if (next[key]) delete next[key];
-      else next[key] = new Date().toISOString();
+      if (wasDone) delete next[key];
+      else next[key] = stamp;
       return next;
     });
+    const { error } = wasDone
+      ? await supabase.from("compensation_appeal_marks").delete().eq("order_number", key)
+      : await supabase
+          .from("compensation_appeal_marks")
+          .upsert({ order_number: key, submitted_at: stamp }, { onConflict: "user_id,order_number" });
+    if (error) {
+      toast.error("تعذّر حفظ الحالة.");
+      setDone((prev) => {
+        const next = { ...prev };
+        if (wasDone) next[key] = stamp;
+        else delete next[key];
+        return next;
+      });
+    }
   }
 
   const lookup = useMutation({
