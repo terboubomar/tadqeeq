@@ -202,7 +202,6 @@ export function CompensationFileScanner({
       setOrders(all);
       setFileNames(Array.from(files).map((f) => f.name));
       setEvidence({});
-      setDone({});
       if (all.length === 0) toast.info("لم يتم العثور على طلبات فيها تعويض في الملف");
     } catch {
       toast.error("تعذّر قراءة الملف. استخدم ملف Excel أو CSV.");
@@ -222,7 +221,7 @@ export function CompensationFileScanner({
         </div>
         <div className="flex gap-2">
           {orders ? (
-            <Button variant="outline" size="sm" onClick={() => { if (window.confirm("مسح القائمة وحالات الإنجاز؟")) { setOrders(null); setFileNames([]); setDone({}); } }}>
+            <Button variant="outline" size="sm" onClick={() => { if (window.confirm("مسح القائمة؟ (حالات الاعتراض تبقى محفوظة)")) { setOrders(null); setFileNames([]); } }}>
               <X className="size-4" /> مسح
             </Button>
           ) : null}
