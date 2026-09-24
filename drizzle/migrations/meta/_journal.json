@@ -169,6 +169,13 @@
       "when": 1790305200000,
       "tag": "0021_telegram_compensation_evidence",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790293115268,
+      "tag": "0024_branch_registry_and_evidence_media",
+      "breakpoints": true
     }
   ]
 }
