@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   configureTelegramWebhookOnServer,
   createTelegramBranchConnectionOnServer,
+  listBranchNameOptionsOnServer,
   getEvidenceMediaOnServer,
   getTelegramIntegrationStatusOnServer,
   listCompensationCasesOnServer,
@@ -23,6 +24,10 @@ const caseStatus = z.enum([
   "recovered",
   "closed",
 ]);
+
+export const getBranchNameOptions = createServerFn({ method: "POST" })
+  .validator(z.object({}))
+  .handler(async () => listBranchNameOptionsOnServer());
 
 export const getTelegramBranchConnections = createServerFn({ method: "POST" })
   .validator(z.object({}))

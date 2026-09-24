@@ -250,6 +250,35 @@ export async function listTelegramBranchConnectionsOnServer(): Promise<TelegramB
   return (data ?? []).map(mapConnection);
 }
 
+export async function listBranchNameOptionsOnServer(): Promise<string[]> {
+  const { client, userId } = await requireServerUser();
+  const names = new Set<string>();
+
+  const mappings = await client
+    .from("hungerstation_branch_mappings")
+    .select("invoice_branch_name")
+    .eq("user_id", userId)
+    .order("invoice_branch_name", { ascending: true });
+  if (mappings.error) throw new Error(mappings.error.message);
+  for (const row of mappings.data ?? []) {
+    const name = row.invoice_branch_name?.trim();
+    if (name) names.add(name);
+  }
+
+  const connections = await client
+    .from("telegram_branch_chats")
+    .select("branch_name")
+    .eq("user_id", userId)
+    .order("branch_name", { ascending: true });
+  if (connections.error) throw new Error(connections.error.message);
+  for (const row of connections.data ?? []) {
+    const name = row.branch_name?.trim();
+    if (name) names.add(name);
+  }
+
+  return Array.from(names).sort((a, b) => a.localeCompare(b, "ar"));
+}
+
 export async function createTelegramBranchConnectionOnServer(
   branchNameInput: string,
 ): Promise<{ connection: TelegramBranchConnection; code: string }> {

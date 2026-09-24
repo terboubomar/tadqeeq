@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  getBranchNameOptions,
   configureTelegramWebhook,
   createTelegramBranchConnection,
   getCompensationCases,
@@ -85,6 +86,11 @@ function CompensationPage() {
   const connectionsQuery = useQuery({
     queryKey: ["telegram-branch-connections"],
     queryFn: () => getTelegramBranchConnections({ data: {} }),
+  });
+
+  const branchOptionsQuery = useQuery({
+    queryKey: ["branch-name-options"],
+    queryFn: () => getBranchNameOptions({ data: {} }),
   });
 
   const casesQuery = useQuery({
@@ -520,12 +526,27 @@ function CompensationPage() {
             <label className="text-xs font-semibold text-muted-foreground">
               اسم الفرع
             </label>
-            <Input
-              className="mt-2"
+            <Select
               value={branchName}
-              onChange={(event) => setBranchName(event.target.value)}
-              placeholder="مثال: Past Al Rakah"
-            />
+              onValueChange={(value) => setBranchName(value)}
+            >
+              <SelectTrigger className="mt-2 w-full">
+                <SelectValue
+                  placeholder={
+                    (branchOptionsQuery.data ?? []).length > 0
+                      ? "اختر الفرع من القائمة"
+                      : "لا توجد فروع مسجلة بعد"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {(branchOptionsQuery.data ?? []).map((name) => (
+                  <SelectItem key={name} value={name}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <Button
             type="button"
