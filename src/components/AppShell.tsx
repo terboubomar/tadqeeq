@@ -52,6 +52,7 @@ const NAV_GROUPS = [
     items: [
       { to: "/import", label: "رفع البيانات" },
       { to: "/contracts", label: "العقود وشروط المنصات" },
+      { to: "/settings", label: "إعدادات الفروع" },
     ],
   },
 ];

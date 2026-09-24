@@ -1,4 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+
+import { listBranchRegistry, resolveBranchName } from "@/lib/branch-registry";
 
 import { EmptyState } from "@/components/AppShell";
 import { ReportTable, type Column } from "@/components/ReportTable";
@@ -116,6 +119,7 @@ const JAHEZ_COLUMNS: Column<BranchRow>[] = [
 
 function BranchesPage() {
   const { selected, isLoading } = useSelectedPeriod();
+  const { data: registry = [] } = useQuery({ queryKey: ["branch-registry"], queryFn: listBranchRegistry });
 
   if (isLoading) {
     return <p className="py-20 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>;
@@ -123,6 +127,11 @@ function BranchesPage() {
   if (!selected) {
     return <EmptyState title="لا توجد فترات محفوظة" body="ارفع ملفات الفترة لعرض تقرير الفروع." />;
   }
+
+  const rows = selected.branches.map((b) => ({
+    ...b,
+    branch: resolveBranchName(registry, selected.platform, b.branchId, b.branch) ?? b.branch,
+  }));
 
   return (
     <div className="space-y-5">
@@ -134,7 +143,7 @@ function BranchesPage() {
       </header>
       <ReportTable
         title={selected.label}
-        rows={selected.branches as unknown as Record<string, unknown>[]}
+        rows={rows as unknown as Record<string, unknown>[]}
         columns={
           (selected.platform === "hungerstation"
             ? HUNGER_COLUMNS
