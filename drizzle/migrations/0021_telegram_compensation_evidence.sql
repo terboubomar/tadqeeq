@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS public.telegram_branch_chats (
   active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (id, user_id)
+  UNIQUE (id, user_id),
+  UNIQUE (user_id, branch_key)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS telegram_branch_chats_connected_chat_uidx
