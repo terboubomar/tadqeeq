@@ -24,6 +24,7 @@ import { Route as AuthenticatedExceptionsRouteImport } from './routes/_authentic
 import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
 import { Route as AuthenticatedInvoiceCheckRouteImport } from './routes/_authenticated/invoice-check'
+import { Route as AuthenticatedPromotionsRouteImport } from './routes/_authenticated/promotions'
 import { Route as AuthenticatedRecoveryRouteImport } from './routes/_authenticated/recovery'
 
 const IndexRoute = IndexRouteImport.update({
@@ -101,6 +102,11 @@ const AuthenticatedInvoiceCheckRoute =
     path: '/invoice-check',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPromotionsRoute = AuthenticatedPromotionsRouteImport.update({
+  id: '/promotions',
+  path: '/promotions',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedRecoveryRoute = AuthenticatedRecoveryRouteImport.update({
   id: '/recovery',
   path: '/recovery',
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/history': typeof AuthenticatedHistoryRoute
   '/import': typeof AuthenticatedImportRoute
   '/invoice-check': typeof AuthenticatedInvoiceCheckRoute
+  '/promotions': typeof AuthenticatedPromotionsRoute
   '/recovery': typeof AuthenticatedRecoveryRoute
 }
 export interface FileRoutesByTo {
@@ -158,6 +165,7 @@ export interface FileRoutesById {
   '/_authenticated/history': typeof AuthenticatedHistoryRoute
   '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/invoice-check': typeof AuthenticatedInvoiceCheckRoute
+  '/_authenticated/promotions': typeof AuthenticatedPromotionsRoute
   '/_authenticated/recovery': typeof AuthenticatedRecoveryRoute
 }
 export interface FileRouteTypes {
@@ -177,6 +185,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/import'
     | '/invoice-check'
+    | '/promotions'
     | '/recovery'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -212,6 +221,7 @@ export interface FileRouteTypes {
     | '/_authenticated/history'
     | '/_authenticated/import'
     | '/_authenticated/invoice-check'
+    | '/_authenticated/promotions'
     | '/_authenticated/recovery'
   fileRoutesById: FileRoutesById
 }
@@ -328,6 +338,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInvoiceCheckRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/promotions': {
+      id: '/_authenticated/promotions'
+      path: '/promotions'
+      fullPath: '/promotions'
+      preLoaderRoute: typeof AuthenticatedPromotionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/recovery': {
       id: '/_authenticated/recovery'
       path: '/recovery'
@@ -351,6 +368,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHistoryRoute: typeof AuthenticatedHistoryRoute
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedInvoiceCheckRoute: typeof AuthenticatedInvoiceCheckRoute
+  AuthenticatedPromotionsRoute: typeof AuthenticatedPromotionsRoute
   AuthenticatedRecoveryRoute: typeof AuthenticatedRecoveryRoute
 }
 
@@ -367,6 +385,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHistoryRoute: AuthenticatedHistoryRoute,
   AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedInvoiceCheckRoute: AuthenticatedInvoiceCheckRoute,
+  AuthenticatedPromotionsRoute: AuthenticatedPromotionsRoute,
   AuthenticatedRecoveryRoute: AuthenticatedRecoveryRoute,
 }
 

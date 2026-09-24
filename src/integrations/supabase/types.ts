@@ -542,6 +542,80 @@ export type Database = {
         }
         Relationships: []
       }
+      promotion_audits: {
+        Row: {
+          advertising_spend: number
+          campaign_revenue: number
+          cogs_amount: number
+          commission_fees: number
+          created_at: string
+          delivery_campaign_fees: number
+          id: string
+          name: string
+          notes: string | null
+          organic_baseline: number
+          other_marketplace_fees: number
+          payment_fees: number
+          period_id: string
+          platform_funded_discount: number
+          platform_roas: number | null
+          restaurant_funded_discount: number
+          unknown_funded_discount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          advertising_spend?: number
+          campaign_revenue: number
+          cogs_amount?: number
+          commission_fees?: number
+          created_at?: string
+          delivery_campaign_fees?: number
+          id?: string
+          name: string
+          notes?: string | null
+          organic_baseline: number
+          other_marketplace_fees?: number
+          payment_fees?: number
+          period_id: string
+          platform_funded_discount?: number
+          platform_roas?: number | null
+          restaurant_funded_discount?: number
+          unknown_funded_discount?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          advertising_spend?: number
+          campaign_revenue?: number
+          cogs_amount?: number
+          commission_fees?: number
+          created_at?: string
+          delivery_campaign_fees?: number
+          id?: string
+          name?: string
+          notes?: string | null
+          organic_baseline?: number
+          other_marketplace_fees?: number
+          payment_fees?: number
+          period_id?: string
+          platform_funded_discount?: number
+          platform_roas?: number | null
+          restaurant_funded_discount?: number
+          unknown_funded_discount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotion_audits_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
