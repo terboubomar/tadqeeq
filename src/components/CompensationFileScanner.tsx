@@ -11,6 +11,8 @@ import { searchCompensationEvidence } from "@/lib/compensation-evidence.function
 import type { CompensationEvidenceRecord } from "@/lib/compensation-evidence.server";
 import { sar } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const marks = () => (supabase as any).from("compensation_appeal_marks");
 
 export interface CompensatedOrder {
   key: string;
@@ -140,7 +142,7 @@ export function CompensationFileScanner({
       }
     } catch { /* ignore */ }
     setHydrated(true);
-    void supabase
+    void (supabase as any)
       .from("compensation_appeal_marks")
       .select("order_number,submitted_at")
       .then(({ data, error }) => {
@@ -165,8 +167,8 @@ export function CompensationFileScanner({
       return next;
     });
     const { error } = wasDone
-      ? await supabase.from("compensation_appeal_marks").delete().eq("order_number", key)
-      : await supabase
+      ? await marks().delete().eq("order_number", key)
+      : await (marks() as any)
           .from("compensation_appeal_marks")
           .upsert({ order_number: key, submitted_at: stamp }, { onConflict: "user_id,order_number" });
     if (error) {
