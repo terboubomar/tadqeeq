@@ -649,3 +649,74 @@ export async function listCompensationCasesOnServer(): Promise<CompensationCaseR
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapCase);
 }
+
+export interface EvidenceMediaLinks {
+  kind: "image" | "video";
+  previewUrl: string;
+  downloadUrl: string;
+}
+
+export async function getEvidenceMediaOnServer(
+  evidenceId: string,
+): Promise<EvidenceMediaLinks> {
+  const { client, userId } = await requireServerUser();
+  const { data: row, error } = await client
+    .from("telegram_order_evidence")
+    .select("id, order_number, telegram_file_id")
+    .eq("id", evidenceId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!row) throw new Error("الدليل غير موجود.");
+
+  const folder = `${userId}/media`;
+  const findStored = async () => {
+    const { data } = await client.storage
+      .from(THUMBNAIL_BUCKET)
+      .list(folder, { search: row.id, limit: 5 });
+    return data?.find((item) => item.name.startsWith(row.id)) ?? null;
+  };
+
+  let stored = await findStored();
+  if (!stored) {
+    // Older evidence: fetch the original from Telegram once and archive it.
+    const token = process.env["TELEGRAM_BOT_TOKEN"]?.trim();
+    if (!token) throw new Error("إعدادات Telegram غير مكتملة.");
+    const info = await fetch(`https://api.telegram.org/bot${token}/getFile`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ file_id: row.telegram_file_id }),
+    }).then((r) => r.json() as Promise<{ ok?: boolean; result?: { file_path?: string } }>);
+    const filePath = info.result?.file_path;
+    if (!info.ok || !filePath) {
+      throw new Error("تعذّر جلب الملف من Telegram (الحد الأقصى 20 ميجابايت).");
+    }
+    const response = await fetch(`https://api.telegram.org/file/bot${token}/${filePath}`);
+    if (!response.ok) throw new Error("تعذّر تنزيل الملف من Telegram.");
+    const bytes = await response.arrayBuffer();
+    const ext = filePath.split(".").pop()?.toLowerCase() || "bin";
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { mimeFromPath } = await import("./telegram-webhook.server");
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from(THUMBNAIL_BUCKET)
+      .upload(`${folder}/${row.id}.${ext}`, bytes, {
+        contentType: mimeFromPath(filePath),
+        upsert: true,
+      });
+    if (uploadError) throw new Error("تعذّر حفظ نسخة من الدليل.");
+    stored = await findStored();
+    if (!stored) throw new Error("تعذّر تجهيز الدليل.");
+  }
+
+  const path = `${folder}/${stored.name}`;
+  const ext = stored.name.split(".").pop()?.toLowerCase() ?? "";
+  const kind = ["mp4", "mov", "webm", "mkv"].includes(ext) ? "video" : "image";
+  const [preview, download] = await Promise.all([
+    client.storage.from(THUMBNAIL_BUCKET).createSignedUrl(path, 900),
+    client.storage
+      .from(THUMBNAIL_BUCKET)
+      .createSignedUrl(path, 900, { download: `order-${row.order_number}.${ext}` }),
+  ]);
+  if (preview.error || download.error) throw new Error("تعذّر إنشاء رابط الدليل.");
+  return { kind, previewUrl: preview.data.signedUrl, downloadUrl: download.data.signedUrl };
+}

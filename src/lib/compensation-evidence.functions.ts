@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   configureTelegramWebhookOnServer,
   createTelegramBranchConnectionOnServer,
+  getEvidenceMediaOnServer,
   getTelegramIntegrationStatusOnServer,
   listCompensationCasesOnServer,
   listTelegramBranchConnectionsOnServer,
@@ -87,3 +88,7 @@ export const saveCompensationCase = createServerFn({ method: "POST" })
 export const getCompensationCases = createServerFn({ method: "POST" })
   .validator(z.object({}))
   .handler(async () => listCompensationCasesOnServer());
+
+export const getEvidenceMedia = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data }) => getEvidenceMediaOnServer(data.id));
