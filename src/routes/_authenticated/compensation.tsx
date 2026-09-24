@@ -245,7 +245,7 @@ function CompensationPage() {
         renderEvidence={(item) => (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-muted-foreground">
-              {item.branchName} · {formatTimestamp(item.createdAt)}
+              {item.branchName} · {formatTimestamp(item.capturedAt)}
             </span>
             <EvidenceActions id={item.id} />
           </div>
