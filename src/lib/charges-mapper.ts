@@ -249,6 +249,20 @@ function hungerStationLines(period: StoredPeriod): MarketplaceChargeLine[] {
   });
 
   addLine(lines, {
+    id: "hs-platform-food-discount",
+    category: "promotion",
+    label: "خصومات الطعام والمكافآت الممولة من المنصة",
+    amount: (s.hsFoodDiscount ?? 0) + (s.rewardsDiscount ?? 0),
+    scope: "outside_audit_total",
+    source: "ملف الطلبات",
+    evidence: "data",
+    fundingSource: "platform",
+    mapped: true,
+    note:
+      "تمويل منصة ظاهر في بيانات هنقرستيشن؛ يعرض منفصلاً عن تكلفة المطعم ولا يخصم من مساهمة المطعم.",
+  });
+
+  addLine(lines, {
     id: "hs-partial-refunds",
     category: "refund",
     label: "مرتجعات جزئية للعملاء",
