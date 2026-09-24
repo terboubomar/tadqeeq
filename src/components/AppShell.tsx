@@ -64,6 +64,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { periods, selected, select } = useSelectedPeriod();
+  const [openGroups, setOpenGroups] = useState<string[]>(() =>
+    NAV_GROUPS
+      .filter((group) => group.items.some((item) => item.to === pathname))
+      .map((group) => group.title),
+  );
+
+  const toggleGroup = (title: string) =>
+    setOpenGroups((prev) =>
+      prev.includes(title) ? prev.filter((t) => t !== title) : [...prev, title],
+    );
 
   const exceptionSummary = selected
     ? summarizeExceptions(buildPeriodExceptions(selected))
