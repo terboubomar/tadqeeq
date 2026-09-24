@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
+  Archive,
+  ArchiveRestore,
   CheckCircle2,
   FileText,
   History,
@@ -39,7 +41,10 @@ import {
   approveContractVersion,
   createContract,
   createContractVersion,
+  deleteContract,
   deleteContractRule,
+  setContractArchived,
+  updateContract,
   getContractRulebook,
   resolveContractTerms,
   saveContractRule,
@@ -279,7 +284,17 @@ function ContractsPage() {
 
           {selectedContract ? (
             <main className="min-w-0 space-y-5">
-              <ContractHeader contract={selectedContract} />
+              <ContractHeader
+                key={`header-${selectedContract.id}`}
+                contract={selectedContract}
+                hasApprovedVersion={versions.some((v) => v.status === "approved")}
+                onChanged={refreshRulebook}
+                onRemoved={async () => {
+                  setSelectedContractId(null);
+                  setSelectedVersionId(null);
+                  await refreshRulebook();
+                }}
+              />
               <EffectiveTermsPreview
                 key={selectedContract.id}
                 contractId={selectedContract.id}
@@ -330,6 +345,11 @@ function ContractsPage() {
           ) : null}
         </div>
       )}
+
+      <ArchivedContracts
+        contracts={data?.archivedContracts ?? []}
+        onChanged={refreshRulebook}
+      />
     </div>
   );
 }
@@ -461,38 +481,218 @@ function CreateContractPanel({
 
 function ContractHeader({
   contract,
+  hasApprovedVersion,
+  onChanged,
+  onRemoved,
 }: {
   contract: {
+    id: string;
     name: string;
     platform: ContractPlatform;
     externalReference: string | null;
     counterparty: string | null;
   };
+  hasApprovedVersion: boolean;
+  onChanged: () => Promise<void>;
+  onRemoved: () => Promise<void>;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(contract.name);
+  const [externalReference, setExternalReference] = useState(
+    contract.externalReference ?? "",
+  );
+  const [counterparty, setCounterparty] = useState(contract.counterparty ?? "");
+
+  function startEdit() {
+    setName(contract.name);
+    setExternalReference(contract.externalReference ?? "");
+    setCounterparty(contract.counterparty ?? "");
+    setEditing(true);
+  }
+
+  const save = useMutation({
+    mutationFn: () =>
+      updateContract({
+        data: {
+          contractId: contract.id,
+          name,
+          externalReference: externalReference || null,
+          counterparty: counterparty || null,
+        },
+      }),
+    onSuccess: async () => {
+      toast.success("تم تعديل العقد");
+      setEditing(false);
+      await onChanged();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const archive = useMutation({
+    mutationFn: () =>
+      setContractArchived({ data: { contractId: contract.id, archived: true } }),
+    onSuccess: async () => {
+      toast.success("تمت أرشفة العقد");
+      await onRemoved();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: () => deleteContract({ data: { contractId: contract.id } }),
+    onSuccess: async () => {
+      toast.success("تم حذف العقد");
+      await onRemoved();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const busy = save.isPending || archive.isPending || remove.isPending;
+
   return (
     <section className="rounded-[12px] border border-border bg-white p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-bold">{contract.name}</h2>
-            <Badge variant="secondary">
-              {PLATFORM_LABELS[contract.platform]}
-            </Badge>
+      {editing ? (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!name.trim()) {
+              toast.error("اسم العقد مطلوب");
+              return;
+            }
+            save.mutate();
+          }}
+          className="grid gap-4 md:grid-cols-3"
+        >
+          <Field label="اسم العقد">
+            <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={160} />
+          </Field>
+          <Field label="مرجع العقد" hint="اختياري">
+            <Input
+              value={externalReference}
+              onChange={(e) => setExternalReference(e.target.value)}
+              maxLength={160}
+            />
+          </Field>
+          <Field label="الطرف المقابل" hint="اختياري">
+            <Input
+              value={counterparty}
+              onChange={(e) => setCounterparty(e.target.value)}
+              maxLength={160}
+            />
+          </Field>
+          <div className="flex gap-2 md:col-span-3">
+            <Button type="submit" size="sm" disabled={busy}>
+              <Save className="size-3.5" />
+              حفظ التعديل
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setEditing(false)}>
+              إلغاء
+            </Button>
           </div>
-          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
-            {contract.externalReference ? (
-              <span className="num">المرجع: {contract.externalReference}</span>
-            ) : null}
-            {contract.counterparty ? (
-              <span>الطرف المقابل: {contract.counterparty}</span>
-            ) : null}
+        </form>
+      ) : (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-bold">{contract.name}</h2>
+              <Badge variant="secondary">{PLATFORM_LABELS[contract.platform]}</Badge>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+              {contract.externalReference ? (
+                <span className="num">المرجع: {contract.externalReference}</span>
+              ) : null}
+              {contract.counterparty ? (
+                <span>الطرف المقابل: {contract.counterparty}</span>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={startEdit} disabled={busy}>
+              <Pencil className="size-3.5" />
+              تعديل
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => {
+                if (window.confirm("أرشفة هذا العقد؟ يمكنك استعادته لاحقاً.")) archive.mutate();
+              }}
+            >
+              <Archive className="size-3.5" />
+              أرشفة
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              disabled={busy || hasApprovedVersion}
+              title={hasApprovedVersion ? "العقد فيه نسخة معتمدة — استخدم الأرشفة" : undefined}
+              onClick={() => {
+                if (window.confirm("حذف العقد نهائياً مع نسخه وبنوده ومستنداته؟")) remove.mutate();
+              }}
+            >
+              <Trash2 className="size-3.5" />
+              حذف
+            </Button>
           </div>
         </div>
-        <div className="rounded-[8px] border border-border bg-surface-raised px-3 py-2 text-xs text-muted-foreground">
-          لا تُستخدم هذه الشروط في الحسابات إلا بعد اعتماد النسخة وربطها بطبقة
-          المطابقة.
+      )}
+    </section>
+  );
+}
+
+function ArchivedContracts({
+  contracts,
+  onChanged,
+}: {
+  contracts: { id: string; name: string; platform: ContractPlatform }[];
+  onChanged: () => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const restore = useMutation({
+    mutationFn: (contractId: string) =>
+      setContractArchived({ data: { contractId, archived: false } }),
+    onSuccess: async () => {
+      toast.success("تمت استعادة العقد");
+      await onChanged();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  if (contracts.length === 0) return null;
+  return (
+    <section className="rounded-[12px] border border-border bg-white">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-5 py-3 text-sm font-semibold"
+      >
+        <span>العقود المؤرشفة ({contracts.length})</span>
+        <span className="text-xs text-muted-foreground">{open ? "إخفاء" : "عرض"}</span>
+      </button>
+      {open ? (
+        <div className="divide-y divide-border/70 border-t border-border">
+          {contracts.map((contract) => (
+            <div key={contract.id} className="flex items-center justify-between gap-3 px-5 py-3">
+              <div>
+                <p className="text-sm">{contract.name}</p>
+                <p className="text-xs text-muted-foreground">{PLATFORM_LABELS[contract.platform]}</p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={restore.isPending}
+                onClick={() => restore.mutate(contract.id)}
+              >
+                <ArchiveRestore className="size-3.5" />
+                استعادة
+              </Button>
+            </div>
+          ))}
         </div>
-      </div>
+      ) : null}
     </section>
   );
 }
