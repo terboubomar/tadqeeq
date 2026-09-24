@@ -359,7 +359,95 @@ export async function listContractRulebookOnServer(): Promise<ContractRulebookSn
     }),
   );
 
-  return { contracts, versions, rules, documents, events };
+  return { contracts, archivedContracts, versions, rules, documents, events };
+}
+
+export async function updateContractOnServer(input: {
+  contractId: string;
+  name: string;
+  externalReference?: string | null;
+  counterparty?: string | null;
+}): Promise<{ ok: true }> {
+  const { client, userId } = await requireServerUser();
+  await assertOwnedContract(client, userId, input.contractId);
+  const name = input.name.trim();
+  if (!name) throw new Error("اسم العقد مطلوب.");
+  const { error } = await client
+    .from("platform_contracts")
+    .update({
+      name,
+      external_reference: textOrNull(input.externalReference),
+      counterparty: textOrNull(input.counterparty),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.contractId)
+    .eq("user_id", userId);
+  if (error) throw explainDatabaseError(error, "تعذّر تعديل العقد.");
+  return { ok: true };
+}
+
+export async function setContractArchivedOnServer(input: {
+  contractId: string;
+  archived: boolean;
+}): Promise<{ ok: true }> {
+  const { client, userId } = await requireServerUser();
+  const { error } = await client
+    .from("platform_contracts")
+    .update({
+      archived_at: input.archived ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.contractId)
+    .eq("user_id", userId);
+  if (error) {
+    throw explainDatabaseError(
+      error,
+      input.archived ? "تعذّر أرشفة العقد." : "تعذّر استعادة العقد.",
+    );
+  }
+  return { ok: true };
+}
+
+export async function deleteContractOnServer(input: {
+  contractId: string;
+}): Promise<{ ok: true }> {
+  const { client, userId } = await requireServerUser();
+  const { data: versions, error: versionsError } = await client
+    .from("contract_versions")
+    .select("id, status")
+    .eq("contract_id", input.contractId)
+    .eq("user_id", userId);
+  if (versionsError) throw explainDatabaseError(versionsError, "تعذّر حذف العقد.");
+  if ((versions ?? []).some((version) => version.status === "approved")) {
+    throw new Error("لا يمكن حذف عقد فيه نسخة معتمدة — استخدم الأرشفة بدلاً من ذلك.");
+  }
+
+  const { data: documents } = await client
+    .from("contract_documents")
+    .select("storage_path")
+    .eq("contract_id", input.contractId)
+    .eq("user_id", userId);
+  const paths = (documents ?? []).map((document) => document.storage_path);
+  if (paths.length > 0) {
+    await client.storage.from(CONTRACT_DOCUMENT_BUCKET).remove(paths);
+  }
+
+  if ((versions ?? []).length > 0) {
+    const { error } = await client
+      .from("contract_versions")
+      .delete()
+      .eq("contract_id", input.contractId)
+      .eq("user_id", userId);
+    if (error) throw explainDatabaseError(error, "تعذّر حذف نسخ العقد.");
+  }
+
+  const { error } = await client
+    .from("platform_contracts")
+    .delete()
+    .eq("id", input.contractId)
+    .eq("user_id", userId);
+  if (error) throw explainDatabaseError(error, "تعذّر حذف العقد.");
+  return { ok: true };
 }
 
 export async function createContractOnServer(

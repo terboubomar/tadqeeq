@@ -6,6 +6,9 @@ import {
   createContractOnServer,
   createContractVersionOnServer,
   deleteContractRuleOnServer,
+  deleteContractOnServer,
+  setContractArchivedOnServer,
+  updateContractOnServer,
   listContractRulebookOnServer,
   resolveContractTermsOnServer,
   saveContractRuleOnServer,
@@ -99,6 +102,26 @@ export const deleteContractRule = createServerFn({ method: "POST" })
 export const approveContractVersion = createServerFn({ method: "POST" })
   .validator(versionIdentitySchema)
   .handler(async ({ data }) => approveContractVersionOnServer(data));
+
+export const updateContract = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      contractId: uuid,
+      name: z.string().trim().min(1).max(160),
+      externalReference: z.string().max(160).nullish(),
+      counterparty: z.string().max(160).nullish(),
+    }),
+  )
+  .handler(async ({ data }) => updateContractOnServer(data));
+
+export const setContractArchived = createServerFn({ method: "POST" })
+  .validator(z.object({ contractId: uuid, archived: z.boolean() }))
+  .handler(async ({ data }) => setContractArchivedOnServer(data));
+
+export const deleteContract = createServerFn({ method: "POST" })
+  .validator(z.object({ contractId: uuid }))
+  .handler(async ({ data }) => deleteContractOnServer(data));
+
 
 
 export const uploadContractDocument = createServerFn({ method: "POST" })

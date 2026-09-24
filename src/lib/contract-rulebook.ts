@@ -82,6 +82,7 @@ export interface ContractRecord {
   externalReference: string | null;
   counterparty: string | null;
   createdAt: string;
+  archivedAt?: string | null;
 }
 
 export interface ContractVersionRecord {
@@ -134,6 +135,7 @@ export interface ContractRuleEventRecord {
 
 export interface ContractRulebookSnapshot {
   contracts: ContractRecord[];
+  archivedContracts: ContractRecord[];
   versions: ContractVersionRecord[];
   rules: ContractRuleRecord[];
   documents: ContractDocumentRecord[];
