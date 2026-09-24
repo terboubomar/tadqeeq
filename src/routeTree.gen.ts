@@ -131,6 +131,7 @@ export interface FileRoutesByTo {
   '/ask': typeof AuthenticatedAskRoute
   '/branches': typeof AuthenticatedBranchesRoute
   '/breakdown': typeof AuthenticatedBreakdownRoute
+  '/charges': typeof AuthenticatedChargesRoute
   '/contracts': typeof AuthenticatedContractsRoute
   '/daily': typeof AuthenticatedDailyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -185,6 +186,7 @@ export interface FileRouteTypes {
     | '/ask'
     | '/branches'
     | '/breakdown'
+    | '/charges'
     | '/contracts'
     | '/daily'
     | '/dashboard'
