@@ -146,6 +146,7 @@ export interface FileRoutesByTo {
   '/history': typeof AuthenticatedHistoryRoute
   '/import': typeof AuthenticatedImportRoute
   '/invoice-check': typeof AuthenticatedInvoiceCheckRoute
+  '/promotions': typeof AuthenticatedPromotionsRoute
   '/recovery': typeof AuthenticatedRecoveryRoute
 }
 export interface FileRoutesById {
@@ -203,6 +204,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/import'
     | '/invoice-check'
+    | '/promotions'
     | '/recovery'
   id:
     | '__root__'
