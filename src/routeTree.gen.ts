@@ -27,7 +27,7 @@ import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedInvoiceCheckRouteImport } from './routes/_authenticated/invoice-check'
 import { Route as AuthenticatedPromotionsRouteImport } from './routes/_authenticated/promotions'
 import { Route as AuthenticatedRecoveryRouteImport } from './routes/_authenticated/recovery'
-import { Route as ApiTelegramWebhookRouteImport } from './routes/api/telegram-webhook'
+import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -120,11 +120,12 @@ const AuthenticatedRecoveryRoute = AuthenticatedRecoveryRouteImport.update({
   path: '/recovery',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiTelegramWebhookRoute = ApiTelegramWebhookRouteImport.update({
-  id: '/api/telegram-webhook',
-  path: '/api/telegram-webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const ApiPublicTelegramWebhookRoute =
+  ApiPublicTelegramWebhookRouteImport.update({
+    id: '/api/public/telegram-webhook',
+    path: '/api/public/telegram-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -144,7 +145,7 @@ export interface FileRoutesByFullPath {
   '/invoice-check': typeof AuthenticatedInvoiceCheckRoute
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/recovery': typeof AuthenticatedRecoveryRoute
-  '/api/telegram-webhook': typeof ApiTelegramWebhookRoute
+  '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -164,7 +165,7 @@ export interface FileRoutesByTo {
   '/invoice-check': typeof AuthenticatedInvoiceCheckRoute
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/recovery': typeof AuthenticatedRecoveryRoute
-  '/api/telegram-webhook': typeof ApiTelegramWebhookRoute
+  '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -186,7 +187,7 @@ export interface FileRoutesById {
   '/_authenticated/invoice-check': typeof AuthenticatedInvoiceCheckRoute
   '/_authenticated/promotions': typeof AuthenticatedPromotionsRoute
   '/_authenticated/recovery': typeof AuthenticatedRecoveryRoute
-  '/api/telegram-webhook': typeof ApiTelegramWebhookRoute
+  '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -208,7 +209,7 @@ export interface FileRouteTypes {
     | '/invoice-check'
     | '/promotions'
     | '/recovery'
-    | '/api/telegram-webhook'
+    | '/api/public/telegram-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -228,7 +229,7 @@ export interface FileRouteTypes {
     | '/invoice-check'
     | '/promotions'
     | '/recovery'
-    | '/api/telegram-webhook'
+    | '/api/public/telegram-webhook'
   id:
     | '__root__'
     | '/'
@@ -249,14 +250,14 @@ export interface FileRouteTypes {
     | '/_authenticated/invoice-check'
     | '/_authenticated/promotions'
     | '/_authenticated/recovery'
-    | '/api/telegram-webhook'
+    | '/api/public/telegram-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
-  ApiTelegramWebhookRoute: typeof ApiTelegramWebhookRoute
+  ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -387,11 +388,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRecoveryRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/telegram-webhook': {
-      id: '/api/telegram-webhook'
-      path: '/api/telegram-webhook'
-      fullPath: '/api/telegram-webhook'
-      preLoaderRoute: typeof ApiTelegramWebhookRouteImport
+    '/api/public/telegram-webhook': {
+      id: '/api/public/telegram-webhook'
+      path: '/api/public/telegram-webhook'
+      fullPath: '/api/public/telegram-webhook'
+      preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -440,7 +441,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
-  ApiTelegramWebhookRoute: ApiTelegramWebhookRoute,
+  ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
