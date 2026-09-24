@@ -106,10 +106,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <div className="flex min-h-screen">
-        <aside
+        <div
           data-noprint
-          className="sticky top-0 hidden h-screen w-[246px] shrink-0 overflow-y-auto border-s border-border bg-white px-3.5 pb-4 pt-5 min-[881px]:block"
+          className={cn(
+            "sticky top-0 hidden h-screen shrink-0 overflow-hidden transition-[width] duration-200 ease-out min-[881px]:block",
+            sidebarHidden ? "w-0" : "w-[246px]",
+          )}
         >
+          <aside className="h-full w-[246px] overflow-y-auto border-s border-border bg-white px-3.5 pb-4 pt-5">
           <div className="flex min-h-full flex-col">
             <Link
               to="/dashboard"
