@@ -25,6 +25,10 @@ const caseStatus = z.enum([
   "closed",
 ]);
 
+export const getBranchNameOptions = createServerFn({ method: "POST" })
+  .validator(z.object({}))
+  .handler(async () => listBranchNameOptionsOnServer());
+
 export const getTelegramBranchConnections = createServerFn({ method: "POST" })
   .validator(z.object({}))
   .handler(async () => listTelegramBranchConnectionsOnServer());
