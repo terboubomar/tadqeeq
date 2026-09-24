@@ -84,7 +84,9 @@ async function sha256Text(value: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (item) => item.toString(16).padStart(2, "0")).join("");
 }
 
-function mediaFrom(message: TelegramMessage | undefined): TelegramMedia | null {
+export function mediaFrom(
+  message: TelegramMessage | undefined,
+): TelegramMedia | null {
   if (!message) return null;
 
   if (message.photo?.length) {
