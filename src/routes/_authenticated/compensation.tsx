@@ -17,6 +17,7 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { CompensationFileScanner } from "@/components/CompensationFileScanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -239,6 +240,17 @@ function CompensationPage() {
           </div>
         </div>
       </section>
+
+      <CompensationFileScanner
+        renderEvidence={(item) => (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {item.branchName} · {formatTimestamp(item.createdAt)}
+            </span>
+            <EvidenceActions id={item.id} />
+          </div>
+        )}
+      />
 
       <section className="rounded-[10px] border border-border bg-white p-5">
         <div className="flex flex-wrap items-end gap-3">
