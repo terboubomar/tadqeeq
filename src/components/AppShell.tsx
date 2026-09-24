@@ -115,38 +115,55 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
 
             <nav className="pb-5">
-              {NAV_GROUPS.map((group) => (
+              {NAV_GROUPS.map((group) => {
+                const containsActive = group.items.some((item) => item.to === pathname);
+                const open = openGroups.includes(group.title) || containsActive;
+                return (
                 <div key={group.title} className="mt-[18px]">
-                  <p className="mx-1.5 mb-1.5 text-[10.5px] font-semibold tracking-[0.08em] text-muted-foreground">
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.title)}
+                    aria-expanded={open}
+                    className="mx-1.5 mb-1.5 flex w-[calc(100%-12px)] items-center justify-between rounded-[7px] px-1 py-1 text-[10.5px] font-semibold tracking-[0.08em] text-muted-foreground transition-colors hover:text-foreground"
+                  >
                     {group.title}
-                  </p>
-                  <div className="flex flex-col gap-px">
-                    {group.items.map((item) => {
-                      const active = pathname === item.to;
-                      const badge = badgeFor(item.to);
-                      return (
-                        <Link
-                          key={item.to}
-                          to={item.to}
-                          className={cn(
-                            "flex w-full items-center justify-between gap-2 rounded-[7px] border px-2.5 py-[7px] text-[13px] transition-colors",
-                            active
-                              ? "border-primary/15 bg-secondary font-semibold text-secondary-foreground"
-                              : "border-transparent text-foreground/80 hover:bg-muted",
-                          )}
-                        >
-                          <span>{item.label}</span>
-                          {badge ? (
-                            <span className="num inline-grid min-w-[18px] place-items-center rounded-full bg-destructive px-1.5 py-0.5 text-[10.5px] font-semibold text-white">
-                              {badge}
-                            </span>
-                          ) : null}
-                        </Link>
-                      );
-                    })}
-                  </div>
+                    <ChevronDown
+                      className={cn(
+                        "size-3.5 transition-transform",
+                        open ? "" : "-rotate-90",
+                      )}
+                    />
+                  </button>
+                  {open ? (
+                    <div className="flex flex-col gap-px">
+                      {group.items.map((item) => {
+                        const active = pathname === item.to;
+                        const badge = badgeFor(item.to);
+                        return (
+                          <Link
+                            key={item.to}
+                            to={item.to}
+                            className={cn(
+                              "flex w-full items-center justify-between gap-2 rounded-[7px] border px-2.5 py-[7px] text-[13px] transition-colors",
+                              active
+                                ? "border-primary/15 bg-secondary font-semibold text-secondary-foreground"
+                                : "border-transparent text-foreground/80 hover:bg-muted",
+                            )}
+                          >
+                            <span>{item.label}</span>
+                            {badge ? (
+                              <span className="num inline-grid min-w-[18px] place-items-center rounded-full bg-destructive px-1.5 py-0.5 text-[10.5px] font-semibold text-white">
+                                {badge}
+                              </span>
+                            ) : null}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
-              ))}
+                );
+              })}
             </nav>
 
             <div className="mt-auto border-t border-border/80 px-2 pt-3">
