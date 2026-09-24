@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ChevronDown, LogOut, Upload } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, LogOut, PanelRightClose, PanelRightOpen, Upload } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { AskTadqeeqWidget } from "@/components/AskTadqeeqWidget";
