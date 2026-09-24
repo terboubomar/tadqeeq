@@ -1,6 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
-import { FileSpreadsheet, Loader2, Search, Upload, X } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { CheckCircle2, FileSpreadsheet, RotateCcw, Loader2, Search, Upload, X } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+
+const STORE_KEY = "tadqeeq-compensation-scan-v1";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 
@@ -120,6 +122,35 @@ export function CompensationFileScanner({
   const [fileNames, setFileNames] = useState<string[]>([]);
   const [evidence, setEvidence] = useState<Record<string, CompensationEvidenceRecord[]>>({});
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
+  const [done, setDone] = useState<Record<string, string>>({});
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORE_KEY) ?? "null");
+      if (saved) {
+        setOrders(saved.orders ?? null);
+        setFileNames(saved.fileNames ?? []);
+        setDone(saved.done ?? {});
+      }
+    } catch { /* ignore */ }
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!orders) localStorage.removeItem(STORE_KEY);
+    else localStorage.setItem(STORE_KEY, JSON.stringify({ orders, fileNames, done }));
+  }, [orders, fileNames, done, hydrated]);
+
+  function toggleDone(key: string) {
+    setDone((prev) => {
+      const next = { ...prev };
+      if (next[key]) delete next[key];
+      else next[key] = new Date().toISOString();
+      return next;
+    });
+  }
 
   const lookup = useMutation({
     mutationFn: (order: CompensatedOrder) =>
@@ -143,6 +174,7 @@ export function CompensationFileScanner({
       setOrders(all);
       setFileNames(Array.from(files).map((f) => f.name));
       setEvidence({});
+      setDone({});
       if (all.length === 0) toast.info("لم يتم العثور على طلبات فيها تعويض في الملف");
     } catch {
       toast.error("تعذّر قراءة الملف. استخدم ملف Excel أو CSV.");
@@ -162,7 +194,7 @@ export function CompensationFileScanner({
         </div>
         <div className="flex gap-2">
           {orders ? (
-            <Button variant="outline" size="sm" onClick={() => { setOrders(null); setFileNames([]); }}>
+            <Button variant="outline" size="sm" onClick={() => { if (window.confirm("مسح القائمة وحالات الإنجاز؟")) { setOrders(null); setFileNames([]); setDone({}); } }}>
               <X className="size-4" /> مسح
             </Button>
           ) : null}
@@ -196,10 +228,11 @@ export function CompensationFileScanner({
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             <span>{fileNames.join("، ")}</span>
             <span>عدد الطلبات: <b className="text-foreground">{orders.length}</b></span>
+            <span>تم تقديم الاعتراض: <b className="text-foreground">{orders.filter((o) => done[o.key]).length} / {orders.length}</b></span>
             <span>إجمالي التعويض: <b className="text-foreground">{sar(total)}</b></span>
           </div>
           <div className="max-h-[520px] overflow-auto rounded-[8px] border border-border">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[820px] text-sm">
               <thead className="sticky top-0 bg-muted text-muted-foreground">
                 <tr>
                   <th className="p-2 text-right font-medium">رقم الطلب</th>
@@ -207,13 +240,14 @@ export function CompensationFileScanner({
                   <th className="p-2 text-right font-medium">النوع</th>
                   <th className="p-2 text-left font-medium">المبلغ</th>
                   <th className="p-2 text-right font-medium">الدليل</th>
+                  <th className="p-2 text-right font-medium">الحالة</th>
                 </tr>
               </thead>
               <tbody>
                 {orders.map((order) => {
                   const items = evidence[order.key];
                   return (
-                    <tr key={order.key} className="border-t border-border align-top">
+                    <tr key={order.key} className={`border-t border-border align-top ${done[order.key] ? "bg-muted/50 text-muted-foreground" : ""}`}>
                       <td className="p-2 font-mono tabular-nums">{order.orderNumber}</td>
                       <td className="p-2">{order.branch || "—"}</td>
                       <td className="p-2 text-muted-foreground">{order.reason}</td>
@@ -230,6 +264,18 @@ export function CompensationFileScanner({
                           >
                             {loadingKey === order.key ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
                             {items ? "لا يوجد — إعادة" : "جلب الدليل"}
+                          </Button>
+                        )}
+                      </td>
+                      <td className="p-2">
+                        {done[order.key] ? (
+                          <Button size="sm" variant="ghost" onClick={() => toggleDone(order.key)} title="إلغاء">
+                            <CheckCircle2 className="size-4 text-primary" /> تم تقديم الاعتراض
+                            <RotateCcw className="size-3 opacity-60" />
+                          </Button>
+                        ) : (
+                          <Button size="sm" onClick={() => toggleDone(order.key)}>
+                            <CheckCircle2 className="size-4" /> تم — قُدّم الاعتراض
                           </Button>
                         )}
                       </td>
