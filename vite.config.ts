@@ -22,6 +22,21 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    resolve: {
+      // Keep every renderer and router import on the same React/context instance.
+      // This is explicit because stale Vite optimizer graphs can otherwise retain
+      // a second copy after TanStack package upgrades.
+      dedupe: ["react", "react-dom", "@tanstack/react-router"],
+    },
+    optimizeDeps: {
+      include: [
+        "react",
+        "react-dom",
+        "react/jsx-runtime",
+        "react/jsx-dev-runtime",
+        "@tanstack/react-router",
+      ],
+    },
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(supabaseUrl),
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(supabaseKey),
