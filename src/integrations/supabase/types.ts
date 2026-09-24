@@ -563,6 +563,203 @@ export type Database = {
         }
         Relationships: []
       }
+      compensation_cases: {
+        Row: {
+          aggregator_case_reference: string | null
+          audit_context: Json
+          branch_name: string | null
+          compensation_amount: number
+          compensation_reason: string
+          created_at: string
+          draft_ar: string
+          draft_en: string
+          employee_explanation: string
+          evidence_id: string | null
+          id: string
+          order_number: string
+          period_id: string | null
+          platform: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aggregator_case_reference?: string | null
+          audit_context?: Json
+          branch_name?: string | null
+          compensation_amount?: number
+          compensation_reason: string
+          created_at?: string
+          draft_ar: string
+          draft_en: string
+          employee_explanation: string
+          evidence_id?: string | null
+          id?: string
+          order_number: string
+          period_id?: string | null
+          platform: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aggregator_case_reference?: string | null
+          audit_context?: Json
+          branch_name?: string | null
+          compensation_amount?: number
+          compensation_reason?: string
+          created_at?: string
+          draft_ar?: string
+          draft_en?: string
+          employee_explanation?: string
+          evidence_id?: string | null
+          id?: string
+          order_number?: string
+          period_id?: string | null
+          platform?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compensation_cases_evidence_owner_fkey"
+            columns: ["evidence_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_order_evidence"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "compensation_cases_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telegram_branch_chats: {
+        Row: {
+          active: boolean
+          branch_key: string
+          branch_name: string
+          connect_code_expires_at: string | null
+          connect_code_hash: string | null
+          connected_at: string | null
+          created_at: string
+          id: string
+          last_message_at: string | null
+          telegram_chat_id: number | null
+          telegram_chat_title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          branch_key: string
+          branch_name: string
+          connect_code_expires_at?: string | null
+          connect_code_hash?: string | null
+          connected_at?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          telegram_chat_id?: number | null
+          telegram_chat_title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          branch_key?: string
+          branch_name?: string
+          connect_code_expires_at?: string | null
+          connect_code_hash?: string | null
+          connected_at?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          telegram_chat_id?: number | null
+          telegram_chat_title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      telegram_order_evidence: {
+        Row: {
+          branch_chat_id: string
+          caption: string | null
+          captured_at: string
+          created_at: string
+          duration_seconds: number | null
+          file_size_bytes: number | null
+          id: string
+          media_type: string
+          order_lookup_key: string
+          order_number: string
+          sender_name: string | null
+          sender_telegram_id: number | null
+          telegram_chat_id: number
+          telegram_file_id: string
+          telegram_file_unique_id: string
+          telegram_message_id: number
+          thumbnail_file_id: string | null
+          thumbnail_storage_path: string | null
+          user_id: string
+        }
+        Insert: {
+          branch_chat_id: string
+          caption?: string | null
+          captured_at: string
+          created_at?: string
+          duration_seconds?: number | null
+          file_size_bytes?: number | null
+          id?: string
+          media_type: string
+          order_lookup_key: string
+          order_number: string
+          sender_name?: string | null
+          sender_telegram_id?: number | null
+          telegram_chat_id: number
+          telegram_file_id: string
+          telegram_file_unique_id: string
+          telegram_message_id: number
+          thumbnail_file_id?: string | null
+          thumbnail_storage_path?: string | null
+          user_id: string
+        }
+        Update: {
+          branch_chat_id?: string
+          caption?: string | null
+          captured_at?: string
+          created_at?: string
+          duration_seconds?: number | null
+          file_size_bytes?: number | null
+          id?: string
+          media_type?: string
+          order_lookup_key?: string
+          order_number?: string
+          sender_name?: string | null
+          sender_telegram_id?: number | null
+          telegram_chat_id?: number
+          telegram_file_id?: string
+          telegram_file_unique_id?: string
+          telegram_message_id?: number
+          thumbnail_file_id?: string | null
+          thumbnail_storage_path?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_order_evidence_branch_owner_fkey"
+            columns: ["branch_chat_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_branch_chats"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       promotion_audits: {
         Row: {
           advertising_spend: number
