@@ -351,21 +351,22 @@ function CompensationPage() {
           <ol className="mt-5 space-y-4 text-sm">
             <Instruction number="1">
               أضف البوت كـ Admin في قروب الفرع الخاص، أو عطّل Group Privacy من
-              BotFather وأعد إضافة البوت؛ وإلا لن تصل فيديوهات الكاشير العادية.
+              BotFather وأعد إضافة البوت؛ وإلا لن تصل رسائل الكاشير العادية.
             </Instruction>
             <Instruction number="2">
-              يسجل فيديو الطلب قبل التسليم أو الإغلاق حسب الإجراء التشغيلي
-              المعتمد.
+              يسجل فيديو أو صورة الطلب قبل التسليم أو الإغلاق حسب الإجراء
+              التشغيلي المعتمد.
             </Instruction>
             <Instruction number="3">
-              يرسل الفيديو في قروب Telegram الخاص بالفرع ويكتب رقم الطلب في
-              Caption.
+              يرسل الفيديو أو الصورة في قروب Telegram الخاص بالفرع ويكتب رقم
+              الطلب في Caption.
             </Instruction>
             <Instruction number="4">
-              إذا نسي Caption، يرد على نفس الفيديو برقم الطلب فقط.
+              إذا نسي Caption، يرد على نفس الفيديو أو الصورة برقم الطلب فقط.
             </Instruction>
             <Instruction number="5">
-              Tadqeeq يحفظ مرجع الفيديو وThumbnail خاص ويربطه بالطلب تلقائياً.
+              Tadqeeq يحفظ مرجع الفيديو أو الصورة وThumbnail خاص ويربطه بالطلب
+              تلقائياً.
             </Instruction>
           </ol>
 
@@ -454,7 +455,7 @@ function CompensationPage() {
                           className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary"
                         >
                           <Video className="size-3.5" />
-                          فتح الفيديو في Telegram
+                          فتح الدليل في Telegram
                         </a>
                       ) : null}
                     </div>

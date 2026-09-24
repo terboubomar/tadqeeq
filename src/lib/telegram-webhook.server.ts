@@ -23,6 +23,8 @@ interface TelegramChat {
 interface TelegramPhotoSize {
   file_id: string;
   file_unique_id: string;
+  width?: number;
+  height?: number;
   file_size?: number;
 }
 
@@ -49,6 +51,7 @@ interface TelegramMessage {
   from?: TelegramUser;
   text?: string;
   caption?: string;
+  photo?: TelegramPhotoSize[];
   video?: TelegramVideo;
   document?: TelegramDocument;
   reply_to_message?: TelegramMessage;
@@ -67,7 +70,7 @@ interface TelegramMedia {
   thumbnailFileId: string | null;
   durationSeconds: number | null;
   fileSizeBytes: number | null;
-  mediaType: "video" | "video_document";
+  mediaType: "video" | "video_document" | "photo" | "image_document";
 }
 
 function requiredEnv(name: "TELEGRAM_BOT_TOKEN" | "TELEGRAM_WEBHOOK_SECRET"): string {
@@ -81,8 +84,27 @@ async function sha256Text(value: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (item) => item.toString(16).padStart(2, "0")).join("");
 }
 
-function mediaFrom(message: TelegramMessage | undefined): TelegramMedia | null {
+export function mediaFrom(
+  message: TelegramMessage | undefined,
+): TelegramMedia | null {
   if (!message) return null;
+
+  if (message.photo?.length) {
+    const sizes = [...message.photo].sort((a, b) => (b.width ?? 0) - (a.width ?? 0));
+    const largest = sizes[0];
+    if (largest) {
+      const thumbnail = sizes.find((size) => size.file_id !== largest.file_id) ?? null;
+      return {
+        fileId: largest.file_id,
+        fileUniqueId: largest.file_unique_id,
+        thumbnailFileId: thumbnail?.file_id ?? null,
+        durationSeconds: null,
+        fileSizeBytes: largest.file_size ?? null,
+        mediaType: "photo",
+      };
+    }
+  }
+
   if (message.video) {
     return {
       fileId: message.video.file_id,
@@ -94,14 +116,26 @@ function mediaFrom(message: TelegramMessage | undefined): TelegramMedia | null {
     };
   }
 
-  if (message.document?.mime_type?.toLowerCase().startsWith("video/")) {
+  const mimeType = message.document?.mime_type?.toLowerCase() ?? "";
+  if (mimeType.startsWith("video/")) {
     return {
-      fileId: message.document.file_id,
-      fileUniqueId: message.document.file_unique_id,
-      thumbnailFileId: message.document.thumbnail?.file_id ?? null,
+      fileId: message.document!.file_id,
+      fileUniqueId: message.document!.file_unique_id,
+      thumbnailFileId: message.document!.thumbnail?.file_id ?? null,
       durationSeconds: null,
-      fileSizeBytes: message.document.file_size ?? null,
+      fileSizeBytes: message.document!.file_size ?? null,
       mediaType: "video_document",
+    };
+  }
+
+  if (mimeType.startsWith("image/")) {
+    return {
+      fileId: message.document!.file_id,
+      fileUniqueId: message.document!.file_unique_id,
+      thumbnailFileId: message.document!.thumbnail?.file_id ?? null,
+      durationSeconds: null,
+      fileSizeBytes: message.document!.file_size ?? null,
+      mediaType: "image_document",
     };
   }
 
@@ -205,7 +239,7 @@ async function connectBranch(message: TelegramMessage, code: string): Promise<vo
 
   await sendMessage(
     message.chat.id,
-    `✅ تم ربط القروب بفرع ${connection.branch_name}.\n\nأرسل فيديو الطلب واكتب رقم الطلب في التعليق. وإذا نسيت الرقم، رد على الفيديو برقم الطلب.`,
+    `✅ تم ربط القروب بفرع ${connection.branch_name}.\n\nأرسل فيديو أو صورة الطلب واكتب رقم الطلب في التعليق. وإذا نسيت الرقم، رد على الدليل برقم الطلب.`,
     message.message_id,
   );
 }
@@ -278,7 +312,7 @@ async function storeEvidence(
   if (!orderNumber) {
     await sendMessage(
       incomingMessage.chat.id,
-      "أرسل رقم الطلب فقط في تعليق الفيديو، أو رد على هذا الفيديو برقم الطلب.",
+      "أرسل رقم الطلب فقط في تعليق الدليل، أو رد على هذا الدليل برقم الطلب.",
       mediaMessage.message_id,
     );
     return;

@@ -87,7 +87,7 @@ export function buildCompensationDisputeDraft(
     `إفادة الفرع: ${explanation}`,
     ...(evidenceAr
       ? [
-          `يتوفر دليل فيديو من الفرع تم تسجيله في ${evidenceAr}${sender ? ` بواسطة ${sender}` : ""}، ويمكن تقديمه للتحقق من حالة الطلب.`,
+          `يتوفر دليل (فيديو أو صورة) من الفرع تم تسجيله في ${evidenceAr}${sender ? ` بواسطة ${sender}` : ""}، ويمكن تقديمه للتحقق من حالة الطلب.`,
         ]
       : []),
     "",
