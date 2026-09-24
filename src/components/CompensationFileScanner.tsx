@@ -63,6 +63,7 @@ export function extractCompensatedOrders(buffer: ArrayBuffer, fileName: string):
       TEXT_RE.test(h) && i !== complaintReasonCol ? [i] : [],
     );
     const amountCol = header.findIndex((h) => AMOUNT_RE.test(h) && !COMP_RE.test(h));
+    const orderValueCol = header.findIndex((h) => ORDER_VALUE_RE.test(h));
     const branchCol = header.findIndex((h) => BRANCH_RE.test(h) && !ORDER_RE.test(h));
     const sheetIsComp = COMP_RE.test(sheetName);
 
