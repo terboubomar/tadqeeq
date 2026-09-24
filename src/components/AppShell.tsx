@@ -36,7 +36,6 @@ const NAV_GROUPS = [
       { to: "/promotions", label: "تحليل العروض و ROI" },
       { to: "/exceptions", label: "مركز الاستثناءات" },
       { to: "/compensation", label: "مركز التعويضات" },
-      { to: "/recovery", label: "مركز الاسترداد" },
     ],
   },
   {
