@@ -92,6 +92,9 @@ export function extractCompensatedOrders(buffer: ArrayBuffer, fileName: string):
         complaintReasonCol >= 0 ? String(row[complaintReasonCol] ?? "").trim() : "";
       const hasComplaint = ["y", "yes", "true", "1", "نعم"].includes(flag) || complaintReason !== "";
       if (amount === 0 && !hasComplaint) continue;
+      if (hasComplaint && amount === 0 && orderValueCol >= 0) {
+        amount = Math.abs(toNumber(row[orderValueCol]));
+      }
       if (hasComplaint) reasons.unshift(`شكوى: ${complaintReason || "بدون سبب"}`);
 
       const branch = branchCol >= 0 ? String(row[branchCol] ?? "").trim() : "";
