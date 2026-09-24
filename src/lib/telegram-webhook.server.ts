@@ -396,6 +396,21 @@ async function storeEvidence(
     .maybeSingle();
 
   if (duplicateError) throw new Error(duplicateError.message);
+  if (existing && incomingMessage.message_id !== mediaMessage.message_id && !detectedByAi) {
+    await supabaseAdmin
+      .from("telegram_order_evidence")
+      .update({
+        order_number: orderNumber,
+        order_lookup_key: normalizeOrderLookupKey(orderNumber),
+      })
+      .eq("id", existing.id);
+    await sendMessage(
+      incomingMessage.chat.id,
+      `✏️ تم تحديث رقم الطلب إلى ${orderNumber}.`,
+      incomingMessage.message_id,
+    );
+    return;
+  }
   if (existing) {
     await sendMessage(
       incomingMessage.chat.id,
