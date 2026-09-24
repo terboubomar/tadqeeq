@@ -24,6 +24,7 @@ const ORDER_RE = /order.?(id|no|number|code|#)|^order$|رقم.?الطلب|^ال�
 const COMP_RE = /compensat|refund|reimburs|تعويض|استرداد|مسترد/i;
 const BRANCH_RE = /branch|vendor|store|restaurant|outlet|الفرع|المطعم|المتجر/i;
 const AMOUNT_RE = /amount|value|total|المبلغ|القيمة/i;
+const ORDER_VALUE_RE = /^subtotal$|order.?(value|total)|قيمة.?الطلب|المجموع.?الفرعي/i;
 const COMPLAINT_FLAG_RE = /has.?complaint|complaint\?|يوجد.?شكوى/i;
 const COMPLAINT_REASON_RE = /complaint.?reason|سبب.?الشكوى/i;
 const TEXT_RE = /type|reason|description|category|note|remark|السبب|النوع|الوصف/i;
