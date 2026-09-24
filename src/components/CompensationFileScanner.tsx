@@ -142,11 +142,13 @@ export function CompensationFileScanner({
       }
     } catch { /* ignore */ }
     setHydrated(true);
-    void (supabase as any)
-      .from("compensation_appeal_marks")
+    void marks()
       .select("order_number,submitted_at")
-      .then(({ data, error }) => {
-        if (error) return toast.error("تعذّر تحميل حالات الاعتراض.");
+      .then(({ data, error }: { data: { order_number: string; submitted_at: string }[] | null; error: unknown }) => {
+        if (error) {
+          toast.error("تعذّر تحميل حالات الاعتراض.");
+          return;
+        }
         setDone(Object.fromEntries((data ?? []).map((r) => [r.order_number, r.submitted_at])));
       });
   }, []);
