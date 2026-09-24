@@ -13,7 +13,6 @@ import {
   Link2,
   Search,
   Send,
-  ShieldCheck,
   Video,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -196,22 +195,20 @@ function CompensationPage() {
     <div className="space-y-7">
       <header>
         <h1 className="audit-heading">مركز التعويضات</h1>
-        <p className="audit-subtitle max-w-4xl">
-          Telegram هو قناة جمع الدليل من الفروع. Tadqeeq يربط الدليل برقم الطلب،
-          يعرض بيانات التعويض المتاحة، ثم يبني صيغة اعتراض تعتمد على البيانات
-          المؤكدة وشرح الموظف.
+        <p className="audit-subtitle">
+          دليل الفروع من Telegram مربوط برقم الطلب، مع ملف اعتراض جاهز للإرسال.
         </p>
       </header>
 
-      <section className="grid gap-4 xl:grid-cols-[1.1fr_1fr]">
-        <div className="rounded-[10px] border border-border bg-white p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="font-bold">ربط Telegram</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Bot واحد لكل Tadqeeq، وقروب خاص لكل فرع.
-              </p>
-            </div>
+      <section className="grid gap-4 sm:grid-cols-3">
+        <Metric label="فروع متصلة" value={String(connectedCount)} />
+        <Metric
+          label="حالات اعتراض"
+          value={String(casesQuery.data?.length ?? 0)}
+        />
+        <div className="rounded-lg border border-border bg-white p-3">
+          <p className="text-xs text-muted-foreground">Telegram Webhook</p>
+          <div className="mt-2 flex items-center justify-between gap-2">
             <span
               className={cn(
                 "rounded-full px-2.5 py-1 text-xs font-semibold",
@@ -220,166 +217,19 @@ function CompensationPage() {
                   : "bg-warning/15 text-warning",
               )}
             >
-              {statusQuery.data?.webhookActive ? "Webhook فعال" : "غير مفعل"}
+              {statusQuery.data?.webhookActive ? "فعال" : "غير مفعل"}
             </span>
-          </div>
-
-          {statusQuery.data?.configured ? (
-            <div className="mt-4 rounded-lg border border-border bg-surface-raised p-3 text-sm">
-              <p>
-                البوت:{" "}
-                <span className="font-semibold">
-                  {statusQuery.data.botUsername
-                    ? "@" + statusQuery.data.botUsername
-                    : "مهيأ"}
-                </span>
-              </p>
-              <p className="mt-1 break-all text-xs text-muted-foreground">
-                {statusQuery.data.webhookUrl || "لا يوجد webhook مسجل حالياً"}
-              </p>
-              {!statusQuery.data.webhookActive ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  className="mt-3"
-                  disabled={webhookMutation.isPending}
-                  onClick={() => webhookMutation.mutate()}
-                >
-                  <Link2 className="size-4" />
-                  تفعيل Webhook
-                </Button>
-              ) : null}
-            </div>
-          ) : (
-            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900">
-              <p className="font-semibold">إعداد واحد مطلوب على الخادم</p>
-              <p className="mt-1">
-                أضف <code>TELEGRAM_BOT_TOKEN</code> و{" "}
-                <code>TELEGRAM_WEBHOOK_SECRET</code>. بعدها يمكن تفعيل الربط من
-                هذه الصفحة بدون كشف أي مفتاح للمستخدم.
-              </p>
-            </div>
-          )}
-
-          <div className="mt-5 border-t border-border pt-4">
-            <label className="text-xs font-semibold text-muted-foreground">
-              اسم الفرع
-            </label>
-            <div className="mt-2 flex gap-2">
-              <Input
-                value={branchName}
-                onChange={(event) => setBranchName(event.target.value)}
-                placeholder="مثال: Past Al Rakah"
-              />
+            {!statusQuery.data?.webhookActive ? (
               <Button
                 type="button"
-                disabled={!branchName.trim() || connectMutation.isPending}
-                onClick={() => connectMutation.mutate(branchName.trim())}
+                size="sm"
+                variant="outline"
+                disabled={webhookMutation.isPending}
+                onClick={() => webhookMutation.mutate()}
               >
-                إنشاء رمز
+                تفعيل
               </Button>
-            </div>
-
-            {connectionCode ? (
-              <div className="mt-3 rounded-lg border border-primary/20 bg-secondary/60 p-3">
-                <p className="text-xs text-muted-foreground">
-                  أرسل هذا الأمر داخل قروب الفرع خلال 30 دقيقة:
-                </p>
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <code className="text-base font-bold" dir="ltr">
-                    /connect {connectionCode}
-                  </code>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copy("/connect " + connectionCode)}
-                  >
-                    <Clipboard className="size-3.5" />
-                    نسخ
-                  </Button>
-                </div>
-              </div>
             ) : null}
-          </div>
-
-          <div className="mt-5 space-y-2">
-            {(connectionsQuery.data ?? []).map((connection) => (
-              <div
-                key={connection.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"
-              >
-                <div className="min-w-0">
-                  <p className="font-semibold">{connection.branchName}</p>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {connection.chatId
-                      ? connection.chatTitle || String(connection.chatId)
-                      : "بانتظار /connect"}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={activeMutation.isPending}
-                  onClick={() =>
-                    activeMutation.mutate({
-                      id: connection.id,
-                      active: !connection.active,
-                    })
-                  }
-                >
-                  {connection.active ? "إيقاف" : "تفعيل"}
-                </Button>
-              </div>
-            ))}
-            {!connectionsQuery.isLoading &&
-            (connectionsQuery.data?.length ?? 0) === 0 ? (
-              <p className="py-5 text-center text-sm text-muted-foreground">
-                لا توجد فروع مربوطة بعد.
-              </p>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="rounded-[10px] border border-border bg-white p-5">
-          <div className="flex items-center gap-3">
-            <ShieldCheck className="size-5 text-primary" />
-            <div>
-              <h2 className="font-bold">طريقة العمل في الفرع</h2>
-              <p className="text-sm text-muted-foreground">
-                لا يحتاج الكاشير إلى حساب Tadqeeq.
-              </p>
-            </div>
-          </div>
-          <ol className="mt-5 space-y-4 text-sm">
-            <Instruction number="1">
-              أضف البوت كـ Admin في قروب الفرع الخاص، أو عطّل Group Privacy من
-              BotFather وأعد إضافة البوت؛ وإلا لن تصل رسائل الكاشير العادية.
-            </Instruction>
-            <Instruction number="2">
-              يسجل فيديو أو صورة الطلب قبل التسليم أو الإغلاق حسب الإجراء
-              التشغيلي المعتمد.
-            </Instruction>
-            <Instruction number="3">
-              يرسل الفيديو أو الصورة في قروب Telegram الخاص بالفرع ويكتب رقم
-              الطلب في Caption.
-            </Instruction>
-            <Instruction number="4">
-              إذا نسي Caption، يرد على نفس الفيديو أو الصورة برقم الطلب فقط.
-            </Instruction>
-            <Instruction number="5">
-              Tadqeeq يحفظ مرجع الفيديو أو الصورة وThumbnail خاص ويربطه بالطلب
-              تلقائياً.
-            </Instruction>
-          </ol>
-
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <Metric label="فروع متصلة" value={String(connectedCount)} />
-            <Metric
-              label="حالات اعتراض"
-              value={String(casesQuery.data?.length ?? 0)}
-            />
           </div>
         </div>
       </section>
@@ -534,8 +384,7 @@ function CompensationPage() {
       <section className="rounded-[10px] border border-border bg-white p-5">
         <h2 className="font-bold">بناء ملف الاعتراض</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          الموظف يشرح الواقعة. Tadqeeq يبني الرسالة من الوقائع المختارة بدون
-          تحويل رأي الموظف إلى حقيقة مالية آلية.
+          يشرح الموظف الواقعة، ويبني Tadqeeq رسالة الاعتراض من البيانات المؤكدة.
         </p>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -647,6 +496,119 @@ function CompensationPage() {
       </section>
 
       <section className="rounded-[10px] border border-border bg-white p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-bold">ربط Telegram</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              قروب خاص لكل فرع.
+            </p>
+          </div>
+          {statusQuery.data?.botUsername ? (
+            <span className="num text-sm text-muted-foreground" dir="ltr">
+              @{statusQuery.data.botUsername}
+            </span>
+          ) : null}
+        </div>
+
+        {statusQuery.data && !statusQuery.data.configured ? (
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-sm text-amber-900">
+            مفاتيح البوت غير مضافة على الخادم بعد.
+          </p>
+        ) : null}
+
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div className="min-w-[220px] flex-1">
+            <label className="text-xs font-semibold text-muted-foreground">
+              اسم الفرع
+            </label>
+            <Input
+              className="mt-2"
+              value={branchName}
+              onChange={(event) => setBranchName(event.target.value)}
+              placeholder="مثال: Past Al Rakah"
+            />
+          </div>
+          <Button
+            type="button"
+            disabled={!branchName.trim() || connectMutation.isPending}
+            onClick={() => connectMutation.mutate(branchName.trim())}
+          >
+            إنشاء رمز
+          </Button>
+        </div>
+
+        {connectionCode ? (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-secondary/60 p-3">
+            <code className="text-base font-bold" dir="ltr">
+              /connect {connectionCode}
+            </code>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => copy("/connect " + connectionCode)}
+            >
+              <Clipboard className="size-3.5" />
+              نسخ
+            </Button>
+          </div>
+        ) : null}
+
+        {(connectionsQuery.data ?? []).length > 0 ? (
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {(connectionsQuery.data ?? []).map((connection) => (
+              <div
+                key={connection.id}
+                className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">
+                    {connection.branchName}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {connection.chatId
+                      ? connection.chatTitle || String(connection.chatId)
+                      : "بانتظار /connect"}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={activeMutation.isPending}
+                  onClick={() =>
+                    activeMutation.mutate({
+                      id: connection.id,
+                      active: !connection.active,
+                    })
+                  }
+                >
+                  {connection.active ? "إيقاف" : "تفعيل"}
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <details className="mt-4 rounded-lg border border-border bg-surface-raised px-4 py-3 text-sm">
+          <summary className="cursor-pointer font-semibold">
+            طريقة الربط
+          </summary>
+          <ol className="mt-3 list-decimal space-y-1.5 pe-5 text-muted-foreground">
+            <li>أضف البوت مشرفاً في قروب الفرع الخاص.</li>
+            <li>
+              أدخل اسم الفرع هنا واضغط «إنشاء رمز»، ثم أرسل أمر الربط داخل
+              القروب.
+            </li>
+            <li>
+              بعدها أي فيديو أو صورة يرسلها الكاشير في القروب يُربط برقم طلبه
+              تلقائياً — حتى بدون كتابة الرقم.
+            </li>
+          </ol>
+        </details>
+      </section>
+
+      <section className="rounded-[10px] border border-border bg-white p-5">
         <h2 className="font-bold">آخر حالات التعويض</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[820px] text-sm">
@@ -680,23 +642,6 @@ function CompensationPage() {
         </div>
       </section>
     </div>
-  );
-}
-
-function Instruction({
-  number,
-  children,
-}: {
-  number: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <li className="flex gap-3">
-      <span className="num grid size-7 shrink-0 place-items-center rounded-full bg-secondary font-bold">
-        {number}
-      </span>
-      <span className="pt-1">{children}</span>
-    </li>
   );
 }
 
