@@ -64,6 +64,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { periods, selected, select } = useSelectedPeriod();
+  const [sidebarHidden, setSidebarHidden] = useState(false);
+
+  useEffect(() => {
+    setSidebarHidden(window.localStorage.getItem("tadqeeq-sidebar-hidden") === "1");
+  }, []);
+
+  const toggleSidebar = () =>
+    setSidebarHidden((prev) => {
+      window.localStorage.setItem("tadqeeq-sidebar-hidden", prev ? "0" : "1");
+      return !prev;
+    });
+
   const [openGroups, setOpenGroups] = useState<string[]>(() =>
     NAV_GROUPS
       .filter((group) => group.items.some((item) => item.to === pathname))
