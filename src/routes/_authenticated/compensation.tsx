@@ -250,7 +250,7 @@ function CompensationPage() {
               <Input
                 value={orderNumber}
                 onChange={(event) => setOrderNumber(event.target.value)}
-                placeholder="اكتب رقم الطلب كما يظهر في المنصة"
+                placeholder="رقم الطلب كاملاً أو آخر 4 أرقام منه"
                 className="ps-9"
                 dir="ltr"
               />

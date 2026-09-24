@@ -447,7 +447,7 @@ function jahezMatchesForPeriod(
   const transactions = period.invoice?.jahezCompensation?.transactions ?? [];
   return transactions
     .filter((transaction: JahezCompensationTransaction) =>
-      normalizeOrderLookupKey(transaction.orderId) === lookupKey,
+      normalizeOrderLookupKey(transaction.orderId).endsWith(lookupKey),
     )
     .map((transaction) => ({
       periodId: period.id,
@@ -478,13 +478,15 @@ export async function searchCompensationEvidenceOnServer(
     throw new Error("أدخل رقم طلب صالحاً.");
   }
 
+  const suffixPattern = `%${lookupKey.replace(/[%_]/g, (char) => `\\${char}`)}`;
+
   const [{ data: evidenceRows, error: evidenceError }, { data: periodRows, error: periodError }] =
     await Promise.all([
       client
         .from("telegram_order_evidence")
         .select("*")
         .eq("user_id", userId)
-        .eq("order_lookup_key", lookupKey)
+        .like("order_lookup_key", suffixPattern)
         .order("captured_at", { ascending: false })
         .limit(25),
       client
