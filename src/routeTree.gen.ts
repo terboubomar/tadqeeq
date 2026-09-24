@@ -16,6 +16,7 @@ import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
 import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
 import { Route as AuthenticatedBranchesRouteImport } from './routes/_authenticated/branches'
 import { Route as AuthenticatedBreakdownRouteImport } from './routes/_authenticated/breakdown'
+import { Route as AuthenticatedChargesRouteImport } from './routes/_authenticated/charges'
 import { Route as AuthenticatedContractsRouteImport } from './routes/_authenticated/contracts'
 import { Route as AuthenticatedDailyRouteImport } from './routes/_authenticated/daily'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -57,6 +58,11 @@ const AuthenticatedBranchesRoute = AuthenticatedBranchesRouteImport.update({
 const AuthenticatedBreakdownRoute = AuthenticatedBreakdownRouteImport.update({
   id: '/breakdown',
   path: '/breakdown',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedChargesRoute = AuthenticatedChargesRouteImport.update({
+  id: '/charges',
+  path: '/charges',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedContractsRoute = AuthenticatedContractsRouteImport.update({
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/ask': typeof AuthenticatedAskRoute
   '/branches': typeof AuthenticatedBranchesRoute
   '/breakdown': typeof AuthenticatedBreakdownRoute
+  '/charges': typeof AuthenticatedChargesRoute
   '/contracts': typeof AuthenticatedContractsRoute
   '/daily': typeof AuthenticatedDailyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -142,6 +149,7 @@ export interface FileRoutesById {
   '/_authenticated/ask': typeof AuthenticatedAskRoute
   '/_authenticated/branches': typeof AuthenticatedBranchesRoute
   '/_authenticated/breakdown': typeof AuthenticatedBreakdownRoute
+  '/_authenticated/charges': typeof AuthenticatedChargesRoute
   '/_authenticated/contracts': typeof AuthenticatedContractsRoute
   '/_authenticated/daily': typeof AuthenticatedDailyRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -160,6 +168,7 @@ export interface FileRouteTypes {
     | '/ask'
     | '/branches'
     | '/breakdown'
+    | '/charges'
     | '/contracts'
     | '/daily'
     | '/dashboard'
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ask'
     | '/_authenticated/branches'
     | '/_authenticated/breakdown'
+    | '/_authenticated/charges'
     | '/_authenticated/contracts'
     | '/_authenticated/daily'
     | '/_authenticated/dashboard'
@@ -260,6 +270,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBreakdownRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/charges': {
+      id: '/_authenticated/charges'
+      path: '/charges'
+      fullPath: '/charges'
+      preLoaderRoute: typeof AuthenticatedChargesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/contracts': {
       id: '/_authenticated/contracts'
       path: '/contracts'
@@ -324,6 +341,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAskRoute: typeof AuthenticatedAskRoute
   AuthenticatedBranchesRoute: typeof AuthenticatedBranchesRoute
   AuthenticatedBreakdownRoute: typeof AuthenticatedBreakdownRoute
+  AuthenticatedChargesRoute: typeof AuthenticatedChargesRoute
   AuthenticatedContractsRoute: typeof AuthenticatedContractsRoute
   AuthenticatedDailyRoute: typeof AuthenticatedDailyRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -339,6 +357,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAskRoute: AuthenticatedAskRoute,
   AuthenticatedBranchesRoute: AuthenticatedBranchesRoute,
   AuthenticatedBreakdownRoute: AuthenticatedBreakdownRoute,
+  AuthenticatedChargesRoute: AuthenticatedChargesRoute,
   AuthenticatedContractsRoute: AuthenticatedContractsRoute,
   AuthenticatedDailyRoute: AuthenticatedDailyRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
