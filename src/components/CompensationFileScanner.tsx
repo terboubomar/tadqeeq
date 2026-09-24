@@ -24,6 +24,7 @@ const ORDER_RE = /order.?(id|no|number|code|#)|^order$|رقم.?الطلب|^ال�
 const COMP_RE = /compensat|refund|reimburs|تعويض|استرداد|مسترد/i;
 const BRANCH_RE = /branch|vendor|store|restaurant|outlet|الفرع|المطعم|المتجر/i;
 const AMOUNT_RE = /amount|value|total|المبلغ|القيمة/i;
+const ORDER_VALUE_RE = /^subtotal$|order.?(value|total)|قيمة.?الطلب|المجموع.?الفرعي/i;
 const COMPLAINT_FLAG_RE = /has.?complaint|complaint\?|يوجد.?شكوى/i;
 const COMPLAINT_REASON_RE = /complaint.?reason|سبب.?الشكوى/i;
 const TEXT_RE = /type|reason|description|category|note|remark|السبب|النوع|الوصف/i;
@@ -62,6 +63,7 @@ export function extractCompensatedOrders(buffer: ArrayBuffer, fileName: string):
       TEXT_RE.test(h) && i !== complaintReasonCol ? [i] : [],
     );
     const amountCol = header.findIndex((h) => AMOUNT_RE.test(h) && !COMP_RE.test(h));
+    const orderValueCol = header.findIndex((h) => ORDER_VALUE_RE.test(h));
     const branchCol = header.findIndex((h) => BRANCH_RE.test(h) && !ORDER_RE.test(h));
     const sheetIsComp = COMP_RE.test(sheetName);
 
@@ -90,6 +92,9 @@ export function extractCompensatedOrders(buffer: ArrayBuffer, fileName: string):
         complaintReasonCol >= 0 ? String(row[complaintReasonCol] ?? "").trim() : "";
       const hasComplaint = ["y", "yes", "true", "1", "نعم"].includes(flag) || complaintReason !== "";
       if (amount === 0 && !hasComplaint) continue;
+      if (hasComplaint && amount === 0 && orderValueCol >= 0) {
+        amount = Math.abs(toNumber(row[orderValueCol]));
+      }
       if (hasComplaint) reasons.unshift(`شكوى: ${complaintReason || "بدون سبب"}`);
 
       const branch = branchCol >= 0 ? String(row[branchCol] ?? "").trim() : "";
