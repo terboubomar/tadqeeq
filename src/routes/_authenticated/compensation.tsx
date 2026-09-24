@@ -465,7 +465,7 @@ function CompensationPage() {
                         </a>
                       ) : null}
                     </div>
-                  </button>
+                  </div>
                 ))}
                 {searchMutation.data.evidence.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
