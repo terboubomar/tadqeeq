@@ -22,6 +22,8 @@ const ORDER_RE = /order.?(id|no|number|code|#)|^order$|رقم.?الطلب|^ال�
 const COMP_RE = /compensat|refund|reimburs|تعويض|استرداد|مسترد/i;
 const BRANCH_RE = /branch|vendor|store|restaurant|outlet|الفرع|المطعم|المتجر/i;
 const AMOUNT_RE = /amount|value|total|المبلغ|القيمة/i;
+const COMPLAINT_FLAG_RE = /has.?complaint|complaint\?|يوجد.?شكوى/i;
+const COMPLAINT_REASON_RE = /complaint.?reason|سبب.?الشكوى/i;
 const TEXT_RE = /type|reason|description|category|note|remark|السبب|النوع|الوصف/i;
 
 function toNumber(value: unknown): number {
@@ -52,7 +54,11 @@ export function extractCompensatedOrders(buffer: ArrayBuffer, fileName: string):
     const header = rows[headerIndex]!.map((cell) => String(cell).trim());
     const orderCol = header.findIndex((h) => ORDER_RE.test(h));
     const compCols = header.flatMap((h, i) => (COMP_RE.test(h) ? [i] : []));
-    const textCols = header.flatMap((h, i) => (TEXT_RE.test(h) ? [i] : []));
+    const flagCol = header.findIndex((h) => COMPLAINT_FLAG_RE.test(h));
+    const complaintReasonCol = header.findIndex((h) => COMPLAINT_REASON_RE.test(h));
+    const textCols = header.flatMap((h, i) =>
+      TEXT_RE.test(h) && i !== complaintReasonCol ? [i] : [],
+    );
     const amountCol = header.findIndex((h) => AMOUNT_RE.test(h) && !COMP_RE.test(h));
     const branchCol = header.findIndex((h) => BRANCH_RE.test(h) && !ORDER_RE.test(h));
     const sheetIsComp = COMP_RE.test(sheetName);
@@ -77,7 +83,12 @@ export function extractCompensatedOrders(buffer: ArrayBuffer, fileName: string):
         amount = Math.abs(toNumber(row[amountCol]));
         if (textHit) reasons.push(textHit);
       }
-      if (amount === 0) continue;
+      const flag = flagCol >= 0 ? String(row[flagCol] ?? "").trim().toLowerCase() : "";
+      const complaintReason =
+        complaintReasonCol >= 0 ? String(row[complaintReasonCol] ?? "").trim() : "";
+      const hasComplaint = ["y", "yes", "true", "1", "نعم"].includes(flag) || complaintReason !== "";
+      if (amount === 0 && !hasComplaint) continue;
+      if (hasComplaint) reasons.unshift(`شكوى: ${complaintReason || "بدون سبب"}`);
 
       const branch = branchCol >= 0 ? String(row[branchCol] ?? "").trim() : "";
       const key = `${orderNumber}`;
