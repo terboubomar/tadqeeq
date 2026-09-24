@@ -7,6 +7,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   CheckCircle2,
   Clipboard,
+  Download,
+  Eye,
+  Loader2,
   Link2,
   Search,
   Send,
@@ -29,6 +32,7 @@ import {
   configureTelegramWebhook,
   createTelegramBranchConnection,
   getCompensationCases,
+  getEvidenceMedia,
   getTelegramBranchConnections,
   getTelegramIntegrationStatus,
   saveCompensationCase,
@@ -413,8 +417,9 @@ function CompensationPage() {
               <h3 className="text-sm font-bold">دليل Telegram</h3>
               <div className="mt-3 space-y-3">
                 {searchMutation.data.evidence.map((item) => (
-                  <button
-                    type="button"
+                  <div
+                    role="button"
+                    tabIndex={0}
                     key={item.id}
                     onClick={() => {
                       setSelectedEvidence(item);
@@ -446,6 +451,7 @@ function CompensationPage() {
                       <p className="mt-1 text-xs text-muted-foreground">
                         {item.senderName || "مرسل غير معروف"}
                       </p>
+                      <EvidenceActions id={item.id} />
                       {item.telegramUrl ? (
                         <a
                           href={item.telegramUrl}
@@ -808,4 +814,55 @@ function formatTimestamp(value: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function EvidenceActions({ id }: { id: string }) {
+  const [open, setOpen] = useState(false);
+  const media = useMutation({
+    mutationFn: () => getEvidenceMedia({ data: { id } }),
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const load = async () => media.data ?? (await media.mutateAsync());
+
+  return (
+    <div className="mt-2" onClick={(event) => event.stopPropagation()}>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          disabled={media.isPending}
+          onClick={async () => {
+            await load();
+            setOpen((value) => !value);
+          }}
+        >
+          {media.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Eye className="size-3.5" />}
+          {open ? "إخفاء المعاينة" : "معاينة"}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={media.isPending}
+          onClick={async () => {
+            const links = await load();
+            window.location.href = links.downloadUrl;
+          }}
+        >
+          <Download className="size-3.5" />
+          تنزيل
+        </Button>
+      </div>
+      {open && media.data ? (
+        <div className="mt-3 overflow-hidden rounded-md border border-border bg-muted">
+          {media.data.kind === "video" ? (
+            <video src={media.data.previewUrl} controls playsInline className="max-h-[60vh] w-full" />
+          ) : (
+            <img src={media.data.previewUrl} alt="معاينة الدليل" className="max-h-[60vh] w-full object-contain" />
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
 }
