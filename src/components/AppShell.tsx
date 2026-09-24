@@ -27,6 +27,7 @@ const NAV_GROUPS = [
       ...(AI_UI_ENABLED ? [{ to: "/ai", label: "Tadqeeq AI" }] : []),
       { to: "/invoice-check", label: "مطابقة الفاتورة" },
       { to: "/charges", label: "خريطة الرسوم" },
+      { to: "/promotions", label: "تحليل العروض و ROI" },
       { to: "/exceptions", label: "مركز الاستثناءات" },
       { to: "/recovery", label: "مركز الاسترداد" },
     ],
