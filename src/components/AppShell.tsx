@@ -195,13 +195,22 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             </div>
           </div>
-        </aside>
+          </aside>
+        </div>
 
         <main className="min-w-0 flex-1">
           <header
             data-noprint
             className="sticky top-0 z-20 flex flex-wrap items-center gap-2.5 border-b border-border bg-background/90 px-4 py-2.5 backdrop-blur-md sm:px-5"
           >
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              aria-label={sidebarHidden ? "إظهار القائمة الجانبية" : "إخفاء القائمة الجانبية"}
+              className="hidden size-8 shrink-0 place-items-center rounded-[7px] border border-input bg-white text-foreground/80 transition-colors hover:bg-muted min-[881px]:grid"
+            >
+              {sidebarHidden ? <PanelRightOpen className="size-4" /> : <PanelRightClose className="size-4" />}
+            </button>
             {selected ? (
               <>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
