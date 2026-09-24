@@ -240,7 +240,7 @@ async function connectBranch(message: TelegramMessage, code: string): Promise<vo
 
   await sendMessage(
     message.chat.id,
-    `✅ تم ربط القروب بفرع ${connection.branch_name}.\n\nأرسل فيديو أو صورة الطلب واكتب رقم الطلب في التعليق. وإذا نسيت الرقم، رد على الدليل برقم الطلب.`,
+    `✅ تم ربط القروب بفرع ${connection.branch_name}.\n\nأرسل فيديو أو صورة الطلب فقط — سيقرأ Tadqeeq AI رقم الطلب تلقائياً من الفاتورة أو الملصق.`,
     message.message_id,
   );
 }
