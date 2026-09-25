@@ -82,27 +82,45 @@ const versionIdentitySchema = z.object({
 
 export const getContractRulebook = createServerFn({ method: "POST" })
   .validator(z.object({}))
-  .handler(async () => {\n    await requireWorkspacePermission("contracts.read");\n    return listContractRulebookOnServer();\n  });
+  .handler(async () => {
+    await requireWorkspacePermission("contracts.read");
+    return listContractRulebookOnServer();
+  });
 
 export const createContract = createServerFn({ method: "POST" })
   .validator(contractSchema)
-  .handler(async ({ data }) => {\n    await requireWorkspacePermission("contracts.manage");\n    return createContractOnServer(data);\n  });
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("contracts.manage");
+    return createContractOnServer(data);
+  });
 
 export const createContractVersion = createServerFn({ method: "POST" })
   .validator(versionSchema)
-  .handler(async ({ data }) => {\n    await requireWorkspacePermission("contracts.manage");\n    return createContractVersionOnServer(data);\n  });
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("contracts.manage");
+    return createContractVersionOnServer(data);
+  });
 
 export const saveContractRule = createServerFn({ method: "POST" })
   .validator(ruleSchema)
-  .handler(async ({ data }) => {\n    await requireWorkspacePermission("contracts.manage");\n    return saveContractRuleOnServer(data);\n  });
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("contracts.manage");
+    return saveContractRuleOnServer(data);
+  });
 
 export const deleteContractRule = createServerFn({ method: "POST" })
   .validator(ruleIdentitySchema)
-  .handler(async ({ data }) => {\n    await requireWorkspacePermission("contracts.manage");\n    return deleteContractRuleOnServer(data);\n  });
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("contracts.manage");
+    return deleteContractRuleOnServer(data);
+  });
 
 export const approveContractVersion = createServerFn({ method: "POST" })
   .validator(versionIdentitySchema)
-  .handler(async ({ data }) => {\n    await requireWorkspacePermission("contracts.manage");\n    return approveContractVersionOnServer(data);\n  });
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("contracts.manage");
+    return approveContractVersionOnServer(data);
+  });
 
 export const updateContract = createServerFn({ method: "POST" })
   .validator(
@@ -113,15 +131,24 @@ export const updateContract = createServerFn({ method: "POST" })
       counterparty: z.string().max(160).nullish(),
     }),
   )
-  .handler(async ({ data }) => {\n    await requireWorkspacePermission("contracts.manage");\n    return updateContractOnServer(data);\n  });
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("contracts.manage");
+    return updateContractOnServer(data);
+  });
 
 export const setContractArchived = createServerFn({ method: "POST" })
   .validator(z.object({ contractId: uuid, archived: z.boolean() }))
-  .handler(async ({ data }) => {\n    await requireWorkspacePermission("contracts.manage");\n    return setContractArchivedOnServer(data);\n  });
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("contracts.manage");
+    return setContractArchivedOnServer(data);
+  });
 
 export const deleteContract = createServerFn({ method: "POST" })
   .validator(z.object({ contractId: uuid }))
-  .handler(async ({ data }) => {\n    await requireWorkspacePermission("contracts.manage");\n    return deleteContractOnServer(data);\n  });
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("contracts.manage");
+    return deleteContractOnServer(data);
+  });
 
 
 
@@ -132,9 +159,15 @@ export const uploadContractDocument = createServerFn({ method: "POST" })
     }
     return data;
   })
-  .handler(async ({ data }) => {\n    await requireWorkspacePermission("contracts.manage");\n    return uploadContractDocumentOnServer(data);\n  });
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("contracts.manage");
+    return uploadContractDocumentOnServer(data);
+  });
 
 
 export const resolveContractTerms = createServerFn({ method: "POST" })
   .validator(resolutionSchema)
-  .handler(async ({ data }) => {\n    await requireWorkspacePermission("contracts.read");\n    return resolveContractTermsOnServer(data);\n  });
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("contracts.read");
+    return resolveContractTermsOnServer(data);
+  });
