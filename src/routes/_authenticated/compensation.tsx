@@ -65,8 +65,7 @@ type Platform = "hungerstation" | "keeta" | "jahez";
 
 function CompensationPage() {
   const queryClient = useQueryClient();
-  const [branchName, setBranchName] = useState("");
-  const [newBranchMode, setNewBranchMode] = useState(false);
+  const [telegramBranchId, setTelegramBranchId] = useState("");
   const [connectionCode, setConnectionCode] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState("");
   const [selectedEvidence, setSelectedEvidence] =
@@ -112,11 +111,11 @@ function CompensationPage() {
   });
 
   const connectMutation = useMutation({
-    mutationFn: (name: string) =>
-      createTelegramBranchConnection({ data: { branchName: name } }),
+    mutationFn: (branchId: string) =>
+      createTelegramBranchConnection({ data: { branchId } }),
     onSuccess: async (result) => {
       setConnectionCode(result.code);
-      setBranchName("");
+      setTelegramBranchId("");
       toast.success("تم إنشاء رمز ربط صالح لمدة 30 دقيقة");
       await queryClient.invalidateQueries({
         queryKey: ["telegram-branch-connections"],
@@ -540,53 +539,26 @@ function CompensationPage() {
             <label className="text-xs font-semibold text-muted-foreground">
               اسم الفرع
             </label>
-            {newBranchMode ? (
-              <div className="mt-2 flex gap-2">
-                <Input
-                  autoFocus
-                  value={branchName}
-                  onChange={(e) => setBranchName(e.target.value)}
-                  placeholder="اكتب اسم الفرع الجديد"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setNewBranchMode(false);
-                    setBranchName("");
-                  }}
-                >
-                  القائمة
-                </Button>
-              </div>
-            ) : (
-              <Select
-                value={branchName}
-                onValueChange={(value) => {
-                  if (value === "__new__") {
-                    setNewBranchMode(true);
-                    setBranchName("");
-                  } else setBranchName(value);
-                }}
-              >
-                <SelectTrigger className="mt-2 w-full">
-                  <SelectValue placeholder="اختر الفرع أو أضف فرعاً جديداً" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(branchOptionsQuery.data ?? []).map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="__new__">+ إضافة فرع جديد</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
+            <Select
+              value={telegramBranchId}
+              onValueChange={setTelegramBranchId}
+            >
+              <SelectTrigger className="mt-2 w-full">
+                <SelectValue placeholder="اختر فرعاً من سجل الفروع" />
+              </SelectTrigger>
+              <SelectContent>
+                {(branchOptionsQuery.data ?? []).map((branch) => (
+                  <SelectItem key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <Button
             type="button"
-            disabled={!branchName.trim() || connectMutation.isPending}
-            onClick={() => connectMutation.mutate(branchName.trim())}
+            disabled={!telegramBranchId || connectMutation.isPending}
+            onClick={() => connectMutation.mutate(telegramBranchId)}
           >
             إنشاء رمز
           </Button>
@@ -652,7 +624,7 @@ function CompensationPage() {
           <ol className="mt-3 list-decimal space-y-1.5 pe-5 text-muted-foreground">
             <li>أضف البوت مشرفاً في قروب الفرع الخاص.</li>
             <li>
-              أدخل اسم الفرع هنا واضغط «إنشاء رمز»، ثم أرسل أمر الربط داخل
+              اختر الفرع من سجل الفروع واضغط «إنشاء رمز»، ثم أرسل أمر الربط داخل
               القروب.
             </li>
             <li>

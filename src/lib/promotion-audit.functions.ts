@@ -6,6 +6,7 @@ import {
   listPromotionAuditsOnServer,
   savePromotionAuditOnServer,
 } from "./promotion-audit.server";
+import { requireWorkspacePermission } from "./server-auth.server";
 
 const money = z.number().finite().nonnegative().max(1_000_000_000);
 const optionalRoas = z.number().finite().nonnegative().max(100_000).nullable().optional();
@@ -16,7 +17,10 @@ export const getPromotionAudits = createServerFn({ method: "POST" })
       periodId: z.string().uuid(),
     }),
   )
-  .handler(async ({ data }) => listPromotionAuditsOnServer(data.periodId));
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("financials.read");
+    return listPromotionAuditsOnServer(data.periodId);
+  });
 
 export const savePromotionAudit = createServerFn({ method: "POST" })
   .validator(
@@ -39,7 +43,10 @@ export const savePromotionAudit = createServerFn({ method: "POST" })
       notes: z.string().max(4000).nullable().optional(),
     }),
   )
-  .handler(async ({ data }) => savePromotionAuditOnServer(data));
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("imports.create");
+    return savePromotionAuditOnServer(data);
+  });
 
 export const deletePromotionAudit = createServerFn({ method: "POST" })
   .validator(
@@ -48,4 +55,7 @@ export const deletePromotionAudit = createServerFn({ method: "POST" })
       periodId: z.string().uuid(),
     }),
   )
-  .handler(async ({ data }) => deletePromotionAuditOnServer(data));
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("imports.create");
+    return deletePromotionAuditOnServer(data);
+  });

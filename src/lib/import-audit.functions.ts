@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { importAuditOnServer } from "./import-audit.server";
+import { requireWorkspacePermission } from "./server-auth.server";
 
 export const importAuditPeriod = createServerFn({ method: "POST" })
   .validator((data) => {
@@ -9,4 +10,7 @@ export const importAuditPeriod = createServerFn({ method: "POST" })
     }
     return data;
   })
-  .handler(async ({ data }) => importAuditOnServer(data));
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("imports.create");
+    return importAuditOnServer(data);
+  });

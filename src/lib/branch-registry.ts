@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getMyWorkspaceContext } from "./workspace-access.functions";
 
 export interface RegistryBranch {
   id: string;
@@ -24,7 +25,13 @@ export async function listBranchRegistry(): Promise<RegistryBranch[]> {
 const clean = (v: string | null) => (v && v.trim() ? v.trim() : null);
 
 export async function saveRegistryBranch(input: BranchInput): Promise<void> {
+  const workspace = await getMyWorkspaceContext({ data: {} });
+  if (!workspace.permissions.includes("branches.manage")) {
+    throw new Error("ليس لديك صلاحية لتعديل الفروع.");
+  }
   const row = {
+    user_id: workspace.dataOwnerUserId,
+    workspace_id: workspace.workspaceId,
     name: input.name.trim(),
     hungerstation_id: clean(input.hungerstation_id),
     keeta_id: clean(input.keeta_id),
@@ -42,6 +49,10 @@ export async function saveRegistryBranch(input: BranchInput): Promise<void> {
 }
 
 export async function deleteRegistryBranch(id: string): Promise<void> {
+  const workspace = await getMyWorkspaceContext({ data: {} });
+  if (!workspace.permissions.includes("branches.manage")) {
+    throw new Error("ليس لديك صلاحية لحذف الفروع.");
+  }
   const { error } = await table().delete().eq("id", id);
   if (error) throw new Error(error.message);
 }

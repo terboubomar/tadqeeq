@@ -36,12 +36,12 @@ export function latestPeriod(periods: StoredPeriod[]): StoredPeriod | null {
   );
 }
 
-export function usePeriods() {
-  return useQuery({ queryKey: ["periods"], queryFn: listPeriods });
+export function usePeriods(enabled = true) {
+  return useQuery({ queryKey: ["periods"], queryFn: listPeriods, enabled });
 }
 
-export function useSelectedPeriod() {
-  const { data: periods = [], isLoading, error } = usePeriods();
+export function useSelectedPeriod(enabled = true) {
+  const { data: periods = [], isLoading, error } = usePeriods(enabled);
   const stored = useSyncExternalStore(
     subscribe,
     () => selectedId,

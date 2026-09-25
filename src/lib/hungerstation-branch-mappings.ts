@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getMyWorkspaceContext } from "./workspace-access.functions";
 
 export interface HungerStationBranchMappingInput {
   hsBranchId: string;
@@ -8,13 +9,8 @@ export interface HungerStationBranchMappingInput {
 export async function listHungerStationBranchMappings(): Promise<
   Record<string, string>
 > {
-  const { data: auth, error: authError } = await supabase.auth.getUser();
-  if (authError) throw authError;
-
-  const userId = auth.user?.id;
-  if (!userId) {
-    throw new Error("الجلسة منتهية؛ تعذّر قراءة ربط فروع هنقرستيشن.");
-  }
+  const workspace = await getMyWorkspaceContext({ data: {} });
+  const userId = workspace.dataOwnerUserId;
 
   const { data, error } = await supabase
     .from("hungerstation_branch_mappings")
@@ -38,13 +34,11 @@ export async function saveHungerStationBranchMappings(
 ): Promise<void> {
   if (!mappings.length) return;
 
-  const { data: auth, error: authError } = await supabase.auth.getUser();
-  if (authError) throw authError;
-
-  const userId = auth.user?.id;
-  if (!userId) {
-    throw new Error("الجلسة منتهية؛ تعذّر حفظ ربط فروع هنقرستيشن.");
+  const workspace = await getMyWorkspaceContext({ data: {} });
+  if (!workspace.permissions.includes("imports.create")) {
+    throw new Error("ليس لديك صلاحية لتعديل ربط الفروع.");
   }
+  const userId = workspace.dataOwnerUserId;
 
   const cleaned = mappings.map((mapping) => ({
     hsBranchId: mapping.hsBranchId.trim(),
@@ -71,11 +65,14 @@ export async function saveHungerStationBranchMappings(
   }
 
   const now = new Date().toISOString();
-  const { error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any;
+  const { error } = await db
     .from("hungerstation_branch_mappings")
     .upsert(
       cleaned.map((mapping) => ({
         user_id: userId,
+        workspace_id: workspace.workspaceId,
         hs_branch_id: mapping.hsBranchId,
         invoice_branch_name: mapping.invoiceBranchName,
         confirmed_at: now,

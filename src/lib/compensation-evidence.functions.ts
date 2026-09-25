@@ -13,6 +13,7 @@ import {
   searchCompensationEvidenceOnServer,
   setTelegramBranchConnectionActiveOnServer,
 } from "./compensation-evidence.server";
+import { requireWorkspacePermission } from "./server-auth.server";
 
 const platform = z.enum(["hungerstation", "keeta", "jahez"]);
 const caseStatus = z.enum([
@@ -27,20 +28,26 @@ const caseStatus = z.enum([
 
 export const getBranchNameOptions = createServerFn({ method: "POST" })
   .validator(z.object({}))
-  .handler(async () => listBranchNameOptionsOnServer());
+  .handler(async () => {
+    await requireWorkspacePermission("branches.read");
+    return listBranchNameOptionsOnServer();
+  });
 
 export const getTelegramBranchConnections = createServerFn({ method: "POST" })
   .validator(z.object({}))
-  .handler(async () => listTelegramBranchConnectionsOnServer());
+  .handler(async () => {
+    await requireWorkspacePermission("telegram.read");
+    return listTelegramBranchConnectionsOnServer();
+  });
 
 export const createTelegramBranchConnection = createServerFn({ method: "POST" })
   .validator(
     z.object({
-      branchName: z.string().trim().min(1).max(160),
+      branchId: z.string().uuid(),
     }),
   )
   .handler(async ({ data }) =>
-    createTelegramBranchConnectionOnServer(data.branchName),
+    createTelegramBranchConnectionOnServer(data.branchId),
   );
 
 export const setTelegramBranchConnectionActive = createServerFn({ method: "POST" })
@@ -50,17 +57,24 @@ export const setTelegramBranchConnectionActive = createServerFn({ method: "POST"
       active: z.boolean(),
     }),
   )
-  .handler(async ({ data }) =>
-    setTelegramBranchConnectionActiveOnServer(data.id, data.active),
-  );
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("telegram.manage");
+    return setTelegramBranchConnectionActiveOnServer(data.id, data.active);
+  });
 
 export const getTelegramIntegrationStatus = createServerFn({ method: "POST" })
   .validator(z.object({}))
-  .handler(async () => getTelegramIntegrationStatusOnServer());
+  .handler(async () => {
+    await requireWorkspacePermission("telegram.read");
+    return getTelegramIntegrationStatusOnServer();
+  });
 
 export const configureTelegramWebhook = createServerFn({ method: "POST" })
   .validator(z.object({}))
-  .handler(async () => configureTelegramWebhookOnServer());
+  .handler(async () => {
+    await requireWorkspacePermission("telegram.manage");
+    return configureTelegramWebhookOnServer();
+  });
 
 export const searchCompensationEvidence = createServerFn({ method: "POST" })
   .validator(
@@ -68,9 +82,10 @@ export const searchCompensationEvidence = createServerFn({ method: "POST" })
       orderNumber: z.string().trim().min(3).max(120),
     }),
   )
-  .handler(async ({ data }) =>
-    searchCompensationEvidenceOnServer(data.orderNumber),
-  );
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("compensation.read");
+    return searchCompensationEvidenceOnServer(data.orderNumber);
+  });
 
 export const saveCompensationCase = createServerFn({ method: "POST" })
   .validator(
@@ -88,12 +103,21 @@ export const saveCompensationCase = createServerFn({ method: "POST" })
       aggregatorCaseReference: z.string().trim().max(160).nullable().optional(),
     }),
   )
-  .handler(async ({ data }) => saveCompensationCaseOnServer(data));
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("compensation.manage");
+    return saveCompensationCaseOnServer(data);
+  });
 
 export const getCompensationCases = createServerFn({ method: "POST" })
   .validator(z.object({}))
-  .handler(async () => listCompensationCasesOnServer());
+  .handler(async () => {
+    await requireWorkspacePermission("compensation.read");
+    return listCompensationCasesOnServer();
+  });
 
 export const getEvidenceMedia = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string().uuid() }))
-  .handler(async ({ data }) => getEvidenceMediaOnServer(data.id));
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("telegram.read");
+    return getEvidenceMediaOnServer(data.id);
+  });

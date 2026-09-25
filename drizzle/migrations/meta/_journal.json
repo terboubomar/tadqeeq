@@ -183,6 +183,13 @@
       "when": 1790293287109,
       "tag": "0025_compensation_appeal_marks",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790308800000,
+      "tag": "0026_workspace_rbac",
+      "breakpoints": true
     }
   ]
 }
