@@ -5,11 +5,11 @@ import type { Database } from "@/integrations/supabase/types";
 
 import {
   ROLE_PERMISSIONS,
-  hasWorkspacePermission,
   roleHasGlobalBranchAccess,
   type WorkspacePermission,
   type WorkspaceRole,
 } from "./workspace-access";
+import { filterPermissionsByPlan, isPlanFeature, type PlanFeature } from "./plans";
 
 export type ServerUserClient = ReturnType<typeof createServerUserClient>;
 
@@ -34,6 +34,10 @@ export interface ServerUserAuth {
   globalBranchAccess: boolean;
   onboardingStatus: string;
   isPlatformAdmin: boolean;
+  planName: string | null;
+  planFeatures: PlanFeature[] | null;
+  uploadLimit: number | null;
+  uploadsThisMonth: number;
   client: ServerUserClient;
 }
 
@@ -248,7 +252,7 @@ export async function requireWorkspacePermission(
   permission: WorkspacePermission,
 ): Promise<ServerUserAuth> {
   const context = await requireServerUser();
-  if (!hasWorkspacePermission(context.role, permission)) {
+  if (!context.permissions.includes(permission)) {
     throw new Error("ليس لديك صلاحية لتنفيذ هذا الإجراء.");
   }
   return context;

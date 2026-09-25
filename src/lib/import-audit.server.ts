@@ -574,7 +574,15 @@ async function rollbackPeriod(
 export async function importAuditOnServer(
   form: FormData,
 ): Promise<ImportAuditResult> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId, uploadLimit, uploadsThisMonth, permissions } = await requireServerUser();
+  if (!permissions.includes("imports.create")) {
+    throw new Error("ليس لديك صلاحية لرفع البيانات.");
+  }
+  if (uploadLimit !== null && uploadsThisMonth >= uploadLimit) {
+    throw new Error(
+      `وصلت للحد الشهري لرفع الملفات في باقتك (${uploadLimit} رفعات). رقِّ باقتك أو انتظر بداية الشهر القادم.`,
+    );
+  }
   const platform = parsePlatform(formString(form, "platform"));
   const approvedMappings =
     platform === "hungerstation" ? parseApprovedMappings(form) : {};
