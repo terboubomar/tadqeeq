@@ -190,6 +190,13 @@
       "when": 1790308800000,
       "tag": "0026_workspace_rbac",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1790298045599,
+      "tag": "0027_workspace_onboarding",
+      "breakpoints": true
     }
   ]
 }

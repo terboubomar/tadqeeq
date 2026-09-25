@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { AskTadqeeqWidget } from "@/components/AskTadqeeqWidget";
+import { OnboardingGate } from "@/components/OnboardingGate";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +23,7 @@ import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
 import { WORKSPACE_ROLE_LABELS, type WorkspacePermission } from "@/lib/workspace-access";
 
-type NavItem = { to: string; label: string; permission: WorkspacePermission };
+type NavItem = { to: string; label: string; permission: WorkspacePermission; adminOnly?: boolean };
 
 const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
   {
@@ -60,6 +61,7 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
       { to: "/contracts", label: "العقود وشروط المنصات", permission: "contracts.read" },
       { to: "/settings", label: "إعدادات الفروع", permission: "branches.manage" },
       { to: "/team", label: "المستخدمون والصلاحيات", permission: "users.manage" },
+      { to: "/tenants", label: "إدارة العملاء", permission: "users.manage", adminOnly: true },
     ],
   },
 ];
@@ -91,7 +93,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { context, can } = useWorkspaceAccess();
-  const { periods, selected, select } = useSelectedPeriod(can("periods.read"));
+  const locked = context.onboardingStatus !== "active" && !context.isPlatformAdmin;
+  const { periods, selected, select } = useSelectedPeriod(can("periods.read") && !locked);
   const [sidebarHidden, setSidebarHidden] = useState(false);
 
   useEffect(() => {
@@ -107,7 +110,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const visibleGroups = NAV_GROUPS
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => can(item.permission)),
+      items: group.items.filter(
+        (item) => can(item.permission) && (!item.adminOnly || context.isPlatformAdmin),
+      ),
     }))
     .filter((group) => group.items.length > 0);
   const visibleItems = visibleGroups.flatMap((group) => group.items);
@@ -335,7 +340,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="mx-auto w-full max-w-[1360px] px-4 pb-14 pt-[22px] sm:px-5">
-            {routeDenied ? (
+            {locked ? (
+              <OnboardingGate>{children}</OnboardingGate>
+            ) : routeDenied ? (
               <div className="panel mx-auto mt-10 max-w-lg p-8 text-center">
                 <h1 className="text-lg font-bold">ليس لديك صلاحية للوصول إلى هذه الصفحة</h1>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -354,7 +361,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      {can("ai.use") ? (
+      {can("ai.use") && !locked ? (
         <AskTadqeeqWidget
           key={selected?.id ?? "no-period"}
           selected={selected}

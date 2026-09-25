@@ -1,4 +1,4 @@
-import { requireServerUser } from "./server-auth.server";
+import { requireServerUserAnyStatus } from "./server-auth.server";
 import type { WorkspacePermission, WorkspaceRole } from "./workspace-access";
 
 export interface WorkspaceClientContext {
@@ -13,10 +13,12 @@ export interface WorkspaceClientContext {
   globalBranchAccess: boolean;
   fullName: string | null;
   email: string | null;
+  onboardingStatus: string;
+  isPlatformAdmin: boolean;
 }
 
 export async function getMyWorkspaceContextOnServer(): Promise<WorkspaceClientContext> {
-  const context = await requireServerUser();
+  const context = await requireServerUserAnyStatus();
   const { data: profile, error } = await context.client
     .from("profiles")
     .select("full_name,email")
@@ -37,5 +39,7 @@ export async function getMyWorkspaceContextOnServer(): Promise<WorkspaceClientCo
     globalBranchAccess: context.globalBranchAccess,
     fullName: profile?.full_name ?? null,
     email: profile?.email ?? null,
+    onboardingStatus: context.onboardingStatus,
+    isPlatformAdmin: context.isPlatformAdmin,
   };
 }
