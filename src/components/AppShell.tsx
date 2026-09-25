@@ -61,7 +61,6 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
       { to: "/contracts", label: "العقود وشروط المنصات", permission: "contracts.read" },
       { to: "/settings", label: "إعدادات الفروع", permission: "branches.manage" },
       { to: "/team", label: "المستخدمون والصلاحيات", permission: "users.manage" },
-      { to: "/tenants", label: "إدارة العملاء", permission: "users.manage", adminOnly: true },
     ],
   },
 ];
