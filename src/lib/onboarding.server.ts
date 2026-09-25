@@ -21,17 +21,17 @@ type Row = Record<string, unknown>;
 
 async function toRecord(row: Row, workspaceName: string): Promise<OnboardingRecord> {
   let logoUrl: string | null = null;
-  if (typeof row.logo_path === "string" && row.logo_path) {
+  if (typeof row["logo_path"] === "string" && row["logo_path"]) {
     const { data } = await supabaseAdmin.storage
       .from(LOGO_BUCKET)
-      .createSignedUrl(row.logo_path, 3600);
+      .createSignedUrl(row["logo_path"], 3600);
     logoUrl = data?.signedUrl ?? null;
   }
   const s = (k: string) => (typeof row[k] === "string" ? (row[k] as string) : null);
   return {
-    workspaceId: row.workspace_id as string,
+    workspaceId: row["workspace_id"] as string,
     workspaceName,
-    status: row.status as OnboardingStatus,
+    status: row["status"] as OnboardingStatus,
     legalName: s("legal_name"),
     brandName: s("brand_name"),
     crNumber: s("cr_number"),
@@ -40,7 +40,7 @@ async function toRecord(row: Row, workspaceName: string): Promise<OnboardingReco
     contactMobile: s("contact_mobile"),
     contactNationalId: s("contact_national_id"),
     contactEmail: s("contact_email"),
-    branchCount: typeof row.branch_count === "number" ? row.branch_count : null,
+    branchCount: typeof row["branch_count"] === "number" ? row["branch_count"] : null,
     logoUrl,
     meetingAt: s("meeting_at"),
     meetingNote: s("meeting_note"),
@@ -111,13 +111,14 @@ export async function submitOnboardingOnServer(input: SubmitOnboardingInput): Pr
   if (input.logoDataUrl) {
     const match = input.logoDataUrl.match(/^data:(image\/(png|jpeg|svg\+xml|webp));base64,(.+)$/);
     if (!match) throw new Error("صيغة الشعار غير مدعومة (PNG / JPG / SVG / WEBP).");
-    const bytes = Buffer.from(match[3], "base64");
+    const bytes = Buffer.from(match[3] ?? "", "base64");
     if (bytes.byteLength > 2 * 1024 * 1024) throw new Error("حجم الشعار يجب ألا يتجاوز 2MB.");
-    const ext = match[2] === "jpeg" ? "jpg" : match[2] === "svg+xml" ? "svg" : match[2];
+    const kind = match[2] ?? "png";
+    const ext = kind === "jpeg" ? "jpg" : kind === "svg+xml" ? "svg" : kind;
     logoPath = `${ctx.workspaceId}/logo-${Date.now()}.${ext}`;
     const { error: upErr } = await supabaseAdmin.storage
       .from(LOGO_BUCKET)
-      .upload(logoPath, bytes, { contentType: match[1], upsert: true });
+      .upload(logoPath, bytes, { contentType: match[1] ?? "image/png", upsert: true });
     if (upErr) throw new Error("تعذّر رفع الشعار.");
   }
 
@@ -170,7 +171,7 @@ export async function listTenantsOnServer(): Promise<OnboardingRecord[]> {
     ((workspaces ?? []) as { id: string; name: string }[]).map((w) => [w.id, w.name]),
   );
   return Promise.all(
-    ((rows ?? []) as Row[]).map((row) => toRecord(row, names.get(row.workspace_id as string) ?? "—")),
+    ((rows ?? []) as Row[]).map((row) => toRecord(row, names.get(row["workspace_id"] as string) ?? "—")),
   );
 }
 
@@ -185,9 +186,9 @@ export async function setTenantStatusOnServer(input: {
   }
   const now = new Date().toISOString();
   const patch: Row = { status: input.status, updated_at: now };
-  if (input.adminNote !== undefined) patch.admin_note = input.adminNote.trim() || null;
-  if (input.status === "onboarding") patch.paid_at = now;
-  if (input.status === "active") patch.activated_at = now;
+  if (input.adminNote !== undefined) patch["admin_note"] = input.adminNote.trim() || null;
+  if (input.status === "onboarding") patch["paid_at"] = now;
+  if (input.status === "active") patch["activated_at"] = now;
   const { error } = await db()
     .from("workspace_onboarding")
     .update(patch)
