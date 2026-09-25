@@ -42,9 +42,9 @@ export const Route = createFileRoute("/")({
     ],
   }),
   loader: () => listPublicPlans(),
-  errorComponent: () => <Landing />,
-  notFoundComponent: () => <Landing />,
-  component: Landing,
+  errorComponent: () => <Landing plans={[]} />,
+  notFoundComponent: () => <Landing plans={[]} />,
+  component: () => <Landing plans={Route.useLoaderData()} />,
 });
 
 const FEATURES = [
@@ -62,8 +62,7 @@ const STEPS = [
   { icon: Rocket, title: "التهيئة والتفعيل", body: "بعد الاتفاق والتحويل نجهّز حسابك وفروعك وتُفتح كل الميزات." },
 ];
 
-function Landing() {
-  const plans = (Route.useLoaderData({ strict: false }) as PublicPlan[] | undefined) ?? [];
+function Landing({ plans }: { plans: PublicPlan[] }) {
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <header className="mx-auto flex max-w-6xl items-center justify-between border-b border-border px-5 py-4">
