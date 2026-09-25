@@ -10,7 +10,7 @@ import {
   type CompensationPlatform,
 } from "./compensation-evidence";
 import type { StoredPeriod } from "./periods";
-import { requireServerUser, type ServerUserClient } from "./server-auth.server";
+import { assertBranchAccess, requireServerUser, requireWorkspacePermission, type ServerUserClient } from "./server-auth.server";
 
 const THUMBNAIL_BUCKET = "telegram-evidence-thumbnails";
 const CONNECTION_CODE_TTL_MINUTES = 30;
@@ -18,6 +18,7 @@ const CONNECTION_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 export interface TelegramBranchConnection {
   id: string;
+  branchId: string;
   branchKey: string;
   branchName: string;
   chatId: number | null;
@@ -174,6 +175,7 @@ async function telegramApi<T>(
 
 function mapConnection(row: {
   id: string;
+  branch_id: string;
   branch_key: string;
   branch_name: string;
   telegram_chat_id: number | null;
@@ -187,6 +189,7 @@ function mapConnection(row: {
 }): TelegramBranchConnection {
   return {
     id: row.id,
+    branchId: row.branch_id,
     branchKey: row.branch_key,
     branchName: row.branch_name,
     chatId: row.telegram_chat_id,
@@ -250,96 +253,74 @@ export async function listTelegramBranchConnectionsOnServer(): Promise<TelegramB
   return (data ?? []).map(mapConnection);
 }
 
-export async function listBranchNameOptionsOnServer(): Promise<string[]> {
-  const { client, userId } = await requireServerUser();
-  const names = new Set<string>();
+export async function listBranchNameOptionsOnServer(): Promise<Array<{ id: string; name: string }>> {
+  const { client } = await requireWorkspacePermission("branches.read");
+  // Generated Supabase types are refreshed after the workspace migration.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = client as any;
+  const { data, error } = await db
+    .from("branch_registry")
+    .select("id,name")
+    .eq("active", true)
+    .order("name", { ascending: true });
 
-  const mappings = await client
-    .from("hungerstation_branch_mappings")
-    .select("invoice_branch_name")
-    .eq("user_id", userId)
-    .order("invoice_branch_name", { ascending: true });
-  if (mappings.error) throw new Error(mappings.error.message);
-  for (const row of mappings.data ?? []) {
-    const name = row.invoice_branch_name?.trim();
-    if (name) names.add(name);
-  }
-
-  const connections = await client
-    .from("telegram_branch_chats")
-    .select("branch_name")
-    .eq("user_id", userId)
-    .order("branch_name", { ascending: true });
-  if (connections.error) throw new Error(connections.error.message);
-  for (const row of connections.data ?? []) {
-    const name = row.branch_name?.trim();
-    if (name) names.add(name);
-  }
-
-  const periods = await client
-    .from("periods")
-    .select("branches")
-    .eq("user_id", userId)
-    .is("superseded_at", null);
-  if (!periods.error) {
-    for (const row of periods.data ?? []) {
-      const list = Array.isArray(row.branches) ? row.branches : [];
-      for (const b of list as Array<Record<string, unknown>>) {
-        const raw = b?.["name"] ?? b?.["branch"] ?? b?.["branchName"];
-        const name = typeof raw === "string" ? raw.trim() : "";
-        if (name) names.add(name);
-      }
-    }
-  }
-
-  return Array.from(names).sort((a, b) => a.localeCompare(b, "ar"));
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Array<{ id: string; name: string }>;
 }
 
 export async function createTelegramBranchConnectionOnServer(
-  branchNameInput: string,
+  branchId: string,
 ): Promise<{ connection: TelegramBranchConnection; code: string }> {
-  const { client, userId } = await requireServerUser();
-  const branchName = branchNameInput.trim().replace(/\s+/g, " ");
-  if (!branchName || branchName.length > 160) {
-    throw new Error("اسم الفرع مطلوب ويجب ألا يتجاوز 160 حرفاً.");
-  }
+  const context = await requireWorkspacePermission("telegram.manage");
+  assertBranchAccess(context, branchId);
+  // Generated Supabase types are refreshed after the workspace migration.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = context.client as any;
 
+  const { data: branch, error: branchError } = await db
+    .from("branch_registry")
+    .select("id,name")
+    .eq("id", branchId)
+    .eq("workspace_id", context.workspaceId)
+    .eq("active", true)
+    .maybeSingle();
+  if (branchError) throw new Error(branchError.message);
+  if (!branch) throw new Error("الفرع غير موجود أو غير متاح لك.");
+
+  const branchName = String(branch.name).trim();
   const branchKey = normalizeBranchKey(branchName);
   const code = randomConnectionCode();
   const codeHash = await sha256Text(code);
   const expiresAt = new Date(Date.now() + CONNECTION_CODE_TTL_MINUTES * 60_000).toISOString();
   const updatedAt = new Date().toISOString();
 
-  const { data: existing, error: lookupError } = await client
+  const { data: existing, error: lookupError } = await db
     .from("telegram_branch_chats")
     .select("id")
-    .eq("user_id", userId)
-    .eq("branch_key", branchKey)
+    .eq("workspace_id", context.workspaceId)
+    .eq("branch_id", branchId)
     .maybeSingle();
-
   if (lookupError) throw new Error(lookupError.message);
 
+  const row = {
+    user_id: context.userId,
+    workspace_id: context.workspaceId,
+    branch_id: branchId,
+    branch_key: branchKey,
+    branch_name: branchName,
+    connect_code_hash: codeHash,
+    connect_code_expires_at: expiresAt,
+    active: true,
+    updated_at: updatedAt,
+  };
+
   const mutation = existing
-    ? client
+    ? db
         .from("telegram_branch_chats")
-        .update({
-          branch_name: branchName,
-          connect_code_hash: codeHash,
-          connect_code_expires_at: expiresAt,
-          active: true,
-          updated_at: updatedAt,
-        })
+        .update(row)
         .eq("id", existing.id)
-        .eq("user_id", userId)
-    : client.from("telegram_branch_chats").insert({
-        user_id: userId,
-        branch_key: branchKey,
-        branch_name: branchName,
-        connect_code_hash: codeHash,
-        connect_code_expires_at: expiresAt,
-        active: true,
-        updated_at: updatedAt,
-      });
+        .eq("workspace_id", context.workspaceId)
+    : db.from("telegram_branch_chats").insert(row);
 
   const { data, error } = await mutation.select("*").single();
   if (error) throw new Error(error.message);
