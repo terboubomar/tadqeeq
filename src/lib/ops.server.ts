@@ -2,6 +2,7 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
+import type { PlanFeature } from "./plans";
 import { opsCan, type Cycle, type OpsRole, type OpsSection, type SubscriptionStatus } from "./ops";
 import type { OnboardingStatus } from "./onboarding";
 
@@ -230,14 +231,25 @@ export async function addClientNoteOnServer(input: { workspaceId: string; body: 
 // ---------------- Plans & subscriptions ----------------
 export async function listPlansOnServer() {
   await requireOps("subscriptions");
-  const { data } = await db().from("subscription_plans").select("*").order("created_at");
-  return ((data ?? []) as Row[]).map((r) => ({ id: String(r["id"]), name: String(r["name"]), pricing: r["pricing"] as "fixed" | "per_branch", price: Number(r["price"]), cycle: r["cycle"] as Cycle, active: r["active"] === true }));
+  const { data } = await db().from("subscription_plans").select("*").order("sort_order").order("created_at");
+  return ((data ?? []) as Row[]).map((r) => ({
+    id: String(r["id"]), name: String(r["name"]), price: Number(r["price"]), cycle: r["cycle"] as Cycle, active: r["active"] === true,
+    features: (Array.isArray(r["features"]) ? r["features"] : []) as PlanFeature[],
+    uploadLimit: typeof r["upload_limit"] === "number" ? (r["upload_limit"] as number) : null,
+    description: (r["description"] as string | null) ?? "",
+    highlighted: r["highlighted"] === true,
+    sortOrder: Number(r["sort_order"] ?? 0),
+  }));
 }
 
-export async function savePlanOnServer(input: { id?: string; name: string; pricing: "fixed" | "per_branch"; price: number; cycle: Cycle; active: boolean }) {
+export async function savePlanOnServer(input: { id?: string; name: string; price: number; cycle: Cycle; active: boolean; features: PlanFeature[]; uploadLimit: number | null; description?: string; highlighted?: boolean; sortOrder?: number }) {
   const actor = await requireOps("subscriptions");
   if (actor.role === "sales" || actor.role === "support") throw new Error("المالية أو المالك فقط يعدّل الباقات.");
-  const row = { name: input.name.trim(), pricing: input.pricing, price: input.price, cycle: input.cycle, active: input.active };
+  const row = {
+    name: input.name.trim(), pricing: "fixed", price: input.price, cycle: input.cycle, active: input.active,
+    features: input.features, upload_limit: input.uploadLimit, description: input.description?.trim() || null,
+    highlighted: input.highlighted ?? false, sort_order: input.sortOrder ?? 0,
+  };
   const { error } = input.id ? await db().from("subscription_plans").update(row).eq("id", input.id) : await db().from("subscription_plans").insert(row);
   if (error) throw new Error(error.message);
   await log(actor, input.id ? "plan.update" : "plan.create", "plan", input.id ?? null, null, row);
