@@ -559,13 +559,10 @@ ALTER TABLE public.compensation_appeal_marks
 ALTER TABLE public.recovery_case_details
   ADD COLUMN IF NOT EXISTS branch_id uuid;
 
-UPDATE public.recovery_case_details r
-SET branch_id = b.id
-FROM public.branch_registry b
-WHERE r.branch_id IS NULL
-  AND r.source_branch IS NOT NULL
-  AND b.workspace_id = r.workspace_id
-  AND lower(btrim(b.name)) = lower(btrim(r.source_branch));
+-- Legacy recovery_case_details has no persisted source_branch column.
+-- Existing cases therefore remain branch_id NULL; workspace-wide roles retain
+-- access, while branch-restricted roles cannot see an unscoped recovery case.
+-- New branch-scoped recovery handoffs should persist branch_id explicitly.
 
 ALTER TABLE public.recovery_case_details
   DROP CONSTRAINT IF EXISTS recovery_case_details_branch_workspace_fkey;
