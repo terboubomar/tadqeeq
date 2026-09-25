@@ -199,6 +199,41 @@ export type Database = {
           },
         ]
       }
+      client_notes: {
+        Row: {
+          author_email: string | null
+          author_user_id: string | null
+          body: string
+          created_at: string
+          id: string
+          workspace_id: string
+        }
+        Insert: {
+          author_email?: string | null
+          author_user_id?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          workspace_id: string
+        }
+        Update: {
+          author_email?: string | null
+          author_user_id?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_notes_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       compensation_appeal_marks: {
         Row: {
           branch_id: string | null
@@ -792,6 +827,123 @@ export type Database = {
           },
         ]
       }
+      ops_audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_user_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          metadata: Json
+          workspace_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          metadata?: Json
+          workspace_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          metadata?: Json
+          workspace_id?: string | null
+        }
+        Relationships: []
+      }
+      ops_staff: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          method: string
+          notes: string | null
+          paid_on: string
+          receipt_path: string | null
+          recorded_by: string | null
+          reference: string | null
+          subscription_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          paid_on?: string
+          receipt_path?: string | null
+          recorded_by?: string | null
+          reference?: string | null
+          subscription_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          paid_on?: string
+          receipt_path?: string | null
+          recorded_by?: string | null
+          reference?: string | null
+          subscription_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       periods: {
         Row: {
           branches: Json
@@ -1287,6 +1439,96 @@ export type Database = {
           },
         ]
       }
+      subscription_plans: {
+        Row: {
+          active: boolean
+          created_at: string
+          cycle: string
+          id: string
+          name: string
+          price: number
+          pricing: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          cycle?: string
+          id?: string
+          name: string
+          price?: number
+          pricing?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          cycle?: string
+          id?: string
+          name?: string
+          price?: number
+          pricing?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          branch_count: number
+          created_at: string
+          cycle: string
+          ends_on: string | null
+          id: string
+          notes: string | null
+          plan_id: string | null
+          price: number
+          starts_on: string
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          branch_count?: number
+          created_at?: string
+          cycle?: string
+          ends_on?: string | null
+          id?: string
+          notes?: string | null
+          plan_id?: string | null
+          price?: number
+          starts_on?: string
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          branch_count?: number
+          created_at?: string
+          cycle?: string
+          ends_on?: string | null
+          id?: string
+          notes?: string | null
+          plan_id?: string | null
+          price?: number
+          starts_on?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       telegram_branch_chats: {
         Row: {
           active: boolean
@@ -1704,6 +1946,7 @@ export type Database = {
         Returns: string
       }
       is_platform_admin: { Args: never; Returns: boolean }
+      ops_role: { Args: never; Returns: string }
       reserve_ai_call: {
         Args: {
           p_exception_id: string
