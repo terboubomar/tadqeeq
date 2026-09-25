@@ -88,6 +88,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
           <nav className="hidden items-center gap-6 text-sm text-ink-muted md:flex">
             <a href="#how" className="transition-colors hover:text-ink-foreground">كيف يعمل</a>
             <a href="#checks" className="transition-colors hover:text-ink-foreground">ماذا ندقق</a>
+            <a href="#features" className="transition-colors hover:text-ink-foreground">الميزات</a>
             <a href="#who" className="transition-colors hover:text-ink-foreground">لمن</a>
             <a href="#pricing" className="transition-colors hover:text-ink-foreground">الباقات</a>
           </nav>
@@ -146,6 +147,17 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
             {CHECKS.map(([title,body]) => <div key={title} className="m-px bg-card p-5"><h3 className="font-bold">{title}</h3><p className="mt-1 text-sm text-muted-foreground">{body}</p></div>)}
           </div>
         </section>
+
+        <section id="features" className="border-y border-border bg-muted"><div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24">
+          <SectionHeading eyebrow="الميزات" title="كل ما تحتاجه لإغلاق الشهر بثقة" body="من رفع الملفات حتى تجهيز مطالبة التعويضة، أدوات واحدة تعمل معاً في مساحتك." />
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {FEATURES.map((feature) => <article key={feature.title} className="panel p-6">
+              <span className="grid size-11 place-items-center rounded-[10px] border border-border bg-background"><feature.icon className="size-5 text-primary-text" /></span>
+              <h3 className="mt-5 font-display font-bold">{feature.title}</h3>
+              <p className="mt-2 text-sm leading-7 text-muted-foreground">{feature.body}</p>
+            </article>)}
+          </div>
+        </div></section>
 
         <section id="who" className="bg-ink text-ink-foreground"><div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
           <SectionHeading dark eyebrow="لمن تدقيق" title="مساحة واحدة تناسب فريقك" />
