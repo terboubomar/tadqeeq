@@ -178,16 +178,22 @@ async function loadWorkspaceContext(
       .filter((value: string | undefined): value is string => Boolean(value));
   }
 
-  const [{ data: onboardingRow }, { data: adminFlag }] = await Promise.all([
+  const rpc = client as unknown as {
+    rpc: (name: string, args?: Record<string, unknown>) => Promise<{ data: unknown }>;
+  };
+  const [{ data: onboardingRow }, { data: adminFlag }, { data: planData }] = await Promise.all([
     db
       .from("workspace_onboarding")
       .select("status")
       .eq("workspace_id", typedWorkspace.id)
       .maybeSingle(),
-    (client as unknown as { rpc: (name: string) => Promise<{ data: unknown }> }).rpc(
-      "is_platform_admin",
-    ),
+    rpc.rpc("is_platform_admin"),
+    rpc.rpc("my_workspace_plan", { p_workspace_id: typedWorkspace.id }),
   ]);
+
+  const plan = (planData ?? {}) as Record<string, unknown>;
+  const rawFeatures = plan["features"];
+  const planFeatures = Array.isArray(rawFeatures) ? rawFeatures.filter(isPlanFeature) : null;
 
   return {
     onboardingStatus:
@@ -198,9 +204,13 @@ async function loadWorkspaceContext(
     workspaceName: typedWorkspace.name,
     membershipId: membership.id,
     role: membership.role,
-    permissions: ROLE_PERMISSIONS[membership.role],
+    permissions: filterPermissionsByPlan(ROLE_PERMISSIONS[membership.role], planFeatures),
     allowedBranchIds,
     globalBranchAccess,
+    planName: typeof plan["plan_name"] === "string" ? plan["plan_name"] : null,
+    planFeatures,
+    uploadLimit: typeof plan["upload_limit"] === "number" ? plan["upload_limit"] : null,
+    uploadsThisMonth: typeof plan["uploads_this_month"] === "number" ? plan["uploads_this_month"] : 0,
   };
 }
 
