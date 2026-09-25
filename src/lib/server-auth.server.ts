@@ -204,7 +204,7 @@ async function loadWorkspaceContext(
   };
 }
 
-export async function requireServerUser(): Promise<ServerUserAuth> {
+export async function requireServerUserAnyStatus(): Promise<ServerUserAuth> {
   const accessToken = parseAuthorizationBearer(
     getRequestHeader("authorization"),
   );
@@ -225,13 +225,19 @@ export async function requireServerUser(): Promise<ServerUserAuth> {
   };
 }
 
+/** Signed-in user whose workspace is activated (onboarding complete). */
+export async function requireServerUser(): Promise<ServerUserAuth> {
+  const context = await requireServerUserAnyStatus();
+  if (context.onboardingStatus !== "active" && !context.isPlatformAdmin) {
+    throw new Error("حسابك قيد التفعيل — ستُفتح الميزات بعد إتمام التهيئة والدفع.");
+  }
+  return context;
+}
+
 export async function requireWorkspacePermission(
   permission: WorkspacePermission,
 ): Promise<ServerUserAuth> {
   const context = await requireServerUser();
-  if (context.onboardingStatus !== "active" && !context.isPlatformAdmin) {
-    throw new Error("حسابك قيد التفعيل — ستُفتح الميزات بعد إتمام التهيئة والدفع.");
-  }
   if (!hasWorkspacePermission(context.role, permission)) {
     throw new Error("ليس لديك صلاحية لتنفيذ هذا الإجراء.");
   }
