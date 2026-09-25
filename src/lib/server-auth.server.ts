@@ -95,6 +95,8 @@ async function loadWorkspaceContext(
   // Generated Supabase types lag migrations during feature development.
   // Keep this cast isolated to the workspace boundary.
   const db = client as unknown as {
+    // Workspace tables are introduced by migration 0026 before generated types refresh.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     from: (table: string) => any;
   };
 
