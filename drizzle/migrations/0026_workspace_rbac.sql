@@ -346,33 +346,6 @@ GRANT EXECUTE ON FUNCTION private.has_workspace_permission(uuid,text) TO authent
 GRANT EXECUTE ON FUNCTION private.can_access_branch(uuid,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.can_access_owner_folder(text,text) TO authenticated;
 
-CREATE OR REPLACE FUNCTION private.can_access_telegram_evidence_object(p_name text)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = ''
-AS $
-  WITH candidate AS (
-    SELECT substring(
-      storage.filename(p_name)
-      FROM '^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})'
-    )::uuid AS evidence_id
-  )
-  SELECT EXISTS (
-    SELECT 1
-    FROM candidate c
-    JOIN public.telegram_order_evidence e ON e.id = c.evidence_id
-    JOIN public.workspaces w ON w.id = e.workspace_id
-    WHERE c.evidence_id IS NOT NULL
-      AND (storage.foldername(p_name))[1] = w.owner_user_id::text
-      AND private.has_workspace_permission(e.workspace_id, 'telegram.read')
-      AND private.can_access_branch(e.workspace_id, e.branch_id)
-  );
-$;
-
-REVOKE ALL ON FUNCTION private.can_access_telegram_evidence_object(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION private.can_access_telegram_evidence_object(text) TO authenticated;
 
 ALTER TABLE public.branch_registry ALTER COLUMN workspace_id SET DEFAULT private.active_workspace_id();
 
@@ -525,6 +498,34 @@ ALTER TABLE public.telegram_order_evidence
   FOREIGN KEY (branch_id, workspace_id)
   REFERENCES public.branch_registry(id, workspace_id)
   ON DELETE RESTRICT;
+
+CREATE OR REPLACE FUNCTION private.can_access_telegram_evidence_object(p_name text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $
+  WITH candidate AS (
+    SELECT substring(
+      storage.filename(p_name)
+      FROM '^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})'
+    )::uuid AS evidence_id
+  )
+  SELECT EXISTS (
+    SELECT 1
+    FROM candidate c
+    JOIN public.telegram_order_evidence e ON e.id = c.evidence_id
+    JOIN public.workspaces w ON w.id = e.workspace_id
+    WHERE c.evidence_id IS NOT NULL
+      AND (storage.foldername(p_name))[1] = w.owner_user_id::text
+      AND private.has_workspace_permission(e.workspace_id, 'telegram.read')
+      AND private.can_access_branch(e.workspace_id, e.branch_id)
+  );
+$;
+
+REVOKE ALL ON FUNCTION private.can_access_telegram_evidence_object(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION private.can_access_telegram_evidence_object(text) TO authenticated;
 
 ALTER TABLE public.compensation_cases
   ADD COLUMN IF NOT EXISTS branch_id uuid;
