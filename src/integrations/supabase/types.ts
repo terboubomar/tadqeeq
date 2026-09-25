@@ -884,6 +884,21 @@ export type Database = {
           },
         ]
       }
+      platform_admins: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       platform_contracts: {
         Row: {
           archived_at: string | null
@@ -1570,6 +1585,83 @@ export type Database = {
           },
         ]
       }
+      workspace_onboarding: {
+        Row: {
+          activated_at: string | null
+          admin_note: string | null
+          branch_count: number | null
+          brand_name: string | null
+          contact_email: string | null
+          contact_mobile: string | null
+          contact_name: string | null
+          contact_national_id: string | null
+          cr_number: string | null
+          created_at: string
+          legal_name: string | null
+          logo_path: string | null
+          meeting_at: string | null
+          meeting_note: string | null
+          paid_at: string | null
+          status: string
+          submitted_at: string | null
+          updated_at: string
+          vat_number: string | null
+          workspace_id: string
+        }
+        Insert: {
+          activated_at?: string | null
+          admin_note?: string | null
+          branch_count?: number | null
+          brand_name?: string | null
+          contact_email?: string | null
+          contact_mobile?: string | null
+          contact_name?: string | null
+          contact_national_id?: string | null
+          cr_number?: string | null
+          created_at?: string
+          legal_name?: string | null
+          logo_path?: string | null
+          meeting_at?: string | null
+          meeting_note?: string | null
+          paid_at?: string | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+          vat_number?: string | null
+          workspace_id: string
+        }
+        Update: {
+          activated_at?: string | null
+          admin_note?: string | null
+          branch_count?: number | null
+          brand_name?: string | null
+          contact_email?: string | null
+          contact_mobile?: string | null
+          contact_name?: string | null
+          contact_national_id?: string | null
+          cr_number?: string | null
+          created_at?: string
+          legal_name?: string | null
+          logo_path?: string | null
+          meeting_at?: string | null
+          meeting_note?: string | null
+          paid_at?: string | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+          vat_number?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_onboarding_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspaces: {
         Row: {
           created_at: string
@@ -1611,6 +1703,7 @@ export type Database = {
         }
         Returns: string
       }
+      is_platform_admin: { Args: never; Returns: boolean }
       reserve_ai_call: {
         Args: {
           p_exception_id: string
