@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { opsCan, sarFmt } from "@/lib/ops";
 import { deletePayment, getReceiptUrl, listOpsClients, listPayments, recordPayment } from "@/lib/ops.functions";
-import { OpsDenied, OpsHeader, useOpsRole } from "../ops";
+import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
 export const Route = createFileRoute("/ops/payments")({ component: Payments });
 

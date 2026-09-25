@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { opsCan } from "@/lib/ops";
 import { getOpsLogs } from "@/lib/ops.functions";
-import { OpsDenied, OpsHeader, useOpsRole } from "../ops";
+import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
 export const Route = createFileRoute("/ops/logs")({ component: Logs });
 

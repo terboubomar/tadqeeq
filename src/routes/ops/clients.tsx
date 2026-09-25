@@ -10,7 +10,7 @@ import { ONBOARDING_STATUS_LABELS, type OnboardingStatus } from "@/lib/onboardin
 import { opsCan, sarFmt, SUBSCRIPTION_STATUS_LABELS, CYCLE_LABELS } from "@/lib/ops";
 import { addClientNote, listClientNotes, listOpsClients, setOpsClientStatus } from "@/lib/ops.functions";
 import type { OpsClient } from "@/lib/ops.server";
-import { OpsDenied, OpsHeader, useOpsRole } from "../ops";
+import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
 export const Route = createFileRoute("/ops/clients")({ component: Clients });
 

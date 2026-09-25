@@ -1,15 +1,16 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { Activity, CreditCard, FileClock, LayoutDashboard, Loader2, LogOut, Receipt, Users, UserCog } from "lucide-react";
-import { createContext, useContext, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { OPS_ROLE_LABELS, opsAllowedHost, opsCan, type OpsRole, type OpsSection } from "@/lib/ops";
+import { OPS_ROLE_LABELS, opsAllowedHost, opsCan, type OpsSection } from "@/lib/ops";
 import { getOpsMe } from "@/lib/ops.functions";
+import { OpsRoleContext } from "@/components/OpsShared";
 
 export const Route = createFileRoute("/ops")({
   ssr: false,
@@ -30,8 +31,6 @@ export const Route = createFileRoute("/ops")({
   component: OpsLayout,
 });
 
-const OpsRoleContext = createContext<OpsRole | null>(null);
-export const useOpsRole = () => useContext(OpsRoleContext);
 
 const NAV: { to: string; label: string; section: OpsSection; icon: typeof Users }[] = [
   { to: "/ops", label: "نظرة عامة", section: "overview", icon: LayoutDashboard },
@@ -133,18 +132,3 @@ function OpsSignIn({ onDone }: { onDone: () => void }) {
   );
 }
 
-export function OpsDenied() {
-  return <p className="panel mx-auto mt-10 max-w-md p-8 text-center text-sm">دورك لا يسمح بفتح هذا القسم.</p>;
-}
-
-export function OpsHeader({ title, sub, children }: { title: string; sub?: string; children?: React.ReactNode }) {
-  return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-2xl font-bold">{title}</h1>
-        {sub ? <p className="mt-1 text-sm text-muted-foreground">{sub}</p> : null}
-      </div>
-      {children}
-    </div>
-  );
-}

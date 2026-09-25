@@ -5,7 +5,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 
 import { sarFmt, opsCan } from "@/lib/ops";
 import { getOpsOverview } from "@/lib/ops.functions";
-import { OpsDenied, OpsHeader, useOpsRole } from "../ops";
+import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
 export const Route = createFileRoute("/ops/")({ component: Overview });
 

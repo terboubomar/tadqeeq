@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OPS_ACCESS, OPS_ROLE_LABELS, opsCan, type OpsRole } from "@/lib/ops";
 import { addOpsStaff, listOpsStaff, removeOpsStaff } from "@/lib/ops.functions";
-import { OpsDenied, OpsHeader, useOpsRole } from "../ops";
+import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
 export const Route = createFileRoute("/ops/staff")({ component: Staff });
 

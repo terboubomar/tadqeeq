@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 
 import { opsCan } from "@/lib/ops";
 import { getOpsUsage } from "@/lib/ops.functions";
-import { OpsDenied, OpsHeader, useOpsRole } from "../ops";
+import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
 export const Route = createFileRoute("/ops/usage")({ component: Usage });
 
