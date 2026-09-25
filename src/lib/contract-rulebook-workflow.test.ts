@@ -31,7 +31,7 @@ describe("contract rulebook workflow", () => {
     const route = await read("src/routes/_authenticated/contracts.tsx");
     const shell = await read("src/components/AppShell.tsx");
 
-    expect(shell).toContain('{ to: "/contracts", label: "العقود وشروط المنصات" }');
+    expect(shell).toContain('{ to: "/contracts", label: "العقود وشروط المنصات", permission: "contracts.read" }');
     expect(route).toContain("إنشاء نسخة عقد جديدة");
     expect(route).toContain("إضافة بند");
     expect(route).toContain("اعتماد وقفل النسخة");
