@@ -219,11 +219,13 @@ export async function listWorkspaceMembersOnServer(): Promise<WorkspaceMembersBu
   if (profilesError) throw new Error(profilesError.message);
   if (scopesError) throw new Error(scopesError.message);
 
+  const profileRows = (profiles ?? []) as Array<{
+    id: string;
+    full_name: string | null;
+    email: string | null;
+  }>;
   const profileMap = new Map(
-    (profiles ?? []).map((row: { id: string; full_name: string | null; email: string | null }) => [
-      row.id,
-      row,
-    ]),
+    profileRows.map((row) => [row.id, row] as const),
   );
   const branchesByMember = new Map<string, string[]>();
   for (const row of scopes ?? []) {
