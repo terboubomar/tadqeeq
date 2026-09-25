@@ -13,6 +13,8 @@ export interface WorkspaceClientContext {
   globalBranchAccess: boolean;
   fullName: string | null;
   email: string | null;
+  onboardingStatus: string;
+  isPlatformAdmin: boolean;
 }
 
 export async function getMyWorkspaceContextOnServer(): Promise<WorkspaceClientContext> {
@@ -37,5 +39,7 @@ export async function getMyWorkspaceContextOnServer(): Promise<WorkspaceClientCo
     globalBranchAccess: context.globalBranchAccess,
     fullName: profile?.full_name ?? null,
     email: profile?.email ?? null,
+    onboardingStatus: context.onboardingStatus,
+    isPlatformAdmin: context.isPlatformAdmin,
   };
 }

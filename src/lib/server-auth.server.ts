@@ -32,6 +32,8 @@ export interface ServerUserAuth {
   permissions: readonly WorkspacePermission[];
   allowedBranchIds: string[];
   globalBranchAccess: boolean;
+  onboardingStatus: string;
+  isPlatformAdmin: boolean;
   client: ServerUserClient;
 }
 
@@ -176,7 +178,21 @@ async function loadWorkspaceContext(
       .filter((value: string | undefined): value is string => Boolean(value));
   }
 
+  const [{ data: onboardingRow }, { data: adminFlag }] = await Promise.all([
+    db
+      .from("workspace_onboarding")
+      .select("status")
+      .eq("workspace_id", typedWorkspace.id)
+      .maybeSingle(),
+    (client as unknown as { rpc: (name: string) => Promise<{ data: unknown }> }).rpc(
+      "is_platform_admin",
+    ),
+  ]);
+
   return {
+    onboardingStatus:
+      typeof onboardingRow?.status === "string" ? onboardingRow.status : "active",
+    isPlatformAdmin: adminFlag === true,
     userId: typedWorkspace.owner_user_id,
     workspaceId: typedWorkspace.id,
     workspaceName: typedWorkspace.name,
@@ -213,6 +229,9 @@ export async function requireWorkspacePermission(
   permission: WorkspacePermission,
 ): Promise<ServerUserAuth> {
   const context = await requireServerUser();
+  if (context.onboardingStatus !== "active" && !context.isPlatformAdmin) {
+    throw new Error("حسابك قيد التفعيل — ستُفتح الميزات بعد إتمام التهيئة والدفع.");
+  }
   if (!hasWorkspacePermission(context.role, permission)) {
     throw new Error("ليس لديك صلاحية لتنفيذ هذا الإجراء.");
   }
