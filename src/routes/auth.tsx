@@ -79,19 +79,25 @@ function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
-      <div className="panel w-full max-w-[420px] p-7">
+    <div className="grid min-h-screen bg-background lg:grid-cols-[0.85fr_1.15fr]">
+      <aside className="hidden bg-ink p-12 text-ink-foreground lg:flex lg:flex-col lg:justify-between">
+        <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-[9px] bg-primary font-display text-xl font-extrabold text-primary-foreground">ت</span><span className="font-display text-xl font-bold">تدقيق</span></div>
+        <div><h2 className="max-w-md font-display text-4xl font-bold leading-[1.55]">دقّق فواتير منصات التوصيل قبل السداد</h2><p className="mt-5 max-w-md text-base leading-8 text-ink-muted">مساحة سعودية واحدة لمطابقة الفواتير، متابعة التعويضات، وتحليل أداء الفروع.</p></div>
+        <p className="text-sm text-ink-muted">هنقرستيشن · كيتا · جاهز</p>
+      </aside>
+      <main className="flex items-center justify-center px-4 py-10 sm:px-8">
+      <div className="w-full max-w-[430px] rounded-[16px] border border-border bg-card p-7 shadow-panel sm:p-9">
         <div className="flex items-center gap-3">
           <span className="grid size-11 place-items-center rounded-[8px] bg-primary text-xl font-bold text-primary-foreground">
             ت
           </span>
           <div>
-            <h1 className="text-xl font-bold">تدقيق</h1>
+            <h1 className="font-display text-xl font-bold">تدقيق</h1>
             <p className="text-xs text-muted-foreground">مراجعة فواتير تطبيقات التوصيل</p>
           </div>
         </div>
 
-        <h2 className="mt-7 text-base font-semibold">
+        <h2 className="mt-8 font-display text-xl font-semibold">
           {mode === "signin" ? "تسجيل الدخول" : "سجّل منشأتك"}
         </h2>
 
@@ -161,6 +167,7 @@ function AuthPage() {
           {mode === "signin" ? "ليس لديك حساب؟ أنشئ حساباً" : "لديك حساب؟ سجّل الدخول"}
         </button>
       </div>
+      </main>
     </div>
   );
 }
