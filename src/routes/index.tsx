@@ -1,5 +1,5 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { Check, ChevronDown, LockKeyhole, ShieldCheck, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Camera, Check, ChevronDown, FileSignature, FileSearch, History, LockKeyhole, ShieldCheck, Sparkles, Users, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,17 @@ const CHECKS = [
   ["ضريبة القيمة المضافة", "على كل بند خاضع للضريبة"],
   ["صافي التسوية", "المستحق مقابل المحوّل فعلياً"],
   ["بنود غير مصنفة", "أي خصم لا يطابق خريطة الرسوم"],
+];
+
+const FEATURES = [
+  { icon: FileSearch, title: "تدقيق الفواتير", body: "إعادة احتساب كل بند في فاتورة المنصة من ملف الطلبات نفسه، مع الفرق لكل فرع ولكل يوم." },
+  { icon: AlertTriangle, title: "كشف الاستثناءات", body: "الفروقات تظهر بحالتها ومسؤولها ومصدرها، مع مسار واضح لمعالجة كل استثناء وإغلاقه." },
+  { icon: Camera, title: "أدلة من تيليجرام", body: "موظف الكاشير يرسل صورة أو فيديو الطلب فقط، والمنصة تربطه بالرقم وتجهزه كمستند للمطالبة." },
+  { icon: FileSignature, title: "العقود وشروط المنصات", body: "معادلات كل عقد محفوظة بإصداراتها وتاريخ سريانها، والاحتساب يسير على العقد الصحيح." },
+  { icon: History, title: "تقارير وسجل كامل", body: "تقارير الفروع والأيام قابلة للتصدير، وكل إعادة احتساب تُحفظ بإصدار قابل للمراجعة." },
+  { icon: Sparkles, title: "ذكاء تدقيق مساند", body: "تلخيص النتائج وشرح الاستثناءات بلغة بسيطة، دون أن يغيّر أي رقم محاسبي." },
+  { icon: Users, title: "فريق بصلاحيات", body: "لكل موظف دور يحدد ما يراه ويعدله، ومساحة منفصلة تماماً لكل شركة." },
+  { icon: ShieldCheck, title: "سجل تدقيق كامل", body: "كل إجراء يُسجّل باسم من قام به ووقته، حتى يبقى إغلاق الشهر قابلاً للمراجعة." },
 ];
 
 const AUDIENCES = [
