@@ -63,7 +63,7 @@ function TeamPage() {
   const invite = useMutation({
     mutationFn: () =>
       inviteWorkspaceMember({
-        data: { fullName, email, password: password || undefined, role, branchIds },
+        data: { fullName, email, password, role, branchIds },
       }),
     onSuccess: async () => {
       toast.success("تمت إضافة المستخدم — يمكنه تسجيل الدخول الآن.");
@@ -171,11 +171,11 @@ function TeamPage() {
               إلغاء
             </Button>
             <Button
-              disabled={invite.isPending || !fullName.trim() || !email.trim() || (restricted && branchIds.length === 0)}
+              disabled={invite.isPending || !fullName.trim() || !email.trim() || password.length < 8 || (restricted && branchIds.length === 0)}
               onClick={() => invite.mutate()}
             >
               {invite.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-              إرسال الدعوة
+              إضافة المستخدم
             </Button>
           </div>
         </section>
