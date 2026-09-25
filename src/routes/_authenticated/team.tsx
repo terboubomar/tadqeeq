@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, Plus, Shield, Trash2, UserCheck, UserX } from "lucide-react";
+import { KeyRound, Loader2, Plus, Shield, Trash2, UserCheck, UserX } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -17,6 +17,7 @@ import {
   getWorkspaceMembers,
   inviteWorkspaceMember,
   removeWorkspaceMember,
+  setWorkspaceMemberPassword,
   updateWorkspaceMember,
 } from "@/lib/workspace-admin.functions";
 import type {

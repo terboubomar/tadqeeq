@@ -5,6 +5,7 @@ import {
   inviteWorkspaceMemberOnServer,
   listWorkspaceMembersOnServer,
   removeWorkspaceMemberOnServer,
+  setWorkspaceMemberPasswordOnServer,
   updateWorkspaceMemberOnServer,
 } from "./workspace-admin.server";
 
@@ -47,4 +48,15 @@ export const removeWorkspaceMember = createServerFn({ method: "POST" })
   .validator(z.object({ membershipId: z.string().uuid() }))
   .handler(async ({ data }) =>
     removeWorkspaceMemberOnServer(data.membershipId),
+  );
+
+export const setWorkspaceMemberPassword = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      membershipId: z.string().uuid(),
+      password: z.string().min(8).max(128),
+    }),
+  )
+  .handler(async ({ data }) =>
+    setWorkspaceMemberPasswordOnServer(data.membershipId, data.password),
   );
