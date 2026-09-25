@@ -354,7 +354,7 @@ export async function updateWorkspaceMemberOnServer(
 
   const { data: target, error } = await db
     .from("workspace_members")
-    .select("id,user_id,role,status")
+    .select("id,user_id,role,status,joined_at")
     .eq("id", input.membershipId)
     .eq("workspace_id", context.workspaceId)
     .maybeSingle();
@@ -383,7 +383,7 @@ export async function updateWorkspaceMemberOnServer(
       role: input.role,
       status: input.status,
       updated_at: new Date().toISOString(),
-      ...(input.status === "active" && !target.status
+      ...(input.status === "active" && target.status !== "active" && !target.joined_at
         ? { joined_at: new Date().toISOString() }
         : {}),
     })
