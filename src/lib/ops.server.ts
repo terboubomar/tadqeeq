@@ -17,6 +17,10 @@ export interface OpsActor {
   role: OpsRole;
 }
 
+export function getRequestHostOnServer(): string {
+  return getRequestHeader("host") ?? "";
+}
+
 async function currentUser() {
   const header = getRequestHeader("authorization") ?? "";
   const token = header.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();

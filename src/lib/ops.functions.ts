@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 import * as S from "./ops.server";
@@ -11,7 +10,7 @@ const subStatus = z.enum(["trial", "active", "overdue", "cancelled", "suspended"
 const onbStatus = z.enum(["pending_details", "meeting_booked", "awaiting_payment", "onboarding", "active", "suspended"]);
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
-export const getRequestHost = createServerFn({ method: "GET" }).handler(async () => getRequestHeader("host") ?? "");
+export const getRequestHost = createServerFn({ method: "GET" }).handler(() => S.getRequestHostOnServer());
 
 export const getOpsMe = createServerFn({ method: "POST" }).inputValidator(empty).handler(() => S.getOpsMeOnServer());
 export const getOpsOverview = createServerFn({ method: "POST" }).inputValidator(empty).handler(() => S.getOpsOverviewOnServer());
