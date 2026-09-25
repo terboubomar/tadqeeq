@@ -18,12 +18,15 @@ export const Route = createFileRoute("/auth")({
       { property: "og:description", content: "سجّل الدخول لمراجعة فواتير تطبيقات التوصيل." },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>): { mode?: "signup" } =>
+    search["mode"] === "signup" ? { mode: "signup" } : {},
   component: AuthPage,
 });
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const search = Route.useSearch();
+  const [mode, setMode] = useState<"signin" | "signup">(search.mode === "signup" ? "signup" : "signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -89,9 +92,14 @@ function AuthPage() {
         </div>
 
         <h2 className="mt-7 text-base font-semibold">
-          {mode === "signin" ? "تسجيل الدخول" : "إنشاء حساب جديد"}
+          {mode === "signin" ? "تسجيل الدخول" : "سجّل منشأتك"}
         </h2>
 
+        {mode === "signup" ? (
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            أنشئ حسابك، وبعدها مباشرة ستملأ نموذج بيانات المنشأة وتحجز اجتماعك.
+          </p>
+        ) : null}
         <form onSubmit={submit} className="mt-5 space-y-4">
           {mode === "signup" ? (
             <div className="space-y-2">

@@ -1,5 +1,7 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import {
+  Check,
+  X,
   BarChart3,
   Bot,
   CalendarClock,
@@ -14,6 +16,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { isOpsHost } from "@/lib/ops";
 import { getRequestHost } from "@/lib/ops.functions";
+import { CORE_FEATURE_LABELS, PLAN_FEATURES, type PublicPlan } from "@/lib/plans";
+import { listPublicPlans } from "@/lib/plans.functions";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
@@ -37,6 +41,9 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
+  loader: () => listPublicPlans(),
+  errorComponent: () => <Landing />,
+  notFoundComponent: () => <Landing />,
   component: Landing,
 });
 
@@ -56,6 +63,7 @@ const STEPS = [
 ];
 
 function Landing() {
+  const plans = (Route.useLoaderData({ strict: false }) as PublicPlan[] | undefined) ?? [];
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <header className="mx-auto flex max-w-6xl items-center justify-between border-b border-border px-5 py-4">
@@ -65,7 +73,7 @@ function Landing() {
         </div>
         <div className="flex gap-2">
           <Button asChild variant="ghost" size="sm"><Link to="/auth">تسجيل الدخول</Link></Button>
-          <Button asChild size="sm"><Link to="/auth">سجّل منشأتك</Link></Button>
+          <Button asChild size="sm"><Link to="/auth" search={{ mode: "signup" }}>سجّل منشأتك</Link></Button>
         </div>
       </header>
 
@@ -84,7 +92,7 @@ function Landing() {
             تسترجع التعويضات بأدلة موثقة من فروعك.
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
-            <Button asChild size="lg"><Link to="/auth">ابدأ الآن</Link></Button>
+            <Button asChild size="lg"><Link to="/auth" search={{ mode: "signup" }}>ابدأ الآن</Link></Button>
             <Button asChild size="lg" variant="outline"><Link to="/auth">لدي حساب</Link></Button>
           </div>
         </section>
@@ -117,12 +125,14 @@ function Landing() {
           </ol>
         </section>
 
+        {plans.length ? <Pricing plans={plans} /> : null}
+
         <section className="panel mt-20 flex flex-col items-start justify-between gap-5 p-7 sm:flex-row sm:items-center">
           <div>
             <h2 className="text-xl font-bold">جاهز توقف الخسائر المخفية؟</h2>
             <p className="mt-1 text-sm text-muted-foreground">سجّل منشأتك واحجز اجتماعك مع خبير خلال دقيقتين.</p>
           </div>
-          <Button asChild size="lg"><Link to="/auth">سجّل منشأتك</Link></Button>
+          <Button asChild size="lg"><Link to="/auth" search={{ mode: "signup" }}>سجّل منشأتك</Link></Button>
         </section>
       </main>
 
@@ -130,5 +140,61 @@ function Landing() {
         © {new Date().getFullYear()} تدقيق — المملكة العربية السعودية
       </footer>
     </div>
+  );
+}
+
+function Pricing({ plans }: { plans: PublicPlan[] }) {
+  return (
+    <section id="pricing" className="mt-20">
+      <h2 className="text-2xl font-bold sm:text-3xl">الباقات</h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        السعر حسب الميزات وعدد مرات رفع الملفات شهرياً — بدون احتساب عدد الفروع.
+      </p>
+      <div className="mt-6 grid gap-3 md:grid-cols-3">
+        {plans.map((p) => (
+          <article
+            key={p.id}
+            className={"panel flex flex-col p-6 " + (p.highlighted ? "border-primary ring-1 ring-primary" : "")}
+          >
+            {p.highlighted ? (
+              <span className="mb-3 self-start rounded-[6px] bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
+                الأكثر طلباً
+              </span>
+            ) : null}
+            <h3 className="text-lg font-bold">{p.name}</h3>
+            {p.description ? <p className="mt-1 text-sm text-muted-foreground">{p.description}</p> : null}
+            <p className="mt-4">
+              <span className="num text-3xl font-bold">{p.price.toLocaleString("en-US")}</span>
+              <span className="text-sm text-muted-foreground"> ر.س / {p.cycle === "yearly" ? "سنوياً" : "شهرياً"}</span>
+            </p>
+            <p className="mt-2 text-sm font-medium">
+              {p.uploadLimit === null ? "رفع ملفات بلا حدود" : `حتى ${p.uploadLimit} رفعة ملفات شهرياً`}
+            </p>
+            <ul className="mt-4 flex-1 space-y-2 text-sm">
+              {CORE_FEATURE_LABELS.map((l) => (
+                <li key={l} className="flex gap-2"><Check className="size-4 shrink-0 text-primary" />{l}</li>
+              ))}
+              {PLAN_FEATURES.map((f) => {
+                const on = p.features.includes(f.key);
+                return (
+                  <li key={f.key} className={"flex gap-2 " + (on ? "" : "text-muted-foreground line-through")}>
+                    {on ? <Check className="size-4 shrink-0 text-primary" /> : <X className="size-4 shrink-0" />}
+                    {f.label}
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="mt-6 grid gap-2">
+              <Button asChild variant={p.highlighted ? "default" : "outline"}>
+                <Link to="/auth" search={{ mode: "signup" }}>سجّل منشأتك</Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm">
+                <a href="mailto:hello@tadqeeq.app">تواصل معنا</a>
+              </Button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
