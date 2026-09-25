@@ -401,12 +401,12 @@ BEGIN
     );
   END LOOP;
 END
-$;
+$$;
 
 -- Preserve the legacy data-owner invariant while workspace_id becomes the
 -- authorization boundary. Every workspace-owned row must keep user_id equal
 -- to that workspace's owner, even if a staff client bypasses application code.
-DO $
+DO $$
 DECLARE
   t text;
   constraint_name text;
@@ -452,7 +452,7 @@ BEGIN
     END IF;
   END LOOP;
 END
-$;
+$$;
 
 ALTER TABLE public.ai_usage
   ADD COLUMN IF NOT EXISTS actor_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
@@ -505,7 +505,7 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = ''
-AS $
+AS $$
   WITH candidate AS (
     SELECT substring(
       storage.filename(p_name)
@@ -522,7 +522,7 @@ AS $
       AND private.has_workspace_permission(e.workspace_id, 'telegram.read')
       AND private.can_access_branch(e.workspace_id, e.branch_id)
   );
-$;
+$$;
 
 REVOKE ALL ON FUNCTION private.can_access_telegram_evidence_object(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION private.can_access_telegram_evidence_object(text) TO authenticated;
@@ -588,7 +588,7 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = ''
-AS $
+AS $$
   SELECT EXISTS (
     SELECT 1
     FROM public.recovery_case_details r
@@ -602,7 +602,7 @@ AS $
           AND private.can_access_branch(r.workspace_id, r.branch_id)
       )
   );
-$;
+$$;
 
 REVOKE ALL ON FUNCTION private.can_access_recovery_case(uuid,uuid,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION private.can_access_recovery_case(uuid,uuid,text) TO authenticated;
