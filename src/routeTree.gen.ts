@@ -9,42 +9,40 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
-import { Route as AuthRouteImport } from './routes/auth'
 import { Route as OpsRouteImport } from './routes/ops'
-import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
-import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
-import { Route as AuthenticatedBranchesRouteImport } from './routes/_authenticated/branches'
-import { Route as AuthenticatedBreakdownRouteImport } from './routes/_authenticated/breakdown'
-import { Route as AuthenticatedChargesRouteImport } from './routes/_authenticated/charges'
-import { Route as AuthenticatedCompensationRouteImport } from './routes/_authenticated/compensation'
-import { Route as AuthenticatedContractsRouteImport } from './routes/_authenticated/contracts'
-import { Route as AuthenticatedDailyRouteImport } from './routes/_authenticated/daily'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedExceptionsRouteImport } from './routes/_authenticated/exceptions'
-import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
-import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
-import { Route as AuthenticatedInvoiceCheckRouteImport } from './routes/_authenticated/invoice-check'
-import { Route as AuthenticatedPromotionsRouteImport } from './routes/_authenticated/promotions'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as OpsIndexRouteImport } from './routes/ops/index'
+import { Route as OpsUsageRouteImport } from './routes/ops/usage'
+import { Route as OpsSubscriptionsRouteImport } from './routes/ops/subscriptions'
+import { Route as OpsStaffRouteImport } from './routes/ops/staff'
+import { Route as OpsPaymentsRouteImport } from './routes/ops/payments'
+import { Route as OpsLogsRouteImport } from './routes/ops/logs'
+import { Route as OpsClientsRouteImport } from './routes/ops/clients'
 import { Route as AuthenticatedTenantsRouteImport } from './routes/_authenticated/tenants'
+import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedPromotionsRouteImport } from './routes/_authenticated/promotions'
+import { Route as AuthenticatedInvoiceCheckRouteImport } from './routes/_authenticated/invoice-check'
+import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
+import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
+import { Route as AuthenticatedExceptionsRouteImport } from './routes/_authenticated/exceptions'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedDailyRouteImport } from './routes/_authenticated/daily'
+import { Route as AuthenticatedContractsRouteImport } from './routes/_authenticated/contracts'
+import { Route as AuthenticatedCompensationRouteImport } from './routes/_authenticated/compensation'
+import { Route as AuthenticatedChargesRouteImport } from './routes/_authenticated/charges'
+import { Route as AuthenticatedBreakdownRouteImport } from './routes/_authenticated/breakdown'
+import { Route as AuthenticatedBranchesRouteImport } from './routes/_authenticated/branches'
+import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
+import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AcceptInviteRoute = AcceptInviteRouteImport.update({
-  id: '/accept-invite',
-  path: '/accept-invite',
+const OpsRoute = OpsRouteImport.update({
+  id: '/ops',
+  path: '/ops',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -52,70 +50,73 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OpsRoute = OpsRouteImport.update({
-  id: '/ops',
-  path: '/ops',
+const AcceptInviteRoute = AcceptInviteRouteImport.update({
+  id: '/accept-invite',
+  path: '/accept-invite',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedAiRoute = AuthenticatedAiRouteImport.update({
-  id: '/ai',
-  path: '/ai',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OpsIndexRoute = OpsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsUsageRoute = OpsUsageRouteImport.update({
+  id: '/usage',
+  path: '/usage',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsSubscriptionsRoute = OpsSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsStaffRoute = OpsStaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsPaymentsRoute = OpsPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsLogsRoute = OpsLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsClientsRoute = OpsClientsRouteImport.update({
+  id: '/clients',
+  path: '/clients',
+  getParentRoute: () => OpsRoute,
+} as any)
+const AuthenticatedTenantsRoute = AuthenticatedTenantsRouteImport.update({
+  id: '/tenants',
+  path: '/tenants',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedAskRoute = AuthenticatedAskRouteImport.update({
-  id: '/ask',
-  path: '/ask',
+const AuthenticatedTeamRoute = AuthenticatedTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedBranchesRoute = AuthenticatedBranchesRouteImport.update({
-  id: '/branches',
-  path: '/branches',
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedBreakdownRoute = AuthenticatedBreakdownRouteImport.update({
-  id: '/breakdown',
-  path: '/breakdown',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedChargesRoute = AuthenticatedChargesRouteImport.update({
-  id: '/charges',
-  path: '/charges',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedCompensationRoute =
-  AuthenticatedCompensationRouteImport.update({
-    id: '/compensation',
-    path: '/compensation',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedContractsRoute = AuthenticatedContractsRouteImport.update({
-  id: '/contracts',
-  path: '/contracts',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedDailyRoute = AuthenticatedDailyRouteImport.update({
-  id: '/daily',
-  path: '/daily',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedExceptionsRoute = AuthenticatedExceptionsRouteImport.update({
-  id: '/exceptions',
-  path: '/exceptions',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedHistoryRoute = AuthenticatedHistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
-  id: '/import',
-  path: '/import',
+const AuthenticatedPromotionsRoute = AuthenticatedPromotionsRouteImport.update({
+  id: '/promotions',
+  path: '/promotions',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedInvoiceCheckRoute =
@@ -124,24 +125,65 @@ const AuthenticatedInvoiceCheckRoute =
     path: '/invoice-check',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedPromotionsRoute = AuthenticatedPromotionsRouteImport.update({
-  id: '/promotions',
-  path: '/promotions',
+const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
+  id: '/import',
+  path: '/import',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
+const AuthenticatedHistoryRoute = AuthenticatedHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedTeamRoute = AuthenticatedTeamRouteImport.update({
-  id: '/team',
-  path: '/team',
+const AuthenticatedExceptionsRoute = AuthenticatedExceptionsRouteImport.update({
+  id: '/exceptions',
+  path: '/exceptions',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedTenantsRoute = AuthenticatedTenantsRouteImport.update({
-  id: '/tenants',
-  path: '/tenants',
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDailyRoute = AuthenticatedDailyRouteImport.update({
+  id: '/daily',
+  path: '/daily',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedContractsRoute = AuthenticatedContractsRouteImport.update({
+  id: '/contracts',
+  path: '/contracts',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCompensationRoute =
+  AuthenticatedCompensationRouteImport.update({
+    id: '/compensation',
+    path: '/compensation',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedChargesRoute = AuthenticatedChargesRouteImport.update({
+  id: '/charges',
+  path: '/charges',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBreakdownRoute = AuthenticatedBreakdownRouteImport.update({
+  id: '/breakdown',
+  path: '/breakdown',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBranchesRoute = AuthenticatedBranchesRouteImport.update({
+  id: '/branches',
+  path: '/branches',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAskRoute = AuthenticatedAskRouteImport.update({
+  id: '/ask',
+  path: '/ask',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAiRoute = AuthenticatedAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ApiPublicTelegramWebhookRoute =
@@ -155,7 +197,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
-  '/ops': typeof OpsRoute
+  '/ops': typeof OpsRouteWithChildren
   '/ai': typeof AuthenticatedAiRoute
   '/ask': typeof AuthenticatedAskRoute
   '/branches': typeof AuthenticatedBranchesRoute
@@ -173,13 +215,19 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/team': typeof AuthenticatedTeamRoute
   '/tenants': typeof AuthenticatedTenantsRoute
+  '/ops/clients': typeof OpsClientsRoute
+  '/ops/logs': typeof OpsLogsRoute
+  '/ops/payments': typeof OpsPaymentsRoute
+  '/ops/staff': typeof OpsStaffRoute
+  '/ops/subscriptions': typeof OpsSubscriptionsRoute
+  '/ops/usage': typeof OpsUsageRoute
+  '/ops/': typeof OpsIndexRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
-  '/ops': typeof OpsRoute
   '/ai': typeof AuthenticatedAiRoute
   '/ask': typeof AuthenticatedAskRoute
   '/branches': typeof AuthenticatedBranchesRoute
@@ -197,6 +245,13 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/team': typeof AuthenticatedTeamRoute
   '/tenants': typeof AuthenticatedTenantsRoute
+  '/ops/clients': typeof OpsClientsRoute
+  '/ops/logs': typeof OpsLogsRoute
+  '/ops/payments': typeof OpsPaymentsRoute
+  '/ops/staff': typeof OpsStaffRoute
+  '/ops/subscriptions': typeof OpsSubscriptionsRoute
+  '/ops/usage': typeof OpsUsageRoute
+  '/ops': typeof OpsIndexRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesById {
@@ -205,7 +260,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
-  '/ops': typeof OpsRoute
+  '/ops': typeof OpsRouteWithChildren
   '/_authenticated/ai': typeof AuthenticatedAiRoute
   '/_authenticated/ask': typeof AuthenticatedAskRoute
   '/_authenticated/branches': typeof AuthenticatedBranchesRoute
@@ -223,6 +278,13 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/_authenticated/tenants': typeof AuthenticatedTenantsRoute
+  '/ops/clients': typeof OpsClientsRoute
+  '/ops/logs': typeof OpsLogsRoute
+  '/ops/payments': typeof OpsPaymentsRoute
+  '/ops/staff': typeof OpsStaffRoute
+  '/ops/subscriptions': typeof OpsSubscriptionsRoute
+  '/ops/usage': typeof OpsUsageRoute
+  '/ops/': typeof OpsIndexRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRouteTypes {
@@ -249,13 +311,19 @@ export interface FileRouteTypes {
     | '/settings'
     | '/team'
     | '/tenants'
+    | '/ops/clients'
+    | '/ops/logs'
+    | '/ops/payments'
+    | '/ops/staff'
+    | '/ops/subscriptions'
+    | '/ops/usage'
+    | '/ops/'
     | '/api/public/telegram-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/accept-invite'
     | '/auth'
-    | '/ops'
     | '/ai'
     | '/ask'
     | '/branches'
@@ -273,6 +341,13 @@ export interface FileRouteTypes {
     | '/settings'
     | '/team'
     | '/tenants'
+    | '/ops/clients'
+    | '/ops/logs'
+    | '/ops/payments'
+    | '/ops/staff'
+    | '/ops/subscriptions'
+    | '/ops/usage'
+    | '/ops'
     | '/api/public/telegram-webhook'
   id:
     | '__root__'
@@ -298,6 +373,13 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/team'
     | '/_authenticated/tenants'
+    | '/ops/clients'
+    | '/ops/logs'
+    | '/ops/payments'
+    | '/ops/staff'
+    | '/ops/subscriptions'
+    | '/ops/usage'
+    | '/ops/'
     | '/api/public/telegram-webhook'
   fileRoutesById: FileRoutesById
 }
@@ -306,31 +388,17 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AcceptInviteRoute: typeof AcceptInviteRoute
   AuthRoute: typeof AuthRoute
-  OpsRoute: typeof OpsRoute
+  OpsRoute: typeof OpsRouteWithChildren
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated': {
-      id: '/_authenticated'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/accept-invite': {
-      id: '/accept-invite'
-      path: '/accept-invite'
-      fullPath: '/accept-invite'
-      preLoaderRoute: typeof AcceptInviteRouteImport
+    '/ops': {
+      id: '/ops'
+      path: '/ops'
+      fullPath: '/ops'
+      preLoaderRoute: typeof OpsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -340,116 +408,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ops': {
-      id: '/ops'
-      path: '/ops'
-      fullPath: '/ops'
-      preLoaderRoute: typeof OpsRouteImport
+    '/accept-invite': {
+      id: '/accept-invite'
+      path: '/accept-invite'
+      fullPath: '/accept-invite'
+      preLoaderRoute: typeof AcceptInviteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/ai': {
-      id: '/_authenticated/ai'
-      path: '/ai'
-      fullPath: '/ai'
-      preLoaderRoute: typeof AuthenticatedAiRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/ask': {
-      id: '/_authenticated/ask'
-      path: '/ask'
-      fullPath: '/ask'
-      preLoaderRoute: typeof AuthenticatedAskRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/branches': {
-      id: '/_authenticated/branches'
-      path: '/branches'
-      fullPath: '/branches'
-      preLoaderRoute: typeof AuthenticatedBranchesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/ops/': {
+      id: '/ops/'
+      path: '/'
+      fullPath: '/ops/'
+      preLoaderRoute: typeof OpsIndexRouteImport
+      parentRoute: typeof OpsRoute
     }
-    '/_authenticated/breakdown': {
-      id: '/_authenticated/breakdown'
-      path: '/breakdown'
-      fullPath: '/breakdown'
-      preLoaderRoute: typeof AuthenticatedBreakdownRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/ops/usage': {
+      id: '/ops/usage'
+      path: '/usage'
+      fullPath: '/ops/usage'
+      preLoaderRoute: typeof OpsUsageRouteImport
+      parentRoute: typeof OpsRoute
     }
-    '/_authenticated/charges': {
-      id: '/_authenticated/charges'
-      path: '/charges'
-      fullPath: '/charges'
-      preLoaderRoute: typeof AuthenticatedChargesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/ops/subscriptions': {
+      id: '/ops/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/ops/subscriptions'
+      preLoaderRoute: typeof OpsSubscriptionsRouteImport
+      parentRoute: typeof OpsRoute
     }
-    '/_authenticated/compensation': {
-      id: '/_authenticated/compensation'
-      path: '/compensation'
-      fullPath: '/compensation'
-      preLoaderRoute: typeof AuthenticatedCompensationRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/ops/staff': {
+      id: '/ops/staff'
+      path: '/staff'
+      fullPath: '/ops/staff'
+      preLoaderRoute: typeof OpsStaffRouteImport
+      parentRoute: typeof OpsRoute
     }
-    '/_authenticated/contracts': {
-      id: '/_authenticated/contracts'
-      path: '/contracts'
-      fullPath: '/contracts'
-      preLoaderRoute: typeof AuthenticatedContractsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/ops/payments': {
+      id: '/ops/payments'
+      path: '/payments'
+      fullPath: '/ops/payments'
+      preLoaderRoute: typeof OpsPaymentsRouteImport
+      parentRoute: typeof OpsRoute
     }
-    '/_authenticated/daily': {
-      id: '/_authenticated/daily'
-      path: '/daily'
-      fullPath: '/daily'
-      preLoaderRoute: typeof AuthenticatedDailyRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/ops/logs': {
+      id: '/ops/logs'
+      path: '/logs'
+      fullPath: '/ops/logs'
+      preLoaderRoute: typeof OpsLogsRouteImport
+      parentRoute: typeof OpsRoute
     }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/ops/clients': {
+      id: '/ops/clients'
+      path: '/clients'
+      fullPath: '/ops/clients'
+      preLoaderRoute: typeof OpsClientsRouteImport
+      parentRoute: typeof OpsRoute
     }
-    '/_authenticated/exceptions': {
-      id: '/_authenticated/exceptions'
-      path: '/exceptions'
-      fullPath: '/exceptions'
-      preLoaderRoute: typeof AuthenticatedExceptionsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/history': {
-      id: '/_authenticated/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof AuthenticatedHistoryRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/import': {
-      id: '/_authenticated/import'
-      path: '/import'
-      fullPath: '/import'
-      preLoaderRoute: typeof AuthenticatedImportRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/invoice-check': {
-      id: '/_authenticated/invoice-check'
-      path: '/invoice-check'
-      fullPath: '/invoice-check'
-      preLoaderRoute: typeof AuthenticatedInvoiceCheckRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/promotions': {
-      id: '/_authenticated/promotions'
-      path: '/promotions'
-      fullPath: '/promotions'
-      preLoaderRoute: typeof AuthenticatedPromotionsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+    '/_authenticated/tenants': {
+      id: '/_authenticated/tenants'
+      path: '/tenants'
+      fullPath: '/tenants'
+      preLoaderRoute: typeof AuthenticatedTenantsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/team': {
@@ -459,11 +492,109 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTeamRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/tenants': {
-      id: '/_authenticated/tenants'
-      path: '/tenants'
-      fullPath: '/tenants'
-      preLoaderRoute: typeof AuthenticatedTenantsRouteImport
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/promotions': {
+      id: '/_authenticated/promotions'
+      path: '/promotions'
+      fullPath: '/promotions'
+      preLoaderRoute: typeof AuthenticatedPromotionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/invoice-check': {
+      id: '/_authenticated/invoice-check'
+      path: '/invoice-check'
+      fullPath: '/invoice-check'
+      preLoaderRoute: typeof AuthenticatedInvoiceCheckRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/import': {
+      id: '/_authenticated/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof AuthenticatedImportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/history': {
+      id: '/_authenticated/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof AuthenticatedHistoryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/exceptions': {
+      id: '/_authenticated/exceptions'
+      path: '/exceptions'
+      fullPath: '/exceptions'
+      preLoaderRoute: typeof AuthenticatedExceptionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/daily': {
+      id: '/_authenticated/daily'
+      path: '/daily'
+      fullPath: '/daily'
+      preLoaderRoute: typeof AuthenticatedDailyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/contracts': {
+      id: '/_authenticated/contracts'
+      path: '/contracts'
+      fullPath: '/contracts'
+      preLoaderRoute: typeof AuthenticatedContractsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/compensation': {
+      id: '/_authenticated/compensation'
+      path: '/compensation'
+      fullPath: '/compensation'
+      preLoaderRoute: typeof AuthenticatedCompensationRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/charges': {
+      id: '/_authenticated/charges'
+      path: '/charges'
+      fullPath: '/charges'
+      preLoaderRoute: typeof AuthenticatedChargesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/breakdown': {
+      id: '/_authenticated/breakdown'
+      path: '/breakdown'
+      fullPath: '/breakdown'
+      preLoaderRoute: typeof AuthenticatedBreakdownRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/branches': {
+      id: '/_authenticated/branches'
+      path: '/branches'
+      fullPath: '/branches'
+      preLoaderRoute: typeof AuthenticatedBranchesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/ask': {
+      id: '/_authenticated/ask'
+      path: '/ask'
+      fullPath: '/ask'
+      preLoaderRoute: typeof AuthenticatedAskRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/ai': {
+      id: '/_authenticated/ai'
+      path: '/ai'
+      fullPath: '/ai'
+      preLoaderRoute: typeof AuthenticatedAiRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/public/telegram-webhook': {
@@ -519,12 +650,34 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface OpsRouteChildren {
+  OpsClientsRoute: typeof OpsClientsRoute
+  OpsLogsRoute: typeof OpsLogsRoute
+  OpsPaymentsRoute: typeof OpsPaymentsRoute
+  OpsStaffRoute: typeof OpsStaffRoute
+  OpsSubscriptionsRoute: typeof OpsSubscriptionsRoute
+  OpsUsageRoute: typeof OpsUsageRoute
+  OpsIndexRoute: typeof OpsIndexRoute
+}
+
+const OpsRouteChildren: OpsRouteChildren = {
+  OpsClientsRoute: OpsClientsRoute,
+  OpsLogsRoute: OpsLogsRoute,
+  OpsPaymentsRoute: OpsPaymentsRoute,
+  OpsStaffRoute: OpsStaffRoute,
+  OpsSubscriptionsRoute: OpsSubscriptionsRoute,
+  OpsUsageRoute: OpsUsageRoute,
+  OpsIndexRoute: OpsIndexRoute,
+}
+
+const OpsRouteWithChildren = OpsRoute._addFileChildren(OpsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AcceptInviteRoute: AcceptInviteRoute,
   AuthRoute: AuthRoute,
-  OpsRoute: OpsRoute,
+  OpsRoute: OpsRouteWithChildren,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport
