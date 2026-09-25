@@ -7,6 +7,7 @@ import * as XLSX from "xlsx";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { searchCompensationEvidence } from "@/lib/compensation-evidence.functions";
 import type { CompensationEvidenceRecord } from "@/lib/compensation-evidence.server";
 import { sar } from "@/lib/format";
@@ -125,6 +126,7 @@ export function CompensationFileScanner({
 }: {
   renderEvidence: (item: CompensationEvidenceRecord) => ReactNode;
 }) {
+  const { context } = useWorkspaceAccess();
   const inputRef = useRef<HTMLInputElement>(null);
   const [orders, setOrders] = useState<CompensatedOrder[] | null>(null);
   const [fileNames, setFileNames] = useState<string[]>([]);
@@ -171,7 +173,15 @@ export function CompensationFileScanner({
     const { error } = wasDone
       ? await marks().delete().eq("order_number", key)
       : await marks()
-          .upsert({ order_number: key, submitted_at: stamp }, { onConflict: "user_id,order_number" });
+          .upsert(
+            {
+              user_id: context.dataOwnerUserId,
+              workspace_id: context.workspaceId,
+              order_number: key,
+              submitted_at: stamp,
+            },
+            { onConflict: "user_id,order_number" },
+          );
     if (error) {
       toast.error("تعذّر حفظ الحالة.");
       setDone((prev) => {
