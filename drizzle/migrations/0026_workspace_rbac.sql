@@ -105,7 +105,6 @@ WHERE c.branch_name IS NOT NULL
   );
 
 ALTER TABLE public.branch_registry ALTER COLUMN workspace_id SET NOT NULL;
-ALTER TABLE public.branch_registry ALTER COLUMN workspace_id SET DEFAULT private.active_workspace_id();
 
 DROP INDEX IF EXISTS public.branch_registry_user_name_idx;
 ALTER TABLE public.branch_registry DROP CONSTRAINT IF EXISTS branch_registry_user_id_name_key;
@@ -343,6 +342,8 @@ GRANT EXECUTE ON FUNCTION private.is_workspace_member(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.has_workspace_permission(uuid,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.can_access_branch(uuid,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.can_access_owner_folder(text,text) TO authenticated;
+
+ALTER TABLE public.branch_registry ALTER COLUMN workspace_id SET DEFAULT private.active_workspace_id();
 
 DO $$
 DECLARE
