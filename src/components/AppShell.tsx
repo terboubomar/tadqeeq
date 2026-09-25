@@ -146,6 +146,30 @@ export function AppShell({ children }: { children: ReactNode }) {
       ? String(exceptionSummary?.openCount ?? 0)
       : "";
 
+  if (locked) {
+    return (
+      <div className="min-h-screen bg-background" dir="rtl">
+        <header className="mx-auto flex max-w-3xl items-center justify-between border-b border-border px-5 py-4">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-9 place-items-center rounded-[8px] bg-primary text-lg font-bold text-primary-foreground">ت</span>
+            <span className="text-lg font-bold">تدقيق</span>
+          </div>
+          <button
+            type="button"
+            onClick={signOut}
+            className="flex items-center gap-2 rounded-[7px] px-2 py-2 text-xs text-muted-foreground hover:bg-muted hover:text-destructive"
+          >
+            <LogOut className="size-3.5" />
+            تسجيل الخروج
+          </button>
+        </header>
+        <div className="mx-auto w-full max-w-3xl px-4 pb-14 pt-6">
+          <OnboardingGate>{children}</OnboardingGate>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <div className="flex min-h-screen">
@@ -232,6 +256,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <p className="text-muted-foreground">
                   {WORKSPACE_ROLE_LABELS[context.role]} · {context.workspaceName}
                 </p>
+                {context.planName ? (
+                  <p className="num mt-1 text-muted-foreground">
+                    باقة {context.planName} · الرفع هذا الشهر {context.uploadsThisMonth}
+                    {context.uploadLimit !== null ? ` / ${context.uploadLimit}` : ""}
+                  </p>
+                ) : null}
               </div>
               <p className="text-[11px] leading-5 text-muted-foreground">
                 صلاحيات العرض والتعديل مرتبطة بدورك داخل حساب الشركة.

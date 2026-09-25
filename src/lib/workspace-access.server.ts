@@ -15,6 +15,10 @@ export interface WorkspaceClientContext {
   email: string | null;
   onboardingStatus: string;
   isPlatformAdmin: boolean;
+  planName: string | null;
+  planFeatures: string[] | null;
+  uploadLimit: number | null;
+  uploadsThisMonth: number;
 }
 
 export async function getMyWorkspaceContextOnServer(): Promise<WorkspaceClientContext> {
@@ -41,5 +45,9 @@ export async function getMyWorkspaceContextOnServer(): Promise<WorkspaceClientCo
     email: profile?.email ?? null,
     onboardingStatus: context.onboardingStatus,
     isPlatformAdmin: context.isPlatformAdmin,
+    planName: context.planName,
+    planFeatures: context.planFeatures,
+    uploadLimit: context.uploadLimit,
+    uploadsThisMonth: context.uploadsThisMonth,
   };
 }

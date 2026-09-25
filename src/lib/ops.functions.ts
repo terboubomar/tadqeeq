@@ -27,7 +27,7 @@ export const addClientNote = createServerFn({ method: "POST" })
 
 export const listPlans = createServerFn({ method: "POST" }).validator(empty).handler(() => S.listPlansOnServer());
 export const savePlan = createServerFn({ method: "POST" })
-  .validator(z.object({ id: z.string().uuid().optional(), name: z.string().trim().min(1).max(120), pricing: z.enum(["fixed", "per_branch"]), price: z.number().min(0).max(10_000_000), cycle, active: z.boolean() }))
+  .validator(z.object({ id: z.string().uuid().optional(), name: z.string().trim().min(1).max(120), price: z.number().min(0).max(10_000_000), cycle, active: z.boolean(), features: z.array(z.enum(["invoice_audit", "exceptions", "compensation", "contracts", "ai"])), uploadLimit: z.number().int().min(0).max(100_000).nullable(), description: z.string().trim().max(300).optional(), highlighted: z.boolean().optional(), sortOrder: z.number().int().min(0).max(1000).optional() }))
   .handler(({ data }) => S.savePlanOnServer(data));
 export const listSubscriptions = createServerFn({ method: "POST" }).validator(empty).handler(() => S.listSubscriptionsOnServer());
 export const saveSubscription = createServerFn({ method: "POST" })
