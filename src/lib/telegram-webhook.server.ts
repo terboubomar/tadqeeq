@@ -7,6 +7,9 @@ import {
 import { detectOrderNumberFromImage } from "./ai/order-number-vision.server";
 
 const THUMBNAIL_BUCKET = "telegram-evidence-thumbnails";
+// Generated database types are refreshed after the workspace migration.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const adminDb = () => supabaseAdmin as any;
 
 interface TelegramUser {
   id: number;
@@ -193,9 +196,9 @@ async function connectBranch(message: TelegramMessage, code: string): Promise<vo
   }
 
   const codeHash = await sha256Text(code.toUpperCase());
-  const { data: connection, error } = await supabaseAdmin
+  const { data: connection, error } = await adminDb()
     .from("telegram_branch_chats")
-    .select("id, user_id, branch_name, connect_code_expires_at")
+    .select("id, user_id, workspace_id, branch_id, branch_name, connect_code_expires_at")
     .eq("connect_code_hash", codeHash)
     .eq("active", true)
     .gt("connect_code_expires_at", new Date().toISOString())
@@ -356,9 +359,9 @@ async function storeEvidence(
   media: TelegramMedia,
   orderText: string | null | undefined,
 ): Promise<void> {
-  const { data: connection, error: connectionError } = await supabaseAdmin
+  const { data: connection, error: connectionError } = await adminDb()
     .from("telegram_branch_chats")
-    .select("id, user_id, branch_name")
+    .select("id, user_id, workspace_id, branch_id, branch_name")
     .eq("telegram_chat_id", incomingMessage.chat.id)
     .eq("active", true)
     .maybeSingle();
@@ -424,11 +427,13 @@ async function storeEvidence(
   const capturedAt = new Date(mediaMessage.date * 1000).toISOString();
   const sender = mediaMessage.from ?? incomingMessage.from;
   const storedMediaType = media.mediaType;
-  const { error: insertError } = await supabaseAdmin
+  const { error: insertError } = await adminDb()
     .from("telegram_order_evidence")
     .insert({
       id: evidenceId,
       user_id: connection.user_id,
+      workspace_id: connection.workspace_id,
+      branch_id: connection.branch_id,
       branch_chat_id: connection.id,
       order_number: orderNumber,
       order_lookup_key: normalizeOrderLookupKey(orderNumber),
