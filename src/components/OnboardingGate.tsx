@@ -246,7 +246,10 @@ function OnboardingForm({ record }: { record: OnboardingRecord }) {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  if (file.size > 2 * 1024 * 1024) return toast.error("حجم الشعار أكبر من 2MB.");
+                  if (file.size > 2 * 1024 * 1024) {
+                    toast.error("حجم الشعار أكبر من 2MB.");
+                    return;
+                  }
                   const reader = new FileReader();
                   reader.onload = () => setLogo({ dataUrl: String(reader.result), name: file.name });
                   reader.readAsDataURL(file);
