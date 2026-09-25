@@ -249,7 +249,8 @@ function mapCase(row: {
 
 export async function listTelegramBranchConnectionsOnServer(): Promise<TelegramBranchConnection[]> {
   const { client, userId } = await requireServerUser();
-  const { data, error } = await client
+  const db = dynamicDb(client);
+  const { data, error } = await db
     .from("telegram_branch_chats")
     .select("*")
     .eq("user_id", userId)
@@ -339,7 +340,8 @@ export async function setTelegramBranchConnectionActiveOnServer(
   active: boolean,
 ): Promise<TelegramBranchConnection> {
   const { client, userId } = await requireServerUser();
-  const { data, error } = await client
+  const db = dynamicDb(client);
+  const { data, error } = await db
     .from("telegram_branch_chats")
     .update({ active, updated_at: new Date().toISOString() })
     .eq("id", id)
@@ -511,8 +513,12 @@ export async function searchCompensationEvidenceOnServer(
   if (evidenceError) throw new Error(evidenceError.message);
   if (periodError) throw new Error(periodError.message);
 
-  const branchChatIds = Array.from(
-    new Set((evidenceRows ?? []).map((row: { branch_chat_id: string }) => row.branch_chat_id)),
+  const branchChatIds: string[] = Array.from(
+    new Set<string>(
+      (evidenceRows ?? []).map(
+        (row: { branch_chat_id: string }) => row.branch_chat_id,
+      ),
+    ),
   );
   const branches = await branchNamesById(client, userId, branchChatIds);
 
