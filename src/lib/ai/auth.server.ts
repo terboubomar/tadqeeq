@@ -1,8 +1,11 @@
-import { getRequestHeader } from "@tanstack/react-start/server";
+import { requireWorkspacePermission } from "../server-auth.server";
 
 export interface AiServerAuth {
   accessToken: string;
+  /** Legacy workspace data-owner id used by existing period queries. */
   userId: string;
+  actorUserId: string;
+  workspaceId: string;
   supabaseUrl: string;
   supabaseKey: string;
 }
@@ -25,10 +28,6 @@ export function parseBearerAuthorizationHeader(value: string | undefined | null)
   return token;
 }
 
-function bearerTokenFromRequest(): string {
-  return parseBearerAuthorizationHeader(getRequestHeader("authorization"));
-}
-
 export function aiSupabaseHeaders(
   auth: AiServerAuth,
   accept = "application/json",
@@ -41,30 +40,14 @@ export function aiSupabaseHeaders(
 }
 
 export async function requireAiServerAuth(): Promise<AiServerAuth> {
-  const supabaseUrl = requiredEnv("SUPABASE_URL");
-  const supabaseKey = requiredEnv("SUPABASE_PUBLISHABLE_KEY");
-  const accessToken = bearerTokenFromRequest();
-
-  const response = await fetch(supabaseUrl + "/auth/v1/user", {
-    headers: {
-      apikey: supabaseKey,
-      Authorization: "Bearer " + accessToken,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("انتهت جلسة المستخدم. سجّل الدخول مرة أخرى قبل استخدام Tadqeeq AI.");
-  }
-
-  const user = (await response.json()) as { id?: string };
-  if (!user.id) {
-    throw new Error("تعذّر التحقق من هوية المستخدم.");
-  }
+  const context = await requireWorkspacePermission("ai.use");
 
   return {
-    accessToken,
-    userId: user.id,
-    supabaseUrl,
-    supabaseKey,
+    accessToken: context.accessToken,
+    userId: context.userId,
+    actorUserId: context.actorUserId,
+    workspaceId: context.workspaceId,
+    supabaseUrl: requiredEnv("SUPABASE_URL"),
+    supabaseKey: requiredEnv("SUPABASE_PUBLISHABLE_KEY"),
   };
 }
