@@ -224,9 +224,10 @@ export async function listWorkspaceMembersOnServer(): Promise<WorkspaceMembersBu
     full_name: string | null;
     email: string | null;
   }>;
-  const profileMap = new Map(
-    profileRows.map((row) => [row.id, row] as const),
-  );
+  const profileMap = new Map<
+    string,
+    { id: string; full_name: string | null; email: string | null }
+  >(profileRows.map((row) => [row.id, row]));
   const branchesByMember = new Map<string, string[]>();
   for (const row of scopes ?? []) {
     const typed = row as { workspace_member_id: string; branch_id: string };
