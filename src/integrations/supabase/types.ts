@@ -1444,28 +1444,43 @@ export type Database = {
           active: boolean
           created_at: string
           cycle: string
+          description: string | null
+          features: Json
+          highlighted: boolean
           id: string
           name: string
           price: number
           pricing: string
+          sort_order: number
+          upload_limit: number | null
         }
         Insert: {
           active?: boolean
           created_at?: string
           cycle?: string
+          description?: string | null
+          features?: Json
+          highlighted?: boolean
           id?: string
           name: string
           price?: number
           pricing?: string
+          sort_order?: number
+          upload_limit?: number | null
         }
         Update: {
           active?: boolean
           created_at?: string
           cycle?: string
+          description?: string | null
+          features?: Json
+          highlighted?: boolean
           id?: string
           name?: string
           price?: number
           pricing?: string
+          sort_order?: number
+          upload_limit?: number | null
         }
         Relationships: []
       }
@@ -1946,6 +1961,7 @@ export type Database = {
         Returns: string
       }
       is_platform_admin: { Args: never; Returns: boolean }
+      my_workspace_plan: { Args: { p_workspace_id: string }; Returns: Json }
       ops_role: { Args: never; Returns: string }
       reserve_ai_call: {
         Args: {

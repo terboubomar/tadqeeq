@@ -180,18 +180,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             sidebarHidden ? "w-0" : "w-[246px]",
           )}
         >
-          <aside className="h-full w-[246px] overflow-y-auto border-s border-border bg-white px-3.5 pb-4 pt-5">
+        <aside className="h-full w-[246px] overflow-y-auto border-s border-ink-2 bg-ink px-3.5 pb-4 pt-5 text-ink-muted">
           <div className="flex min-h-full flex-col">
             <Link
               to="/dashboard"
-              className="flex items-center gap-2.5 border-b border-border/80 px-1.5 pb-4"
+              className="flex items-center gap-2.5 border-b border-ink-2 px-1.5 pb-4"
             >
               <span className="grid size-[30px] place-items-center rounded-lg bg-primary text-[15px] font-bold text-primary-foreground">
                 ت
               </span>
               <span>
-                <span className="block text-[15px] font-bold leading-tight">تدقيق</span>
-                <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                <span className="block font-display text-[15px] font-bold leading-tight text-ink-foreground">تدقيق</span>
+                <span className="mt-0.5 block text-[11px] text-ink-muted">
                   مراجعة فواتير التوصيل
                 </span>
               </span>
@@ -206,7 +206,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     type="button"
                     onClick={() => toggleGroup(group.title)}
                     aria-expanded={open}
-                    className="mx-1.5 mb-1.5 flex w-[calc(100%-12px)] items-center justify-between rounded-[7px] px-1 py-1 text-[10.5px] font-semibold tracking-[0.08em] text-muted-foreground transition-colors hover:text-foreground"
+                    className="mx-1.5 mb-1.5 flex w-[calc(100%-12px)] items-center justify-between rounded-[7px] px-1 py-1 text-[10.5px] font-semibold tracking-[0.08em] text-ink-muted transition-colors hover:text-ink-foreground"
                   >
                     {group.title}
                     <ChevronDown
@@ -228,8 +228,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                             className={cn(
                               "flex w-full items-center justify-between gap-2 rounded-[7px] border px-2.5 py-[7px] text-[13px] transition-colors",
                               active
-                                ? "border-primary/15 bg-secondary font-semibold text-secondary-foreground"
-                                : "border-transparent text-foreground/80 hover:bg-muted",
+                                ? "border-ink-2 bg-ink-2 font-semibold text-ink-foreground"
+                                : "border-transparent text-ink-muted hover:bg-ink-2 hover:text-ink-foreground",
                             )}
                           >
                             <span>{item.label}</span>
@@ -248,28 +248,28 @@ export function AppShell({ children }: { children: ReactNode }) {
               })}
             </nav>
 
-            <div className="mt-auto border-t border-border/80 px-2 pt-3">
-              <div className="mb-3 rounded-lg bg-muted/60 px-2.5 py-2 text-[11px] leading-5">
-                <p className="font-semibold text-foreground">
+            <div className="mt-auto border-t border-ink-2 px-2 pt-3">
+              <div className="mb-3 rounded-lg bg-ink-2 px-2.5 py-2 text-[11px] leading-5">
+                <p className="font-semibold text-ink-foreground">
                   {context.fullName || context.email || "مستخدم Tadqeeq"}
                 </p>
-                <p className="text-muted-foreground">
+                <p className="text-ink-muted">
                   {WORKSPACE_ROLE_LABELS[context.role]} · {context.workspaceName}
                 </p>
                 {context.planName ? (
-                  <p className="num mt-1 text-muted-foreground">
+                  <p className="mt-1 text-ink-muted">
                     باقة {context.planName} · الرفع هذا الشهر {context.uploadsThisMonth}
                     {context.uploadLimit !== null ? ` / ${context.uploadLimit}` : ""}
                   </p>
                 ) : null}
               </div>
-              <p className="text-[11px] leading-5 text-muted-foreground">
+              <p className="text-[11px] leading-5 text-ink-muted">
                 صلاحيات العرض والتعديل مرتبطة بدورك داخل حساب الشركة.
               </p>
               <button
                 type="button"
                 onClick={signOut}
-                className="mt-3 flex w-full items-center gap-2 rounded-[7px] px-2 py-2 text-start text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+                className="mt-3 flex w-full items-center gap-2 rounded-[7px] px-2 py-2 text-start text-xs text-ink-muted transition-colors hover:bg-ink-2 hover:text-ink-foreground"
               >
                 <LogOut className="size-3.5" />
                 تسجيل الخروج
@@ -288,7 +288,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               type="button"
               onClick={toggleSidebar}
               aria-label={sidebarHidden ? "إظهار القائمة الجانبية" : "إخفاء القائمة الجانبية"}
-              className="hidden size-8 shrink-0 place-items-center rounded-[7px] border border-input bg-white text-foreground/80 transition-colors hover:bg-muted min-[881px]:grid"
+                className="hidden size-8 shrink-0 place-items-center rounded-[7px] border border-input bg-card text-foreground/80 transition-colors hover:bg-muted min-[881px]:grid"
             >
               {sidebarHidden ? <PanelRightOpen className="size-4" /> : <PanelRightClose className="size-4" />}
             </button>
@@ -296,7 +296,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span>المنصة</span>
-                  <span className="rounded-[7px] border border-input bg-white px-2.5 py-1.5 text-[13px] text-foreground">
+                  <span className="rounded-[7px] border border-input bg-card px-2.5 py-1.5 text-[13px] text-foreground">
                     {selected.platform === "hungerstation" ? "هنقرستيشن" : selected.platform === "keeta" ? "كيتا" : "جاهز"}
                   </span>
                 </div>
@@ -304,7 +304,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <label className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
                   <span>الفترة</span>
                   <Select value={selected.id} onValueChange={select}>
-                    <SelectTrigger className="h-8 min-w-[170px] max-w-[260px] bg-white text-[13px]">
+                    <SelectTrigger className="h-8 min-w-[170px] max-w-[260px] bg-card text-[13px]">
                       <SelectValue placeholder="اختر الفترة" />
                     </SelectTrigger>
                     <SelectContent>
@@ -317,7 +317,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </Select>
                 </label>
 
-                <span className="num rounded-[7px] border border-input bg-white px-2.5 py-1.5 text-[12px] text-foreground/80">
+                <span className="num rounded-[7px] border border-input bg-card px-2.5 py-1.5 text-[12px] text-foreground/80">
                   {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)}
                 </span>
               </>
@@ -341,7 +341,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <div
             data-noprint
-            className="flex gap-1 overflow-x-auto border-b border-border bg-white px-3.5 py-2 min-[881px]:hidden"
+            className="flex gap-1 overflow-x-auto border-b border-border bg-ink px-3.5 py-2 min-[881px]:hidden"
           >
             {visibleItems.map((item) => {
               const active = pathname === item.to;
@@ -354,7 +354,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-[12.5px]",
                     active
                       ? "border-primary bg-primary font-semibold text-primary-foreground"
-                      : "border-border bg-white text-foreground/80",
+                      : "border-ink-2 bg-ink-2 text-ink-muted",
                   )}
                 >
                   {item.label}
