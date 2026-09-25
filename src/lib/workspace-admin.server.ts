@@ -289,7 +289,7 @@ export async function inviteWorkspaceMemberOnServer(
       email,
       password: input.password,
       email_confirm: true,
-      user_metadata: { full_name: fullName },
+      user_metadata: { full_name: fullName, tadqeeq_invited: true },
     });
     if (error || !data.user) {
       throw new Error(error?.message || "تعذّر إنشاء المستخدم.");
@@ -458,5 +458,49 @@ export async function removeWorkspaceMemberOnServer(
     "workspace_member",
     target.id,
     { userId: target.user_id, role: target.role },
+  );
+}
+
+export async function setWorkspaceMemberPasswordOnServer(
+  membershipId: string,
+  password: string,
+): Promise<void> {
+  const context = await requireWorkspacePermission("users.manage");
+  if (!password || password.length < 8) {
+    throw new Error("كلمة المرور مطلوبة (8 أحرف على الأقل).");
+  }
+  const db = adminDb();
+  const { data: target, error } = await db
+    .from("workspace_members")
+    .select("id,user_id,role")
+    .eq("id", membershipId)
+    .eq("workspace_id", context.workspaceId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!target) throw new Error("المستخدم غير موجود.");
+  if (target.role === "owner") throw new Error("لا يمكن تغيير كلمة مرور المالك من هنا.");
+
+  const { count } = await db
+    .from("workspace_members")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", target.user_id)
+    .neq("workspace_id", context.workspaceId);
+  if ((count ?? 0) > 0) {
+    throw new Error("هذا المستخدم مرتبط بشركة أخرى — لا يمكن تغيير كلمة مروره.");
+  }
+
+  const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+    target.user_id,
+    { password, email_confirm: true },
+  );
+  if (updateError) throw new Error(updateError.message);
+
+  await auditAdminAction(
+    context.workspaceId,
+    context.actorUserId,
+    "user_password_set",
+    "workspace_member",
+    target.id,
+    { userId: target.user_id },
   );
 }
