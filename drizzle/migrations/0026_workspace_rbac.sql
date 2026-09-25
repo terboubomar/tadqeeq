@@ -346,6 +346,34 @@ GRANT EXECUTE ON FUNCTION private.has_workspace_permission(uuid,text) TO authent
 GRANT EXECUTE ON FUNCTION private.can_access_branch(uuid,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION private.can_access_owner_folder(text,text) TO authenticated;
 
+CREATE OR REPLACE FUNCTION private.can_access_telegram_evidence_object(p_name text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $
+  WITH candidate AS (
+    SELECT substring(
+      storage.filename(p_name)
+      FROM '^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})'
+    )::uuid AS evidence_id
+  )
+  SELECT EXISTS (
+    SELECT 1
+    FROM candidate c
+    JOIN public.telegram_order_evidence e ON e.id = c.evidence_id
+    JOIN public.workspaces w ON w.id = e.workspace_id
+    WHERE c.evidence_id IS NOT NULL
+      AND (storage.foldername(p_name))[1] = w.owner_user_id::text
+      AND private.has_workspace_permission(e.workspace_id, 'telegram.read')
+      AND private.can_access_branch(e.workspace_id, e.branch_id)
+  );
+$;
+
+REVOKE ALL ON FUNCTION private.can_access_telegram_evidence_object(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION private.can_access_telegram_evidence_object(text) TO authenticated;
+
 ALTER TABLE public.branch_registry ALTER COLUMN workspace_id SET DEFAULT private.active_workspace_id();
 
 DO $$
@@ -526,6 +554,57 @@ ALTER TABLE public.compensation_cases
 
 ALTER TABLE public.compensation_appeal_marks
   ADD COLUMN IF NOT EXISTS branch_id uuid REFERENCES public.branch_registry(id) ON DELETE SET NULL;
+
+ALTER TABLE public.recovery_case_details
+  ADD COLUMN IF NOT EXISTS branch_id uuid;
+
+UPDATE public.recovery_case_details r
+SET branch_id = b.id
+FROM public.branch_registry b
+WHERE r.branch_id IS NULL
+  AND r.source_branch IS NOT NULL
+  AND b.workspace_id = r.workspace_id
+  AND lower(btrim(b.name)) = lower(btrim(r.source_branch));
+
+ALTER TABLE public.recovery_case_details
+  DROP CONSTRAINT IF EXISTS recovery_case_details_branch_workspace_fkey;
+ALTER TABLE public.recovery_case_details
+  ADD CONSTRAINT recovery_case_details_branch_workspace_fkey
+  FOREIGN KEY (branch_id, workspace_id)
+  REFERENCES public.branch_registry(id, workspace_id)
+  ON DELETE RESTRICT;
+
+CREATE INDEX IF NOT EXISTS recovery_case_details_workspace_branch_idx
+  ON public.recovery_case_details (workspace_id, branch_id, updated_at DESC);
+
+CREATE OR REPLACE FUNCTION private.can_access_recovery_case(
+  p_workspace_id uuid,
+  p_case_id uuid,
+  p_permission text
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.recovery_case_details r
+    WHERE r.id = p_case_id
+      AND r.workspace_id = p_workspace_id
+      AND private.has_workspace_permission(r.workspace_id, p_permission)
+      AND (
+        r.branch_id IS NULL
+          AND private.workspace_role(r.workspace_id) IN ('owner','admin','auditor','viewer')
+        OR r.branch_id IS NOT NULL
+          AND private.can_access_branch(r.workspace_id, r.branch_id)
+      )
+  );
+$;
+
+REVOKE ALL ON FUNCTION private.can_access_recovery_case(uuid,uuid,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION private.can_access_recovery_case(uuid,uuid,text) TO authenticated;
 
 CREATE INDEX IF NOT EXISTS workspace_members_user_status_idx
   ON public.workspace_members (user_id, status, created_at);
@@ -1308,12 +1387,96 @@ USING (
   AND private.can_access_owner_folder((storage.foldername(name))[1], 'recovery.manage')
 );
 
+
+DROP POLICY IF EXISTS recovery_case_details_workspace_select ON public.recovery_case_details;
+DROP POLICY IF EXISTS recovery_case_details_workspace_insert ON public.recovery_case_details;
+DROP POLICY IF EXISTS recovery_case_details_workspace_update ON public.recovery_case_details;
+DROP POLICY IF EXISTS recovery_case_details_workspace_delete ON public.recovery_case_details;
+
+CREATE POLICY recovery_case_details_workspace_select
+ON public.recovery_case_details FOR SELECT TO authenticated
+USING (
+  private.has_workspace_permission(workspace_id, 'recovery.read')
+  AND (
+    branch_id IS NULL
+      AND private.workspace_role(workspace_id) IN ('owner','admin','auditor','viewer')
+    OR branch_id IS NOT NULL
+      AND private.can_access_branch(workspace_id, branch_id)
+  )
+);
+CREATE POLICY recovery_case_details_workspace_insert
+ON public.recovery_case_details FOR INSERT TO authenticated
+WITH CHECK (
+  private.has_workspace_permission(workspace_id, 'recovery.manage')
+  AND (
+    branch_id IS NULL
+      AND private.workspace_role(workspace_id) IN ('owner','admin','auditor')
+    OR branch_id IS NOT NULL
+      AND private.can_access_branch(workspace_id, branch_id)
+  )
+);
+CREATE POLICY recovery_case_details_workspace_update
+ON public.recovery_case_details FOR UPDATE TO authenticated
+USING (
+  private.has_workspace_permission(workspace_id, 'recovery.manage')
+  AND (
+    branch_id IS NULL
+      AND private.workspace_role(workspace_id) IN ('owner','admin','auditor')
+    OR branch_id IS NOT NULL
+      AND private.can_access_branch(workspace_id, branch_id)
+  )
+)
+WITH CHECK (
+  private.has_workspace_permission(workspace_id, 'recovery.manage')
+  AND (
+    branch_id IS NULL
+      AND private.workspace_role(workspace_id) IN ('owner','admin','auditor')
+    OR branch_id IS NOT NULL
+      AND private.can_access_branch(workspace_id, branch_id)
+  )
+);
+CREATE POLICY recovery_case_details_workspace_delete
+ON public.recovery_case_details FOR DELETE TO authenticated
+USING (
+  private.has_workspace_permission(workspace_id, 'recovery.manage')
+  AND private.workspace_role(workspace_id) IN ('owner','admin','auditor')
+);
+
+DROP POLICY IF EXISTS recovery_case_documents_workspace_select ON public.recovery_case_documents;
+DROP POLICY IF EXISTS recovery_case_documents_workspace_insert ON public.recovery_case_documents;
+DROP POLICY IF EXISTS recovery_case_documents_workspace_update ON public.recovery_case_documents;
+DROP POLICY IF EXISTS recovery_case_documents_workspace_delete ON public.recovery_case_documents;
+CREATE POLICY recovery_case_documents_workspace_select
+ON public.recovery_case_documents FOR SELECT TO authenticated
+USING (private.can_access_recovery_case(workspace_id, recovery_case_id, 'recovery.read'));
+CREATE POLICY recovery_case_documents_workspace_insert
+ON public.recovery_case_documents FOR INSERT TO authenticated
+WITH CHECK (private.can_access_recovery_case(workspace_id, recovery_case_id, 'recovery.manage'));
+CREATE POLICY recovery_case_documents_workspace_update
+ON public.recovery_case_documents FOR UPDATE TO authenticated
+USING (private.can_access_recovery_case(workspace_id, recovery_case_id, 'recovery.manage'))
+WITH CHECK (private.can_access_recovery_case(workspace_id, recovery_case_id, 'recovery.manage'));
+CREATE POLICY recovery_case_documents_workspace_delete
+ON public.recovery_case_documents FOR DELETE TO authenticated
+USING (private.can_access_recovery_case(workspace_id, recovery_case_id, 'recovery.manage'));
+
+DROP POLICY IF EXISTS recovery_case_events_workspace_select ON public.recovery_case_events;
+DROP POLICY IF EXISTS recovery_case_events_workspace_insert ON public.recovery_case_events;
+DROP POLICY IF EXISTS recovery_case_events_workspace_update ON public.recovery_case_events;
+DROP POLICY IF EXISTS recovery_case_events_workspace_delete ON public.recovery_case_events;
+CREATE POLICY recovery_case_events_workspace_select
+ON public.recovery_case_events FOR SELECT TO authenticated
+USING (private.can_access_recovery_case(workspace_id, recovery_case_id, 'recovery.read'));
+CREATE POLICY recovery_case_events_workspace_insert
+ON public.recovery_case_events FOR INSERT TO authenticated
+WITH CHECK (private.can_access_recovery_case(workspace_id, recovery_case_id, 'recovery.manage'));
+
 DROP POLICY IF EXISTS telegram_evidence_thumbnails_select_own ON storage.objects;
 CREATE POLICY telegram_evidence_workspace_select
 ON storage.objects FOR SELECT TO authenticated
 USING (
   bucket_id = 'telegram-evidence-thumbnails'
-  AND private.can_access_owner_folder((storage.foldername(name))[1], 'telegram.read')
+  AND private.can_access_telegram_evidence_object(name)
 );
 
 COMMIT;
