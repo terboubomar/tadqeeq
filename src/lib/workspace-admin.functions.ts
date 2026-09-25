@@ -25,6 +25,7 @@ export const inviteWorkspaceMember = createServerFn({ method: "POST" })
     z.object({
       fullName: z.string().trim().min(1).max(160),
       email: z.string().trim().email().max(320),
+      password: z.string().min(8).max(128).optional(),
       role,
       branchIds: z.array(z.string().uuid()).max(200),
     }),

@@ -56,18 +56,20 @@ function TeamPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState<AssignableRole>("compensation");
   const [branchIds, setBranchIds] = useState<string[]>([]);
 
   const invite = useMutation({
     mutationFn: () =>
       inviteWorkspaceMember({
-        data: { fullName, email, role, branchIds },
+        data: { fullName, email, password: password || undefined, role, branchIds },
       }),
     onSuccess: async () => {
-      toast.success("تمت إضافة المستخدم وإرسال الدعوة عند الحاجة.");
+      toast.success("تمت إضافة المستخدم — يمكنه تسجيل الدخول الآن.");
       setFullName("");
       setEmail("");
+      setPassword("");
       setRole("compensation");
       setBranchIds([]);
       setInviteOpen(false);
@@ -110,9 +112,9 @@ function TeamPage() {
 
       {inviteOpen ? (
         <section className="rounded-xl border border-border bg-card p-5">
-          <h2 className="font-semibold">دعوة مستخدم</h2>
+          <h2 className="font-semibold">إضافة مستخدم</h2>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            إذا كان البريد موجوداً مسبقاً في Supabase سيتم ربط الحساب بالشركة بدون إنشاء هوية مكررة.
+            يُنشأ الحساب مباشرة بكلمة المرور التي تحددها. إذا كان البريد مسجلاً مسبقاً يُربط الحساب ويحتفظ بكلمة مروره.
           </p>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <label className="space-y-1.5 text-sm">
@@ -122,6 +124,10 @@ function TeamPage() {
             <label className="space-y-1.5 text-sm">
               <span className="text-muted-foreground">البريد الإلكتروني</span>
               <Input dir="ltr" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </label>
+            <label className="space-y-1.5 text-sm">
+              <span className="text-muted-foreground">كلمة المرور (8 أحرف على الأقل)</span>
+              <Input dir="ltr" type="text" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </label>
             <label className="space-y-1.5 text-sm">
               <span className="text-muted-foreground">الدور</span>

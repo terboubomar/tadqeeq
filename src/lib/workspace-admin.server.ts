@@ -36,6 +36,7 @@ export interface WorkspaceMembersBundle {
 export interface InviteWorkspaceMemberInput {
   fullName: string;
   email: string;
+  password?: string;
   role: Exclude<WorkspaceRole, "owner">;
   branchIds: string[];
 }
@@ -278,26 +279,22 @@ export async function inviteWorkspaceMemberOnServer(
   );
 
   let authUser = await authUserByEmail(email);
-  let invited = false;
+  const invited = false;
 
   if (!authUser) {
-    const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+    if (!input.password || input.password.length < 8) {
+      throw new Error("كلمة المرور مطلوبة (8 أحرف على الأقل).");
+    }
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email,
-      {
-        data: {
-          full_name: fullName,
-          tadqeeq_invited: true,
-        },
-        ...(inviteRedirectUrl()
-          ? { redirectTo: inviteRedirectUrl() }
-          : {}),
-      },
-    );
+      password: input.password,
+      email_confirm: true,
+      user_metadata: { full_name: fullName },
+    });
     if (error || !data.user) {
-      throw new Error(error?.message || "تعذّر إرسال دعوة المستخدم.");
+      throw new Error(error?.message || "تعذّر إنشاء المستخدم.");
     }
     authUser = data.user;
-    invited = true;
   }
 
   const db = adminDb();
