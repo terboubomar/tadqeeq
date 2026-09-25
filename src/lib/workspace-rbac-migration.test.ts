@@ -65,6 +65,6 @@ describe("workspace RBAC migration", () => {
     ) as { entries: Array<{ idx: number; tag: string }> };
     const entry = journal.entries.find((item) => item.tag === "0026_workspace_rbac");
     expect(entry).toBeDefined();
-    expect(entry?.idx).toBe(Math.max(...journal.entries.map((item) => item.idx)));
+    expect(entry?.idx).toBe(26);
   });
 });

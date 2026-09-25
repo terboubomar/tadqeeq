@@ -15,10 +15,10 @@ describe("workspace RBAC workflow", () => {
     expect(access).not.toContain("user_metadata");
   });
 
-  test("invites users only through server-side Supabase admin", async () => {
+  test("creates users only through server-side Supabase admin", async () => {
     const source = await read("src/lib/workspace-admin.server.ts");
 
-    expect(source).toContain("auth.admin.inviteUserByEmail");
+    expect(source).toContain("auth.admin.createUser");
     expect(source).toContain("auth.admin.listUsers");
     expect(source).toContain('requireWorkspacePermission("users.manage")');
     expect(source).toContain('target.role === "owner"');
