@@ -204,6 +204,13 @@
       "when": 1790301162589,
       "tag": "0028_ops_dashboard",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1790302639960,
+      "tag": "0029_plan_features_and_upload_limit",
+      "breakpoints": true
     }
   ]
 }
