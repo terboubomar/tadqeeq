@@ -44,7 +44,7 @@ function OnboardingScreen() {
 
 function formatRiyadh(iso: string | null) {
   if (!iso) return "—";
-  return new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
+  return new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", {
     timeZone: "Asia/Riyadh",
     weekday: "long",
     day: "numeric",
@@ -207,7 +207,7 @@ function OnboardingForm({ record }: { record: OnboardingRecord }) {
 
   const show = (key: keyof typeof errors) => (touched ? errors[key] : null);
   const dayLabel = (day: string) =>
-    new Intl.DateTimeFormat("ar-SA-u-nu-latn", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }).format(new Date(day + "T00:00:00Z"));
+    new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }).format(new Date(day + "T00:00:00Z"));
 
   return (
     <div className="mx-auto max-w-3xl py-6">

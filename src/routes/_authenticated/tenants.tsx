@@ -61,7 +61,7 @@ function TenantsPage() {
 
 function formatRiyadh(iso: string | null) {
   if (!iso) return "—";
-  return new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
+  return new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", {
     timeZone: "Asia/Riyadh",
     dateStyle: "medium",
     timeStyle: "short",
