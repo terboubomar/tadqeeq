@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 import type { Platform } from "./analysis/types";
 import { safeStorageFileName, sha256Hex } from "./source-file-utils";
+import { getMyWorkspaceContext } from "./workspace-access.functions";
 
 export type AuditSourceKind =
   | "data"
@@ -26,15 +27,14 @@ const SOURCE_BUCKET = "source-files";
 export async function storePeriodSourceFiles(
   input: StorePeriodSourceFilesInput,
 ): Promise<void> {
-  const { data: auth, error: authError } = await supabase.auth.getUser();
-  if (authError) throw authError;
-
-  const userId = auth.user?.id;
-  if (!userId) {
-    throw new Error(
-      "الجلسة منتهية؛ تعذّر حفظ ملفات مصدر التدقيق بشكل آمن.",
-    );
+  const workspace = await getMyWorkspaceContext({ data: {} });
+  if (!workspace.permissions.includes("imports.create")) {
+    throw new Error("ليس لديك صلاحية لرفع ملفات التدقيق.");
   }
+  const userId = workspace.dataOwnerUserId;
+  // Generated database types are refreshed after the workspace migration.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any;
 
   const uploadedPaths: string[] = [];
 
@@ -62,10 +62,11 @@ export async function storePeriodSourceFiles(
       if (uploadError) throw uploadError;
       uploadedPaths.push(path);
 
-      const { error: metadataError } = await supabase
+      const { error: metadataError } = await db
         .from("audit_source_files")
         .insert({
           user_id: userId,
+          workspace_id: workspace.workspaceId,
           period_id: input.periodId,
           platform: input.platform,
           source_kind: source.kind,
