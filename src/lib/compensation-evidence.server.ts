@@ -15,6 +15,11 @@ import { assertBranchAccess, requireServerUser, requireWorkspacePermission, type
 const THUMBNAIL_BUCKET = "telegram-evidence-thumbnails";
 const CONNECTION_CODE_TTL_MINUTES = 30;
 const CONNECTION_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+// Workspace columns are introduced by migration 0026 before generated Supabase
+// types are refreshed. Keep the temporary escape hatch isolated here.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const dynamicDb = (client: ServerUserClient) => client as any;
+
 
 export interface TelegramBranchConnection {
   id: string;
@@ -42,6 +47,7 @@ export interface TelegramIntegrationStatus {
 
 export interface CompensationEvidenceRecord {
   id: string;
+  branchId: string;
   branchChatId: string;
   branchName: string;
   orderNumber: string;
@@ -468,7 +474,9 @@ function jahezMatchesForPeriod(
 export async function searchCompensationEvidenceOnServer(
   orderNumberInput: string,
 ): Promise<CompensationEvidenceSearchResult> {
-  const { client, userId } = await requireServerUser();
+  const context = await requireWorkspacePermission("compensation.read");
+  const { client, userId, workspaceId } = context;
+  const userDb = dynamicDb(client);
   const orderNumber = orderNumberInput.trim();
   const lookupKey = normalizeOrderLookupKey(orderNumber);
   if (lookupKey.length < 3 || lookupKey.length > 120) {
@@ -476,20 +484,24 @@ export async function searchCompensationEvidenceOnServer(
   }
 
   const suffixPattern = `%${lookupKey.replace(/[%_]/g, (char) => `\\${char}`)}`;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const adminDb = supabaseAdmin as any;
 
   const [{ data: evidenceRows, error: evidenceError }, { data: periodRows, error: periodError }] =
     await Promise.all([
-      client
+      userDb
         .from("telegram_order_evidence")
         .select("*")
+        .eq("workspace_id", workspaceId)
         .eq("user_id", userId)
         .like("order_lookup_key", suffixPattern)
         .order("captured_at", { ascending: false })
         .limit(25),
-      client
+      adminDb
         .from("periods")
         .select("*")
-        .eq("user_id", userId)
+        .eq("workspace_id", workspaceId)
         .eq("platform", "jahez")
         .is("superseded_at", null)
         .order("created_at", { ascending: false })
@@ -499,12 +511,28 @@ export async function searchCompensationEvidenceOnServer(
   if (evidenceError) throw new Error(evidenceError.message);
   if (periodError) throw new Error(periodError.message);
 
-  const branchIds = Array.from(new Set((evidenceRows ?? []).map((row) => row.branch_chat_id)));
-  const branches = await branchNamesById(client, userId, branchIds);
+  const branchChatIds = Array.from(
+    new Set((evidenceRows ?? []).map((row: { branch_chat_id: string }) => row.branch_chat_id)),
+  );
+  const branches = await branchNamesById(client, userId, branchChatIds);
 
   const evidence = await Promise.all(
-    (evidenceRows ?? []).map(async (row) => ({
+    (evidenceRows ?? []).map(async (row: {
+      id: string;
+      branch_id: string;
+      branch_chat_id: string;
+      order_number: string;
+      captured_at: string;
+      sender_name: string | null;
+      media_type: string;
+      duration_seconds: number | null;
+      file_size_bytes: number | null;
+      thumbnail_storage_path: string | null;
+      telegram_chat_id: number;
+      telegram_message_id: number;
+    }) => ({
       id: row.id,
+      branchId: row.branch_id,
       branchChatId: row.branch_chat_id,
       branchName: branches.get(row.branch_chat_id) ?? "فرع غير معروف",
       orderNumber: row.order_number,
@@ -518,9 +546,29 @@ export async function searchCompensationEvidenceOnServer(
     })),
   );
 
+  let allowedBranchNames: Set<string> | null = null;
+  if (!context.globalBranchAccess) {
+    const { data: branchRows, error: branchError } = await userDb
+      .from("branch_registry")
+      .select("name")
+      .eq("workspace_id", workspaceId)
+      .eq("active", true);
+    if (branchError) throw new Error(branchError.message);
+    allowedBranchNames = new Set(
+      (branchRows ?? []).map((row: { name: string }) => normalizeBranchKey(row.name)),
+    );
+  }
+
   const jahezMatches = (periodRows ?? [])
-    .flatMap((row) => jahezMatchesForPeriod(row as unknown as StoredPeriod, lookupKey))
-    .sort((left, right) => right.creationDate.localeCompare(left.creationDate));
+    .flatMap((row: StoredPeriod) => jahezMatchesForPeriod(row, lookupKey))
+    .filter((match: JahezCompensationMatchRecord) => {
+      if (!allowedBranchNames) return true;
+      const branch = match.matchedBranch || match.branch;
+      return allowedBranchNames.has(normalizeBranchKey(branch));
+    })
+    .sort((left: JahezCompensationMatchRecord, right: JahezCompensationMatchRecord) =>
+      right.creationDate.localeCompare(left.creationDate),
+    );
 
   return { evidence, jahezMatches };
 }
@@ -534,11 +582,12 @@ async function assertOwnedEvidence(
   captured_at: string;
   sender_name: string | null;
   branch_chat_id: string;
+  branch_id: string;
 } | null> {
   if (!evidenceId) return null;
-  const { data, error } = await client
+  const { data, error } = await dynamicDb(client)
     .from("telegram_order_evidence")
-    .select("id, captured_at, sender_name, branch_chat_id")
+    .select("id, captured_at, sender_name, branch_chat_id, branch_id")
     .eq("id", evidenceId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -548,20 +597,44 @@ async function assertOwnedEvidence(
 }
 
 async function assertOwnedPeriod(
-  client: ServerUserClient,
+  workspaceId: string,
   userId: string,
   periodId: string | null | undefined,
 ): Promise<StoredPeriod | null> {
   if (!periodId) return null;
-  const { data, error } = await client
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const adminDb = supabaseAdmin as any;
+  const { data, error } = await adminDb
     .from("periods")
     .select("*")
     .eq("id", periodId)
+    .eq("workspace_id", workspaceId)
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("فترة التدقيق المحددة غير موجودة.");
-  return data as unknown as StoredPeriod;
+  return data as StoredPeriod;
+}
+
+async function resolveAccessibleBranch(
+  client: ServerUserClient,
+  workspaceId: string,
+  branchName: string | null,
+): Promise<{ id: string; name: string } | null> {
+  if (!branchName) return null;
+  const { data, error } = await dynamicDb(client)
+    .from("branch_registry")
+    .select("id,name")
+    .eq("workspace_id", workspaceId)
+    .eq("active", true);
+  if (error) throw new Error(error.message);
+  const key = normalizeBranchKey(branchName);
+  return (
+    (data ?? []).find(
+      (row: { id: string; name: string }) => normalizeBranchKey(row.name) === key,
+    ) ?? null
+  );
 }
 
 function auditContextFor(
@@ -594,7 +667,9 @@ function auditContextFor(
 export async function saveCompensationCaseOnServer(
   input: SaveCompensationCaseInput,
 ): Promise<CompensationCaseRecord> {
-  const { client, userId } = await requireServerUser();
+  const context = await requireWorkspacePermission("compensation.manage");
+  const { client, userId, workspaceId } = context;
+  const db = dynamicDb(client);
   const orderNumber = input.orderNumber.trim();
   if (normalizeOrderLookupKey(orderNumber).length < 3) throw new Error("رقم الطلب غير صالح.");
   if (!Number.isFinite(input.compensationAmount) || input.compensationAmount < 0) {
@@ -607,13 +682,27 @@ export async function saveCompensationCaseOnServer(
   if (!explanation || explanation.length > 6000) throw new Error("شرح الموظف مطلوب.");
 
   const evidence = await assertOwnedEvidence(client, userId, input.evidenceId);
-  const period = await assertOwnedPeriod(client, userId, input.periodId);
+  const period = await assertOwnedPeriod(workspaceId, userId, input.periodId);
+
+  if (period && period.platform !== input.platform) {
+    throw new Error("المنصة المختارة لا تطابق منصة فترة التدقيق المحددة.");
+  }
 
   let branchName = input.branchName?.trim() || null;
+  let branchId = evidence?.branch_id ?? null;
+
   if (!branchName && evidence) {
     const branches = await branchNamesById(client, userId, [evidence.branch_chat_id]);
     branchName = branches.get(evidence.branch_chat_id) ?? null;
   }
+
+  if (!branchId) {
+    const resolved = await resolveAccessibleBranch(client, workspaceId, branchName);
+    branchId = resolved?.id ?? null;
+    if (resolved) branchName = resolved.name;
+  }
+
+  assertBranchAccess(context, branchId);
 
   const amount = Math.round(input.compensationAmount * 100) / 100;
   const drafts = buildCompensationDisputeDraft({
@@ -628,6 +717,9 @@ export async function saveCompensationCaseOnServer(
   });
 
   const payload = {
+    user_id: userId,
+    workspace_id: workspaceId,
+    branch_id: branchId,
     period_id: input.periodId ?? null,
     evidence_id: input.evidenceId ?? null,
     platform: input.platform,
@@ -645,11 +737,11 @@ export async function saveCompensationCaseOnServer(
   };
 
   if (input.id) {
-    const { data, error } = await client
+    const { data, error } = await db
       .from("compensation_cases")
       .update(payload)
       .eq("id", input.id)
-      .eq("user_id", userId)
+      .eq("workspace_id", workspaceId)
       .select("*")
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -657,9 +749,9 @@ export async function saveCompensationCaseOnServer(
     return mapCase(data);
   }
 
-  const { data, error } = await client
+  const { data, error } = await db
     .from("compensation_cases")
-    .insert({ ...payload, user_id: userId })
+    .insert(payload)
     .select("*")
     .single();
   if (error) throw new Error(error.message);
@@ -667,11 +759,11 @@ export async function saveCompensationCaseOnServer(
 }
 
 export async function listCompensationCasesOnServer(): Promise<CompensationCaseRecord[]> {
-  const { client, userId } = await requireServerUser();
-  const { data, error } = await client
+  const { client, workspaceId } = await requireWorkspacePermission("compensation.read");
+  const { data, error } = await dynamicDb(client)
     .from("compensation_cases")
     .select("*")
-    .eq("user_id", userId)
+    .eq("workspace_id", workspaceId)
     .order("updated_at", { ascending: false })
     .limit(200);
   if (error) throw new Error(error.message);
@@ -687,11 +779,12 @@ export interface EvidenceMediaLinks {
 export async function getEvidenceMediaOnServer(
   evidenceId: string,
 ): Promise<EvidenceMediaLinks> {
-  const { client, userId } = await requireServerUser();
-  const { data: row, error } = await client
+  const { client, userId, workspaceId } = await requireWorkspacePermission("telegram.read");
+  const { data: row, error } = await dynamicDb(client)
     .from("telegram_order_evidence")
     .select("id, order_number, telegram_file_id")
     .eq("id", evidenceId)
+    .eq("workspace_id", workspaceId)
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
