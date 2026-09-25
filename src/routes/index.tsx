@@ -1,5 +1,5 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { Check, ChevronDown, LockKeyhole, ShieldCheck, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Camera, Check, ChevronDown, FileSignature, FileSearch, History, LockKeyhole, ShieldCheck, Sparkles, Users, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,17 @@ const CHECKS = [
   ["بنود غير مصنفة", "أي خصم لا يطابق خريطة الرسوم"],
 ];
 
+const FEATURES = [
+  { icon: FileSearch, title: "تدقيق الفواتير", body: "إعادة احتساب كل بند في فاتورة المنصة من ملف الطلبات نفسه، مع الفرق لكل فرع ولكل يوم." },
+  { icon: AlertTriangle, title: "كشف الاستثناءات", body: "الفروقات تظهر بحالتها ومسؤولها ومصدرها، مع مسار واضح لمعالجة كل استثناء وإغلاقه." },
+  { icon: Camera, title: "أدلة من تيليجرام", body: "موظف الكاشير يرسل صورة أو فيديو الطلب فقط، والمنصة تربطه بالرقم وتجهزه كمستند للمطالبة." },
+  { icon: FileSignature, title: "العقود وشروط المنصات", body: "معادلات كل عقد محفوظة بإصداراتها وتاريخ سريانها، والاحتساب يسير على العقد الصحيح." },
+  { icon: History, title: "تقارير وسجل كامل", body: "تقارير الفروع والأيام قابلة للتصدير، وكل إعادة احتساب تُحفظ بإصدار قابل للمراجعة." },
+  { icon: Sparkles, title: "ذكاء تدقيق مساند", body: "تلخيص النتائج وشرح الاستثناءات بلغة بسيطة، دون أن يغيّر أي رقم محاسبي." },
+  { icon: Users, title: "فريق بصلاحيات", body: "لكل موظف دور يحدد ما يراه ويعدله، ومساحة منفصلة تماماً لكل شركة." },
+  { icon: ShieldCheck, title: "سجل تدقيق كامل", body: "كل إجراء يُسجّل باسم من قام به ووقته، حتى يبقى إغلاق الشهر قابلاً للمراجعة." },
+];
+
 const AUDIENCES = [
   { label: "صاحب المطعم", title: "اعرف كم تأخذ المنصة فعلاً من كل طلب", body: "ارفع ملفين في نهاية الشهر واعرف قبل السداد إن كانت الفاتورة صحيحة.", points: ["ملخص واضح للمستحق والمخصوم والفرق", "مقارنة الرسوم بين الفروع", "مطالبة تعويض جاهزة بالأدلة"] },
   { label: "المدير المالي", title: "إغلاق شهري قابل للمراجعة لكل منصة", body: "كل رقم مربوط بمصدره، وكل فرق له حالة ومسؤول قبل اعتماد الفترة.", points: ["مطابقة كل بند بمعادلته", "متابعة حالة كل فترة", "سجل كامل للإجراءات"] },
@@ -77,6 +88,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
           <nav className="hidden items-center gap-6 text-sm text-ink-muted md:flex">
             <a href="#how" className="transition-colors hover:text-ink-foreground">كيف يعمل</a>
             <a href="#checks" className="transition-colors hover:text-ink-foreground">ماذا ندقق</a>
+            <a href="#features" className="transition-colors hover:text-ink-foreground">الميزات</a>
             <a href="#who" className="transition-colors hover:text-ink-foreground">لمن</a>
             <a href="#pricing" className="transition-colors hover:text-ink-foreground">الباقات</a>
           </nav>
@@ -135,6 +147,17 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
             {CHECKS.map(([title,body]) => <div key={title} className="m-px bg-card p-5"><h3 className="font-bold">{title}</h3><p className="mt-1 text-sm text-muted-foreground">{body}</p></div>)}
           </div>
         </section>
+
+        <section id="features" className="border-y border-border bg-muted"><div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24">
+          <SectionHeading eyebrow="الميزات" title="كل ما تحتاجه لإغلاق الشهر بثقة" body="من رفع الملفات حتى تجهيز مطالبة التعويضة، أدوات واحدة تعمل معاً في مساحتك." />
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {FEATURES.map((feature) => <article key={feature.title} className="panel p-6">
+              <span className="grid size-11 place-items-center rounded-[10px] border border-border bg-background"><feature.icon className="size-5 text-primary-text" /></span>
+              <h3 className="mt-5 font-display font-bold">{feature.title}</h3>
+              <p className="mt-2 text-sm leading-7 text-muted-foreground">{feature.body}</p>
+            </article>)}
+          </div>
+        </div></section>
 
         <section id="who" className="bg-ink text-ink-foreground"><div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
           <SectionHeading dark eyebrow="لمن تدقيق" title="مساحة واحدة تناسب فريقك" />
