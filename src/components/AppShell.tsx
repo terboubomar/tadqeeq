@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { AskTadqeeqWidget } from "@/components/AskTadqeeqWidget";
+import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -19,40 +20,46 @@ import { buildPeriodExceptions, summarizeExceptions } from "@/lib/exceptions";
 import { arabicDate } from "@/lib/format";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
+import { WORKSPACE_ROLE_LABELS, type WorkspacePermission } from "@/lib/workspace-access";
 
-const NAV_GROUPS = [
+type NavItem = { to: string; label: string; permission: WorkspacePermission };
+
+const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
   {
     title: "الرئيسية",
     items: [
-      { to: "/dashboard", label: "اللوحة التنفيذية" },
-      ...(AI_UI_ENABLED ? [{ to: "/ai", label: "Tadqeeq AI" }] : []),
+      { to: "/dashboard", label: "اللوحة التنفيذية", permission: "reports.read" },
+      ...(AI_UI_ENABLED
+        ? [{ to: "/ai", label: "Tadqeeq AI", permission: "ai.use" as const }]
+        : []),
     ],
   },
   {
     title: "التدقيق",
     items: [
-      { to: "/invoice-check", label: "مطابقة الفاتورة" },
-      { to: "/charges", label: "خريطة الرسوم" },
-      { to: "/promotions", label: "تحليل العروض و ROI" },
-      { to: "/exceptions", label: "مركز الاستثناءات" },
-      { to: "/compensation", label: "مركز التعويضات" },
+      { to: "/invoice-check", label: "مطابقة الفاتورة", permission: "financials.read" },
+      { to: "/charges", label: "خريطة الرسوم", permission: "financials.read" },
+      { to: "/promotions", label: "تحليل العروض و ROI", permission: "financials.read" },
+      { to: "/exceptions", label: "مركز الاستثناءات", permission: "exceptions.read" },
+      { to: "/compensation", label: "مركز التعويضات", permission: "compensation.read" },
     ],
   },
   {
     title: "التقارير",
     items: [
-      { to: "/branches", label: "تقرير الفروع" },
-      { to: "/daily", label: "التقرير اليومي" },
-      { to: "/breakdown", label: "تفصيل البنود" },
-      { to: "/history", label: "الفترات السابقة" },
+      { to: "/branches", label: "تقرير الفروع", permission: "reports.read" },
+      { to: "/daily", label: "التقرير اليومي", permission: "reports.read" },
+      { to: "/breakdown", label: "تفصيل البنود", permission: "reports.read" },
+      { to: "/history", label: "الفترات السابقة", permission: "reports.read" },
     ],
   },
   {
     title: "الإعداد",
     items: [
-      { to: "/import", label: "رفع البيانات" },
-      { to: "/contracts", label: "العقود وشروط المنصات" },
-      { to: "/settings", label: "إعدادات الفروع" },
+      { to: "/import", label: "رفع البيانات", permission: "imports.create" },
+      { to: "/contracts", label: "العقود وشروط المنصات", permission: "contracts.read" },
+      { to: "/settings", label: "إعدادات الفروع", permission: "branches.manage" },
+      { to: "/team", label: "المستخدمون والصلاحيات", permission: "users.manage" },
     ],
   },
 ];
@@ -63,7 +70,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { periods, selected, select } = useSelectedPeriod();
+  const { context, can } = useWorkspaceAccess();
+  const { periods, selected, select } = useSelectedPeriod(can("periods.read"));
   const [sidebarHidden, setSidebarHidden] = useState(false);
 
   useEffect(() => {
@@ -75,6 +83,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       window.localStorage.setItem("tadqeeq-sidebar-hidden", prev ? "0" : "1");
       return !prev;
     });
+
+  const visibleGroups = NAV_GROUPS
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => can(item.permission)),
+    }))
+    .filter((group) => group.items.length > 0);
+  const visibleItems = visibleGroups.flatMap((group) => group.items);
 
   const [openGroups, setOpenGroups] = useState<string[]>(() =>
     NAV_GROUPS
@@ -131,7 +147,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
 
             <nav className="pb-5">
-              {NAV_GROUPS.map((group) => {
+              {visibleGroups.map((group) => {
                 const open = openGroups.includes(group.title);
                 return (
                 <div key={group.title} className="mt-[18px]">
@@ -182,8 +198,16 @@ export function AppShell({ children }: { children: ReactNode }) {
             </nav>
 
             <div className="mt-auto border-t border-border/80 px-2 pt-3">
+              <div className="mb-3 rounded-lg bg-muted/60 px-2.5 py-2 text-[11px] leading-5">
+                <p className="font-semibold text-foreground">
+                  {context.fullName || context.email || "مستخدم Tadqeeq"}
+                </p>
+                <p className="text-muted-foreground">
+                  {WORKSPACE_ROLE_LABELS[context.role]} · {context.workspaceName}
+                </p>
+              </div>
               <p className="text-[11px] leading-5 text-muted-foreground">
-                كل الحسابات تتم داخل المتصفح. الملفات نفسها لا تُرفع؛ تُحفظ نتائج التدقيق فقط.
+                صلاحيات العرض والتعديل مرتبطة بدورك داخل حساب الشركة.
               </p>
               <button
                 type="button"
@@ -248,19 +272,21 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <span className="flex-1" />
 
-            <Button asChild size="sm">
-              <Link to="/import">
-                <Upload className="size-3.5" />
-                رفع بيانات
-              </Link>
-            </Button>
+            {can("imports.create") ? (
+              <Button asChild size="sm">
+                <Link to="/import">
+                  <Upload className="size-3.5" />
+                  رفع بيانات
+                </Link>
+              </Button>
+            ) : null}
           </header>
 
           <div
             data-noprint
             className="flex gap-1 overflow-x-auto border-b border-border bg-white px-3.5 py-2 min-[881px]:hidden"
           >
-            {NAV_ITEMS.map((item) => {
+            {visibleItems.map((item) => {
               const active = pathname === item.to;
               const badge = badgeFor(item.to);
               return (
@@ -291,12 +317,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      <AskTadqeeqWidget
-        key={selected?.id ?? "no-period"}
-        selected={selected}
-        currentRoute={pathname}
-        defaultOpen={pathname === "/ask"}
-      />
+      {can("ai.use") ? (
+        <AskTadqeeqWidget
+          key={selected?.id ?? "no-period"}
+          selected={selected}
+          currentRoute={pathname}
+          defaultOpen={pathname === "/ask"}
+        />
+      ) : null}
     </div>
   );
 }
