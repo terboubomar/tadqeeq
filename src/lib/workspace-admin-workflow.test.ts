@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
 describe("workspace member administration", () => {
-  test("invites users only through server-side Supabase admin after permission check", async () => {
+  test("creates users only through server-side Supabase admin after permission check", async () => {
     const server = await Bun.file("src/lib/workspace-admin.server.ts").text();
     expect(server).toContain('requireWorkspacePermission("users.manage")');
-    expect(server).toContain("supabaseAdmin.auth.admin.inviteUserByEmail");
+    expect(server).toContain("supabaseAdmin.auth.admin.createUser");
     expect(server).toContain("authUserByEmail");
     expect(server).toContain('event_type: eventType');
   });

@@ -56,18 +56,20 @@ function TeamPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState<AssignableRole>("compensation");
   const [branchIds, setBranchIds] = useState<string[]>([]);
 
   const invite = useMutation({
     mutationFn: () =>
       inviteWorkspaceMember({
-        data: { fullName, email, role, branchIds },
+        data: { fullName, email, password: password || undefined, role, branchIds },
       }),
     onSuccess: async () => {
-      toast.success("تمت إضافة المستخدم وإرسال الدعوة عند الحاجة.");
+      toast.success("تمت إضافة المستخدم — يمكنه تسجيل الدخول الآن.");
       setFullName("");
       setEmail("");
+      setPassword("");
       setRole("compensation");
       setBranchIds([]);
       setInviteOpen(false);
