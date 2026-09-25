@@ -66,6 +66,26 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
 
 const NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items);
 
+
+const ROUTE_PERMISSIONS: Record<string, WorkspacePermission> = {
+  "/dashboard": "reports.read",
+  "/ai": "ai.use",
+  "/ask": "ai.use",
+  "/invoice-check": "financials.read",
+  "/charges": "financials.read",
+  "/promotions": "financials.read",
+  "/exceptions": "exceptions.read",
+  "/compensation": "compensation.read",
+  "/branches": "reports.read",
+  "/daily": "reports.read",
+  "/breakdown": "reports.read",
+  "/history": "reports.read",
+  "/import": "imports.create",
+  "/contracts": "contracts.read",
+  "/settings": "branches.manage",
+  "/team": "users.manage",
+};
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const navigate = useNavigate();
@@ -91,6 +111,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     }))
     .filter((group) => group.items.length > 0);
   const visibleItems = visibleGroups.flatMap((group) => group.items);
+  const requiredPermission = ROUTE_PERMISSIONS[pathname];
+  const routeDenied = requiredPermission ? !can(requiredPermission) : false;
+  const firstAllowedRoute = visibleItems[0]?.to ?? "/auth";
 
   const [openGroups, setOpenGroups] = useState<string[]>(() =>
     NAV_GROUPS
@@ -312,7 +335,21 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="mx-auto w-full max-w-[1360px] px-4 pb-14 pt-[22px] sm:px-5">
-            {children}
+            {routeDenied ? (
+              <div className="panel mx-auto mt-10 max-w-lg p-8 text-center">
+                <h1 className="text-lg font-bold">ليس لديك صلاحية للوصول إلى هذه الصفحة</h1>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  صلاحيات حسابك داخل {context.workspaceName} لا تسمح بفتح هذا القسم.
+                </p>
+                {firstAllowedRoute !== "/auth" ? (
+                  <Button asChild className="mt-5">
+                    <Link to={firstAllowedRoute}>فتح قسم مسموح</Link>
+                  </Button>
+                ) : null}
+              </div>
+            ) : (
+              children
+            )}
           </div>
         </main>
       </div>
