@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import {
   BarChart3,
   Bot,
@@ -12,8 +12,14 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { isOpsHost } from "@/lib/ops";
+import { getRequestHost } from "@/lib/ops.functions";
 
 export const Route = createFileRoute("/")({
+  beforeLoad: async () => {
+    const host = typeof window !== "undefined" ? window.location.host : await getRequestHost();
+    if (isOpsHost(host)) throw redirect({ to: "/ops" });
+  },
   head: () => ({
     meta: [
       { title: "تدقيق · تدقيق فواتير هنقرستيشن وكيتا وجاهز للمطاعم" },
