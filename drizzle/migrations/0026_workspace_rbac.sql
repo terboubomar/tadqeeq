@@ -14,6 +14,9 @@ CREATE TABLE IF NOT EXISTS public.workspaces (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS workspaces_id_owner_key
+  ON public.workspaces (id, owner_user_id);
+
 CREATE TABLE IF NOT EXISTS public.workspace_members (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id uuid NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
@@ -397,7 +400,58 @@ BEGIN
     );
   END LOOP;
 END
-$$;
+$;
+
+-- Preserve the legacy data-owner invariant while workspace_id becomes the
+-- authorization boundary. Every workspace-owned row must keep user_id equal
+-- to that workspace's owner, even if a staff client bypasses application code.
+DO $
+DECLARE
+  t text;
+  constraint_name text;
+  owner_tables text[] := ARRAY[
+    'branch_registry',
+    'ai_usage',
+    'audit_source_files',
+    'compensation_cases',
+    'contract_documents',
+    'contract_fee_rules',
+    'contract_rule_events',
+    'contract_versions',
+    'exception_events',
+    'format_change_alerts',
+    'hungerstation_branch_mappings',
+    'periods',
+    'platform_contracts',
+    'promotion_audits',
+    'recovery_case_details',
+    'recovery_case_documents',
+    'recovery_case_events',
+    'telegram_branch_chats',
+    'telegram_order_evidence',
+    'compensation_appeal_marks'
+  ];
+BEGIN
+  FOREACH t IN ARRAY owner_tables LOOP
+    IF to_regclass('public.' || t) IS NULL THEN
+      CONTINUE;
+    END IF;
+    constraint_name := t || '_workspace_owner_fkey';
+    IF NOT EXISTS (
+      SELECT 1
+      FROM pg_constraint
+      WHERE conrelid = to_regclass('public.' || t)
+        AND conname = constraint_name
+    ) THEN
+      EXECUTE format(
+        'ALTER TABLE public.%I ADD CONSTRAINT %I FOREIGN KEY (workspace_id, user_id) REFERENCES public.workspaces(id, owner_user_id) ON DELETE RESTRICT',
+        t,
+        constraint_name
+      );
+    END IF;
+  END LOOP;
+END
+$;
 
 ALTER TABLE public.ai_usage
   ADD COLUMN IF NOT EXISTS actor_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
@@ -537,6 +591,54 @@ DROP POLICY IF EXISTS workspace_audit_events_read ON public.workspace_audit_even
 CREATE POLICY workspace_audit_events_read
 ON public.workspace_audit_events FOR SELECT TO authenticated
 USING (private.has_workspace_permission(workspace_id, 'audit_log.read'));
+
+
+-- Profiles remain user-owned, but active_workspace_id may only point to a
+-- workspace where that same user has an active membership.
+REVOKE DELETE ON public.profiles FROM authenticated;
+DROP POLICY IF EXISTS "own profile select" ON public.profiles;
+DROP POLICY IF EXISTS "own profile insert" ON public.profiles;
+DROP POLICY IF EXISTS "own profile update" ON public.profiles;
+DROP POLICY IF EXISTS profile_self_select ON public.profiles;
+DROP POLICY IF EXISTS profile_self_insert ON public.profiles;
+DROP POLICY IF EXISTS profile_self_update ON public.profiles;
+
+CREATE POLICY profile_self_select
+ON public.profiles FOR SELECT TO authenticated
+USING ((select auth.uid()) = id);
+
+CREATE POLICY profile_self_insert
+ON public.profiles FOR INSERT TO authenticated
+WITH CHECK (
+  (select auth.uid()) = id
+  AND (
+    active_workspace_id IS NULL
+    OR EXISTS (
+      SELECT 1
+      FROM public.workspace_members wm
+      WHERE wm.workspace_id = active_workspace_id
+        AND wm.user_id = (select auth.uid())
+        AND wm.status = 'active'
+    )
+  )
+);
+
+CREATE POLICY profile_self_update
+ON public.profiles FOR UPDATE TO authenticated
+USING ((select auth.uid()) = id)
+WITH CHECK (
+  (select auth.uid()) = id
+  AND (
+    active_workspace_id IS NULL
+    OR EXISTS (
+      SELECT 1
+      FROM public.workspace_members wm
+      WHERE wm.workspace_id = active_workspace_id
+        AND wm.user_id = (select auth.uid())
+        AND wm.status = 'active'
+    )
+  )
+);
 
 DO $$
 DECLARE
