@@ -236,6 +236,13 @@ function MemberRow({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const setPassword = useMutation({
+    mutationFn: (password: string) =>
+      setWorkspaceMemberPassword({ data: { membershipId: member.id, password } }),
+    onSuccess: () => toast.success("تم تعيين كلمة المرور — يمكنه تسجيل الدخول الآن."),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const isOwner = member.role === "owner";
   const restricted = !roleHasGlobalBranchAccess(role);
   const branchNames = useMemo(
@@ -321,6 +328,23 @@ function MemberRow({
                   إعادة تفعيل
                 </Button>
               )}
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={setPassword.isPending}
+                onClick={() => {
+                  const next = window.prompt("كلمة المرور الجديدة (8 أحرف على الأقل):");
+                  if (next === null) return;
+                  if (next.length < 8) {
+                    toast.error("كلمة المرور يجب أن تكون 8 أحرف على الأقل.");
+                    return;
+                  }
+                  setPassword.mutate(next);
+                }}
+              >
+                <KeyRound className="size-3.5" />
+                تعيين كلمة المرور
+              </Button>
               <Button
                 size="sm"
                 variant="ghost"
