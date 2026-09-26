@@ -26,7 +26,7 @@ export const Route = createFileRoute("/")({
   loader: () => listPublicPlans(),
   errorComponent: () => <Landing plans={[]} />,
   notFoundComponent: () => <Landing plans={[]} />,
-  component: () => <Landing plans={Route.useLoaderData()} />,
+  component: LandingRoute,
 });
 
 const STEPS = [
@@ -71,6 +71,11 @@ const FAQS = [
   ["ماذا لو غيّرت المنصة صيغة ملفاتها؟", "يظهر تنبيه بتغيّر الصيغة بدلاً من احتساب نتيجة غير موثوقة."],
   ["هل بيانات شركتي منفصلة؟", "نعم. لكل شركة مساحة خاصة، مع صلاحيات تحدد ما يراه ويعدله كل موظف."],
 ];
+
+function LandingRoute() {
+  const plans = Route.useLoaderData();
+  return <Landing plans={plans} />;
+}
 
 function Landing({ plans }: { plans: PublicPlan[] }) {
   const [audience, setAudience] = useState(0);
