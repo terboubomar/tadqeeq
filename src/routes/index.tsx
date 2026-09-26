@@ -81,13 +81,6 @@ const AFTER = [
   "فترة مغلقة بسجل قابل للمراجعة",
 ];
 
-const STEPS: Array<[string, string, string, LucideIcon]> = [
-  ["01", "ارفع الملفات", "ملف الطلبات وفاتورة المنصة بصيغتها الأصلية. يتعرّف تدقيق على المنصة والفترة تلقائياً.", Upload],
-  ["02", "نعيد الاحتساب", "محرك محاسبي ثابت يحتسب كل بند بمعادلات عقدك ويقارنه بما ورد في الفاتورة.", Calculator],
-  ["03", "راجع الفروقات", "كل فرق يظهر مع مصدره ومعادلته والسطر المقابل في الفاتورة حتى تتخذ القرار.", SearchCheck],
-  ["04", "استرد وأغلق", "جهّز مطالبة التعويض بأدلتها، ثم أغلق الفترة واحفظها في سجل قابل للمراجعة.", HandCoins],
-];
-
 type CheckItem = { title: string; body: string; icon: LucideIcon; how: string; example: string };
 
 const CHECKS: CheckItem[] = [
@@ -507,57 +500,6 @@ function useCycle(count: number, active: boolean, delay: number) {
   }, [active, count, delay]);
   return index;
 }
-
-function HowItWorks() {
-  const [ref, inView] = useInView<HTMLOListElement>();
-  const active = useCycle(STEPS.length, inView, 2200);
-  return (
-    <section id="how" className="overflow-hidden bg-muted">
-      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-24">
-        <SectionIntro eyebrow="كيف يعمل" title="أربع خطوات. بدون جداول يدوية." />
-        <ol ref={ref} className={cn("lp-steps relative mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4", inView && "is-in")}>
-          <span aria-hidden="true" className="absolute inset-x-8 top-[45px] z-10 hidden h-0.5 rounded-full bg-border lg:block">
-            <span
-              className="block h-full origin-right rounded-full bg-primary transition-transform duration-700 ease-out"
-              style={{ transform: `scaleX(${inView ? (active + 1) / STEPS.length : 0})` }}
-            />
-          </span>
-          {STEPS.map(([n, title, body, Icon], index) => {
-            const on = inView && index === active;
-            const done = inView && index < active;
-            return (
-              <li
-                key={n}
-                style={{ animationDelay: `${index * 0.12}s` }}
-                className={cn(
-                  "lp-step relative flex flex-col gap-3 rounded-2xl p-6 transition-[background-color,color,box-shadow,transform] duration-500",
-                  on ? "bg-ink text-ink-foreground shadow-[0_24px_48px_-24px_rgb(19_35_43/0.55)]" : "bg-card",
-                )}
-              >
-                <span
-                  className={cn(
-                    "relative z-20 grid size-11 place-items-center rounded-full border-2 transition-colors duration-500",
-                    on
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : done
-                        ? "border-primary bg-card text-primary-text"
-                        : "border-border bg-card text-muted-foreground",
-                  )}
-                >
-                  {done ? <Check className="size-5" /> : <Icon className="size-5" />}
-                </span>
-                <span className={cn("num text-sm font-semibold", on ? "text-primary" : "text-primary-text")}>{n}</span>
-                <h3 className="text-lg font-bold">{title}</h3>
-                <p className={cn("text-sm leading-7 transition-colors duration-500", on ? "text-ink-muted" : "text-muted-foreground")}>{body}</p>
-              </li>
-            );
-          })}
-        </ol>
-      </div>
-    </section>
-  );
-}
-
 
 const SHOWCASE: TourItem[] = [
   {
@@ -1559,9 +1501,64 @@ const COMP_FLOW: FlowStep[] = [
   },
 ];
 
-function CompensationFlow() {
+const FLOW_TONES = {
+  success: {
+    eyebrowTone: "success" as const,
+    track: "bg-success/20",
+    fill: "bg-success",
+    on: "border-success bg-success text-white",
+    done: "border-success bg-card text-success",
+    idle: "border-success/25 bg-card text-muted-foreground",
+    who: "text-success",
+    panel: "bg-success/15",
+    blob: "bg-success/10",
+    ring: "border-success/25",
+    counter: "text-success",
+    note: "bg-card/70",
+    mobileBorder: "border-success/20",
+    mobileIcon: "bg-success text-white",
+    mobileNote: "bg-success-soft",
+  },
+  primary: {
+    eyebrowTone: "primary" as const,
+    track: "bg-primary/20",
+    fill: "bg-primary",
+    on: "border-primary bg-primary text-primary-foreground",
+    done: "border-primary bg-card text-primary-text",
+    idle: "border-border bg-card text-muted-foreground",
+    who: "text-primary-text",
+    panel: "bg-secondary",
+    blob: "bg-primary/10",
+    ring: "border-primary/25",
+    counter: "text-primary-text",
+    note: "bg-card",
+    mobileBorder: "border-border",
+    mobileIcon: "bg-ink text-primary",
+    mobileNote: "bg-muted",
+  },
+};
+
+/** Scroll-pinned workflow: a vertical stepper explains each stage while the visual changes beside it. */
+function ScrollFlow({
+  id,
+  eyebrow,
+  title,
+  tone,
+  className,
+  steps,
+  renderVisual,
+}: {
+  id: string;
+  eyebrow: string;
+  title: string;
+  tone: keyof typeof FLOW_TONES;
+  className?: string;
+  steps: FlowStep[];
+  renderVisual: (index: number, active: boolean) => ReactNode;
+}) {
+  const t = FLOW_TONES[tone];
   const [trackRef, progress] = useTrackProgress<HTMLDivElement>();
-  const count = COMP_FLOW.length;
+  const count = steps.length;
   const active = Math.min(count - 1, Math.floor(Math.min(0.999, progress / 0.92) * count));
 
   function jumpTo(index: number) {
@@ -1572,25 +1569,24 @@ function CompensationFlow() {
     window.scrollTo({ top: top + scrollable * 0.92 * ((index + 0.3) / count), behavior: "smooth" });
   }
 
-  const intro = (
-    <SectionIntro eyebrow="مركز التعويضات" title="تعويض لم تتسبب فيه؟ اعترض عليه بالدليل." tone="success" />
-  );
+  const intro = <SectionIntro eyebrow={eyebrow} title={title} tone={t.eyebrowTone} />;
+  const counter = (i: number) => `${String(i + 1).padStart(2, "0")} / ${String(count).padStart(2, "0")}`;
 
   return (
-    <section id="compensation" aria-label="مركز التعويضات" className="bg-success-soft">
+    <section id={id} aria-label={eyebrow} className={className}>
       <div ref={trackRef} className="relative hidden lg:block" style={{ height: `${count * 60 + 60}vh` }}>
         <div className="sticky top-0 flex h-screen items-center">
           <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center gap-12 px-6 pt-20">
             <div>
               <div className="[&_h2]:text-[2.2rem] [&_h2]:leading-[1.35]">{intro}</div>
               <ol className="relative mt-6">
-                <span aria-hidden="true" className="absolute inset-y-4 start-[19px] w-0.5 rounded-full bg-success/20">
+                <span aria-hidden="true" className={cn("absolute inset-y-4 start-[19px] w-0.5 rounded-full", t.track)}>
                   <span
-                    className="block w-full rounded-full bg-success transition-[height] duration-500 ease-out"
-                    style={{ height: `${(active / (count - 1)) * 100}%` }}
+                    className={cn("block w-full rounded-full transition-[height] duration-500 ease-out", t.fill)}
+                    style={{ height: `${(active / Math.max(1, count - 1)) * 100}%` }}
                   />
                 </span>
-                {COMP_FLOW.map((step, index) => {
+                {steps.map((step, index) => {
                   const on = index === active;
                   const done = index < active;
                   return (
@@ -1604,11 +1600,7 @@ function CompensationFlow() {
                         <span
                           className={cn(
                             "relative z-10 grid size-10 shrink-0 place-items-center rounded-full border-2 transition-colors duration-500",
-                            on
-                              ? "border-success bg-success text-white"
-                              : done
-                                ? "border-success bg-card text-success"
-                                : "border-success/25 bg-card text-muted-foreground",
+                            on ? t.on : done ? t.done : t.idle,
                           )}
                         >
                           {done ? <Check className="size-5" /> : <step.icon className="size-[18px]" />}
@@ -1624,9 +1616,9 @@ function CompensationFlow() {
                             )}
                           >
                             <span className="overflow-hidden">
-                              <span className="mt-1 block text-[11px] font-semibold text-success">{step.who}</span>
+                              <span className={cn("mt-1 block text-[11px] font-semibold", t.who)}>{step.who}</span>
                               <span className="mt-1.5 block text-sm leading-7 text-foreground/80">{step.body}</span>
-                              <span className="mt-2 block rounded-lg bg-card/70 px-3 py-2 text-[13px] text-muted-foreground">{step.detail}</span>
+                              <span className={cn("mt-2 block rounded-lg px-3 py-2 text-[13px] text-muted-foreground", t.note)}>{step.detail}</span>
                             </span>
                           </span>
                         </span>
@@ -1636,13 +1628,13 @@ function CompensationFlow() {
                 })}
               </ol>
             </div>
-            <div className="relative h-[560px] overflow-hidden rounded-[28px] bg-success/15">
-              <span aria-hidden="true" className="absolute -top-24 -start-24 size-72 rounded-full bg-success/10" />
-              <span aria-hidden="true" className="absolute -bottom-40 -end-24 size-[26rem] rounded-full border border-success/25" />
-              <span className="num absolute top-5 end-6 text-sm text-success" dir="ltr">
-                {String(active + 1).padStart(2, "0")} / {String(count).padStart(2, "0")}
+            <div className={cn("relative h-[560px] overflow-hidden rounded-[28px]", t.panel)}>
+              <span aria-hidden="true" className={cn("absolute -top-24 -start-24 size-72 rounded-full", t.blob)} />
+              <span aria-hidden="true" className={cn("absolute -bottom-40 -end-24 size-[26rem] rounded-full border", t.ring)} />
+              <span className={cn("num absolute top-5 end-6 text-sm", t.counter)} dir="ltr">
+                {counter(active)}
               </span>
-              {COMP_FLOW.map((step, index) => (
+              {steps.map((step, index) => (
                 <div
                   key={step.title}
                   aria-hidden={index !== active}
@@ -1655,7 +1647,7 @@ function CompensationFlow() {
                         : "pointer-events-none translate-y-10 scale-95 opacity-0",
                   )}
                 >
-                  <CompensationStepVisual step={index} active={index === active} />
+                  {renderVisual(index, index === active)}
                 </div>
               ))}
               <span className="absolute bottom-4 start-5 rounded-full bg-card/80 px-2.5 py-1 text-[11px] text-muted-foreground">
@@ -1669,31 +1661,227 @@ function CompensationFlow() {
       <div className="mx-auto max-w-2xl px-4 py-20 sm:px-6 lg:hidden">
         {intro}
         <ol className="mt-8 space-y-5">
-          {COMP_FLOW.map((step, index) => (
-            <li key={step.title} data-reveal className="overflow-hidden rounded-3xl border border-success/20 bg-card">
+          {steps.map((step, index) => (
+            <li key={step.title} data-reveal className={cn("overflow-hidden rounded-3xl border bg-card", t.mobileBorder)}>
               <div className="p-5">
                 <div className="flex items-center gap-3">
-                  <span className="grid size-10 place-items-center rounded-full bg-success text-white">
+                  <span className={cn("grid size-10 place-items-center rounded-full", t.mobileIcon)}>
                     <step.icon className="size-[18px]" />
                   </span>
                   <div>
                     <p className="num text-[11px] text-muted-foreground" dir="ltr">
-                      {String(index + 1).padStart(2, "0")} / {String(count).padStart(2, "0")}
+                      {counter(index)}
                     </p>
                     <p className="font-bold">{step.title}</p>
                   </div>
                 </div>
                 <p className="mt-3 text-sm leading-7 text-foreground/80">{step.body}</p>
-                <p className="mt-2 rounded-lg bg-success-soft px-3 py-2 text-[13px] text-muted-foreground">{step.detail}</p>
+                <p className={cn("mt-2 rounded-lg px-3 py-2 text-[13px] text-muted-foreground", t.mobileNote)}>{step.detail}</p>
               </div>
-              <div className="grid place-items-center bg-success/15 p-5">
-                <CompensationStepVisual step={index} active />
-              </div>
+              <div className={cn("grid place-items-center p-5", t.panel)}>{renderVisual(index, true)}</div>
             </li>
           ))}
         </ol>
       </div>
     </section>
+  );
+}
+
+function CompensationFlow() {
+  return (
+    <ScrollFlow
+      id="compensation"
+      eyebrow="مركز التعويضات"
+      title="تعويض لم تتسبب فيه؟ اعترض عليه بالدليل."
+      tone="success"
+      className="bg-success-soft"
+      steps={COMP_FLOW}
+      renderVisual={(index, active) => <CompensationStepVisual step={index} active={active} />}
+    />
+  );
+}
+
+const HOW_FLOW: FlowStep[] = [
+  {
+    title: "ارفع الملفات",
+    who: "مرة كل فترة · دقيقتان",
+    body: "ارفع ملف الطلبات من بوابة التاجر وفاتورة المنصة لنفس الفترة بصيغتها الأصلية: Excel أو CSV أو PDF.",
+    detail: "يتعرّف تدقيق على المنصة والفترة والفروع تلقائياً، وإن غيّرت المنصة صيغة ملفها يظهر تنبيه بدلاً من نتيجة غير موثوقة.",
+    icon: Upload,
+  },
+  {
+    title: "نعيد الاحتساب",
+    who: "المحرك المحاسبي · تلقائياً",
+    body: "محرك ثابت يعيد بناء كل بند في الفاتورة من الطلبات نفسها، بمعادلات عقدك النافذ في تاريخ كل طلب.",
+    detail: "نفس الملفات تعطي نفس النتيجة دائماً، وكل احتساب يُحفظ برقم نسخة المحرك وإصدار العقد.",
+    icon: Calculator,
+  },
+  {
+    title: "راجع الفروقات",
+    who: "مركز الاستثناءات",
+    body: "كل فرق يتحول إلى استثناء بخطورته ومصدره ومعادلته والسطر المقابل في الفاتورة، ويُسند لمسؤول بحالة واضحة.",
+    detail: "الحالات: جديد ← قيد المراجعة ← تم التواصل ← تم الاعتراض ← تم الاسترداد، ويشرح Tadqeeq AI أي فرق دون أن يغيّر رقمه.",
+    icon: SearchCheck,
+  },
+  {
+    title: "استرد وأغلق",
+    who: "نهاية الفترة",
+    body: "جهّز مطالبة الاسترداد بأدلتها، ثم أغلق الفترة لتُحفظ في الفترات السابقة بسجل كامل قابل للمراجعة.",
+    detail: "يمكن إعادة تحليل أي فترة لاحقاً عند تحديث العقد، مع بقاء النتيجة الأصلية محفوظة للمقارنة.",
+    icon: HandCoins,
+  },
+];
+
+function HowItWorks() {
+  return (
+    <ScrollFlow
+      id="how"
+      eyebrow="كيف يعمل"
+      title="أربع خطوات. بدون جداول يدوية."
+      tone="primary"
+      className="bg-muted"
+      steps={HOW_FLOW}
+      renderVisual={(index, active) => <HowStepVisual step={index} active={active} />}
+    />
+  );
+}
+
+function HowStepVisual({ step, active }: { step: number; active: boolean }) {
+  const shadow = "shadow-[0_24px_48px_-28px_rgb(19_35_43/0.45)]";
+  const rise = (delay: number, extra = "") => ({
+    className: cn(extra, "transition-[opacity,transform] duration-500", active ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"),
+    style: { transitionDelay: `${delay}s` },
+  });
+  if (step === 0) {
+    const files: Array<[string, string, string]> = [
+      ["orders_aug.xlsx", "ملف الطلبات · 12,806 طلب", "XLSX"],
+      ["invoice_aug.pdf", "فاتورة المنصة · 14 صفحة", "PDF"],
+    ];
+    return (
+      <div className={cn("w-full max-w-md rounded-2xl bg-card p-5", shadow)}>
+        <div className="grid place-items-center rounded-xl border-2 border-dashed border-primary/40 bg-secondary/50 px-4 py-6 text-center">
+          <Upload className="size-6 text-primary-text" />
+          <p className="mt-2 text-sm font-semibold">اسحب الملفات هنا</p>
+          <p className="text-[11px] text-muted-foreground">Excel · CSV · PDF</p>
+        </div>
+        <div className="mt-3 space-y-2">
+          {files.map(([name, meta, ext], i) => (
+            <div key={name} {...rise(0.15 + i * 0.15, "flex items-center gap-3 rounded-xl border border-border p-2.5")}>
+              <span className="num grid size-9 place-items-center rounded-lg bg-muted text-[10px] font-semibold">{ext}</span>
+              <div className="min-w-0 flex-1">
+                <p className="num truncate text-[13px] font-semibold" dir="ltr">{name}</p>
+                <p className="text-[11px] text-muted-foreground">{meta}</p>
+              </div>
+              <Check className="size-4 text-success" />
+            </div>
+          ))}
+        </div>
+        <div {...rise(0.5, "mt-3 flex flex-wrap gap-2 text-[11px]")}>
+          <span className="rounded-full bg-ink px-2.5 py-1 text-ink-foreground">المنصة: هنقرستيشن</span>
+          <span className="rounded-full bg-muted px-2.5 py-1">الفترة: أغسطس</span>
+          <span className="rounded-full bg-muted px-2.5 py-1">12 فرعاً</span>
+        </div>
+      </div>
+    );
+  }
+  if (step === 1) {
+    const lines: Array<[string, string, string]> = [
+      ["عمولة المبيعات", "82,950.00 × 18%", "14,931.00"],
+      ["رسوم الدفع", "61,200.00 × 1%", "612.00"],
+      ["حملات التوصيل", "702 طلب × 6.00", "4,212.00"],
+      ["ضريبة الرسوم", "19,755.00 × 15%", "2,963.25"],
+    ];
+    return (
+      <div className={cn("w-full max-w-md rounded-2xl bg-card p-5", shadow)}>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold">إعادة الاحتساب</p>
+          <span className="num rounded-full bg-muted px-2.5 py-1 text-[11px]" dir="ltr">engine v1.1 · عقد 2026</span>
+        </div>
+        <div className="mt-4 space-y-2">
+          {lines.map(([label, formula, value], i) => (
+            <div key={label} {...rise(0.1 + i * 0.14, "flex items-center justify-between gap-3 rounded-xl bg-background px-3.5 py-2.5 text-[13px]")}>
+              <span className="font-semibold">{label}</span>
+              <span className="num text-[11px] text-muted-foreground" dir="ltr">{formula}</span>
+              <span className="num font-semibold">{value}</span>
+            </div>
+          ))}
+        </div>
+        <p {...rise(0.75, "mt-3 flex items-center gap-2 text-[12px] text-success")}>
+          <Check className="size-4" /> كل بند مُعاد احتسابه من الطلبات نفسها
+        </p>
+      </div>
+    );
+  }
+  if (step === 2) {
+    const statuses = ["جديد", "قيد المراجعة", "تم التواصل", "تم الاعتراض"];
+    return (
+      <div className={cn("w-full max-w-md rounded-2xl bg-card p-5", shadow)}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold">فرق عمولة الفرع</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">فرع النرجس · هنقرستيشن · أغسطس</p>
+          </div>
+          <span className="rounded-full bg-destructive/12 px-2.5 py-1 text-[11px] font-semibold text-destructive">حرج</span>
+        </div>
+        <div {...rise(0.1, "mt-4 grid grid-cols-3 gap-2 text-center text-[11px]")}>
+          <div className="rounded-xl bg-background p-2.5">
+            <p className="text-muted-foreground">الفاتورة</p>
+            <p className="num mt-1 text-sm font-semibold">16,590.00</p>
+          </div>
+          <div className="rounded-xl bg-background p-2.5">
+            <p className="text-muted-foreground">المحتسب</p>
+            <p className="num mt-1 text-sm font-semibold text-success">14,931.00</p>
+          </div>
+          <div className="rounded-xl bg-ink p-2.5 text-ink-foreground">
+            <p className="text-ink-muted">الفرق</p>
+            <p className="num mt-1 text-sm font-semibold text-primary">1,659.00</p>
+          </div>
+        </div>
+        <p {...rise(0.3, "mt-3 rounded-xl bg-muted px-3 py-2 text-[12px]")}>
+          المصدر: السطر 14 في الفاتورة · المعادلة: المبيعات × 18%
+        </p>
+        <div {...rise(0.5, "mt-3 flex flex-wrap items-center gap-1.5 text-[11px]")}>
+          {statuses.map((label, i) => (
+            <span
+              key={label}
+              className={cn(
+                "rounded-full px-2.5 py-1",
+                i === 1 ? "bg-primary font-semibold text-primary-foreground" : i < 1 ? "bg-success/15 text-success" : "bg-muted text-muted-foreground",
+              )}
+            >
+              {label}
+            </span>
+          ))}
+          <span className="ms-auto flex items-center gap-1.5 text-muted-foreground">
+            <span className="grid size-6 place-items-center rounded-full bg-chart-2 text-[10px] font-bold text-white">س</span>
+            سارة
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex w-full max-w-md flex-col gap-3">
+      <div className={cn("rounded-2xl bg-ink p-5 text-ink-foreground", shadow)}>
+        <p className="text-[11px] text-ink-muted">مطالبة الاسترداد · أغسطس</p>
+        <p className="num mt-1 text-3xl font-semibold text-primary">2,638.25</p>
+        <div {...rise(0.2, "mt-3 flex flex-wrap gap-2 text-[11px]")}>
+          <span className="rounded-full bg-ink-foreground/10 px-2.5 py-1">3 استثناءات</span>
+          <span className="rounded-full bg-ink-foreground/10 px-2.5 py-1">أدلة مرفقة</span>
+          <span className="rounded-full bg-primary px-2.5 py-1 font-semibold text-primary-foreground">جاهزة للإرسال</span>
+        </div>
+      </div>
+      <div {...rise(0.45, cn("rounded-2xl bg-card p-4", shadow))}>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold">الفترات السابقة</p>
+          <span className="rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-semibold text-success">أغسطس · مغلقة</span>
+        </div>
+        <div className="mt-3 space-y-1.5 text-[12px] text-muted-foreground">
+          <div className="flex justify-between"><span>يوليو · هنقرستيشن</span><span>مغلقة</span></div>
+          <div className="flex justify-between"><span>يونيو · جاهز</span><span>مغلقة</span></div>
+        </div>
+      </div>
+    </div>
   );
 }
 
