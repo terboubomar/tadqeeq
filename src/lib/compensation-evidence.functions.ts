@@ -3,10 +3,12 @@ import { z } from "zod";
 
 import {
   configureTelegramWebhookOnServer,
+  createBranchWithTelegramConnectionOnServer,
   createTelegramBranchConnectionOnServer,
   listBranchNameOptionsOnServer,
   getEvidenceMediaOnServer,
   getTelegramIntegrationStatusOnServer,
+  deleteCompensationCaseOnServer,
   listCompensationCasesOnServer,
   listTelegramBranchConnectionsOnServer,
   saveCompensationCaseOnServer,
@@ -49,6 +51,10 @@ export const createTelegramBranchConnection = createServerFn({ method: "POST" })
   .handler(async ({ data }) =>
     createTelegramBranchConnectionOnServer(data.branchId),
   );
+
+export const createBranchWithTelegramConnection = createServerFn({ method: "POST" })
+  .validator(z.object({ name: z.string().trim().min(1).max(160) }))
+  .handler(async ({ data }) => createBranchWithTelegramConnectionOnServer(data.name));
 
 export const setTelegramBranchConnectionActive = createServerFn({ method: "POST" })
   .validator(
@@ -106,6 +112,14 @@ export const saveCompensationCase = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireWorkspacePermission("compensation.manage");
     return saveCompensationCaseOnServer(data);
+  });
+
+export const deleteCompensationCase = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    await requireWorkspacePermission("compensation.manage");
+    await deleteCompensationCaseOnServer(data.id);
+    return { ok: true };
   });
 
 export const getCompensationCases = createServerFn({ method: "POST" })

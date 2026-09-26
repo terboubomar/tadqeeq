@@ -275,6 +275,62 @@ export async function listBranchNameOptionsOnServer(): Promise<Array<{ id: strin
   return (data ?? []) as Array<{ id: string; name: string }>;
 }
 
+export async function createBranchWithTelegramConnectionOnServer(
+  name: string,
+): Promise<{ connection: TelegramBranchConnection; code: string; branch: { id: string; name: string } }> {
+  const context = await requireWorkspacePermission("branches.manage");
+  if (!context.permissions.includes("telegram.manage")) {
+    throw new Error("ليس لديك صلاحية لربط الفروع بـ Telegram.");
+  }
+  const branchName = name.trim().replace(/\s+/g, " ");
+  if (!branchName) throw new Error("اسم الفرع مطلوب.");
+  // Generated Supabase types are refreshed after the workspace migration.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = context.client as any;
+
+  const { data: matches, error: lookupError } = await db
+    .from("branch_registry")
+    .select("id,name,active")
+    .eq("workspace_id", context.workspaceId)
+    .ilike("name", branchName.replace(/[\\%_]/g, (ch) => "\\" + ch))
+    .limit(1);
+  if (lookupError) throw new Error(lookupError.message);
+  const existing = matches?.[0] as { id: string; name: string; active: boolean } | undefined;
+
+  let branch: { id: string; name: string };
+  if (existing) {
+    if (!existing.active) {
+      const { error } = await db
+        .from("branch_registry")
+        .update({ active: true, updated_at: new Date().toISOString() })
+        .eq("id", existing.id)
+        .eq("workspace_id", context.workspaceId);
+      if (error) throw new Error(error.message);
+    }
+    branch = { id: String(existing.id), name: String(existing.name) };
+  } else {
+    const { data, error } = await db
+      .from("branch_registry")
+      .insert({
+        user_id: context.userId,
+        workspace_id: context.workspaceId,
+        name: branchName,
+        active: true,
+        updated_at: new Date().toISOString(),
+      })
+      .select("id,name")
+      .single();
+    if (error) {
+      if (error.code === "23505") throw new Error("يوجد فرع بنفس الاسم.");
+      throw new Error(error.message);
+    }
+    branch = { id: String(data.id), name: String(data.name) };
+  }
+
+  const result = await createTelegramBranchConnectionOnServer(branch.id);
+  return { ...result, branch };
+}
+
 export async function createTelegramBranchConnectionOnServer(
   branchId: string,
 ): Promise<{ connection: TelegramBranchConnection; code: string }> {
@@ -762,6 +818,20 @@ export async function saveCompensationCaseOnServer(
     .single();
   if (error) throw new Error(error.message);
   return mapCase(data);
+}
+
+export async function deleteCompensationCaseOnServer(id: string): Promise<void> {
+  const { client, workspaceId } = await requireWorkspacePermission("compensation.manage");
+  const { data, error } = await dynamicDb(client)
+    .from("compensation_cases")
+    .delete()
+    .eq("id", id)
+    .eq("workspace_id", workspaceId)
+    .select("id");
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) {
+    throw new Error("تعذّر حذف الحالة. الحذف متاح للمالك والمدير والمدقق فقط.");
+  }
 }
 
 export async function listCompensationCasesOnServer(limit = 200): Promise<CompensationCaseRecord[]> {

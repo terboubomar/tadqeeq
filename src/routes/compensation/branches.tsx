@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Clipboard, Loader2 } from "lucide-react";
+import { Clipboard, Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -8,9 +8,11 @@ import { copyText, formatTimestamp, TELEGRAM_CONNECTIONS_KEY, useTelegramConnect
 import { CompHeader } from "@/components/compensation/shared";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   configureTelegramWebhook,
+  createBranchWithTelegramConnection,
   createTelegramBranchConnection,
   getBranchNameOptions,
   getTelegramIntegrationStatus,
@@ -24,8 +26,11 @@ function BranchesPage() {
   const { can } = useWorkspaceAccess();
   const canManage = can("telegram.manage");
   const queryClient = useQueryClient();
+  const canAddBranch = canManage && can("branches.manage");
+  const [mode, setMode] = useState<"new" | "existing">(canAddBranch ? "new" : "existing");
   const [branchId, setBranchId] = useState("");
-  const [connectionCode, setConnectionCode] = useState<string | null>(null);
+  const [newBranchName, setNewBranchName] = useState("");
+  const [connectionCode, setConnectionCode] = useState<{ code: string; branchName: string } | null>(null);
 
   const statusQuery = useQuery({
     queryKey: ["telegram-integration-status"],
@@ -50,10 +55,25 @@ function BranchesPage() {
   const connectMutation = useMutation({
     mutationFn: (id: string) => createTelegramBranchConnection({ data: { branchId: id } }),
     onSuccess: async (result) => {
-      setConnectionCode(result.code);
+      setConnectionCode({ code: result.code, branchName: result.connection.branchName });
       setBranchId("");
       toast.success("تم إنشاء رمز ربط صالح لمدة 30 دقيقة");
+      window.scrollTo({ top: 0, behavior: "smooth" });
       await queryClient.invalidateQueries({ queryKey: TELEGRAM_CONNECTIONS_KEY });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const createBranchMutation = useMutation({
+    mutationFn: (name: string) => createBranchWithTelegramConnection({ data: { name } }),
+    onSuccess: async (result) => {
+      setConnectionCode({ code: result.code, branchName: result.branch.name });
+      setNewBranchName("");
+      toast.success("تمت إضافة الفرع وإنشاء رمز الربط");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: TELEGRAM_CONNECTIONS_KEY }),
+        queryClient.invalidateQueries({ queryKey: ["branch-name-options"] }),
+      ]);
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -122,40 +142,111 @@ function BranchesPage() {
 
       {canManage ? (
         <section className="rounded-xl border border-border bg-card p-5">
-          <h2 className="font-bold">ربط فرع جديد</h2>
-          <div className="mt-4 flex flex-wrap items-end gap-3">
-            <label className="min-w-[220px] flex-1">
-              <span className="text-xs font-semibold text-muted-foreground">اسم الفرع</span>
-              <Select value={branchId} onValueChange={setBranchId}>
-                <SelectTrigger className="mt-2 w-full">
-                  <SelectValue placeholder="اختر فرعاً من سجل الفروع" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(branchOptionsQuery.data ?? []).map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-            <Button
-              type="button"
-              disabled={!branchId || connectMutation.isPending}
-              onClick={() => connectMutation.mutate(branchId)}
-            >
-              إنشاء رمز
-            </Button>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-bold">إضافة فرع وربطه بـ Telegram</h2>
+            <div role="tablist" aria-label="نوع الفرع" className="flex rounded-lg bg-muted p-1">
+              {canAddBranch ? (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === "new"}
+                  onClick={() => setMode("new")}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-xs",
+                    mode === "new" ? "bg-card font-semibold shadow-sm" : "text-muted-foreground",
+                  )}
+                >
+                  فرع جديد
+                </button>
+              ) : null}
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "existing"}
+                onClick={() => setMode("existing")}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs",
+                  mode === "existing" ? "bg-card font-semibold shadow-sm" : "text-muted-foreground",
+                )}
+              >
+                فرع موجود
+              </button>
+            </div>
           </div>
-          {connectionCode ? (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-secondary/60 p-3">
-              <code className="text-base font-bold" dir="ltr">
-                /connect {connectionCode}
-              </code>
-              <Button type="button" variant="outline" size="sm" onClick={() => void copyText("/connect " + connectionCode)}>
-                <Clipboard className="size-3.5" />
-                نسخ
+
+          {mode === "new" && canAddBranch ? (
+            <form
+              className="mt-4 flex flex-wrap items-end gap-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (newBranchName.trim()) createBranchMutation.mutate(newBranchName.trim());
+              }}
+            >
+              <label className="min-w-[220px] flex-1">
+                <span className="text-xs font-semibold text-muted-foreground">اسم الفرع الجديد</span>
+                <Input
+                  value={newBranchName}
+                  onChange={(event) => setNewBranchName(event.target.value)}
+                  placeholder="مثال: فرع الملقا"
+                  className="mt-2"
+                  maxLength={160}
+                />
+              </label>
+              <Button type="submit" disabled={!newBranchName.trim() || createBranchMutation.isPending}>
+                {createBranchMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                إضافة الفرع وإنشاء رمز
               </Button>
+            </form>
+          ) : (
+            <div className="mt-4 flex flex-wrap items-end gap-3">
+              <label className="min-w-[220px] flex-1">
+                <span className="text-xs font-semibold text-muted-foreground">اسم الفرع</span>
+                <Select value={branchId} onValueChange={setBranchId}>
+                  <SelectTrigger className="mt-2 w-full">
+                    <SelectValue placeholder="اختر فرعاً من سجل الفروع" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(branchOptionsQuery.data ?? []).map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+              <Button
+                type="button"
+                disabled={!branchId || connectMutation.isPending}
+                onClick={() => connectMutation.mutate(branchId)}
+              >
+                {connectMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+                إنشاء رمز
+              </Button>
+            </div>
+          )}
+          {!canAddBranch ? (
+            <p className="mt-2 text-xs text-muted-foreground">إضافة فروع جديدة متاحة للمالك والمدير فقط.</p>
+          ) : null}
+
+          {connectionCode ? (
+            <div className="mt-4 rounded-lg border border-primary/30 bg-secondary/60 p-4">
+              <p className="text-sm">
+                أرسل هذا الأمر داخل قروب <span className="font-semibold">{connectionCode.branchName}</span> خلال 30 دقيقة:
+              </p>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                <code className="text-lg font-bold" dir="ltr">
+                  /connect {connectionCode.code}
+                </code>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void copyText("/connect " + connectionCode.code)}
+                >
+                  <Clipboard className="size-3.5" />
+                  نسخ
+                </Button>
+              </div>
             </div>
           ) : null}
           <ol className="mt-4 list-decimal space-y-1.5 pe-5 text-sm text-muted-foreground">
@@ -206,6 +297,18 @@ function BranchesPage() {
                     </td>
                     {canManage ? (
                       <td className="px-2 text-end">
+                        <div className="flex justify-end gap-2">
+                        {!c.chatId || !c.active ? (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            disabled={connectMutation.isPending}
+                            onClick={() => connectMutation.mutate(c.branchId)}
+                          >
+                            رمز ربط جديد
+                          </Button>
+                        ) : null}
                         <Button
                           type="button"
                           variant="outline"
@@ -215,6 +318,7 @@ function BranchesPage() {
                         >
                           {c.active ? "إيقاف" : "تفعيل"}
                         </Button>
+                        </div>
                       </td>
                     ) : null}
                   </tr>

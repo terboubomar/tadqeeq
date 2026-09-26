@@ -275,3 +275,40 @@ export function platformLabel(value: string): string {
 export function caseStatusLabel(value: string): string {
   return CASE_STATUS_LABELS[value as CompensationCaseStatus] ?? value;
 }
+
+/** Workflow order shown as a stepper; rejected/closed branch off the main path. */
+export const CASE_WORKFLOW: CompensationCaseStatus[] = ["draft", "ready", "submitted", "accepted", "recovered"];
+
+/** The one-click next steps offered for a case in a given status. */
+export function nextCaseActions(
+  status: string,
+): Array<{ status: CompensationCaseStatus; label: string; tone: "primary" | "good" | "bad" | "neutral" }> {
+  switch (status) {
+    case "draft":
+      return [{ status: "ready", label: "تجهيز للإرسال", tone: "primary" }];
+    case "ready":
+      return [{ status: "submitted", label: "تم الإرسال للمنصة", tone: "primary" }];
+    case "submitted":
+      return [
+        { status: "accepted", label: "قبلت المنصة", tone: "good" },
+        { status: "recovered", label: "تم الاسترداد", tone: "good" },
+        { status: "rejected", label: "رفضت المنصة", tone: "bad" },
+      ];
+    case "accepted":
+      return [
+        { status: "recovered", label: "تم الاسترداد", tone: "good" },
+        { status: "rejected", label: "رفضت المنصة", tone: "bad" },
+      ];
+    case "rejected":
+      return [
+        { status: "submitted", label: "إعادة الإرسال", tone: "primary" },
+        { status: "closed", label: "إغلاق", tone: "neutral" },
+      ];
+    case "recovered":
+      return [{ status: "closed", label: "إغلاق", tone: "neutral" }];
+    case "closed":
+      return [{ status: "draft", label: "إعادة فتح", tone: "neutral" }];
+    default:
+      return [];
+  }
+}

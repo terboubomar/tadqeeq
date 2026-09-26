@@ -74,3 +74,14 @@ describe("buildCompensationOverview", () => {
     expect(sep.recovered).toBe(80);
   });
 });
+
+describe("nextCaseActions", () => {
+  test("moves a case forward through the workflow", async () => {
+    const { nextCaseActions } = await import("./compensation-overview");
+    expect(nextCaseActions("draft").map((a) => a.status)).toEqual(["ready"]);
+    expect(nextCaseActions("ready").map((a) => a.status)).toEqual(["submitted"]);
+    expect(nextCaseActions("submitted").map((a) => a.status)).toEqual(["accepted", "recovered", "rejected"]);
+    expect(nextCaseActions("rejected").map((a) => a.status)).toEqual(["submitted", "closed"]);
+    expect(nextCaseActions("unknown")).toEqual([]);
+  });
+});
