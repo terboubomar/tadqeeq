@@ -1,11 +1,11 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { AlertTriangle, Camera, Check, ChevronDown, FileSignature, FileSearch, History, LockKeyhole, ShieldCheck, Sparkles, Users, X } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, Check, ChevronDown, Menu, Video, X } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { Button } from "@/components/ui/button";
 import { isOpsHost } from "@/lib/ops";
 import { getRequestHost } from "@/lib/ops.functions";
 import { CORE_FEATURE_LABELS, PLAN_FEATURES, type PublicPlan } from "@/lib/plans";
+import { cn } from "@/lib/utils";
 import { listPublicPlans } from "@/lib/plans.functions";
 
 export const Route = createFileRoute("/")({
@@ -29,6 +29,30 @@ export const Route = createFileRoute("/")({
   component: LandingRoute,
 });
 
+const NAV = [
+  ["#features", "المنتج"],
+  ["#how", "كيف يعمل"],
+  ["#compensation", "مركز التعويضات"],
+  ["#pricing", "الخطط والأسعار"],
+  ["#faq", "الأسئلة"],
+] as const;
+
+const BEFORE = [
+  "الفاتورة تُدفع كما وصلت",
+  "نسبة العمولة لا يراجعها أحد",
+  "تعويضات تُخصم بلا دليل",
+  "ربح كل فرع تقديري",
+  "إغلاق الشهر في جداول يدوية",
+];
+
+const AFTER = [
+  "كل بند مُعاد احتسابه قبل السداد",
+  "نسبة عقدك على كل طلب",
+  "تعويضات تُعترض بفيديو من الفرع",
+  "تقرير واضح لكل فرع",
+  "فترة مغلقة بسجل قابل للمراجعة",
+];
+
 const STEPS = [
   ["01", "ارفع الملفات", "ملف الطلبات وفاتورة المنصة بصيغتها الأصلية. يتعرّف تدقيق على المنصة والفترة تلقائياً."],
   ["02", "نعيد الاحتساب", "محرك محاسبي ثابت يحتسب كل بند بمعادلات عقدك ويقارنه بما ورد في الفاتورة."],
@@ -47,29 +71,26 @@ const CHECKS = [
   ["بنود غير مصنفة", "أي خصم لا يطابق خريطة الرسوم"],
 ];
 
-const FEATURES = [
-  { icon: FileSearch, title: "تدقيق الفواتير", body: "إعادة احتساب كل بند في فاتورة المنصة من ملف الطلبات نفسه، مع الفرق لكل فرع ولكل يوم." },
-  { icon: AlertTriangle, title: "كشف الاستثناءات", body: "الفروقات تظهر بحالتها ومسؤولها ومصدرها، مع مسار واضح لمعالجة كل استثناء وإغلاقه." },
-  { icon: Camera, title: "أدلة من تيليجرام", body: "موظف الكاشير يرسل صورة أو فيديو الطلب فقط، والمنصة تربطه بالرقم وتجهزه كمستند للمطالبة." },
-  { icon: FileSignature, title: "العقود وشروط المنصات", body: "معادلات كل عقد محفوظة بإصداراتها وتاريخ سريانها، والاحتساب يسير على العقد الصحيح." },
-  { icon: History, title: "تقارير وسجل كامل", body: "تقارير الفروع والأيام قابلة للتصدير، وكل إعادة احتساب تُحفظ بإصدار قابل للمراجعة." },
-  { icon: Sparkles, title: "ذكاء تدقيق مساند", body: "تلخيص النتائج وشرح الاستثناءات بلغة بسيطة، دون أن يغيّر أي رقم محاسبي." },
-  { icon: Users, title: "فريق بصلاحيات", body: "لكل موظف دور يحدد ما يراه ويعدله، ومساحة منفصلة تماماً لكل شركة." },
-  { icon: ShieldCheck, title: "سجل تدقيق كامل", body: "كل إجراء يُسجّل باسم من قام به ووقته، حتى يبقى إغلاق الشهر قابلاً للمراجعة." },
-];
-
 const AUDIENCES = [
-  { label: "صاحب المطعم", title: "اعرف كم تأخذ المنصة فعلاً من كل طلب", body: "ارفع ملفين في نهاية الشهر واعرف قبل السداد إن كانت الفاتورة صحيحة.", points: ["ملخص واضح للمستحق والمخصوم والفرق", "مقارنة الرسوم بين الفروع", "مطالبة تعويض جاهزة بالأدلة"] },
-  { label: "المدير المالي", title: "إغلاق شهري قابل للمراجعة لكل منصة", body: "كل رقم مربوط بمصدره، وكل فرق له حالة ومسؤول قبل اعتماد الفترة.", points: ["مطابقة كل بند بمعادلته", "متابعة حالة كل فترة", "سجل كامل للإجراءات"] },
-  { label: "مجموعة مطاعم", title: "كل فروعك ومنصاتك في مساحة واحدة", body: "قارن الفروع والمنصات واعرف أين تتكرر الفروقات لتتفاوض بأرقام.", points: ["تقارير موحدة لكل الفروع", "مقارنة الفترات", "صلاحيات منفصلة للموظفين"] },
-  { label: "فريق المحاسبة", title: "الأرقام التي تحتاجها من دون جداول يدوية", body: "تدقيق منظم وسريع مع نتائج قابلة للتصدير والمراجعة.", points: ["نتائج قابلة للتصدير", "مصدر واضح لكل رقم", "وصول حسب الدور"] },
+  ["صاحب المطعم", "ارفع ملفين في نهاية الشهر واعرف قبل السداد إن كانت الفاتورة صحيحة."],
+  ["المدير المالي", "كل رقم مربوط بمصدره، وكل فرق له حالة ومسؤول قبل اعتماد الفترة."],
+  ["مجموعة مطاعم", "قارن الفروع والمنصات واعرف أين تتكرر الفروقات لتتفاوض بأرقام."],
+  ["فريق المحاسبة", "تدقيق منظم وسريع مع نتائج قابلة للتصدير والمراجعة."],
 ];
 
 const FAQS = [
   ["ما الملفات التي أحتاجها؟", "ملف الطلبات من بوابة التاجر وفاتورة المنصة لنفس الفترة. نقبل Excel وCSV وPDF."],
   ["هل يغيّر الذكاء الاصطناعي أي رقم؟", "لا. الأرقام من المحرك المحاسبي، والذكاء الاصطناعي يشرح ويلخص النتائج فقط."],
   ["ماذا لو غيّرت المنصة صيغة ملفاتها؟", "يظهر تنبيه بتغيّر الصيغة بدلاً من احتساب نتيجة غير موثوقة."],
+  ["هل يحتاج موظف الفرع تطبيقاً لإرسال الأدلة؟", "لا. يرسل الصورة أو الفيديو في قروب الفرع على Telegram، والبوت يربطه برقم الطلب."],
   ["هل بيانات شركتي منفصلة؟", "نعم. لكل شركة مساحة خاصة، مع صلاحيات تحدد ما يراه ويعدله كل موظف."],
+];
+
+const BARS = [
+  [82, 74],
+  [64, 61],
+  [92, 78],
+  [55, 54],
 ];
 
 function LandingRoute() {
@@ -77,132 +98,623 @@ function LandingRoute() {
   return <Landing plans={plans} />;
 }
 
+/** Reveals `[data-reveal]` elements as they scroll into view. Content stays visible without JS. */
+function useScrollReveal() {
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            entry.target.setAttribute("data-shown", "");
+            observer.unobserve(entry.target);
+          }
+        }
+      },
+      { rootMargin: "0px 0px -10% 0px", threshold: 0.1 },
+    );
+    root.querySelectorAll("[data-reveal]").forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      if (rect.top < window.innerHeight) el.setAttribute("data-shown", "");
+      else observer.observe(el);
+    });
+    root.classList.add("lp-ready");
+    return () => observer.disconnect();
+  }, []);
+  return rootRef;
+}
+
 function Landing({ plans }: { plans: PublicPlan[] }) {
-  const [audience, setAudience] = useState(0);
-  const current = AUDIENCES[audience] ?? AUDIENCES[0];
-  if (!current) return null;
+  const rootRef = useScrollReveal();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background" dir="rtl">
-      <header className="sticky top-0 z-40 border-b border-ink-2 bg-ink text-ink-foreground">
-        <div className="mx-auto flex min-h-16 max-w-7xl items-center gap-6 px-4 sm:px-6">
-          <Link to="/" className="flex items-center gap-2.5">
-            <span className="grid size-9 place-items-center rounded-[9px] bg-primary font-display text-lg font-extrabold text-primary-foreground">ت</span>
-            <span className="font-display text-lg font-bold">تدقيق</span>
+    <div ref={rootRef} className="lp-root min-h-screen bg-background" dir="rtl">
+      <div className="flex items-center justify-center gap-3 bg-ink px-4 py-2.5 text-center text-xs text-ink-foreground sm:text-[13px]">
+        <span className="lp-pulse shrink-0 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-primary-foreground">جديد</span>
+        <span className="hidden sm:inline">مركز التعويضات: اعترض على التعويضات بفيديو من قروب الفرع على Telegram</span>
+        <span className="sm:hidden">اعترض على التعويضات بأدلة من Telegram</span>
+        <a href="#compensation" className="shrink-0 font-semibold text-primary">اعرف أكثر ←</a>
+      </div>
+
+      <div className="sticky top-0 z-40 px-3 pt-3 sm:px-6 sm:pt-4">
+        <header className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 rounded-full border border-border bg-card/95 ps-4 pe-2 shadow-[0_12px_32px_-18px_rgb(19_35_43/0.28)] backdrop-blur sm:h-[68px] sm:ps-5">
+          <Link to="/" aria-label="تدقيق — الرئيسية" className="flex items-center gap-2.5">
+            <span className="grid size-9 place-items-center rounded-[11px] bg-ink font-display text-lg font-extrabold text-primary">ت</span>
+            <span className="flex flex-col leading-tight">
+              <span className="font-display text-lg font-extrabold">تدقيق</span>
+              <span className="hidden text-[11px] text-muted-foreground sm:block">مراجعة فواتير التوصيل</span>
+            </span>
           </Link>
-          <nav className="hidden items-center gap-6 text-sm text-ink-muted md:flex">
-            <a href="#how" className="transition-colors hover:text-ink-foreground">كيف يعمل</a>
-            <a href="#checks" className="transition-colors hover:text-ink-foreground">ماذا ندقق</a>
-            <a href="#features" className="transition-colors hover:text-ink-foreground">الميزات</a>
-            <a href="#who" className="transition-colors hover:text-ink-foreground">لمن</a>
-            <a href="#pricing" className="transition-colors hover:text-ink-foreground">الباقات</a>
+          <nav aria-label="الرئيسية" className="hidden items-center gap-1 rounded-full bg-background p-1 text-sm lg:flex">
+            {NAV.map(([href, label]) => (
+              <a
+                key={href}
+                href={href}
+                className="rounded-full px-4 py-2 text-foreground/75 transition-colors hover:bg-card hover:text-foreground hover:shadow-sm"
+              >
+                {label}
+              </a>
+            ))}
           </nav>
-          <span className="flex-1" />
-          <Button asChild variant="ghost" size="sm" className="text-ink-foreground hover:bg-ink-2 hover:text-ink-foreground"><Link to="/auth">تسجيل الدخول</Link></Button>
-          <Button asChild size="sm"><Link to="/auth" search={{ mode: "signup" }}>سجّل منشأتك</Link></Button>
-        </div>
-      </header>
+          <div className="flex items-center gap-1.5">
+            <Link to="/auth" className="hidden px-3 py-2 text-sm font-semibold sm:block">
+              تسجيل الدخول
+            </Link>
+            <Link
+              to="/auth"
+              search={{ mode: "signup" }}
+              className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground transition-transform hover:-translate-y-0.5 sm:h-[46px] sm:px-5"
+            >
+              ابدأ مجاناً
+              <ArrowLeft className="size-4" />
+            </Link>
+            <button
+              type="button"
+              aria-label={menuOpen ? "إغلاق القائمة" : "فتح القائمة"}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((v) => !v)}
+              className="grid size-11 place-items-center rounded-full hover:bg-muted lg:hidden"
+            >
+              {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+            </button>
+          </div>
+        </header>
+        {menuOpen ? (
+          <nav aria-label="القائمة" className="mx-auto mt-2 flex max-w-7xl flex-col rounded-2xl border border-border bg-card p-2 shadow-lg lg:hidden">
+            {NAV.map(([href, label]) => (
+              <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-muted">
+                {label}
+              </a>
+            ))}
+            <Link to="/auth" className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-muted sm:hidden">
+              تسجيل الدخول
+            </Link>
+          </nav>
+        ) : null}
+      </div>
 
       <main>
-        <section className="overflow-hidden bg-ink text-ink-foreground">
-          <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1fr_0.92fr] lg:py-24">
-            <div>
-              <p className="inline-flex items-center gap-2 rounded-full border border-ink-2 px-3 py-1 text-xs text-ink-muted"><span className="size-2 rounded-full bg-primary" /> هنقرستيشن · كيتا · جاهز</p>
-              <h1 className="mt-6 max-w-3xl font-display text-4xl font-extrabold leading-[1.45] sm:text-5xl lg:text-[3.5rem]">
-                لا تدفع فاتورة المنصة <span className="text-primary">قبل ما تتأكد منها</span>
+        <section className="overflow-hidden">
+          <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:py-20">
+            <div className="lp-stagger flex flex-col gap-6">
+              <p className="flex items-center gap-2 text-[13px] font-semibold text-primary-text">
+                <span className="size-1.5 rounded-full bg-primary" />
+                تدقيق فواتير هنقرستيشن وكيتا وجاهز
+              </p>
+              <h1 className="font-display text-4xl font-extrabold leading-[1.3] sm:text-5xl lg:text-[3.6rem]">
+                لا تدفع فاتورة المنصة قبل ما تتأكد منها.
               </h1>
-              <p className="mt-6 max-w-2xl text-base leading-8 text-ink-muted sm:text-lg">ارفع ملف الطلبات وفاتورة المنصة، ويعيد «تدقيق» بناء كل بند من بيانات الطلبات نفسها، ثم يكشف الفرق لكل فرع ولكل يوم.</p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Button asChild size="lg"><Link to="/auth" search={{ mode: "signup" }}>ابدأ أول تدقيق</Link></Button>
-                <Button asChild size="lg" variant="outline" className="border-ink-2 bg-transparent text-ink-foreground hover:bg-ink-2 hover:text-ink-foreground"><a href="#how">شاهد كيف يعمل</a></Button>
+              <p className="max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
+                تدقيق يعيد احتساب كل بند في فاتورة تطبيق التوصيل من ملف طلباتك ومعادلات عقدك، يكشف الفرق لكل فرع، ويجهّز مطالبة التعويض بأدلتها.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  to="/auth"
+                  search={{ mode: "signup" }}
+                  className="inline-flex h-[52px] items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-semibold text-ink-foreground transition-transform hover:-translate-y-0.5"
+                >
+                  ابدأ التدقيق
+                  <ArrowLeft className="size-4" />
+                </Link>
+                <a href="#how" className="inline-flex h-[52px] items-center rounded-full border border-border bg-card px-6 text-[15px] font-semibold">
+                  شاهد كيف يعمل
+                </a>
               </div>
-            </div>
-
-            <div className="rounded-[16px] bg-background p-4 text-foreground shadow-2xl sm:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div><p className="text-xs text-muted-foreground">فاتورة هنقرستيشن · أغسطس</p><p className="mt-1 font-bold">مطابقة الفاتورة · 12 فرعاً</p></div>
-                <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">3 فروقات مفتوحة</span>
-              </div>
-              <div className="mt-5 overflow-hidden rounded-[10px] border border-border bg-card text-xs sm:text-sm">
-                <div className="grid grid-cols-[1.4fr_1fr_1fr] gap-2 bg-muted px-3 py-2 text-muted-foreground"><span>البند</span><span>الفاتورة</span><span>الفرق</span></div>
-                {[["عمولة المبيعات","49,870.15","+1,659.75"],["رسوم الدفع","6,120.00","مطابق"],["حملات التوصيل","4,215.50","+735.50"],["التعويضات","2,145.00","+243.00"]].map((row) => (
-                  <div key={row[0]} className="grid grid-cols-[1.4fr_1fr_1fr] gap-2 border-t border-border px-3 py-3"><span>{row[0]}</span><span className="num">{row[1]}</span><span className={row[2] === "مطابق" ? "font-semibold text-success" : "num font-semibold text-destructive"}>{row[2]}</span></div>
+              <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-muted-foreground">
+                {["Excel وCSV وPDF", "بيانات كل شركة منفصلة", "الذكاء الاصطناعي لا يغيّر الأرقام"].map((item) => (
+                  <li key={item} className="flex items-center gap-1.5">
+                    <Check className="size-4 text-success" />
+                    {item}
+                  </li>
                 ))}
-              </div>
-              <div className="mt-4 flex items-center justify-between gap-4 rounded-[10px] bg-ink px-4 py-4 text-ink-foreground">
-                <div><p className="text-xs text-ink-muted">مبلغ قابل للاسترداد</p><p className="mt-1"><span className="num text-2xl font-semibold text-primary">2,638.25</span> <span className="text-sm">ر.س</span></p></div>
-                <span className="rounded-[8px] bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground">تجهيز المطالبة</span>
-              </div>
+              </ul>
+            </div>
+            <HeroDashboard />
+          </div>
+        </section>
+
+        <section className="border-y border-border">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-12 gap-y-4 px-4 py-8 text-sm text-muted-foreground sm:px-6">
+            <span>يدعم فواتير وملفات:</span>
+            {["هنقرستيشن", "كيتا", "جاهز"].map((name) => (
+              <span key={name} className="font-display text-xl font-bold text-foreground">
+                {name}
+              </span>
+            ))}
+          </div>
+        </section>
+
+        <section className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:py-28">
+          <SectionIntro eyebrow="المشكلة" title="ثلاث منصات، ثلاث صيغ، وفاتورة لا تُراجع.">
+            كل منصة تكتب خصوماتها بطريقتها. ومن دون إعادة احتساب، تُدفع الفاتورة كما وصلت — بعمولتها ورسومها وتعويضاتها.
+          </SectionIntro>
+          <div data-reveal className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-[18px] border border-border bg-card p-6">
+              <p className="text-xs font-semibold text-destructive">من دون تدقيق</p>
+              <ul className="mt-4 space-y-3 text-[15px] text-foreground/80">
+                {BEFORE.map((item) => (
+                  <li key={item} className="flex items-center gap-2.5">
+                    <span className="grid size-5 place-items-center rounded-full bg-destructive/12 text-destructive">
+                      <X className="size-3" />
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="lp-float rounded-[18px] bg-ink p-6 text-ink-foreground shadow-[0_30px_60px_-30px_rgb(19_35_43/0.45)]">
+              <p className="text-xs font-semibold text-primary">مع تدقيق</p>
+              <ul className="mt-4 space-y-3 text-[15px]">
+                {AFTER.map((item, index) => (
+                  <li key={item} className="lp-in flex items-center gap-2.5" style={{ animationDelay: `${0.4 + index * 0.15}s` }}>
+                    <span className="grid size-5 place-items-center rounded-full bg-primary text-primary-foreground">
+                      <Check className="size-3" />
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </section>
 
-        <section className="border-b border-border bg-muted"><div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-5 px-4 py-6 sm:px-6"><p className="text-sm text-muted-foreground">يقرأ الملفات كما تصدر من بوابة التاجر</p><div className="flex gap-7 font-display text-lg font-bold sm:gap-12"><span>هنقرستيشن</span><span>كيتا</span><span>جاهز</span></div></div></section>
-
-        <section id="how" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24">
-          <SectionHeading eyebrow="دورة التدقيق الشهرية" title="أربع خطوات واضحة بالترتيب نفسه كل شهر" body="من رفع الملفات حتى تجهيز المطالبة، تعرف دائماً ما الخطوة التالية." />
-          <ol className="mt-12 grid border-t-2 border-foreground md:grid-cols-4">
-            {STEPS.map(([n,title,body]) => <li key={n} className="border-b border-border py-7 md:border-b-0 md:px-5 md:first:pr-0"><span className="num text-sm font-semibold text-primary-text">{n}</span><h3 className="mt-3 font-display text-lg font-bold">{title}</h3><p className="mt-3 text-sm leading-7 text-muted-foreground">{body}</p></li>)}
-          </ol>
-        </section>
-
-        <section id="checks" className="mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:py-24">
-          <SectionHeading eyebrow="ماذا ندقق" title="كل سطر في الفاتورة، من بيانات الطلبات نفسها" body="البنود غير المصنفة تظهر لك بوضوح بدلاً من أن تختفي داخل الإجمالي." />
-          <div className="grid overflow-hidden rounded-[14px] border border-border bg-border sm:grid-cols-2">
-            {CHECKS.map(([title,body]) => <div key={title} className="m-px bg-card p-5"><h3 className="font-bold">{title}</h3><p className="mt-1 text-sm text-muted-foreground">{body}</p></div>)}
+        <section id="how" className="bg-muted">
+          <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-24">
+            <SectionIntro eyebrow="كيف يعمل" title="أربع خطوات. بدون جداول يدوية." />
+            <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {STEPS.map(([n, title, body], index) => (
+                <li
+                  key={n}
+                  data-reveal
+                  style={{ transitionDelay: `${index * 0.1}s` }}
+                  className={cn(
+                    "flex flex-col gap-2.5 rounded-2xl p-6",
+                    index === STEPS.length - 1 ? "bg-ink text-ink-foreground" : "bg-card",
+                  )}
+                >
+                  <span className={cn("num text-sm font-semibold", index === STEPS.length - 1 ? "text-primary" : "text-primary-text")}>{n}</span>
+                  <h3 className="text-lg font-bold">{title}</h3>
+                  <p className={cn("text-sm leading-7", index === STEPS.length - 1 ? "text-ink-muted" : "text-muted-foreground")}>{body}</p>
+                </li>
+              ))}
+            </ol>
           </div>
         </section>
 
-        <section id="features" className="border-y border-border bg-muted"><div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24">
-          <SectionHeading eyebrow="الميزات" title="كل ما تحتاجه لإغلاق الشهر بثقة" body="من رفع الملفات حتى تجهيز مطالبة التعويضة، أدوات واحدة تعمل معاً في مساحتك." />
-          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {FEATURES.map((feature) => <article key={feature.title} className="panel p-6">
-              <span className="grid size-11 place-items-center rounded-[10px] border border-border bg-background"><feature.icon className="size-5 text-primary-text" /></span>
-              <h3 className="mt-5 font-display font-bold">{feature.title}</h3>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">{feature.body}</p>
-            </article>)}
+        <section id="features" className="bg-[oklch(0.975_0.018_85)]">
+          <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:py-28">
+            <SectionIntro eyebrow="مطابقة الفاتورة" title="ما خصمته المنصة. ما يقوله عقدك. والفرق بينهما.">
+              ارفع الفاتورة ويعيد تدقيق بناءها بنداً بنداً من ملف الطلبات. عند الاختلاف ترى البند والنسبة المحتسبة والنسبة المتفق عليها.
+              <Link
+                to="/auth"
+                search={{ mode: "signup" }}
+                className="mt-6 inline-flex h-11 w-fit items-center gap-2 rounded-full bg-ink px-5 text-sm font-semibold text-ink-foreground"
+              >
+                جرّب مطابقة الفاتورة
+                <ArrowLeft className="size-4" />
+              </Link>
+            </SectionIntro>
+            <InvoiceMock />
           </div>
-        </div></section>
+        </section>
 
-        <section id="who" className="bg-ink text-ink-foreground"><div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
-          <SectionHeading dark eyebrow="لمن تدقيق" title="مساحة واحدة تناسب فريقك" />
-          <div className="mt-8 flex gap-2 overflow-x-auto pb-2">{AUDIENCES.map((item,index) => <Button key={item.label} type="button" size="sm" variant={index === audience ? "default" : "outline"} onClick={() => setAudience(index)} className={index === audience ? "shrink-0" : "shrink-0 border-ink-2 bg-transparent text-ink-muted hover:bg-ink-2 hover:text-ink-foreground"}>{item.label}</Button>)}</div>
-          <div className="mt-7 grid gap-10 border-t border-ink-2 pt-8 md:grid-cols-2"><div><h3 className="font-display text-2xl font-bold">{current.title}</h3><p className="mt-4 max-w-xl text-base leading-8 text-ink-muted">{current.body}</p></div><div>{current.points.map((point) => <div key={point} className="flex items-center gap-3 border-b border-ink-2 py-4"><span className="size-2 rounded-[2px] bg-primary" /><span>{point}</span></div>)}</div></div>
-        </div></section>
+        <section id="compensation" className="bg-success-soft">
+          <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:py-28">
+            <SectionIntro eyebrow="مركز التعويضات" title="تعويض لم تتسبب فيه؟ اعترض عليه بالدليل." tone="success">
+              الكاشير يرسل فيديو أو صورة الطلب في قروب الفرع على Telegram. تدقيق يربطها برقم الطلب تلقائياً، وعند ظهور التعويض يكون ملف الاعتراض جاهزاً بالعربي والإنجليزي.
+              <ul className="mt-5 space-y-2.5 text-[15px] text-foreground">
+                {["لا تطبيق ولا تسجيل دخول للموظف", "الدليل مربوط برقم الطلب والفرع والوقت", "متابعة كل حالة حتى الاسترداد"].map((item) => (
+                  <li key={item} className="flex items-center gap-2.5">
+                    <Check className="size-4 text-success" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </SectionIntro>
+            <CompensationMock />
+          </div>
+        </section>
 
-        <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
-          <SectionHeading eyebrow="الأمان والدقة" title="المحرك المحاسبي هو المرجع، والذكاء الاصطناعي يشرح فقط" />
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {[{icon:ShieldCheck,title:"احتساب ثابت وقابل للتكرار",body:"نفس الملفات تعطي نفس النتيجة، مع حفظ كل إصدار للمراجعة."},{icon:LockKeyhole,title:"مساحة خاصة لكل شركة",body:"بيانات كل منشأة معزولة، والوصول مقيد حسب دور المستخدم."},{icon:Sparkles,title:"ذكاء اصطناعي مضبوط",body:"يستلم حقائق مدققة ليشرح النتائج، ولا يغيّر الأرقام المحاسبية."}].map((item) => <article key={item.title} className="panel p-6"><item.icon className="size-6 text-primary-text"/><h3 className="mt-5 font-display font-bold">{item.title}</h3><p className="mt-2 text-sm leading-7 text-muted-foreground">{item.body}</p></article>)}
+        <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-24">
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <SectionIntro eyebrow="ما الذي نراجعه" title="كل بند في الفاتورة، لا الإجمالي فقط." />
+            <p data-reveal className="max-w-md text-base leading-8 text-muted-foreground">
+              أي خصم لا يطابق خريطة الرسوم يظهر كبند غير مصنف بدلاً من أن يمر دون أن يلاحظه أحد.
+            </p>
+          </div>
+          <div className="mt-10 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+            {CHECKS.map(([title, body], index) => (
+              <div
+                key={title}
+                data-reveal
+                style={{ transitionDelay: `${(index % 4) * 0.08}s` }}
+                className={cn(
+                  "rounded-[14px] p-5",
+                  index === CHECKS.length - 1 ? "bg-ink text-ink-foreground" : "border border-border bg-card",
+                )}
+              >
+                <h3 className="font-bold">{title}</h3>
+                <p className={cn("mt-1.5 text-[13px]", index === CHECKS.length - 1 ? "text-ink-muted" : "text-muted-foreground")}>{body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="bg-muted">
+          <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+            <SectionIntro eyebrow="لمن تدقيق" title="لمن يملك الأرقام ويُسأل عنها." />
+            <div className="mt-9 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+              {AUDIENCES.map(([title, body], index) => (
+                <div key={title} data-reveal style={{ transitionDelay: `${index * 0.08}s` }} className="rounded-2xl bg-card p-6">
+                  <h3 className="text-lg font-bold">{title}</h3>
+                  <p className="mt-2 text-sm leading-7 text-muted-foreground">{body}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
         {plans.length ? <Pricing plans={plans} /> : null}
 
-        <section className="mx-auto max-w-3xl px-4 py-20 sm:px-6"><h2 className="font-display text-3xl font-bold">أسئلة شائعة</h2><div className="mt-6 border-b border-border">{FAQS.map(([q,a]) => <details key={q} className="group border-t border-border"><summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 font-semibold"><span>{q}</span><ChevronDown className="size-5 text-primary-text transition-transform group-open:rotate-180" /></summary><p className="max-w-2xl pb-5 text-sm leading-7 text-muted-foreground">{a}</p></details>)}</div></section>
+        <section id="faq" className="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.6fr)_minmax(0,1.4fr)] lg:py-24">
+          <SectionIntro eyebrow="أسئلة" title="قبل أن تبدأ">
+            ما يسأله أصحاب المطاعم عادة.
+          </SectionIntro>
+          <div data-reveal className="border-b border-border">
+            {FAQS.map(([q, a], index) => (
+              <details key={q} open={index === 0} className="group border-t border-border">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-lg font-semibold">
+                  <span>{q}</span>
+                  <ChevronDown className="size-5 shrink-0 text-primary-text transition-transform group-open:rotate-180" />
+                </summary>
+                <p className="max-w-2xl pb-5 text-[15px] leading-8 text-muted-foreground">{a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
 
-        <section className="bg-primary"><div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-7 px-4 py-16 sm:px-6 md:flex-row md:items-center"><h2 className="max-w-3xl font-display text-3xl font-extrabold leading-[1.5] text-primary-foreground">دقق فاتورة الشهر الماضي قبل موعد السداد القادم</h2><Button asChild size="lg" className="border-ink bg-ink text-ink-foreground hover:bg-ink-2"><Link to="/auth" search={{ mode: "signup" }}>سجّل منشأتك</Link></Button></div></section>
+        <section className="px-4 pb-16 sm:px-6">
+          <div
+            data-reveal
+            className="mx-auto flex max-w-7xl flex-col items-center gap-5 rounded-[28px] bg-ink px-6 py-16 text-center text-ink-foreground sm:py-20"
+          >
+            <h2 className="font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.75rem]">اعرف ما تقوله فاتورتك الأخيرة فعلاً.</h2>
+            <p className="max-w-xl text-base leading-8 text-ink-muted sm:text-lg">
+              ارفع ملف الطلبات والفاتورة لفترة واحدة، وشاهد الفروقات لكل فرع قبل أن تدفع.
+            </p>
+            <div className="mt-2 flex flex-wrap justify-center gap-3">
+              <Link
+                to="/auth"
+                search={{ mode: "signup" }}
+                className="inline-flex h-[52px] items-center rounded-full bg-primary px-7 text-[15px] font-bold text-primary-foreground"
+              >
+                ابدأ التدقيق
+              </Link>
+              {plans.length ? (
+                <a href="#pricing" className="inline-flex h-[52px] items-center rounded-full border border-ink-foreground/35 px-7 text-[15px] font-semibold">
+                  شاهد الخطط
+                </a>
+              ) : null}
+            </div>
+          </div>
+        </section>
       </main>
 
-      <footer className="bg-ink text-ink-muted"><div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-5 px-4 py-10 text-sm sm:px-6"><div className="flex items-center gap-2"><span className="grid size-7 place-items-center rounded-[7px] bg-primary font-display font-bold text-primary-foreground">ت</span><span className="font-semibold text-ink-foreground">تدقيق</span><span>· مراجعة فواتير منصات التوصيل في السعودية</span></div><span>© {new Date().getFullYear()} تدقيق</span></div></footer>
+      <footer className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 pb-10 text-[13px] text-muted-foreground sm:px-6">
+        <div className="flex items-center gap-2.5">
+          <span className="grid size-7 place-items-center rounded-[7px] bg-primary font-display text-sm font-extrabold text-primary-foreground">ت</span>
+          <span>تدقيق · مراجعة فواتير التوصيل للمطاعم في السعودية</span>
+        </div>
+        <span className="num">© {new Date().getFullYear()} تدقيق</span>
+      </footer>
     </div>
   );
 }
 
-function SectionHeading({ eyebrow, title, body, dark = false }: { eyebrow: string; title: string; body?: string; dark?: boolean }) {
-  return <div><p className={"text-xs font-semibold " + (dark ? "text-primary" : "text-primary-text")}>{eyebrow}</p><h2 className="mt-2 max-w-3xl font-display text-2xl font-bold leading-[1.55] sm:text-4xl">{title}</h2>{body ? <p className={"mt-3 max-w-2xl text-base leading-8 " + (dark ? "text-ink-muted" : "text-muted-foreground")}>{body}</p> : null}</div>;
+function SectionIntro({
+  eyebrow,
+  title,
+  tone = "primary",
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  tone?: "primary" | "success";
+  children?: ReactNode;
+}) {
+  return (
+    <div data-reveal className="flex flex-col">
+      <p className={cn("flex items-center gap-2 text-[13px] font-semibold", tone === "success" ? "text-success" : "text-primary-text")}>
+        <span className={cn("size-1.5 rounded-full", tone === "success" ? "bg-success" : "bg-primary")} />
+        {eyebrow}
+      </p>
+      <h2 className="mt-3 font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]">{title}</h2>
+      {children ? <div className="mt-4 flex flex-col text-base leading-8 text-muted-foreground sm:text-[17px]">{children}</div> : null}
+    </div>
+  );
+}
+
+function HeroDashboard() {
+  return (
+    <div
+      aria-hidden="true"
+      className="lp-slide flex overflow-hidden rounded-[18px] border border-border bg-card shadow-[0_30px_60px_-30px_rgb(19_35_43/0.25)] lg:-me-24 lg:rounded-e-none"
+    >
+      <div className="hidden w-14 shrink-0 flex-col items-center gap-4 bg-ink pt-5 sm:flex">
+        <span className="grid size-7 place-items-center rounded-[7px] bg-primary font-display text-xs font-extrabold text-primary-foreground">ت</span>
+        {[0.5, 0.3, 0.3, 0.3].map((o, i) => (
+          <span key={i} className="h-[3px] w-[18px] rounded-sm bg-ink-foreground" style={{ opacity: o }} />
+        ))}
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-4 p-5 sm:p-6">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold text-primary-text">اللوحة التنفيذية</p>
+            <p className="mt-1 font-display text-lg font-bold">جاهز · سبتمبر</p>
+          </div>
+          <span className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground">مثال توضيحي</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+          <div className="lp-pulse rounded-xl bg-ink p-3.5 text-ink-foreground">
+            <p className="text-[11px] text-ink-muted">فرق لصالحك</p>
+            <p className="num mt-1.5 text-xl font-semibold text-primary">2,638.25</p>
+            <p className="mt-1 text-[11px] text-ink-muted">جاهز للمطالبة</p>
+          </div>
+          <MiniKpi label="المبيعات" value="184,320" />
+          <MiniKpi label="خصومات المنصة" value="41,905" />
+          <MiniKpi label="استثناءات مفتوحة" value="3" bad />
+        </div>
+        <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+          <div className="flex flex-col rounded-xl border border-border p-3.5">
+            <p className="text-xs font-semibold">المستحق مقابل المحوّل · حسب الفرع</p>
+            <div className="flex h-36 items-end gap-4 px-1 pt-3">
+              {BARS.map(([due, paid], index) => (
+                <div key={index} className="flex h-full flex-1 items-end gap-1">
+                  <span
+                    className="lp-bar flex-1 rounded-t bg-chart-2"
+                    style={{ height: `${due}%`, animationDelay: `${0.6 + index * 0.15}s, ${2 + index * 0.2}s` }}
+                  />
+                  <span
+                    className="lp-bar flex-1 rounded-t bg-primary"
+                    style={{ height: `${paid}%`, animationDelay: `${0.6 + index * 0.15}s, ${2 + index * 0.2}s` }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 rounded-xl border border-border p-3.5 text-xs">
+            <p className="font-semibold">أحدث الفروقات</p>
+            {[
+              ["عمولة أعلى من العقد", "حرج", true],
+              ["تعويض على فرع خاطئ", "تحذير", false],
+              ["رسوم غير مصنفة", "تحذير", false],
+            ].map(([label, level, critical], index) => (
+              <div
+                key={String(label)}
+                className={cn("flex justify-between rounded-lg px-2.5 py-2", critical ? "lp-pulse bg-secondary" : "lp-in bg-background")}
+                style={{ animationDelay: `${1 + index * 0.2}s` }}
+              >
+                <span>{label}</span>
+                <span className={critical ? "font-semibold text-primary-text" : "text-muted-foreground"}>{level}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MiniKpi({ label, value, bad = false }: { label: string; value: string; bad?: boolean }) {
+  return (
+    <div className="rounded-xl border border-border p-3.5">
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className={cn("num mt-1.5 text-xl font-semibold", bad && "text-destructive")}>{value}</p>
+    </div>
+  );
+}
+
+function InvoiceMock() {
+  return (
+    <div data-reveal aria-hidden="true" className="flex flex-col gap-4 rounded-[22px] bg-secondary p-5 sm:p-9">
+      <div className="grid gap-3.5 sm:grid-cols-2">
+        <div className="rounded-2xl bg-card p-5">
+          <p className="text-xs text-muted-foreground">حسب فاتورة المنصة</p>
+          <p className="num mt-2.5 text-3xl font-semibold">16,590.00</p>
+          <p className="mt-2 text-xs text-muted-foreground">عمولة 20% محتسبة</p>
+        </div>
+        <div className="rounded-2xl bg-card p-5 shadow-[0_20px_40px_-24px_rgb(19_35_43/0.35)]">
+          <p className="text-xs text-muted-foreground">حسب عقدك</p>
+          <p className="num mt-2.5 text-3xl font-semibold text-success">14,931.00</p>
+          <p className="mt-2 text-xs text-muted-foreground">عمولة 18% متفق عليها</p>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1 rounded-2xl bg-card p-3 text-[13px]">
+        {[
+          ["عمولة المبيعات", "+1,659.00", false],
+          ["ضريبة القيمة المضافة على العمولة", "+248.85", false],
+          ["رسوم الدفع الإلكتروني", "مطابق", true],
+        ].map(([label, value, ok], index) => (
+          <div key={String(label)} className="lp-scan flex justify-between rounded-md px-2 py-2.5" style={{ animationDelay: `${index * 2}s` }}>
+            <span>{label}</span>
+            <span className={ok ? "font-semibold text-success" : "num text-destructive"}>{value}</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-2.5">
+        <span className="lp-pulse flex items-center gap-1.5 rounded-full bg-ink px-3.5 py-2 text-[13px] text-ink-foreground">
+          الفرق لصالحك <span className="num text-primary">1,907.85 ر.س</span>
+        </span>
+        <span className="flex items-center gap-1.5 rounded-full bg-card px-3.5 py-2 text-[13px]">
+          <Check className="size-3.5 text-success" />
+          مطالبة جاهزة
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function CompensationMock() {
+  return (
+    <div data-reveal aria-hidden="true" className="flex flex-col items-stretch gap-4 rounded-[22px] bg-success/15 p-5 sm:flex-row sm:items-center sm:p-9">
+      <div className="lp-float flex shrink-0 flex-col gap-2.5 rounded-[20px] bg-card p-3.5 shadow-[0_20px_40px_-24px_rgb(19_35_43/0.35)] sm:w-56">
+        <p className="text-xs font-semibold">قروب فرع الملقا</p>
+        <div className="lp-rec relative grid h-36 place-items-center rounded-xl bg-ink/90 text-ink-foreground">
+          <Video className="size-7" />
+        </div>
+        <p className="lp-pop rounded-[10px] bg-success-soft px-2.5 py-2 text-xs text-success">✓ تم الربط بالطلب HS-88214073</p>
+      </div>
+      <div className="flex flex-1 flex-col gap-3.5 rounded-[18px] bg-card p-5">
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>تعويض في فاتورة هنقرستيشن</span>
+          <span className="num">HS-88214073</span>
+        </div>
+        <p className="num text-3xl font-semibold">
+          142.50 <span className="text-sm">ر.س</span>
+        </p>
+        <p className="text-[13px] text-muted-foreground">طلب ناقص · فرع الملقا</p>
+        <div className="lp-pop flex items-center gap-2.5 rounded-xl bg-success-soft p-3 text-[13px]" style={{ animationDelay: "0.8s" }}>
+          <span className="grid size-8 place-items-center rounded-lg bg-card">
+            <Video className="size-4 text-success" />
+          </span>
+          <div>
+            <p className="font-semibold text-success">يوجد دليل</p>
+            <p className="text-xs text-muted-foreground">فيديو التغليف · قبل التسليم للمندوب</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <span className="lp-pop rounded-full bg-ink px-3.5 py-2 text-[13px] text-ink-foreground" style={{ animationDelay: "1.6s" }}>
+            ملف الاعتراض جاهز
+          </span>
+          <span className="rounded-full border border-border px-3.5 py-2 text-[13px]">عربي · English</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function Pricing({ plans }: { plans: PublicPlan[] }) {
-  return <section id="pricing" className="border-y border-border bg-muted"><div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
-    <SectionHeading eyebrow="الباقات" title="اختر الميزات وعدد مرات رفع الملفات المناسب" body="السعر لا يعتمد على عدد الفروع. يمكنك ترقية الباقة مع نمو عملياتك." />
-    <div className="mt-10 grid gap-4 md:grid-cols-3">{plans.map((plan) => <article key={plan.id} className={"relative flex flex-col rounded-[16px] p-6 " + (plan.highlighted ? "bg-ink text-ink-foreground shadow-xl" : "border border-border bg-card")}>
-      {plan.highlighted ? <span className="absolute -top-3 right-6 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">الأنسب لأغلب المطاعم</span> : null}
-      <h3 className="font-display text-xl font-bold">{plan.name}</h3><p className={"mt-2 min-h-12 text-sm leading-6 " + (plan.highlighted ? "text-ink-muted" : "text-muted-foreground")}>{plan.description}</p>
-      <p className="mt-5"><span className="num text-4xl font-semibold">{plan.price.toLocaleString("en-US")}</span> <span className={"text-sm " + (plan.highlighted ? "text-ink-muted" : "text-muted-foreground")}>ر.س / {plan.cycle === "yearly" ? "سنة" : "شهر"}</span></p>
-      <p className="mt-2 text-sm font-semibold">{plan.uploadLimit === null ? "رفع ملفات بلا حدود" : `حتى ${plan.uploadLimit} عمليات رفع شهرياً`}</p>
-      <ul className="mt-6 flex-1 space-y-3 text-sm">{CORE_FEATURE_LABELS.map((label) => <li key={label} className="flex gap-2"><Check className="size-4 shrink-0 text-primary" />{label}</li>)}{PLAN_FEATURES.map((feature) => { const on = plan.features.includes(feature.key); return <li key={feature.key} className={"flex gap-2 " + (!on ? "opacity-45 line-through" : "")} >{on ? <Check className="size-4 shrink-0 text-primary" /> : <X className="size-4 shrink-0" />}{feature.label}</li>; })}</ul>
-      <Button asChild className="mt-7" variant={plan.highlighted ? "default" : "outline"}><Link to="/auth" search={{ mode: "signup" }}>سجّل منشأتك</Link></Button>
-    </article>)}</div>
-  </div></section>;
+  const cycles = [...new Set(plans.map((plan) => plan.cycle))];
+  const [cycle, setCycle] = useState<PublicPlan["cycle"]>(cycles.includes("monthly") ? "monthly" : "yearly");
+  const visible = cycles.length > 1 ? plans.filter((plan) => plan.cycle === cycle) : plans;
+
+  return (
+    <section id="pricing" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <SectionIntro eyebrow="الخطط والأسعار" title="خطة تناسب حجم مطعمك.">
+          كل الخطط تشمل اللوحة التنفيذية ورفع ملفات المنصات الثلاث والصلاحيات.
+        </SectionIntro>
+        {cycles.length > 1 ? (
+          <div role="group" aria-label="دورة الفوترة" className="flex rounded-full bg-muted p-1 text-sm">
+            {(["monthly", "yearly"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={cycle === value}
+                onClick={() => setCycle(value)}
+                className={cn(
+                  "rounded-full px-5 py-2.5",
+                  cycle === value ? "bg-card font-semibold shadow-sm" : "text-muted-foreground",
+                )}
+              >
+                {value === "monthly" ? "شهري" : "سنوي"}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+      <div className="mt-12 grid items-start gap-5 md:grid-cols-2 lg:grid-cols-3">
+        {visible.map((plan, index) => (
+          <article
+            key={plan.id}
+            data-reveal
+            style={{ transitionDelay: `${index * 0.1}s` }}
+            className={cn(
+              "relative flex flex-col gap-5 rounded-[22px] p-7",
+              plan.highlighted
+                ? "bg-ink text-ink-foreground shadow-[0_30px_60px_-30px_rgb(19_35_43/0.5)]"
+                : "border border-border bg-card",
+            )}
+          >
+            {plan.highlighted ? (
+              <span className="lp-shine absolute -top-3 start-7 z-10 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">
+                الأكثر اختياراً
+              </span>
+            ) : null}
+            <div className={cn("flex flex-col gap-5", plan.highlighted && "lp-float-slow")}>
+              <div>
+                <h3 className="font-display text-xl font-extrabold">{plan.name}</h3>
+                {plan.description ? (
+                  <p className={cn("mt-2 text-sm leading-7", plan.highlighted ? "text-ink-muted" : "text-muted-foreground")}>{plan.description}</p>
+                ) : null}
+              </div>
+              <p className="flex items-baseline gap-2">
+                <span className="num text-[2.6rem] font-semibold leading-none">{plan.price.toLocaleString("en-US")}</span>
+                <span className={cn("text-sm", plan.highlighted ? "text-ink-muted" : "text-muted-foreground")}>
+                  ر.س / {plan.cycle === "yearly" ? "سنوياً" : "شهرياً"}
+                </span>
+              </p>
+              <p className={cn("rounded-[10px] px-3 py-2.5 text-[13px]", plan.highlighted ? "bg-ink-foreground/10 text-ink-muted" : "bg-background text-muted-foreground")}>
+                {plan.uploadLimit === null ? "رفع ملفات بلا حدود" : `حتى ${plan.uploadLimit} عمليات رفع شهرياً`}
+              </p>
+              <Link
+                to="/auth"
+                search={{ mode: "signup" }}
+                className={cn(
+                  "inline-flex h-12 items-center justify-center rounded-full text-[15px] font-bold",
+                  plan.highlighted ? "bg-primary text-primary-foreground" : "bg-ink text-ink-foreground",
+                )}
+              >
+                اختر {plan.name}
+              </Link>
+              <ul className="space-y-3 text-sm">
+                {CORE_FEATURE_LABELS.map((label) => (
+                  <li key={label} className="flex gap-2.5">
+                    <Check className={cn("size-4 shrink-0", plan.highlighted ? "text-primary" : "text-success")} />
+                    {label}
+                  </li>
+                ))}
+                {PLAN_FEATURES.map((feature) => {
+                  const on = plan.features.includes(feature.key);
+                  return (
+                    <li key={feature.key} className={cn("flex gap-2.5", !on && "line-through opacity-45")}>
+                      {on ? (
+                        <Check className={cn("size-4 shrink-0", plan.highlighted ? "text-primary" : "text-success")} />
+                      ) : (
+                        <X className="size-4 shrink-0" />
+                      )}
+                      {feature.label}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
 }
