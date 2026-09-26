@@ -19,6 +19,10 @@ import {
   Store,
   Tag,
   Truck,
+  AlertTriangle,
+  Megaphone,
+  PieChart,
+  Sparkles,
   Upload,
   Video,
   X,
@@ -341,6 +345,8 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
           </div>
         </section>
 
+        <ProductShowcase />
+
         <ChecksGrid />
 
         <Audiences />
@@ -486,6 +492,379 @@ function HowItWorks() {
         </ol>
       </div>
     </section>
+  );
+}
+
+type ShowcaseItem = { key: string; name: string; tagline: string; body: string; icon: LucideIcon };
+
+const SHOWCASE: ShowcaseItem[] = [
+  {
+    key: "invoice",
+    name: "مطابقة الفاتورة",
+    tagline: "ما خصمته المنصة، وما يقوله عقدك، والفرق.",
+    body: "ارفع الفاتورة وملف الطلبات ويعيد تدقيق احتساب كل بند من عقدك. كل فرق يظهر باسمه ومبلغه ونسبته، وجاهز للمطالبة.",
+    icon: FileSpreadsheet,
+  },
+  {
+    key: "charges",
+    name: "خريطة الرسوم",
+    tagline: "أين يذهب كل ريال تخصمه المنصة.",
+    body: "كل خصم في الفاتورة مصنف: عمولة، رسوم دفع، حملات، ضريبة. وأي بند لا يطابق الخريطة يظهر كبند غير مصنف بدلاً من أن يختفي.",
+    icon: PieChart,
+  },
+  {
+    key: "exceptions",
+    name: "مركز الاستثناءات",
+    tagline: "كل فرق له حالة ومسؤول حتى يُغلق.",
+    body: "الفروقات تتحول إلى استثناءات بأولوية وحالة ومسؤول، مع سجل لكل إجراء حتى يبقى إغلاق الشهر قابلاً للمراجعة.",
+    icon: AlertTriangle,
+  },
+  {
+    key: "compensation",
+    name: "مركز التعويضات",
+    tagline: "تعويضات لم تتسبب فيها، تُعترض بالدليل.",
+    body: "الكاشير يرسل فيديو الطلب في قروب الفرع على Telegram، وتدقيق يربطه برقم الطلب ويجهز ملف الاعتراض بالعربي والإنجليزي.",
+    icon: Video,
+  },
+  {
+    key: "promotions",
+    name: "تحليل العروض و ROI",
+    tagline: "أي عرض يربح، وأي عرض يأكل هامشك.",
+    body: "لكل حملة ما دفعته فيها وما جلبته من مبيعات إضافية، حتى تقرر أي عرض تكرره وأي عرض توقفه.",
+    icon: Megaphone,
+  },
+  {
+    key: "ai",
+    name: "Tadqeeq AI",
+    tagline: "أرقامك، مشروحة بلغة بسيطة.",
+    body: "اسأل عن أي فترة واحصل على إجابة من الحقائق المدققة. الأرقام من المحرك المحاسبي، والصياغة من الذكاء الاصطناعي، ولا يغيّر أي رقم.",
+    icon: Sparkles,
+  },
+];
+
+/** Scroll-pinned product tour: the section stays on screen while scrolling moves through the products. */
+function ProductShowcase() {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [state, setState] = useState({ index: 0, progress: 0 });
+
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const track = trackRef.current;
+      if (!track) return;
+      const rect = track.getBoundingClientRect();
+      const scrollable = rect.height - window.innerHeight;
+      const raw = scrollable > 0 ? Math.min(1, Math.max(0, -rect.top / scrollable)) : 0;
+      const scaled = raw * SHOWCASE.length;
+      const index = Math.min(SHOWCASE.length - 1, Math.floor(scaled));
+      const progress = raw >= 1 ? 1 : scaled - index;
+      setState((prev) =>
+        prev.index === index && Math.abs(prev.progress - progress) < 0.01 ? prev : { index, progress },
+      );
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  function jumpTo(index: number) {
+    const track = trackRef.current;
+    if (!track) return;
+    const top = track.getBoundingClientRect().top + window.scrollY;
+    const scrollable = track.offsetHeight - window.innerHeight;
+    window.scrollTo({ top: top + (scrollable * (index + 0.05)) / SHOWCASE.length, behavior: "smooth" });
+  }
+
+  const current = SHOWCASE[state.index] ?? SHOWCASE[0]!;
+
+  return (
+    <section id="products" aria-labelledby="products-title" className="bg-background">
+      <div className="mx-auto max-w-7xl px-4 pt-20 text-center sm:px-6 lg:pt-28">
+        <div data-reveal>
+          <h2 id="products-title" className="font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]">
+            كل أداة في تدقيق، وهي تعمل.
+          </h2>
+          <p className="mt-3 text-base text-muted-foreground">
+            <span className="hidden lg:inline">واصل التمرير للانتقال من أداة إلى أخرى.</span>
+            <span className="lg:hidden">ست أدوات تعمل من نفس الفروع والعقود والملفات.</span>
+          </p>
+        </div>
+      </div>
+
+      {/* Desktop: pinned tour */}
+      <div ref={trackRef} className="relative hidden lg:block" style={{ height: `${SHOWCASE.length * 85 + 40}vh` }}>
+        <div className="sticky top-0 flex h-screen items-center">
+          <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center gap-14 px-6 pt-20">
+            <div>
+              <div key={current.key} className="lp-stagger flex flex-col">
+                <div className="flex items-center gap-3">
+                  <span className="grid size-12 place-items-center rounded-2xl bg-secondary text-primary-text">
+                    <current.icon className="size-6" />
+                  </span>
+                  <span className="num text-sm text-muted-foreground" dir="ltr">
+                    {String(state.index + 1).padStart(2, "0")} / {String(SHOWCASE.length).padStart(2, "0")}
+                  </span>
+                </div>
+                <h3 className="mt-6 font-display text-5xl font-extrabold leading-[1.25]">{current.name}</h3>
+                <p className="mt-4 text-xl font-medium text-foreground/85">{current.tagline}</p>
+                <p className="mt-4 max-w-lg text-base leading-8 text-muted-foreground">{current.body}</p>
+                <Link
+                  to="/auth"
+                  search={{ mode: "signup" }}
+                  className="mt-7 inline-flex h-12 w-fit items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-semibold text-ink-foreground transition-transform hover:-translate-y-0.5"
+                >
+                  جرّب {current.name}
+                  <ArrowLeft className="size-4" />
+                </Link>
+              </div>
+              <ol className="mt-10 border-t border-border pt-5">
+                {SHOWCASE.map((item, index) => {
+                  const fill = index < state.index ? 1 : index === state.index ? state.progress : 0;
+                  return (
+                    <li key={item.key}>
+                      <button
+                        type="button"
+                        onClick={() => jumpTo(index)}
+                        aria-current={index === state.index ? "step" : undefined}
+                        className={cn(
+                          "flex w-full items-center gap-4 py-2.5 text-start text-[15px] transition-colors",
+                          index === state.index ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        <span className="relative h-0.5 w-12 shrink-0 overflow-hidden rounded-full bg-border">
+                          <span
+                            className="absolute inset-y-0 start-0 rounded-full bg-primary"
+                            style={{ width: `${Math.round(fill * 100)}%` }}
+                          />
+                        </span>
+                        {item.name}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+            <div className="relative h-[560px] overflow-hidden rounded-[28px] bg-secondary">
+              <span aria-hidden="true" className="absolute -top-24 -start-24 size-72 rounded-full bg-primary/10" />
+              <span aria-hidden="true" className="absolute -bottom-40 -end-24 size-[26rem] rounded-full border border-primary/25" />
+              {SHOWCASE.map((item, index) => (
+                <div
+                  key={item.key}
+                  aria-hidden={index !== state.index}
+                  className={cn(
+                    "absolute inset-0 grid place-items-center p-10 transition-[opacity,transform] duration-700 ease-out",
+                    index === state.index
+                      ? "translate-y-0 scale-100 opacity-100"
+                      : index < state.index
+                        ? "pointer-events-none -translate-y-10 scale-95 opacity-0"
+                        : "pointer-events-none translate-y-10 scale-95 opacity-0",
+                  )}
+                >
+                  <ShowcaseVisual kind={item.key} active={index === state.index} />
+                </div>
+              ))}
+              <span className="absolute bottom-4 start-5 rounded-full bg-card/80 px-2.5 py-1 text-[11px] text-muted-foreground">
+                مثال توضيحي
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile and tablet: stacked cards */}
+      <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-12 sm:px-6 lg:hidden">
+        {SHOWCASE.map((item, index) => (
+          <article key={item.key} data-reveal className="overflow-hidden rounded-3xl border border-border bg-card">
+            <div className="p-6">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary-text">
+                  <item.icon className="size-5" />
+                </span>
+                <span className="num text-xs text-muted-foreground" dir="ltr">
+                  {String(index + 1).padStart(2, "0")} / {String(SHOWCASE.length).padStart(2, "0")}
+                </span>
+              </div>
+              <h3 className="mt-4 font-display text-2xl font-extrabold">{item.name}</h3>
+              <p className="mt-2 font-medium">{item.tagline}</p>
+              <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.body}</p>
+            </div>
+            <div className="grid place-items-center bg-secondary p-5">
+              <ShowcaseVisual kind={item.key} active />
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ShowcaseVisual({ kind, active }: { kind: string; active: boolean }) {
+  const card = "w-full max-w-md rounded-2xl bg-card p-5 shadow-[0_24px_48px_-28px_rgb(19_35_43/0.45)]";
+  if (kind === "invoice") {
+    return (
+      <div className="flex w-full max-w-md flex-col gap-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-2xl bg-card p-4">
+            <p className="text-xs text-muted-foreground">حسب فاتورة المنصة</p>
+            <p className="num mt-2 text-2xl font-semibold">16,590.00</p>
+          </div>
+          <div className="rounded-2xl bg-card p-4 shadow-[0_20px_40px_-24px_rgb(19_35_43/0.35)]">
+            <p className="text-xs text-muted-foreground">حسب عقدك</p>
+            <p className="num mt-2 text-2xl font-semibold text-success">14,931.00</p>
+          </div>
+        </div>
+        <div className={card}>
+          <div className="flex justify-between text-sm">
+            <span>عمولة المبيعات</span>
+            <span className="text-xs text-muted-foreground">
+              محتسبة <span className="num">20%</span> · متفق عليها <span className="num">18%</span>
+            </span>
+          </div>
+          <div className="mt-4 flex items-center justify-between">
+            <span className="lp-pulse rounded-full bg-ink px-3.5 py-2 text-sm text-ink-foreground">
+              الفرق <span className="num text-primary">+1,659.00</span>
+            </span>
+            <span className="flex items-center gap-1.5 text-sm text-success">
+              <Check className="size-4" /> مطالبة جاهزة
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (kind === "charges") {
+    const rows: Array<[string, number, string]> = [
+      ["عمولة المبيعات", 62, "bg-chart-2"],
+      ["رسوم الدفع الإلكتروني", 14, "bg-primary"],
+      ["حملات التوصيل المجاني", 12, "bg-chart-3"],
+      ["ضريبة القيمة المضافة", 9, "bg-chart-5"],
+      ["بنود غير مصنفة", 3, "bg-destructive"],
+    ];
+    return (
+      <div className={card}>
+        <p className="text-sm font-semibold">توزيع خصومات المنصة</p>
+        <div className="mt-4 space-y-3.5">
+          {rows.map(([label, value, color], i) => (
+            <div key={label}>
+              <div className="flex justify-between text-[13px]">
+                <span>{label}</span>
+                <span className="num text-muted-foreground">{value}%</span>
+              </div>
+              <div className="mt-1.5 h-2 rounded-full bg-muted">
+                <div
+                  className={cn("h-2 rounded-full transition-[width] duration-1000 ease-out", color)}
+                  style={{ width: active ? `${value}%` : "0%", transitionDelay: `${i * 0.12}s` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (kind === "exceptions") {
+    const rows: Array<[string, string, string, string]> = [
+      ["عمولة أعلى من العقد", "فرع العليا", "مفتوح", "bg-destructive/12 text-destructive"],
+      ["تعويض على فرع خاطئ", "فرع الملقا", "قيد المعالجة", "bg-warning/15 text-warning"],
+      ["رسوم حملة غير متفق عليها", "فرع النرجس", "مغلق", "bg-success/15 text-success"],
+    ];
+    return (
+      <div className={card}>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold">الاستثناءات المفتوحة</p>
+          <span className="num rounded-full bg-muted px-2 py-0.5 text-xs">3</span>
+        </div>
+        <div className="mt-4 space-y-2.5">
+          {rows.map(([title, branch, status, tone], i) => (
+            <div
+              key={title}
+              className={cn("flex items-center justify-between gap-3 rounded-xl border border-border p-3 transition-[opacity,transform] duration-500", active ? "translate-x-0 opacity-100" : "translate-x-6 opacity-0")}
+              style={{ transitionDelay: `${0.15 + i * 0.12}s` }}
+            >
+              <div>
+                <p className="text-[13px] font-semibold">{title}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{branch}</p>
+              </div>
+              <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold", tone)}>{status}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (kind === "compensation") {
+    return (
+      <div className="flex w-full max-w-md items-center gap-3">
+        <div className="lp-float w-40 shrink-0 rounded-2xl bg-card p-3 shadow-[0_20px_40px_-24px_rgb(19_35_43/0.35)]">
+          <p className="text-[11px] font-semibold">قروب فرع الملقا</p>
+          <div className="lp-rec relative mt-2 grid h-28 place-items-center rounded-xl bg-ink/90 text-ink-foreground">
+            <Video className="size-6" />
+          </div>
+          <p className="lp-pop mt-2 rounded-lg bg-success-soft px-2 py-1.5 text-[11px] text-success">✓ تم الربط بالطلب</p>
+        </div>
+        <div className="flex-1 rounded-2xl bg-card p-4">
+          <p className="num text-xs text-muted-foreground">HS-88214073</p>
+          <p className="num mt-1 text-2xl font-semibold">142.50 <span className="text-xs">ر.س</span></p>
+          <p className="mt-1 text-xs text-muted-foreground">طلب ناقص · فرع الملقا</p>
+          <p className="lp-pop mt-3 rounded-lg bg-success-soft p-2 text-xs font-semibold text-success" style={{ animationDelay: "0.8s" }}>
+            يوجد دليل فيديو
+          </p>
+          <p className="lp-pop mt-2 w-fit rounded-full bg-ink px-3 py-1.5 text-xs text-ink-foreground" style={{ animationDelay: "1.6s" }}>
+            ملف الاعتراض جاهز
+          </p>
+        </div>
+      </div>
+    );
+  }
+  if (kind === "promotions") {
+    const rows: Array<[string, number, string, boolean]> = [
+      ["خصم 20% على الوجبات", 78, "1.8x", true],
+      ["توصيل مجاني فوق 50 ر.س", 46, "1.1x", true],
+      ["خصم 30% للعملاء الجدد", 24, "0.6x", false],
+    ];
+    return (
+      <div className={card}>
+        <p className="text-sm font-semibold">العائد على كل عرض</p>
+        <div className="mt-4 space-y-4">
+          {rows.map(([label, width, roi, good], i) => (
+            <div key={label}>
+              <div className="flex justify-between text-[13px]">
+                <span>{label}</span>
+                <span className={cn("num font-semibold", good ? "text-success" : "text-destructive")}>{roi}</span>
+              </div>
+              <div className="mt-1.5 h-2.5 rounded-full bg-muted">
+                <div
+                  className={cn("h-2.5 rounded-full transition-[width] duration-1000 ease-out", good ? "bg-success" : "bg-destructive")}
+                  style={{ width: active ? `${width}%` : "0%", transitionDelay: `${i * 0.15}s` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 rounded-xl bg-secondary p-3 text-xs text-foreground/80">العرض الثالث كلّف أكثر مما جلب من مبيعات إضافية.</p>
+      </div>
+    );
+  }
+  return (
+    <div className={cn(card, "flex flex-col gap-3")}>
+      <p className="flex items-center gap-2 text-xs font-semibold text-primary-text">
+        <Sparkles className="size-4" /> Tadqeeq AI
+      </p>
+      <p className="w-fit self-end rounded-2xl rounded-ee-sm bg-ink px-3.5 py-2 text-sm text-ink-foreground">ما الذي أكل أكثر من إيراداتي هذا الشهر؟</p>
+      <p className={cn("rounded-2xl rounded-es-sm bg-muted px-3.5 py-2.5 text-sm leading-7 transition-opacity duration-700", active ? "opacity-100" : "opacity-0")} style={{ transitionDelay: "0.4s" }}>
+        العمولة أخذت 20% من المبيعات في هنقرستيشن، أعلى بنقطتين من عقدك. الفرق <span className="num font-semibold">1,659.00 ر.س</span> ومسجل كاستثناء جاهز للمطالبة.
+      </p>
+      <p className="text-[11px] text-muted-foreground">الأرقام من المحرك المحاسبي، والصياغة من الذكاء الاصطناعي.</p>
+    </div>
   );
 }
 
