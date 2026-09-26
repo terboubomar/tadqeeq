@@ -406,22 +406,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
           </div>
         </section>
 
-        <section id="compensation" className="bg-success-soft">
-          <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:py-28">
-            <SectionIntro eyebrow="مركز التعويضات" title="تعويض لم تتسبب فيه؟ اعترض عليه بالدليل." tone="success">
-              الكاشير يرسل فيديو أو صورة الطلب في قروب الفرع على Telegram. تدقيق يربطها برقم الطلب تلقائياً، وعند ظهور التعويض يكون ملف الاعتراض جاهزاً بالعربي والإنجليزي.
-              <ul className="mt-5 space-y-2.5 text-[15px] text-foreground">
-                {["لا تطبيق ولا تسجيل دخول للموظف", "الدليل مربوط برقم الطلب والفرع والوقت", "متابعة كل حالة حتى الاسترداد"].map((item) => (
-                  <li key={item} className="flex items-center gap-2.5">
-                    <Check className="size-4 text-success" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </SectionIntro>
-            <CompensationMock />
-          </div>
-        </section>
+        <CompensationFlow />
 
         <ProductShowcase />
 
@@ -1534,39 +1519,333 @@ function InvoiceMock() {
   );
 }
 
-function CompensationMock() {
+type FlowStep = { title: string; who: string; body: string; detail: string; icon: LucideIcon };
+
+const COMP_FLOW: FlowStep[] = [
+  {
+    title: "الكاشير يصوّر الطلب",
+    who: "في الفرع · ثانيتان",
+    body: "قبل تسليم الطلب للمندوب، يرسل الكاشير فيديو أو صورة للطلب والإيصال في قروب الفرع على Telegram.",
+    detail: "لا تطبيق ولا تسجيل دخول للموظف، فقط القروب الذي يستخدمه الفرع أصلاً.",
+    icon: Video,
+  },
+  {
+    title: "تدقيق يربطه برقم الطلب",
+    who: "تلقائياً · خلال ثوانٍ",
+    body: "البوت يقرأ رقم الطلب من الإيصال أو من نص الرسالة، ويحفظ الدليل مربوطاً بالفرع ووقت الإرسال.",
+    detail: "حتى لو لم يكتب الكاشير الرقم، يُقرأ من صورة الإيصال.",
+    icon: Upload,
+  },
+  {
+    title: "التعويض يظهر في الفاتورة",
+    who: "عند رفع ملف التعويضات",
+    body: "عندما تخصم المنصة تعويضاً على طلب، يطابقه تدقيق مع الدليل المحفوظ ويكشف التكرار أو الفرع الخاطئ.",
+    detail: "كل تعويض يظهر بحالته: يوجد دليل، أو لا يوجد، أو مشتبه بالتكرار.",
+    icon: SearchCheck,
+  },
+  {
+    title: "ملف الاعتراض جاهز",
+    who: "بضغطة واحدة",
+    body: "يكتب الموظف ما حدث، ويبني تدقيق رسالة الاعتراض بالعربي والإنجليزي من البيانات المؤكدة، مرفقاً بالدليل.",
+    detail: "انسخ الرسالة وأرسلها للمنصة مع رابط الفيديو.",
+    icon: FileSpreadsheet,
+  },
+  {
+    title: "متابعة حتى الاسترداد",
+    who: "في مركز التعويضات",
+    body: "كل حالة تتنقل من مرسلة إلى مقبولة ثم مسترَدة، مع مرجع المنصة ولوحة تعرض ما استرددته فعلاً.",
+    detail: "المبالغ المسترَدة ونسبة الاسترداد لكل فرع ومنصة في مكان واحد.",
+    icon: HandCoins,
+  },
+];
+
+function CompensationFlow() {
+  const [trackRef, progress] = useTrackProgress<HTMLDivElement>();
+  const count = COMP_FLOW.length;
+  const active = Math.min(count - 1, Math.floor(Math.min(0.999, progress / 0.92) * count));
+
+  function jumpTo(index: number) {
+    const track = trackRef.current;
+    if (!track) return;
+    const top = track.getBoundingClientRect().top + window.scrollY;
+    const scrollable = track.offsetHeight - window.innerHeight;
+    window.scrollTo({ top: top + scrollable * 0.92 * ((index + 0.3) / count), behavior: "smooth" });
+  }
+
+  const intro = (
+    <SectionIntro eyebrow="مركز التعويضات" title="تعويض لم تتسبب فيه؟ اعترض عليه بالدليل." tone="success" />
+  );
+
   return (
-    <div data-reveal aria-hidden="true" className="flex flex-col items-stretch gap-4 rounded-[22px] bg-success/15 p-5 sm:flex-row sm:items-center sm:p-9">
-      <div className="lp-float flex shrink-0 flex-col gap-2.5 rounded-[20px] bg-card p-3.5 shadow-[0_20px_40px_-24px_rgb(19_35_43/0.35)] sm:w-56">
-        <p className="text-xs font-semibold">قروب فرع الملقا</p>
-        <div className="lp-rec relative grid h-36 place-items-center rounded-xl bg-ink/90 text-ink-foreground">
-          <Video className="size-7" />
-        </div>
-        <p className="lp-pop rounded-[10px] bg-success-soft px-2.5 py-2 text-xs text-success">✓ تم الربط بالطلب HS-88214073</p>
-      </div>
-      <div className="flex flex-1 flex-col gap-3.5 rounded-[18px] bg-card p-5">
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>تعويض في فاتورة هنقرستيشن</span>
-          <span className="num">HS-88214073</span>
-        </div>
-        <p className="num text-3xl font-semibold">
-          142.50 <span className="text-sm">ر.س</span>
-        </p>
-        <p className="text-[13px] text-muted-foreground">طلب ناقص · فرع الملقا</p>
-        <div className="lp-pop flex items-center gap-2.5 rounded-xl bg-success-soft p-3 text-[13px]" style={{ animationDelay: "0.8s" }}>
-          <span className="grid size-8 place-items-center rounded-lg bg-card">
-            <Video className="size-4 text-success" />
-          </span>
-          <div>
-            <p className="font-semibold text-success">يوجد دليل</p>
-            <p className="text-xs text-muted-foreground">فيديو التغليف · قبل التسليم للمندوب</p>
+    <section id="compensation" aria-label="مركز التعويضات" className="bg-success-soft">
+      <div ref={trackRef} className="relative hidden lg:block" style={{ height: `${count * 60 + 60}vh` }}>
+        <div className="sticky top-0 flex h-screen items-center">
+          <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center gap-12 px-6 pt-20">
+            <div>
+              <div className="[&_h2]:text-[2.2rem] [&_h2]:leading-[1.35]">{intro}</div>
+              <ol className="relative mt-6">
+                <span aria-hidden="true" className="absolute inset-y-4 start-[19px] w-0.5 rounded-full bg-success/20">
+                  <span
+                    className="block w-full rounded-full bg-success transition-[height] duration-500 ease-out"
+                    style={{ height: `${(active / (count - 1)) * 100}%` }}
+                  />
+                </span>
+                {COMP_FLOW.map((step, index) => {
+                  const on = index === active;
+                  const done = index < active;
+                  return (
+                    <li key={step.title} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => jumpTo(index)}
+                        aria-current={on ? "step" : undefined}
+                        className="flex w-full items-start gap-4 py-2 text-start"
+                      >
+                        <span
+                          className={cn(
+                            "relative z-10 grid size-10 shrink-0 place-items-center rounded-full border-2 transition-colors duration-500",
+                            on
+                              ? "border-success bg-success text-white"
+                              : done
+                                ? "border-success bg-card text-success"
+                                : "border-success/25 bg-card text-muted-foreground",
+                          )}
+                        >
+                          {done ? <Check className="size-5" /> : <step.icon className="size-[18px]" />}
+                        </span>
+                        <span className="min-w-0 flex-1 pt-1.5">
+                          <span className={cn("block font-bold transition-colors", on ? "text-foreground" : "text-foreground/60")}>
+                            {step.title}
+                          </span>
+                          <span
+                            className={cn(
+                              "grid transition-[grid-template-rows,opacity] duration-500",
+                              on ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+                            )}
+                          >
+                            <span className="overflow-hidden">
+                              <span className="mt-1 block text-[11px] font-semibold text-success">{step.who}</span>
+                              <span className="mt-1.5 block text-sm leading-7 text-foreground/80">{step.body}</span>
+                              <span className="mt-2 block rounded-lg bg-card/70 px-3 py-2 text-[13px] text-muted-foreground">{step.detail}</span>
+                            </span>
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+            <div className="relative h-[560px] overflow-hidden rounded-[28px] bg-success/15">
+              <span aria-hidden="true" className="absolute -top-24 -start-24 size-72 rounded-full bg-success/10" />
+              <span aria-hidden="true" className="absolute -bottom-40 -end-24 size-[26rem] rounded-full border border-success/25" />
+              <span className="num absolute top-5 end-6 text-sm text-success" dir="ltr">
+                {String(active + 1).padStart(2, "0")} / {String(count).padStart(2, "0")}
+              </span>
+              {COMP_FLOW.map((step, index) => (
+                <div
+                  key={step.title}
+                  aria-hidden={index !== active}
+                  className={cn(
+                    "absolute inset-0 grid place-items-center p-10 transition-[opacity,transform] duration-700 ease-out",
+                    index === active
+                      ? "translate-y-0 scale-100 opacity-100"
+                      : index < active
+                        ? "pointer-events-none -translate-y-10 scale-95 opacity-0"
+                        : "pointer-events-none translate-y-10 scale-95 opacity-0",
+                  )}
+                >
+                  <CompensationStepVisual step={index} active={index === active} />
+                </div>
+              ))}
+              <span className="absolute bottom-4 start-5 rounded-full bg-card/80 px-2.5 py-1 text-[11px] text-muted-foreground">
+                مثال توضيحي
+              </span>
+            </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <span className="lp-pop rounded-full bg-ink px-3.5 py-2 text-[13px] text-ink-foreground" style={{ animationDelay: "1.6s" }}>
-            ملف الاعتراض جاهز
+      </div>
+
+      <div className="mx-auto max-w-2xl px-4 py-20 sm:px-6 lg:hidden">
+        {intro}
+        <ol className="mt-8 space-y-5">
+          {COMP_FLOW.map((step, index) => (
+            <li key={step.title} data-reveal className="overflow-hidden rounded-3xl border border-success/20 bg-card">
+              <div className="p-5">
+                <div className="flex items-center gap-3">
+                  <span className="grid size-10 place-items-center rounded-full bg-success text-white">
+                    <step.icon className="size-[18px]" />
+                  </span>
+                  <div>
+                    <p className="num text-[11px] text-muted-foreground" dir="ltr">
+                      {String(index + 1).padStart(2, "0")} / {String(count).padStart(2, "0")}
+                    </p>
+                    <p className="font-bold">{step.title}</p>
+                  </div>
+                </div>
+                <p className="mt-3 text-sm leading-7 text-foreground/80">{step.body}</p>
+                <p className="mt-2 rounded-lg bg-success-soft px-3 py-2 text-[13px] text-muted-foreground">{step.detail}</p>
+              </div>
+              <div className="grid place-items-center bg-success/15 p-5">
+                <CompensationStepVisual step={index} active />
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+function CompensationStepVisual({ step, active }: { step: number; active: boolean }) {
+  const shadow = "shadow-[0_24px_48px_-28px_rgb(19_35_43/0.45)]";
+  const rise = (delay: number, extra = "") => ({
+    className: cn(extra, "transition-[opacity,transform] duration-500", active ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"),
+    style: { transitionDelay: `${delay}s` },
+  });
+  if (step === 0) {
+    return (
+      <div className={cn("w-full max-w-xs rounded-[26px] bg-card p-4", shadow)}>
+        <div className="flex items-center gap-2.5 border-b border-border pb-3">
+          <span className="grid size-9 place-items-center rounded-full bg-chart-2 text-sm font-bold text-white">م</span>
+          <div>
+            <p className="text-sm font-semibold">قروب فرع الملقا</p>
+            <p className="text-[11px] text-muted-foreground">3 أعضاء · بوت تدقيق</p>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-col items-start gap-2">
+          <div {...rise(0.1)}>
+            <div className="lp-rec relative grid h-36 w-52 place-items-center rounded-2xl bg-ink/90 text-ink-foreground">
+              <Video className="size-7" />
+              <span className="num absolute bottom-2 end-2.5 rounded bg-black/40 px-1.5 text-[10px]">0:42</span>
+            </div>
+          </div>
+          <p {...rise(0.3)}>
+            <span className="block rounded-2xl rounded-ss-sm bg-muted px-3 py-2 text-[13px]">طلب الملقا قبل التسليم</span>
+          </p>
+          <span className="text-[10px] text-muted-foreground">خالد · 21:14</span>
+        </div>
+      </div>
+    );
+  }
+  if (step === 1) {
+    return (
+      <div className="flex w-full max-w-md flex-col items-stretch gap-4 sm:flex-row sm:items-center">
+        <div className={cn("shrink-0 rounded-2xl bg-card p-3 sm:w-40", shadow)}>
+          <div className="space-y-1.5 rounded-xl bg-muted p-3">
+            <span className="block h-1.5 w-3/4 rounded bg-foreground/20" />
+            <span className="block h-1.5 w-1/2 rounded bg-foreground/20" />
+            <span className={cn("block rounded px-1 py-0.5 text-center font-mono text-[10px] transition-colors duration-700", active ? "bg-primary/25 text-foreground" : "bg-transparent")}>
+              HS-88214073
+            </span>
+            <span className="block h-1.5 w-2/3 rounded bg-foreground/20" />
+          </div>
+          <p className="mt-2 text-center text-[11px] text-muted-foreground">صورة الإيصال</p>
+        </div>
+        <div className="flex-1 space-y-2.5">
+          <div {...rise(0.2)}>
+            <div className="flex items-center justify-between rounded-xl bg-card px-3.5 py-2.5 text-[13px]">
+              <span className="text-muted-foreground">رقم الطلب</span>
+              <span className="num font-semibold">HS-88214073</span>
+            </div>
+          </div>
+          <div {...rise(0.35)}>
+            <div className="flex items-center justify-between rounded-xl bg-card px-3.5 py-2.5 text-[13px]">
+              <span className="text-muted-foreground">الفرع</span>
+              <span className="font-semibold">فرع الملقا</span>
+            </div>
+          </div>
+          <div {...rise(0.5)}>
+            <div className="flex items-center justify-between rounded-xl bg-card px-3.5 py-2.5 text-[13px]">
+              <span className="text-muted-foreground">وقت الإرسال</span>
+              <span className="num font-semibold">21:14</span>
+            </div>
+          </div>
+          <div {...rise(0.7)}>
+            <p className="flex items-center gap-2 rounded-xl bg-success px-3.5 py-2.5 text-[13px] font-semibold text-white">
+              <Check className="size-4" /> تم ربط الدليل بالطلب
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (step === 2) {
+    const rows: Array<[string, string, string, string]> = [
+      ["HS-88214073", "142.50", "يوجد دليل", "bg-success/15 text-success"],
+      ["HS-88213551", "64.00", "مكرر", "bg-warning/15 text-warning"],
+      ["HS-88210917", "38.25", "لا يوجد دليل", "bg-muted text-muted-foreground"],
+    ];
+    return (
+      <div className={cn("w-full max-w-md rounded-2xl bg-card p-5", shadow)}>
+        <p className="text-sm font-semibold">تعويضات فاتورة هنقرستيشن · سبتمبر</p>
+        <div className="mt-4 space-y-2">
+          {rows.map(([order, amount, status, tone], i) => (
+            <div key={order} {...rise(0.1 + i * 0.12)}>
+              <div className={cn("flex items-center gap-3 rounded-xl border p-3", i === 0 ? "border-success/40 bg-success-soft" : "border-border")}>
+                <span className="num text-[13px] font-semibold">{order}</span>
+                <span className="num ms-auto text-[13px]">{amount}</span>
+                <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-semibold", tone)}>{status}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (step === 3) {
+    return (
+      <div className={cn("w-full max-w-md rounded-2xl bg-card p-5", shadow)}>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold">رسالة الاعتراض</p>
+          <span className="flex rounded-full bg-muted p-0.5 text-[11px]">
+            <span className="rounded-full bg-card px-2.5 py-1 font-semibold shadow-sm">عربي</span>
+            <span className="px-2.5 py-1 text-muted-foreground">English</span>
           </span>
-          <span className="rounded-full border border-border px-3.5 py-2 text-[13px]">عربي · English</span>
+        </div>
+        <div className="mt-3 rounded-xl bg-muted p-3.5 text-[13px] leading-7">
+          <p {...rise(0.1)}>نطلب مراجعة التعويض على الطلب HS-88214073 بمبلغ 142.50 ر.س لفرع الملقا.</p>
+          <p {...rise(0.35)}>الفيديو المرفق يُظهر تغليف الطلب كاملاً وتسليمه للمندوب الساعة 21:14.</p>
+        </div>
+        <div {...rise(0.6, "mt-3 flex gap-2")}>
+          <span className="rounded-full bg-ink px-3.5 py-2 text-[13px] text-ink-foreground">نسخ الرسالة</span>
+          <span className="rounded-full border border-border px-3.5 py-2 text-[13px]">رابط الفيديو</span>
+        </div>
+      </div>
+    );
+  }
+  const stages: Array<[string, boolean]> = [
+    ["مرسلة", true],
+    ["مقبولة", true],
+    ["مسترَدة", true],
+  ];
+  return (
+    <div className="flex w-full max-w-md flex-col gap-3">
+      <div className={cn("rounded-2xl bg-card p-5", shadow)}>
+        <div className="flex items-center justify-between">
+          <p className="num text-sm font-semibold">HS-88214073</p>
+          <span className="rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-semibold text-success">مسترَدة</span>
+        </div>
+        <ol className="mt-4 flex items-center gap-2">
+          {stages.map(([label], i) => (
+            <li key={label} {...rise(0.1 + i * 0.2, "flex flex-1 items-center gap-2")}>
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-success text-white">
+                <Check className="size-4" />
+              </span>
+              <span className="text-[13px]">{label}</span>
+              {i < stages.length - 1 ? <span className="h-0.5 flex-1 rounded bg-success/40" /> : null}
+            </li>
+          ))}
+        </ol>
+      </div>
+      <div {...rise(0.7, "grid grid-cols-2 gap-3")}>
+        <div className="rounded-2xl bg-ink p-4 text-ink-foreground">
+          <p className="text-[11px] text-ink-muted">مسترَد هذا الشهر</p>
+          <p className="num mt-1 text-xl font-semibold text-primary">4,820.00</p>
+        </div>
+        <div className="rounded-2xl bg-card p-4">
+          <p className="text-[11px] text-muted-foreground">نسبة الاسترداد</p>
+          <p className="num mt-1 text-xl font-semibold text-success">68%</p>
         </div>
       </div>
     </div>
