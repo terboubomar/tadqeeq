@@ -88,22 +88,100 @@ const STEPS: Array<[string, string, string, LucideIcon]> = [
   ["04", "استرد وأغلق", "جهّز مطالبة التعويض بأدلتها، ثم أغلق الفترة واحفظها في سجل قابل للمراجعة.", HandCoins],
 ];
 
-const CHECKS: Array<[string, string, LucideIcon]> = [
-  ["عمولة المبيعات", "حسب نسبة العقد لكل فرع وقناة", Percent],
-  ["رسوم الدفع الإلكتروني", "مدى والبطاقات وآبل باي", CreditCard],
-  ["حملات التوصيل المجاني", "حصة المطعم من كل حملة", Truck],
-  ["التعويضات", "التكرار والفرع الخاطئ والطلبات المفقودة", RotateCcw],
-  ["رسوم العروض ووقت الانتظار", "مع قياس العائد على كل عرض", Tag],
-  ["ضريبة القيمة المضافة", "على كل بند خاضع للضريبة", Receipt],
-  ["صافي التسوية", "المستحق مقابل المحوّل فعلياً", Scale],
-  ["بنود غير مصنفة", "أي خصم لا يطابق خريطة الرسوم", CircleHelp],
+type CheckItem = { title: string; body: string; icon: LucideIcon; how: string; example: string };
+
+const CHECKS: CheckItem[] = [
+  {
+    title: "عمولة المبيعات",
+    body: "حسب نسبة العقد لكل فرع وقناة",
+    icon: Percent,
+    how: "نضرب قيمة كل طلب في نسبة العمولة المتفق عليها لذلك الفرع والقناة، ونقارن الناتج بالعمولة المخصومة في الفاتورة.",
+    example: "طلب 100 ر.س × 18% = 18.00، والفاتورة خصمت 20.00 ← فرق 2.00 لصالحك",
+  },
+  {
+    title: "رسوم الدفع الإلكتروني",
+    body: "مدى والبطاقات وآبل باي",
+    icon: CreditCard,
+    how: "نطبّق نسبة رسوم كل وسيلة دفع على الطلبات المدفوعة بها فقط، ونستبعد الطلبات النقدية من الاحتساب.",
+    example: "طلب مدى 80 ر.س × 1% = 0.80، وطلب نقدي بلا رسوم دفع",
+  },
+  {
+    title: "حملات التوصيل المجاني",
+    body: "حصة المطعم من كل حملة",
+    icon: Truck,
+    how: "نحتسب حصة المطعم من رسوم التوصيل حسب نسبة المشاركة في العقد، ونتأكد أن الحملة كانت فعّالة في تاريخ الطلب.",
+    example: "رسوم توصيل 12 ر.س × حصة 50% = 6.00 على المطعم",
+  },
+  {
+    title: "التعويضات",
+    body: "التكرار والفرع الخاطئ والطلبات المفقودة",
+    icon: RotateCcw,
+    how: "نبحث عن التعويض المكرر لنفس الطلب، والمخصوم على فرع غير فرع الطلب، والتعويض على طلب غير موجود في ملف الطلبات.",
+    example: "تعويض 142.50 ر.س خُصم مرتين لنفس الطلب ← يُسترد أحدهما",
+  },
+  {
+    title: "رسوم العروض ووقت الانتظار",
+    body: "مع قياس العائد على كل عرض",
+    icon: Tag,
+    how: "نطابق رسوم كل عرض مع شروطه وفترته، ونحتسب رسوم الانتظار من أوقات التحضير الفعلية، ثم نقيس العائد على كل عرض.",
+    example: "عرض خصم 20% كلّف 2,400 ر.س وجلب 4,300 مبيعات إضافية ← عائد 1.8x",
+  },
+  {
+    title: "ضريبة القيمة المضافة",
+    body: "على كل بند خاضع للضريبة",
+    icon: Receipt,
+    how: "نحتسب 15% على البنود الخاضعة للضريبة فقط، وأي فرق في العمولة أو الرسوم ينعكس على ضريبته تلقائياً.",
+    example: "فرق عمولة 1,659.00 × 15% = 248.85 ضريبة زائدة",
+  },
+  {
+    title: "صافي التسوية",
+    body: "المستحق مقابل المحوّل فعلياً",
+    icon: Scale,
+    how: "نطرح كل الخصومات المدققة من المبيعات لنصل إلى المستحق، ونقارنه بالمبلغ المحوّل فعلياً في كشف التسوية.",
+    example: "المستحق 142,415.00 مقابل المحوّل 140,507.15 ← فرق 1,907.85",
+  },
+  {
+    title: "بنود غير مصنفة",
+    body: "أي خصم لا يطابق خريطة الرسوم",
+    icon: CircleHelp,
+    how: "أي خصم لا يطابق بنداً في خريطة الرسوم لا يُقبل تلقائياً، بل يظهر كبند يحتاج مراجعة مع سطره في الفاتورة.",
+    example: "«رسوم خدمة إضافية» 350.00 ر.س غير موجودة في العقد ← تحتاج مراجعة",
+  },
 ];
 
-const AUDIENCES: Array<[string, string, LucideIcon]> = [
-  ["صاحب المطعم", "ارفع ملفين في نهاية الشهر واعرف قبل السداد إن كانت الفاتورة صحيحة.", Store],
-  ["المدير المالي", "كل رقم مربوط بمصدره، وكل فرق له حالة ومسؤول قبل اعتماد الفترة.", LineChart],
-  ["مجموعة مطاعم", "قارن الفروع والمنصات واعرف أين تتكرر الفروقات لتتفاوض بأرقام.", Building2],
-  ["فريق المحاسبة", "تدقيق منظم وسريع مع نتائج قابلة للتصدير والمراجعة.", FileSpreadsheet],
+const AUDIENCES: TourItem[] = [
+  {
+    key: "owner",
+    name: "صاحب المطعم",
+    tagline: "اعرف كم تأخذ المنصة فعلاً من كل طلب.",
+    body: "ارفع ملفين في نهاية الشهر واعرف قبل السداد إن كانت الفاتورة صحيحة.",
+    icon: Store,
+    points: ["ملخص واضح للمستحق والمخصوم والفرق", "مقارنة الرسوم بين الفروع", "مطالبة تعويض جاهزة بالأدلة"],
+  },
+  {
+    key: "finance",
+    name: "المدير المالي",
+    tagline: "إغلاق شهري قابل للمراجعة لكل منصة.",
+    body: "كل رقم مربوط بمصدره، وكل فرق له حالة ومسؤول قبل اعتماد الفترة.",
+    icon: LineChart,
+    points: ["مطابقة كل بند بمعادلته", "متابعة حالة كل فترة", "سجل كامل للإجراءات"],
+  },
+  {
+    key: "group",
+    name: "مجموعة مطاعم",
+    tagline: "كل فروعك ومنصاتك في مساحة واحدة.",
+    body: "قارن الفروع والمنصات واعرف أين تتكرر الفروقات لتتفاوض بأرقام.",
+    icon: Building2,
+    points: ["تقارير موحدة لكل الفروع", "مقارنة الفترات", "صلاحيات منفصلة للموظفين"],
+  },
+  {
+    key: "accounting",
+    name: "فريق المحاسبة",
+    tagline: "الأرقام التي تحتاجها من دون جداول يدوية.",
+    body: "تدقيق منظم وسريع مع نتائج قابلة للتصدير والمراجعة.",
+    icon: FileSpreadsheet,
+    points: ["نتائج قابلة للتصدير", "مصدر واضح لكل رقم", "وصول حسب الدور"],
+  },
 ];
 
 const FAQS = [
@@ -495,9 +573,8 @@ function HowItWorks() {
   );
 }
 
-type ShowcaseItem = { key: string; name: string; tagline: string; body: string; icon: LucideIcon };
 
-const SHOWCASE: ShowcaseItem[] = [
+const SHOWCASE: TourItem[] = [
   {
     key: "invoice",
     name: "مطابقة الفاتورة",
@@ -542,10 +619,33 @@ const SHOWCASE: ShowcaseItem[] = [
   },
 ];
 
-/** Scroll-pinned product tour: the section stays on screen while scrolling moves through the products. */
-function ProductShowcase() {
+type TourItem = { key: string; name: string; tagline: string; body: string; icon: LucideIcon; points?: string[] };
+
+/** Scroll-pinned tour: the section stays on screen while scrolling moves through the items. */
+function PinnedTour({
+  id,
+  eyebrow,
+  title,
+  desktopHint,
+  mobileHint,
+  items,
+  renderVisual,
+  ctaLabel,
+  className,
+}: {
+  id: string;
+  eyebrow?: string;
+  title: string;
+  desktopHint: string;
+  mobileHint: string;
+  items: TourItem[];
+  renderVisual: (key: string, active: boolean) => ReactNode;
+  ctaLabel: (item: TourItem) => string;
+  className?: string;
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState({ index: 0, progress: 0 });
+  const count = items.length;
 
   useEffect(() => {
     let frame = 0;
@@ -556,8 +656,8 @@ function ProductShowcase() {
       const rect = track.getBoundingClientRect();
       const scrollable = rect.height - window.innerHeight;
       const raw = scrollable > 0 ? Math.min(1, Math.max(0, -rect.top / scrollable)) : 0;
-      const scaled = raw * SHOWCASE.length;
-      const index = Math.min(SHOWCASE.length - 1, Math.floor(scaled));
+      const scaled = raw * count;
+      const index = Math.min(count - 1, Math.floor(scaled));
       const progress = raw >= 1 ? 1 : scaled - index;
       setState((prev) =>
         prev.index === index && Math.abs(prev.progress - progress) < 0.01 ? prev : { index, progress },
@@ -574,34 +674,40 @@ function ProductShowcase() {
       window.removeEventListener("resize", onScroll);
       if (frame) window.cancelAnimationFrame(frame);
     };
-  }, []);
+  }, [count]);
 
   function jumpTo(index: number) {
     const track = trackRef.current;
     if (!track) return;
     const top = track.getBoundingClientRect().top + window.scrollY;
     const scrollable = track.offsetHeight - window.innerHeight;
-    window.scrollTo({ top: top + (scrollable * (index + 0.05)) / SHOWCASE.length, behavior: "smooth" });
+    window.scrollTo({ top: top + (scrollable * (index + 0.05)) / count, behavior: "smooth" });
   }
 
-  const current = SHOWCASE[state.index] ?? SHOWCASE[0]!;
+  const current = items[state.index] ?? items[0]!;
+  const counter = (i: number) => `${String(i + 1).padStart(2, "0")} / ${String(count).padStart(2, "0")}`;
 
   return (
-    <section id="products" aria-labelledby="products-title" className="bg-background">
+    <section id={id} aria-labelledby={`${id}-title`} className={className}>
       <div className="mx-auto max-w-7xl px-4 pt-20 text-center sm:px-6 lg:pt-28">
         <div data-reveal>
-          <h2 id="products-title" className="font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]">
-            كل أداة في تدقيق، وهي تعمل.
+          {eyebrow ? (
+            <p className="flex items-center justify-center gap-2 text-[13px] font-semibold text-primary-text">
+              <span className="size-1.5 rounded-full bg-primary" />
+              {eyebrow}
+            </p>
+          ) : null}
+          <h2 id={`${id}-title`} className="mt-3 font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]">
+            {title}
           </h2>
           <p className="mt-3 text-base text-muted-foreground">
-            <span className="hidden lg:inline">واصل التمرير للانتقال من أداة إلى أخرى.</span>
-            <span className="lg:hidden">ست أدوات تعمل من نفس الفروع والعقود والملفات.</span>
+            <span className="hidden lg:inline">{desktopHint}</span>
+            <span className="lg:hidden">{mobileHint}</span>
           </p>
         </div>
       </div>
 
-      {/* Desktop: pinned tour */}
-      <div ref={trackRef} className="relative hidden lg:block" style={{ height: `${SHOWCASE.length * 85 + 40}vh` }}>
+      <div ref={trackRef} className="relative hidden lg:block" style={{ height: `${count * 85 + 40}vh` }}>
         <div className="sticky top-0 flex h-screen items-center">
           <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center gap-14 px-6 pt-20">
             <div>
@@ -611,23 +717,33 @@ function ProductShowcase() {
                     <current.icon className="size-6" />
                   </span>
                   <span className="num text-sm text-muted-foreground" dir="ltr">
-                    {String(state.index + 1).padStart(2, "0")} / {String(SHOWCASE.length).padStart(2, "0")}
+                    {counter(state.index)}
                   </span>
                 </div>
-                <h3 className="mt-6 font-display text-5xl font-extrabold leading-[1.25]">{current.name}</h3>
+                <h3 className="mt-5 font-display text-5xl font-extrabold leading-[1.25]">{current.name}</h3>
                 <p className="mt-4 text-xl font-medium text-foreground/85">{current.tagline}</p>
-                <p className="mt-4 max-w-lg text-base leading-8 text-muted-foreground">{current.body}</p>
+                <p className="mt-3 max-w-lg text-base leading-8 text-muted-foreground">{current.body}</p>
+                {current.points ? (
+                  <ul className="mt-4 space-y-2 text-[15px]">
+                    {current.points.map((point) => (
+                      <li key={point} className="flex items-center gap-2.5">
+                        <Check className="size-4 shrink-0 text-success" />
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
                 <Link
                   to="/auth"
                   search={{ mode: "signup" }}
-                  className="mt-7 inline-flex h-12 w-fit items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-semibold text-ink-foreground transition-transform hover:-translate-y-0.5"
+                  className="mt-6 inline-flex h-12 w-fit items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-semibold text-ink-foreground transition-transform hover:-translate-y-0.5"
                 >
-                  جرّب {current.name}
+                  {ctaLabel(current)}
                   <ArrowLeft className="size-4" />
                 </Link>
               </div>
-              <ol className="mt-10 border-t border-border pt-5">
-                {SHOWCASE.map((item, index) => {
+              <ol className="mt-8 border-t border-border pt-4">
+                {items.map((item, index) => {
                   const fill = index < state.index ? 1 : index === state.index ? state.progress : 0;
                   return (
                     <li key={item.key}>
@@ -636,7 +752,7 @@ function ProductShowcase() {
                         onClick={() => jumpTo(index)}
                         aria-current={index === state.index ? "step" : undefined}
                         className={cn(
-                          "flex w-full items-center gap-4 py-2.5 text-start text-[15px] transition-colors",
+                          "flex w-full items-center gap-4 py-2 text-start text-[15px] transition-colors",
                           index === state.index ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground",
                         )}
                       >
@@ -656,7 +772,7 @@ function ProductShowcase() {
             <div className="relative h-[560px] overflow-hidden rounded-[28px] bg-secondary">
               <span aria-hidden="true" className="absolute -top-24 -start-24 size-72 rounded-full bg-primary/10" />
               <span aria-hidden="true" className="absolute -bottom-40 -end-24 size-[26rem] rounded-full border border-primary/25" />
-              {SHOWCASE.map((item, index) => (
+              {items.map((item, index) => (
                 <div
                   key={item.key}
                   aria-hidden={index !== state.index}
@@ -669,7 +785,7 @@ function ProductShowcase() {
                         : "pointer-events-none translate-y-10 scale-95 opacity-0",
                   )}
                 >
-                  <ShowcaseVisual kind={item.key} active={index === state.index} />
+                  {renderVisual(item.key, index === state.index)}
                 </div>
               ))}
               <span className="absolute bottom-4 start-5 rounded-full bg-card/80 px-2.5 py-1 text-[11px] text-muted-foreground">
@@ -680,9 +796,8 @@ function ProductShowcase() {
         </div>
       </div>
 
-      {/* Mobile and tablet: stacked cards */}
       <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-12 sm:px-6 lg:hidden">
-        {SHOWCASE.map((item, index) => (
+        {items.map((item, index) => (
           <article key={item.key} data-reveal className="overflow-hidden rounded-3xl border border-border bg-card">
             <div className="p-6">
               <div className="flex items-center gap-3">
@@ -690,20 +805,192 @@ function ProductShowcase() {
                   <item.icon className="size-5" />
                 </span>
                 <span className="num text-xs text-muted-foreground" dir="ltr">
-                  {String(index + 1).padStart(2, "0")} / {String(SHOWCASE.length).padStart(2, "0")}
+                  {counter(index)}
                 </span>
               </div>
               <h3 className="mt-4 font-display text-2xl font-extrabold">{item.name}</h3>
               <p className="mt-2 font-medium">{item.tagline}</p>
               <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.body}</p>
+              {item.points ? (
+                <ul className="mt-3 space-y-1.5 text-sm">
+                  {item.points.map((point) => (
+                    <li key={point} className="flex items-center gap-2">
+                      <Check className="size-4 shrink-0 text-success" />
+                      {point}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
-            <div className="grid place-items-center bg-secondary p-5">
-              <ShowcaseVisual kind={item.key} active />
-            </div>
+            <div className="grid place-items-center bg-secondary p-5">{renderVisual(item.key, true)}</div>
           </article>
         ))}
       </div>
     </section>
+  );
+}
+
+function ProductShowcase() {
+  return (
+    <PinnedTour
+      id="products"
+      title="كل أداة في تدقيق، وهي تعمل."
+      desktopHint="واصل التمرير للانتقال من أداة إلى أخرى."
+      mobileHint="ست أدوات تعمل من نفس الفروع والعقود والملفات."
+      items={SHOWCASE}
+      renderVisual={(key, active) => <ShowcaseVisual kind={key} active={active} />}
+      ctaLabel={(item) => `جرّب ${item.name}`}
+      className="bg-background"
+    />
+  );
+}
+
+function Audiences() {
+  return (
+    <PinnedTour
+      id="who"
+      eyebrow="لمن تدقيق"
+      title="لمن يملك الأرقام ويُسأل عنها."
+      desktopHint="واصل التمرير لترى ما يحصل عليه كل دور."
+      mobileHint="كل دور يرى ما يحتاجه من نفس الأرقام."
+      items={AUDIENCES}
+      renderVisual={(key, active) => <AudienceVisual kind={key} active={active} />}
+      ctaLabel={() => "ابدأ التدقيق"}
+      className="bg-muted pb-4"
+    />
+  );
+}
+
+function AudienceVisual({ kind, active }: { kind: string; active: boolean }) {
+  const card = "w-full max-w-md rounded-2xl bg-card p-5 shadow-[0_24px_48px_-28px_rgb(19_35_43/0.45)]";
+  if (kind === "owner") {
+    const rows: Array<[string, string, string]> = [
+      ["المستحق حسب عقدك", "142,415.00", "text-foreground"],
+      ["المحوّل من المنصة", "140,507.15", "text-foreground"],
+      ["الفرق لصالحك", "1,907.85", "text-primary-text"],
+    ];
+    return (
+      <div className={card}>
+        <p className="text-sm font-semibold">ملخص الشهر · هنقرستيشن</p>
+        <div className="mt-4 space-y-2.5">
+          {rows.map(([label, value, tone], i) => (
+            <div
+              key={label}
+              className={cn(
+                "flex items-center justify-between rounded-xl px-3.5 py-3 transition-[opacity,transform] duration-500",
+                i === rows.length - 1 ? "bg-ink text-ink-foreground" : "bg-background",
+                active ? "translate-x-0 opacity-100" : "translate-x-6 opacity-0",
+              )}
+              style={{ transitionDelay: `${0.1 + i * 0.12}s` }}
+            >
+              <span className="text-sm">{label}</span>
+              <span className={cn("num text-lg font-semibold", i === rows.length - 1 ? "text-primary" : tone)}>{value}</span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 flex items-center gap-2 text-[13px] text-success">
+          <Check className="size-4" /> مطالبة التعويض جاهزة بالأدلة
+        </p>
+      </div>
+    );
+  }
+  if (kind === "finance") {
+    const steps: Array<[string, boolean]> = [
+      ["رفع ملفات الفترة", true],
+      ["إعادة احتساب البنود", true],
+      ["مراجعة 3 استثناءات", true],
+      ["اعتماد الفترة", false],
+    ];
+    return (
+      <div className={card}>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold">إغلاق سبتمبر · جاهز</p>
+          <span className="rounded-full bg-warning/15 px-2.5 py-1 text-[11px] font-semibold text-warning">بانتظار الاعتماد</span>
+        </div>
+        <ol className="mt-4 space-y-2.5">
+          {steps.map(([label, done], i) => (
+            <li
+              key={label}
+              className={cn("flex items-center gap-3 rounded-xl border border-border p-3 text-sm transition-[opacity,transform] duration-500", active ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0")}
+              style={{ transitionDelay: `${0.1 + i * 0.12}s` }}
+            >
+              <span className={cn("grid size-6 place-items-center rounded-full", done ? "bg-success text-white" : "border-2 border-primary")}>
+                {done ? <Check className="size-3.5" /> : null}
+              </span>
+              <span className={done ? "" : "font-semibold"}>{label}</span>
+              <span className="ms-auto text-xs text-muted-foreground">{done ? "مكتمل" : "التالي"}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    );
+  }
+  if (kind === "group") {
+    const branches: Array<[string, number]> = [
+      ["فرع العليا", 21.4],
+      ["فرع الملقا", 22.1],
+      ["فرع النرجس", 25.8],
+      ["فرع الروضة", 20.9],
+    ];
+    return (
+      <div className={card}>
+        <p className="text-sm font-semibold">نسبة الخصومات حسب الفرع</p>
+        <div className="mt-4 space-y-3.5">
+          {branches.map(([name, rate], i) => {
+            const high = rate > 25;
+            return (
+              <div key={name}>
+                <div className="flex justify-between text-[13px]">
+                  <span>{name}</span>
+                  <span className={cn("num font-semibold", high ? "text-destructive" : "text-muted-foreground")}>{rate}%</span>
+                </div>
+                <div className="mt-1.5 h-2.5 rounded-full bg-muted">
+                  <div
+                    className={cn("h-2.5 rounded-full transition-[width] duration-1000 ease-out", high ? "bg-destructive" : "bg-chart-2")}
+                    style={{ width: active ? `${rate * 3.2}%` : "0%", transitionDelay: `${i * 0.12}s` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-4 rounded-xl bg-secondary p-3 text-xs">فرع النرجس أعلى بـ 4 نقاط من بقية الفروع، والفرق يتكرر كل شهر.</p>
+      </div>
+    );
+  }
+  const rows: Array<[string, string, string]> = [
+    ["عمولة المبيعات", "16,590.00", "+1,659.00"],
+    ["ضريبة العمولة", "2,488.50", "+248.85"],
+    ["رسوم الدفع", "1,204.30", "مطابق"],
+  ];
+  return (
+    <div className={card}>
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold">نتيجة التدقيق</p>
+        <span className="flex items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-semibold text-success">
+          <FileSpreadsheet className="size-3.5" /> تصدير Excel
+        </span>
+      </div>
+      <div className="mt-4 overflow-hidden rounded-xl border border-border text-[13px]">
+        <div className="grid grid-cols-3 bg-muted px-3 py-2 text-xs text-muted-foreground">
+          <span>البند</span>
+          <span>الفاتورة</span>
+          <span>الفرق</span>
+        </div>
+        {rows.map(([label, value, diff], i) => (
+          <div
+            key={label}
+            className={cn("grid grid-cols-3 border-t border-border px-3 py-2.5 transition-opacity duration-500", active ? "opacity-100" : "opacity-0")}
+            style={{ transitionDelay: `${0.15 + i * 0.12}s` }}
+          >
+            <span>{label}</span>
+            <span className="num">{value}</span>
+            <span className={cn(diff === "مطابق" ? "font-semibold text-success" : "num text-destructive")}>{diff}</span>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">كل رقم مربوط بسطره في ملف الطلبات والفاتورة.</p>
+    </div>
   );
 }
 
@@ -870,18 +1157,38 @@ function ShowcaseVisual({ kind, active }: { kind: string; active: boolean }) {
 
 type CheckState = "idle" | "scanning" | "checked";
 
-function CheckCard({ title, body, Icon, state, flagged, compact = false }: { title: string; body: string; Icon: LucideIcon; state: CheckState; flagged: boolean; compact?: boolean }) {
+function CheckCard({
+  item,
+  state,
+  flagged,
+  compact = false,
+  selected = false,
+  expanded = false,
+  onSelect,
+}: {
+  item: CheckItem;
+  state: CheckState;
+  flagged: boolean;
+  compact?: boolean;
+  selected?: boolean;
+  expanded?: boolean;
+  onSelect?: () => void;
+}) {
   const dark = flagged && state === "checked";
+  const Icon = item.icon;
   return (
-    <div
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-expanded={onSelect ? expanded || selected : undefined}
       className={cn(
-        "group relative h-full overflow-hidden rounded-[14px] border transition-[border-color,background-color,box-shadow,transform,opacity] duration-500 hover:-translate-y-1",
+        "group relative h-full w-full overflow-hidden rounded-[14px] border text-start transition-[border-color,background-color,box-shadow,transform,opacity] duration-500 hover:-translate-y-1",
         compact ? "p-4" : "p-5",
         dark
           ? "border-ink bg-ink text-ink-foreground"
-          : state === "scanning"
+          : state === "scanning" || selected
             ? "border-primary bg-card shadow-[0_0_0_4px_oklch(0.66_0.13_70/0.18)]"
-            : "border-border bg-card",
+            : "border-border bg-card hover:border-primary/50",
       )}
     >
       {state === "scanning" ? <span aria-hidden="true" className="lp-scanbar absolute inset-y-0 w-1/3" /> : null}
@@ -905,8 +1212,44 @@ function CheckCard({ title, body, Icon, state, flagged, compact = false }: { tit
           {flagged ? "يحتاج مراجعة" : "✓ تم التحقق"}
         </span>
       </div>
-      <h3 className={cn("relative font-bold", compact ? "mt-3 text-[15px]" : "mt-4")}>{title}</h3>
-      <p className={cn("relative mt-1.5 text-[13px]", dark ? "text-ink-muted" : "text-muted-foreground")}>{body}</p>
+      <h3 className={cn("relative font-bold", compact ? "mt-3 text-[15px]" : "mt-4")}>{item.title}</h3>
+      <p className={cn("relative mt-1.5 text-[13px]", dark ? "text-ink-muted" : "text-muted-foreground")}>{item.body}</p>
+      {expanded ? (
+        <div className={cn("relative mt-3 border-t pt-3 text-[13px] leading-6", dark ? "border-ink-foreground/15" : "border-border")}>
+          <p className={cn("text-[11px] font-semibold", dark ? "text-primary" : "text-primary-text")}>كيف نتحقق</p>
+          <p className="mt-1">{item.how}</p>
+          <p className={cn("mt-2 rounded-lg px-2.5 py-2 text-xs", dark ? "bg-ink-foreground/10" : "bg-muted")}>مثال: {item.example}</p>
+        </div>
+      ) : (
+        <span className={cn("relative mt-3 block text-[11px] font-semibold", dark ? "text-primary" : "text-primary-text")}>
+          {onSelect ? "كيف نتحقق؟" : null}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function CheckExplainer({ item, index, flagged }: { item: CheckItem; index: number; flagged: boolean }) {
+  const Icon = item.icon;
+  return (
+    <div key={item.title} className="lp-stagger mt-3 rounded-2xl border border-border bg-card p-5">
+      <div className="flex items-center gap-3">
+        <span className={cn("grid size-10 place-items-center rounded-xl", flagged ? "bg-ink text-primary" : "bg-secondary text-primary-text")}>
+          <Icon className="size-5" />
+        </span>
+        <div>
+          <p className="num text-[11px] text-muted-foreground" dir="ltr">
+            {String(index + 1).padStart(2, "0")} / {String(CHECKS.length).padStart(2, "0")}
+          </p>
+          <p className="font-bold">{item.title}</p>
+        </div>
+      </div>
+      <p className="mt-3 text-[11px] font-semibold text-primary-text">كيف نتحقق</p>
+      <p className="mt-1 text-sm leading-7 text-foreground/85">{item.how}</p>
+      <p className="mt-3 rounded-xl bg-muted px-3 py-2.5 text-[13px]">
+        <span className="font-semibold">مثال: </span>
+        {item.example}
+      </p>
     </div>
   );
 }
@@ -947,9 +1290,20 @@ function ChecksGrid() {
   const active = Math.min(CHECKS.length, Math.floor(Math.min(1, progress / 0.9) * CHECKS.length));
   const verified = Math.min(active, CHECKS.length - 1);
   const done = active >= CHECKS.length;
+  const focus = Math.min(active, CHECKS.length - 1);
+  const focusItem = CHECKS[focus] ?? CHECKS[0]!;
 
   const [gridRef, inView] = useInView<HTMLDivElement>(0.25);
   const cycling = useCycle(CHECKS.length + 2, inView, 900);
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  function jumpTo(index: number) {
+    const track = trackRef.current;
+    if (!track) return;
+    const top = track.getBoundingClientRect().top + window.scrollY;
+    const scrollable = track.offsetHeight - window.innerHeight;
+    window.scrollTo({ top: top + scrollable * 0.9 * ((index + 0.3) / CHECKS.length), behavior: "smooth" });
+  }
 
   const intro = (
     <SectionIntro eyebrow="ما الذي نراجعه" title="كل بند في الفاتورة، لا الإجمالي فقط.">
@@ -959,20 +1313,19 @@ function ChecksGrid() {
 
   return (
     <section aria-label="ما الذي نراجعه">
-      <div ref={trackRef} className="relative hidden lg:block" style={{ height: `${CHECKS.length * 38 + 70}vh` }}>
+      <div ref={trackRef} className="relative hidden lg:block" style={{ height: `${CHECKS.length * 45 + 70}vh` }}>
         <div className="sticky top-0 flex h-screen items-center">
-          <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-center gap-12 px-6 pt-20">
+          <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center gap-12 px-6 pt-20">
             <div>
-              {intro}
-              <div className="mt-8 rounded-2xl border border-border bg-card p-5">
+              <div className="[&_h2]:text-[2.2rem] [&_h2]:leading-[1.35]">{intro}</div>
+              <div className="mt-6 rounded-2xl border border-border bg-card p-4">
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="text-sm text-muted-foreground">
-                    تم التحقق من{" "}
-                    <span className="num text-2xl font-semibold text-foreground">{verified}</span> من{" "}
+                    تم التحقق من <span className="num text-2xl font-semibold text-foreground">{verified}</span> من{" "}
                     <span className="num">{CHECKS.length - 1}</span> بنود
                   </p>
-                  <span className={cn("text-xs font-semibold transition-colors", done ? "text-success" : "text-primary-text")}>
-                    {done ? "اكتمل التدقيق" : active < CHECKS.length ? `يفحص: ${CHECKS[active]?.[0]}` : ""}
+                  <span className={cn("text-xs font-semibold", done ? "text-success" : "text-primary-text")}>
+                    {done ? "اكتمل التدقيق" : "جارٍ التدقيق"}
                   </span>
                 </div>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
@@ -981,33 +1334,35 @@ function ChecksGrid() {
                     style={{ width: `${Math.round((active / CHECKS.length) * 100)}%` }}
                   />
                 </div>
-              </div>
-              <div
-                className={cn(
-                  "mt-3 flex items-center justify-between gap-4 rounded-2xl bg-ink p-5 text-ink-foreground transition-[opacity,transform] duration-500",
-                  done ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0",
-                )}
-              >
-                <div>
-                  <p className="text-xs text-ink-muted">النتيجة · مثال توضيحي</p>
-                  <p className="mt-1 text-sm">7 بنود مطابقة، وبند واحد يحتاج مراجعة</p>
+                <div
+                  className={cn(
+                    "grid transition-[grid-template-rows,opacity] duration-500",
+                    done ? "mt-3 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+                  )}
+                >
+                  <div className="overflow-hidden">
+                    <div className="flex items-center justify-between gap-4 rounded-xl bg-ink px-4 py-3 text-ink-foreground">
+                      <p className="text-[13px]">7 بنود مطابقة، وبند واحد يحتاج مراجعة</p>
+                      <p className="shrink-0 text-end">
+                        <span className="num block text-xl font-semibold text-primary">1,907.85</span>
+                        <span className="text-[11px] text-ink-muted">ر.س لصالحك · مثال</span>
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <p className="shrink-0 text-end">
-                  <span className="num block text-2xl font-semibold text-primary">1,907.85</span>
-                  <span className="text-xs text-ink-muted">ر.س لصالحك</span>
-                </p>
               </div>
+              <CheckExplainer key={focus} item={focusItem} index={focus} flagged={focus === CHECKS.length - 1} />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {CHECKS.map(([title, body, Icon], index) => (
+              {CHECKS.map((item, index) => (
                 <CheckCard
-                  key={title}
+                  key={item.title}
                   compact
-                  title={title}
-                  body={body}
-                  Icon={Icon}
+                  item={item}
                   flagged={index === CHECKS.length - 1}
+                  selected={!done && index === focus}
                   state={index < active ? "checked" : index === active ? "scanning" : "idle"}
+                  onSelect={() => jumpTo(index)}
                 />
               ))}
             </div>
@@ -1017,44 +1372,17 @@ function ChecksGrid() {
 
       <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:hidden">
         {intro}
-        <div ref={gridRef} className={cn("lp-checks mt-10 grid gap-3.5 sm:grid-cols-2", inView && "is-in")}>
-          {CHECKS.map(([title, body, Icon], index) => (
-            <div key={title} style={{ animationDelay: `${(index % 2) * 0.08 + Math.floor(index / 2) * 0.12}s` }} className="lp-check">
+        <p className="mt-4 text-sm text-muted-foreground">اضغط على أي بند لترى كيف نتحقق منه.</p>
+        <div ref={gridRef} className={cn("lp-checks mt-6 grid gap-3.5 sm:grid-cols-2", inView && "is-in")}>
+          {CHECKS.map((item, index) => (
+            <div key={item.title} style={{ animationDelay: `${(index % 2) * 0.08 + Math.floor(index / 2) * 0.12}s` }} className="lp-check">
               <CheckCard
-                title={title}
-                body={body}
-                Icon={Icon}
+                item={item}
                 flagged={index === CHECKS.length - 1}
+                expanded={openIndex === index}
+                onSelect={() => setOpenIndex((v) => (v === index ? null : index))}
                 state={inView && index < cycling ? "checked" : inView && index === cycling ? "scanning" : "idle"}
               />
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Audiences() {
-  const [ref, inView] = useInView<HTMLDivElement>();
-  return (
-    <section className="overflow-hidden bg-muted">
-      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
-        <SectionIntro eyebrow="لمن تدقيق" title="لمن يملك الأرقام ويُسأل عنها." />
-        <div ref={ref} className={cn("lp-audience mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4", inView && "is-in")}>
-          {AUDIENCES.map(([title, body, Icon], index) => (
-            <div
-              key={title}
-              style={{ animationDelay: `${index * 0.12}s` }}
-              className="lp-aud group relative overflow-hidden rounded-2xl bg-card p-6 transition-[transform,box-shadow,opacity] duration-700 hover:-translate-y-2 hover:shadow-[0_24px_48px_-28px_rgb(19_35_43/0.45)]"
-            >
-              <span aria-hidden="true" className="absolute -top-10 -end-10 size-28 rounded-full bg-primary/10 transition-transform duration-700 group-hover:scale-150" />
-              <span className="relative grid size-12 place-items-center rounded-2xl bg-ink text-primary transition-transform duration-500 group-hover:-rotate-6 group-hover:scale-110">
-                <Icon className="size-6" />
-              </span>
-              <h3 className="relative mt-5 text-lg font-bold">{title}</h3>
-              <p className="relative mt-2 text-sm leading-7 text-muted-foreground">{body}</p>
-              <span aria-hidden="true" className="absolute inset-x-6 bottom-0 h-1 origin-right scale-x-0 rounded-t-full bg-primary transition-transform duration-500 group-hover:scale-x-100" />
             </div>
           ))}
         </div>
