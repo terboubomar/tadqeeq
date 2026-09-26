@@ -43,12 +43,19 @@ describe("Telegram compensation evidence workflow", () => {
   });
 
   test("does not couple Telegram evidence to marketplace audit engines", async () => {
-    const route = await Bun.file(
-      "src/routes/_authenticated/compensation.tsx",
-    ).text();
+    const routes = await Promise.all(
+      [
+        "src/routes/compensation.tsx",
+        "src/routes/compensation/index.tsx",
+        "src/routes/compensation/cases.tsx",
+        "src/routes/compensation/evidence.tsx",
+        "src/routes/compensation/scanner.tsx",
+        "src/routes/compensation/branches.tsx",
+      ].map((path) => Bun.file(path).text()),
+    );
     const webhook = await Bun.file("src/lib/telegram-webhook.server.ts").text();
 
-    for (const source of [route, webhook]) {
+    for (const source of [...routes, webhook]) {
       expect(source).not.toContain('from "@/lib/analysis/hungerstation"');
       expect(source).not.toContain('from "@/lib/analysis/keeta"');
       expect(source).not.toContain('from "@/lib/analysis/jahez"');

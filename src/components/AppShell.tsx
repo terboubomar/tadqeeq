@@ -76,7 +76,6 @@ const ROUTE_PERMISSIONS: Record<string, WorkspacePermission> = {
   "/charges": "financials.read",
   "/promotions": "financials.read",
   "/exceptions": "exceptions.read",
-  "/compensation": "compensation.read",
   "/branches": "reports.read",
   "/daily": "reports.read",
   "/breakdown": "reports.read",

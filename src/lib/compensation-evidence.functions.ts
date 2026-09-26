@@ -109,10 +109,10 @@ export const saveCompensationCase = createServerFn({ method: "POST" })
   });
 
 export const getCompensationCases = createServerFn({ method: "POST" })
-  .validator(z.object({}))
-  .handler(async () => {
+  .validator(z.object({ limit: z.number().int().min(1).max(5000).optional() }))
+  .handler(async ({ data }) => {
     await requireWorkspacePermission("compensation.read");
-    return listCompensationCasesOnServer();
+    return listCompensationCasesOnServer(data.limit);
   });
 
 export const getEvidenceMedia = createServerFn({ method: "POST" })

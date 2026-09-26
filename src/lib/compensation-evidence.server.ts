@@ -764,14 +764,14 @@ export async function saveCompensationCaseOnServer(
   return mapCase(data);
 }
 
-export async function listCompensationCasesOnServer(): Promise<CompensationCaseRecord[]> {
+export async function listCompensationCasesOnServer(limit = 200): Promise<CompensationCaseRecord[]> {
   const { client, workspaceId } = await requireWorkspacePermission("compensation.read");
   const { data, error } = await dynamicDb(client)
     .from("compensation_cases")
     .select("*")
     .eq("workspace_id", workspaceId)
     .order("updated_at", { ascending: false })
-    .limit(200);
+    .limit(Math.min(Math.max(Math.trunc(limit), 1), 5000));
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapCase);
 }
