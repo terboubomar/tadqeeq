@@ -868,60 +868,168 @@ function ShowcaseVisual({ kind, active }: { kind: string; active: boolean }) {
   );
 }
 
-function ChecksGrid() {
-  const [ref, inView] = useInView<HTMLDivElement>(0.25);
-  const active = useCycle(CHECKS.length + 2, inView, 900);
+type CheckState = "idle" | "scanning" | "checked";
+
+function CheckCard({ title, body, Icon, state, flagged, compact = false }: { title: string; body: string; Icon: LucideIcon; state: CheckState; flagged: boolean; compact?: boolean }) {
+  const dark = flagged && state === "checked";
   return (
-    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-24">
-      <div className="flex flex-wrap items-end justify-between gap-6">
-        <SectionIntro eyebrow="ما الذي نراجعه" title="كل بند في الفاتورة، لا الإجمالي فقط." />
-        <p data-reveal className="max-w-md text-base leading-8 text-muted-foreground">
-          أي خصم لا يطابق خريطة الرسوم يظهر كبند غير مصنف بدلاً من أن يمر دون أن يلاحظه أحد.
-        </p>
+    <div
+      className={cn(
+        "group relative h-full overflow-hidden rounded-[14px] border transition-[border-color,background-color,box-shadow,transform,opacity] duration-500 hover:-translate-y-1",
+        compact ? "p-4" : "p-5",
+        dark
+          ? "border-ink bg-ink text-ink-foreground"
+          : state === "scanning"
+            ? "border-primary bg-card shadow-[0_0_0_4px_oklch(0.66_0.13_70/0.18)]"
+            : "border-border bg-card",
+      )}
+    >
+      {state === "scanning" ? <span aria-hidden="true" className="lp-scanbar absolute inset-y-0 w-1/3" /> : null}
+      <div className="relative flex items-start justify-between gap-3">
+        <span
+          className={cn(
+            "grid place-items-center rounded-xl transition-colors duration-500",
+            compact ? "size-9" : "size-10",
+            dark ? "bg-ink-foreground/10 text-primary" : "bg-muted text-primary-text",
+          )}
+        >
+          <Icon className="size-5" />
+        </span>
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[11px] font-semibold transition-all duration-300",
+            state === "checked" ? "scale-100 opacity-100" : "scale-75 opacity-0",
+            flagged ? "bg-primary text-primary-foreground" : "bg-success/15 text-success",
+          )}
+        >
+          {flagged ? "يحتاج مراجعة" : "✓ تم التحقق"}
+        </span>
       </div>
-      <div ref={ref} className={cn("lp-checks mt-10 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4", inView && "is-in")}>
-        {CHECKS.map(([title, body, Icon], index) => {
-          const flagged = index === CHECKS.length - 1;
-          const scanning = inView && index === active;
-          const checked = inView && index < active;
-          return (
-            <div
-              key={title}
-              style={{ animationDelay: `${(index % 4) * 0.08 + Math.floor(index / 4) * 0.16}s` }}
-              className={cn(
-                "lp-check group relative overflow-hidden rounded-[14px] border p-5 transition-[border-color,background-color,box-shadow,transform,opacity] duration-500 hover:-translate-y-1",
-                flagged && checked
-                  ? "border-ink bg-ink text-ink-foreground"
-                  : scanning
-                    ? "border-primary bg-card shadow-[0_0_0_4px_oklch(0.66_0.13_70/0.18)]"
-                    : "border-border bg-card",
-              )}
-            >
-              {scanning ? <span aria-hidden="true" className="lp-scanbar absolute inset-y-0 w-1/3" /> : null}
-              <div className="relative flex items-start justify-between gap-3">
-                <span
-                  className={cn(
-                    "grid size-10 place-items-center rounded-xl transition-colors duration-500",
-                    flagged && checked ? "bg-ink-foreground/10 text-primary" : "bg-muted text-primary-text",
-                  )}
-                >
-                  <Icon className="size-5" />
-                </span>
-                <span
-                  className={cn(
-                    "rounded-full px-2 py-0.5 text-[11px] font-semibold transition-all duration-300",
-                    checked ? "scale-100 opacity-100" : "scale-75 opacity-0",
-                    flagged ? "bg-primary text-primary-foreground" : "bg-success/15 text-success",
-                  )}
-                >
-                  {flagged ? "يحتاج مراجعة" : "✓ تم التحقق"}
-                </span>
+      <h3 className={cn("relative font-bold", compact ? "mt-3 text-[15px]" : "mt-4")}>{title}</h3>
+      <p className={cn("relative mt-1.5 text-[13px]", dark ? "text-ink-muted" : "text-muted-foreground")}>{body}</p>
+    </div>
+  );
+}
+
+/** 0..1 progress of scrolling through a tall track whose child is sticky. */
+function useTrackProgress<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const el = ref.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const scrollable = rect.height - window.innerHeight;
+      const raw = scrollable > 0 ? Math.min(1, Math.max(0, -rect.top / scrollable)) : 0;
+      setProgress((prev) => (Math.abs(prev - raw) < 0.004 ? prev : raw));
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, []);
+  return [ref, progress] as const;
+}
+
+function ChecksGrid() {
+  const [trackRef, progress] = useTrackProgress<HTMLDivElement>();
+  // Slightly shorter than the track so the last card settles before the section unpins.
+  const active = Math.min(CHECKS.length, Math.floor(Math.min(1, progress / 0.9) * CHECKS.length));
+  const verified = Math.min(active, CHECKS.length - 1);
+  const done = active >= CHECKS.length;
+
+  const [gridRef, inView] = useInView<HTMLDivElement>(0.25);
+  const cycling = useCycle(CHECKS.length + 2, inView, 900);
+
+  const intro = (
+    <SectionIntro eyebrow="ما الذي نراجعه" title="كل بند في الفاتورة، لا الإجمالي فقط.">
+      أي خصم لا يطابق خريطة الرسوم يظهر كبند غير مصنف بدلاً من أن يمر دون أن يلاحظه أحد.
+    </SectionIntro>
+  );
+
+  return (
+    <section aria-label="ما الذي نراجعه">
+      <div ref={trackRef} className="relative hidden lg:block" style={{ height: `${CHECKS.length * 38 + 70}vh` }}>
+        <div className="sticky top-0 flex h-screen items-center">
+          <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-center gap-12 px-6 pt-20">
+            <div>
+              {intro}
+              <div className="mt-8 rounded-2xl border border-border bg-card p-5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    تم التحقق من{" "}
+                    <span className="num text-2xl font-semibold text-foreground">{verified}</span> من{" "}
+                    <span className="num">{CHECKS.length - 1}</span> بنود
+                  </p>
+                  <span className={cn("text-xs font-semibold transition-colors", done ? "text-success" : "text-primary-text")}>
+                    {done ? "اكتمل التدقيق" : active < CHECKS.length ? `يفحص: ${CHECKS[active]?.[0]}` : ""}
+                  </span>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-2 rounded-full bg-primary transition-[width] duration-300 ease-out"
+                    style={{ width: `${Math.round((active / CHECKS.length) * 100)}%` }}
+                  />
+                </div>
               </div>
-              <h3 className="relative mt-4 font-bold">{title}</h3>
-              <p className={cn("relative mt-1.5 text-[13px]", flagged && checked ? "text-ink-muted" : "text-muted-foreground")}>{body}</p>
+              <div
+                className={cn(
+                  "mt-3 flex items-center justify-between gap-4 rounded-2xl bg-ink p-5 text-ink-foreground transition-[opacity,transform] duration-500",
+                  done ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0",
+                )}
+              >
+                <div>
+                  <p className="text-xs text-ink-muted">النتيجة · مثال توضيحي</p>
+                  <p className="mt-1 text-sm">7 بنود مطابقة، وبند واحد يحتاج مراجعة</p>
+                </div>
+                <p className="shrink-0 text-end">
+                  <span className="num block text-2xl font-semibold text-primary">1,907.85</span>
+                  <span className="text-xs text-ink-muted">ر.س لصالحك</span>
+                </p>
+              </div>
             </div>
-          );
-        })}
+            <div className="grid grid-cols-2 gap-3">
+              {CHECKS.map(([title, body, Icon], index) => (
+                <CheckCard
+                  key={title}
+                  compact
+                  title={title}
+                  body={body}
+                  Icon={Icon}
+                  flagged={index === CHECKS.length - 1}
+                  state={index < active ? "checked" : index === active ? "scanning" : "idle"}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:hidden">
+        {intro}
+        <div ref={gridRef} className={cn("lp-checks mt-10 grid gap-3.5 sm:grid-cols-2", inView && "is-in")}>
+          {CHECKS.map(([title, body, Icon], index) => (
+            <div key={title} style={{ animationDelay: `${(index % 2) * 0.08 + Math.floor(index / 2) * 0.12}s` }} className="lp-check">
+              <CheckCard
+                title={title}
+                body={body}
+                Icon={Icon}
+                flagged={index === CHECKS.length - 1}
+                state={inView && index < cycling ? "checked" : inView && index === cycling ? "scanning" : "idle"}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
