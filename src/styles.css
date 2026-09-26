@@ -344,36 +344,13 @@
   .lp-ready [data-reveal]:not([data-shown]) { opacity: 1; transform: none; }
 }
 
-/* Scroll-triggered entrances for the steps, checks and audience grids. */
-@keyframes lp-rise {
-  from { opacity: 0; transform: translateY(36px) scale(0.96); }
-  to { opacity: 1; transform: none; }
-}
-@keyframes lp-zoom {
-  from { opacity: 0; transform: scale(0.85); filter: blur(6px); }
-  to { opacity: 1; transform: none; filter: none; }
-}
-@keyframes lp-from-start {
-  from { opacity: 0; transform: translateX(60px) rotate(3deg); }
-  to { opacity: 1; transform: none; }
-}
-@keyframes lp-from-end {
-  from { opacity: 0; transform: translateX(-60px) rotate(-3deg); }
-  to { opacity: 1; transform: none; }
-}
+/* Scan sweep across the fee line being checked. */
 @keyframes lp-sweep {
   from { inset-inline-start: -35%; }
   to { inset-inline-start: 100%; }
 }
 
 @layer components {
-  .lp-ready .lp-steps:not(.is-in) .lp-step,
-  .lp-ready .lp-checks:not(.is-in) .lp-check,
-  .lp-ready .lp-audience:not(.is-in) .lp-aud { opacity: 0; }
-  .lp-steps.is-in .lp-step { animation: lp-rise 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
-  .lp-checks.is-in .lp-check { animation: lp-zoom 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
-  .lp-audience.is-in .lp-aud:nth-child(odd) { animation: lp-from-start 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
-  .lp-audience.is-in .lp-aud:nth-child(even) { animation: lp-from-end 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
   .lp-scanbar {
     background: linear-gradient(90deg, transparent, oklch(0.66 0.13 70 / 0.16), transparent);
     animation: lp-sweep 0.9s ease-in-out;

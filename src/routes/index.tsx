@@ -464,43 +464,6 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
   );
 }
 
-/** True once the element has scrolled into view (and stays true). */
-function useInView<T extends Element>(threshold = 0.3) {
-  const ref = useRef<T>(null);
-  const [inView, setInView] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === "undefined") {
-      setInView(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          setInView(true);
-          observer.disconnect();
-        }
-      },
-      { threshold },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [threshold]);
-  return [ref, inView] as const;
-}
-
-/** Steps through 0..count-1 while `active`; stays still for reduced-motion users. */
-function useCycle(count: number, active: boolean, delay: number) {
-  const [index, setIndex] = useState(0);
-  useEffect(() => {
-    if (!active) return;
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const timer = window.setInterval(() => setIndex((i) => (i + 1) % count), delay);
-    return () => window.clearInterval(timer);
-  }, [active, count, delay]);
-  return index;
-}
-
 const SHOWCASE: TourItem[] = [
   {
     key: "invoice",
@@ -553,8 +516,7 @@ function PinnedTour({
   id,
   eyebrow,
   title,
-  desktopHint,
-  mobileHint,
+  hint,
   items,
   renderVisual,
   ctaLabel,
@@ -563,8 +525,7 @@ function PinnedTour({
   id: string;
   eyebrow?: string;
   title: string;
-  desktopHint: string;
-  mobileHint: string;
+  hint: string;
   items: TourItem[];
   renderVisual: (key: string, active: boolean) => ReactNode;
   ctaLabel: (item: TourItem) => string;
@@ -628,8 +589,7 @@ function PinnedTour({
             {title}
           </h2>
           <p className="mt-3 text-base text-muted-foreground">
-            <span className="hidden lg:inline">{desktopHint}</span>
-            <span className="lg:hidden">{mobileHint}</span>
+            {hint}
           </p>
         </div>
       </div>
@@ -723,36 +683,40 @@ function PinnedTour({
         </div>
       </div>
 
-      <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-12 sm:px-6 lg:hidden">
-        {items.map((item, index) => (
-          <article key={item.key} data-reveal className="overflow-hidden rounded-3xl border border-border bg-card">
-            <div className="p-6">
-              <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary-text">
-                  <item.icon className="size-5" />
+      <MobilePinned
+        labels={items.map((item) => item.name)}
+        panelClass="bg-secondary"
+        fillClass="bg-primary"
+        renderVisual={(index, active) => renderVisual(items[index]!.key, active)}
+        renderText={(index) => {
+          const item = items[index]!;
+          return (
+            <>
+              <div className="flex items-center gap-2.5">
+                <span className="grid size-9 place-items-center rounded-xl bg-secondary text-primary-text">
+                  <item.icon className="size-[18px]" />
                 </span>
                 <span className="num text-xs text-muted-foreground" dir="ltr">
                   {counter(index)}
                 </span>
               </div>
-              <h3 className="mt-4 font-display text-2xl font-extrabold">{item.name}</h3>
-              <p className="mt-2 font-medium">{item.tagline}</p>
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.body}</p>
+              <h3 className="mt-2 font-display text-2xl font-extrabold">{item.name}</h3>
+              <p className="mt-1 text-[15px] font-medium">{item.tagline}</p>
+              <p className="mt-1 text-[13px] leading-6 text-muted-foreground">{item.body}</p>
               {item.points ? (
-                <ul className="mt-3 space-y-1.5 text-sm">
+                <ul className="mt-2 flex flex-wrap gap-1.5">
                   {item.points.map((point) => (
-                    <li key={point} className="flex items-center gap-2">
-                      <Check className="size-4 shrink-0 text-success" />
+                    <li key={point} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs">
+                      <Check className="size-3.5 shrink-0 text-success" />
                       {point}
                     </li>
                   ))}
                 </ul>
               ) : null}
-            </div>
-            <div className="grid place-items-center bg-secondary p-5">{renderVisual(item.key, true)}</div>
-          </article>
-        ))}
-      </div>
+            </>
+          );
+        }}
+      />
     </section>
   );
 }
@@ -762,8 +726,7 @@ function ProductShowcase() {
     <PinnedTour
       id="products"
       title="كل أداة في تدقيق، وهي تعمل."
-      desktopHint="واصل التمرير للانتقال من أداة إلى أخرى."
-      mobileHint="ست أدوات تعمل من نفس الفروع والعقود والملفات."
+      hint="واصل التمرير للانتقال من أداة إلى أخرى."
       items={SHOWCASE}
       renderVisual={(key, active) => <ShowcaseVisual kind={key} active={active} />}
       ctaLabel={(item) => `جرّب ${item.name}`}
@@ -778,8 +741,7 @@ function Audiences() {
       id="who"
       eyebrow="لمن تدقيق"
       title="لمن يملك الأرقام ويُسأل عنها."
-      desktopHint="واصل التمرير لترى ما يحصل عليه كل دور."
-      mobileHint="كل دور يرى ما يحتاجه من نفس الأرقام."
+      hint="واصل التمرير لترى ما يحصل عليه كل دور."
       items={AUDIENCES}
       renderVisual={(key, active) => <AudienceVisual kind={key} active={active} />}
       ctaLabel={() => "ابدأ التدقيق"}
@@ -1090,7 +1052,6 @@ function CheckCard({
   flagged,
   compact = false,
   selected = false,
-  expanded = false,
   onSelect,
 }: {
   item: CheckItem;
@@ -1098,7 +1059,6 @@ function CheckCard({
   flagged: boolean;
   compact?: boolean;
   selected?: boolean;
-  expanded?: boolean;
   onSelect?: () => void;
 }) {
   const dark = flagged && state === "checked";
@@ -1107,7 +1067,7 @@ function CheckCard({
     <button
       type="button"
       onClick={onSelect}
-      aria-expanded={onSelect ? expanded || selected : undefined}
+      aria-current={selected ? "step" : undefined}
       className={cn(
         "group relative h-full w-full overflow-hidden rounded-[14px] border text-start transition-[border-color,background-color,box-shadow,transform,opacity] duration-500 hover:-translate-y-1",
         compact ? "p-4" : "p-5",
@@ -1141,17 +1101,9 @@ function CheckCard({
       </div>
       <h3 className={cn("relative font-bold", compact ? "mt-3 text-[15px]" : "mt-4")}>{item.title}</h3>
       <p className={cn("relative mt-1.5 text-[13px]", dark ? "text-ink-muted" : "text-muted-foreground")}>{item.body}</p>
-      {expanded ? (
-        <div className={cn("relative mt-3 border-t pt-3 text-[13px] leading-6", dark ? "border-ink-foreground/15" : "border-border")}>
-          <p className={cn("text-[11px] font-semibold", dark ? "text-primary" : "text-primary-text")}>كيف نتحقق</p>
-          <p className="mt-1">{item.how}</p>
-          <p className={cn("mt-2 rounded-lg px-2.5 py-2 text-xs", dark ? "bg-ink-foreground/10" : "bg-muted")}>مثال: {item.example}</p>
-        </div>
-      ) : (
-        <span className={cn("relative mt-3 block text-[11px] font-semibold", dark ? "text-primary" : "text-primary-text")}>
-          {onSelect ? "كيف نتحقق؟" : null}
-        </span>
-      )}
+      <span className={cn("relative mt-3 block text-[11px] font-semibold", dark ? "text-primary" : "text-primary-text")}>
+        {onSelect ? "كيف نتحقق؟" : null}
+      </span>
     </button>
   );
 }
@@ -1211,21 +1163,132 @@ function useTrackProgress<T extends HTMLElement>() {
   return [ref, progress] as const;
 }
 
-function ChecksGrid() {
-  const [trackRef, progress] = useTrackProgress<HTMLDivElement>();
-  // Slightly shorter than the track so the last card settles before the section unpins.
-  const active = Math.min(CHECKS.length, Math.floor(Math.min(1, progress / 0.9) * CHECKS.length));
-  const verified = Math.min(active, CHECKS.length - 1);
-  const done = active >= CHECKS.length;
-  const focus = Math.min(active, CHECKS.length - 1);
-  const focusItem = CHECKS[focus] ?? CHECKS[0]!;
+/** Scales its child down (never up) so it fits the box, whatever the phone's height. */
+function FitBox({ children }: { children: ReactNode }) {
+  const outerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const next = Math.min(1, (outer.clientHeight - 24) / inner.offsetHeight);
+      setScale(next > 0 ? Math.round(next * 100) / 100 : 1);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(outer);
+    observer.observe(inner);
+    measure();
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <div ref={outerRef} className="absolute inset-0 grid place-items-center overflow-hidden px-3">
+      <div ref={innerRef} className="grid w-full place-items-center" style={{ transform: `scale(${scale})` }}>
+        {children}
+      </div>
+    </div>
+  );
+}
 
-  const [gridRef, inView] = useInView<HTMLDivElement>(0.25);
-  const cycling = useCycle(CHECKS.length + 2, inView, 900);
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+/** Phone version of the pinned sections: progress segments, the current step's text, and its visual fitted below. */
+function MobilePinned({
+  labels,
+  stepVh = 60,
+  panelClass,
+  fillClass,
+  renderText,
+  renderVisual,
+}: {
+  labels: string[];
+  stepVh?: number;
+  panelClass: string;
+  fillClass: string;
+  renderText: (index: number) => ReactNode;
+  renderVisual: (index: number, active: boolean) => ReactNode;
+}) {
+  const [trackRef, progress] = useTrackProgress<HTMLDivElement>();
+  const count = labels.length;
+  const scaled = Math.min(0.999, progress / 0.92) * count;
+  const active = Math.min(count - 1, Math.floor(scaled));
+  const within = progress >= 0.92 ? 1 : scaled - active;
 
   function jumpTo(index: number) {
     const track = trackRef.current;
+    if (!track) return;
+    const top = track.getBoundingClientRect().top + window.scrollY;
+    const scrollable = track.offsetHeight - window.innerHeight;
+    window.scrollTo({ top: top + scrollable * 0.92 * ((index + 0.15) / count), behavior: "smooth" });
+  }
+
+  return (
+    <div ref={trackRef} className="relative lg:hidden" style={{ height: `${100 + count * stepVh}vh` }}>
+      <div className="sticky top-0 flex h-[100svh] flex-col px-4 pt-[84px] pb-4 sm:px-6 sm:pt-[96px]">
+        <div className="mx-auto flex min-h-0 w-full max-w-xl flex-1 flex-col">
+          <div className="flex gap-1.5">
+            {labels.map((label, index) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => jumpTo(index)}
+                aria-label={label}
+                aria-current={index === active ? "step" : undefined}
+                className="flex-1 py-2"
+              >
+                <span className="block h-1 overflow-hidden rounded-full bg-foreground/10">
+                  <span
+                    className={cn("block h-full rounded-full transition-[width] duration-300 ease-out", fillClass)}
+                    style={{ width: `${Math.round((index < active ? 1 : index === active ? within : 0) * 100)}%` }}
+                  />
+                </span>
+              </button>
+            ))}
+          </div>
+          <div key={active} className="lp-stagger mt-1.5 flex shrink-0 flex-col">
+            {renderText(active)}
+          </div>
+          <div className={cn("relative mt-3 min-h-0 flex-1 overflow-hidden rounded-3xl", panelClass)}>
+            {labels.map((label, index) => (
+              <div
+                key={label}
+                aria-hidden={index !== active}
+                className={cn(
+                  "absolute inset-0 transition-[opacity,transform] duration-500 ease-out",
+                  index === active
+                    ? "translate-y-0 opacity-100"
+                    : index < active
+                      ? "pointer-events-none -translate-y-6 opacity-0"
+                      : "pointer-events-none translate-y-6 opacity-0",
+                )}
+              >
+                <FitBox>{renderVisual(index, index === active)}</FitBox>
+              </div>
+            ))}
+            <span className="absolute bottom-3 start-4 rounded-full bg-card/80 px-2.5 py-1 text-[10px] text-muted-foreground">
+              مثال توضيحي
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Where the audit is for a 0..1 scroll progress: `active` lines are checked, the next one is being scanned. */
+function checkProgress(progress: number) {
+  // Slightly shorter than the track so the last card settles before the section unpins.
+  const active = Math.min(CHECKS.length, Math.floor(Math.min(1, progress / 0.9) * CHECKS.length));
+  const focus = Math.min(active, CHECKS.length - 1);
+  return { active, verified: Math.min(active, CHECKS.length - 1), done: active >= CHECKS.length, focus };
+}
+
+function ChecksGrid() {
+  const [trackRef, progress] = useTrackProgress<HTMLDivElement>();
+  const [mobileTrackRef, mobileProgress] = useTrackProgress<HTMLDivElement>();
+  const desktop = checkProgress(progress);
+  const mobile = checkProgress(mobileProgress);
+
+  function jumpTo(track: HTMLDivElement | null, index: number) {
     if (!track) return;
     const top = track.getBoundingClientRect().top + window.scrollY;
     const scrollable = track.offsetHeight - window.innerHeight;
@@ -1238,6 +1301,45 @@ function ChecksGrid() {
     </SectionIntro>
   );
 
+  const status = ({ active, verified, done }: ReturnType<typeof checkProgress>) => (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          تم التحقق من <span className="num text-2xl font-semibold text-foreground">{verified}</span> من{" "}
+          <span className="num">{CHECKS.length - 1}</span> بنود
+        </p>
+        <span className={cn("text-xs font-semibold", done ? "text-success" : "text-primary-text")}>
+          {done ? "اكتمل التدقيق" : "جارٍ التدقيق"}
+        </span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-2 rounded-full bg-primary transition-[width] duration-300 ease-out"
+          style={{ width: `${Math.round((active / CHECKS.length) * 100)}%` }}
+        />
+      </div>
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows,opacity] duration-500",
+          done ? "mt-3 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+        )}
+      >
+        <div className="overflow-hidden">
+          <div className="flex items-center justify-between gap-4 rounded-xl bg-ink px-4 py-3 text-ink-foreground">
+            <p className="text-[13px]">7 بنود مطابقة، وبند واحد يحتاج مراجعة</p>
+            <p className="shrink-0 text-end">
+              <span className="num block text-xl font-semibold text-primary">1,907.85</span>
+              <span className="text-[11px] text-ink-muted">ر.س لصالحك · مثال</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const cardState = (index: number, active: number): CheckState =>
+    index < active ? "checked" : index === active ? "scanning" : "idle";
+
   return (
     <section aria-label="ما الذي نراجعه">
       <div ref={trackRef} className="relative hidden lg:block" style={{ height: `${CHECKS.length * 45 + 70}vh` }}>
@@ -1245,40 +1347,13 @@ function ChecksGrid() {
           <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center gap-12 px-6 pt-20">
             <div>
               <div className="[&_h2]:text-[2.2rem] [&_h2]:leading-[1.35]">{intro}</div>
-              <div className="mt-6 rounded-2xl border border-border bg-card p-4">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-sm text-muted-foreground">
-                    تم التحقق من <span className="num text-2xl font-semibold text-foreground">{verified}</span> من{" "}
-                    <span className="num">{CHECKS.length - 1}</span> بنود
-                  </p>
-                  <span className={cn("text-xs font-semibold", done ? "text-success" : "text-primary-text")}>
-                    {done ? "اكتمل التدقيق" : "جارٍ التدقيق"}
-                  </span>
-                </div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-2 rounded-full bg-primary transition-[width] duration-300 ease-out"
-                    style={{ width: `${Math.round((active / CHECKS.length) * 100)}%` }}
-                  />
-                </div>
-                <div
-                  className={cn(
-                    "grid transition-[grid-template-rows,opacity] duration-500",
-                    done ? "mt-3 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
-                  )}
-                >
-                  <div className="overflow-hidden">
-                    <div className="flex items-center justify-between gap-4 rounded-xl bg-ink px-4 py-3 text-ink-foreground">
-                      <p className="text-[13px]">7 بنود مطابقة، وبند واحد يحتاج مراجعة</p>
-                      <p className="shrink-0 text-end">
-                        <span className="num block text-xl font-semibold text-primary">1,907.85</span>
-                        <span className="text-[11px] text-ink-muted">ر.س لصالحك · مثال</span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <CheckExplainer key={focus} item={focusItem} index={focus} flagged={focus === CHECKS.length - 1} />
+              <div className="mt-6">{status(desktop)}</div>
+              <CheckExplainer
+                key={desktop.focus}
+                item={CHECKS[desktop.focus]!}
+                index={desktop.focus}
+                flagged={desktop.focus === CHECKS.length - 1}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               {CHECKS.map((item, index) => (
@@ -1287,9 +1362,9 @@ function ChecksGrid() {
                   compact
                   item={item}
                   flagged={index === CHECKS.length - 1}
-                  selected={!done && index === focus}
-                  state={index < active ? "checked" : index === active ? "scanning" : "idle"}
-                  onSelect={() => jumpTo(index)}
+                  selected={!desktop.done && index === desktop.focus}
+                  state={cardState(index, desktop.active)}
+                  onSelect={() => jumpTo(trackRef.current, index)}
                 />
               ))}
             </div>
@@ -1297,24 +1372,90 @@ function ChecksGrid() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:hidden">
-        {intro}
-        <p className="mt-4 text-sm text-muted-foreground">اضغط على أي بند لترى كيف نتحقق منه.</p>
-        <div ref={gridRef} className={cn("lp-checks mt-6 grid gap-3.5 sm:grid-cols-2", inView && "is-in")}>
-          {CHECKS.map((item, index) => (
-            <div key={item.title} style={{ animationDelay: `${(index % 2) * 0.08 + Math.floor(index / 2) * 0.12}s` }} className="lp-check">
-              <CheckCard
-                item={item}
-                flagged={index === CHECKS.length - 1}
-                expanded={openIndex === index}
-                onSelect={() => setOpenIndex((v) => (v === index ? null : index))}
-                state={inView && index < cycling ? "checked" : inView && index === cycling ? "scanning" : "idle"}
+      <div className="mx-auto max-w-2xl px-4 pt-20 sm:px-6 lg:hidden">{intro}</div>
+      <div ref={mobileTrackRef} className="relative lg:hidden" style={{ height: `${100 + CHECKS.length * 40}vh` }}>
+        <div className="sticky top-0 flex h-[100svh] flex-col px-4 pt-[88px] pb-4 sm:px-6 sm:pt-[100px]">
+          <div className="mx-auto flex min-h-0 w-full max-w-xl flex-1 flex-col">
+            {status(mobile)}
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {CHECKS.map((item, index) => (
+                <CheckTile
+                  key={item.title}
+                  item={item}
+                  flagged={index === CHECKS.length - 1}
+                  selected={!mobile.done && index === mobile.focus}
+                  state={cardState(index, mobile.active)}
+                  onSelect={() => jumpTo(mobileTrackRef.current, index)}
+                />
+              ))}
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden [mask-image:linear-gradient(to_bottom,black_88%,transparent)]">
+              <CheckExplainer
+                key={mobile.focus}
+                item={CHECKS[mobile.focus]!}
+                index={mobile.focus}
+                flagged={mobile.focus === CHECKS.length - 1}
               />
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </section>
+  );
+}
+
+/** Compact phone tile for one fee line: icon, short title and its check state. */
+function CheckTile({
+  item,
+  state,
+  flagged,
+  selected,
+  onSelect,
+}: {
+  item: CheckItem;
+  state: CheckState;
+  flagged: boolean;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const dark = flagged && state === "checked";
+  const Icon = item.icon;
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-label={item.title}
+      aria-current={selected ? "step" : undefined}
+      className={cn(
+        "relative flex flex-col items-center gap-1.5 overflow-hidden rounded-xl border px-1 pt-2.5 pb-2 text-center transition-[border-color,background-color,box-shadow] duration-500",
+        dark
+          ? "border-ink bg-ink text-ink-foreground"
+          : state === "scanning" || selected
+            ? "border-primary bg-card shadow-[0_0_0_3px_oklch(0.66_0.13_70/0.18)]"
+            : "border-border bg-card",
+      )}
+    >
+      {state === "scanning" ? <span aria-hidden="true" className="lp-scanbar absolute inset-y-0 w-1/2" /> : null}
+      <span
+        className={cn(
+          "relative grid size-8 place-items-center rounded-lg",
+          dark ? "bg-ink-foreground/10 text-primary" : "bg-muted text-primary-text",
+        )}
+      >
+        <Icon className="size-4" />
+      </span>
+      <span className="relative line-clamp-2 text-[10.5px] leading-[15px] font-semibold">{item.title}</span>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute top-1 end-1 grid size-4 place-items-center rounded-full text-[9px] font-bold transition-[opacity,transform] duration-300",
+          state === "checked" ? "scale-100 opacity-100" : "scale-50 opacity-0",
+          flagged ? "bg-primary text-primary-foreground" : "bg-success text-white",
+        )}
+      >
+        {flagged ? "!" : <Check className="size-2.5" />}
+      </span>
+    </button>
   );
 }
 
@@ -1515,7 +1656,6 @@ const FLOW_TONES = {
     ring: "border-success/25",
     counter: "text-success",
     note: "bg-card/70",
-    mobileBorder: "border-success/20",
     mobileIcon: "bg-success text-white",
     mobileNote: "bg-success-soft",
   },
@@ -1532,7 +1672,6 @@ const FLOW_TONES = {
     ring: "border-primary/25",
     counter: "text-primary-text",
     note: "bg-card",
-    mobileBorder: "border-border",
     mobileIcon: "bg-ink text-primary",
     mobileNote: "bg-muted",
   },
@@ -1658,31 +1797,36 @@ function ScrollFlow({
         </div>
       </div>
 
-      <div className="mx-auto max-w-2xl px-4 py-20 sm:px-6 lg:hidden">
-        {intro}
-        <ol className="mt-8 space-y-5">
-          {steps.map((step, index) => (
-            <li key={step.title} data-reveal className={cn("overflow-hidden rounded-3xl border bg-card", t.mobileBorder)}>
-              <div className="p-5">
-                <div className="flex items-center gap-3">
-                  <span className={cn("grid size-10 place-items-center rounded-full", t.mobileIcon)}>
-                    <step.icon className="size-[18px]" />
-                  </span>
-                  <div>
-                    <p className="num text-[11px] text-muted-foreground" dir="ltr">
+      <div className="mx-auto max-w-2xl px-4 pt-20 sm:px-6 lg:hidden">{intro}</div>
+      <MobilePinned
+        labels={steps.map((step) => step.title)}
+        panelClass={t.panel}
+        fillClass={t.fill}
+        renderVisual={renderVisual}
+        renderText={(index) => {
+          const step = steps[index]!;
+          return (
+            <>
+              <div className="flex items-center gap-3">
+                <span className={cn("grid size-10 shrink-0 place-items-center rounded-full", t.mobileIcon)}>
+                  <step.icon className="size-[18px]" />
+                </span>
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 text-[11px]">
+                    <span className="num text-muted-foreground" dir="ltr">
                       {counter(index)}
-                    </p>
-                    <p className="font-bold">{step.title}</p>
-                  </div>
+                    </span>
+                    <span className={cn("font-semibold", t.who)}>{step.who}</span>
+                  </p>
+                  <h3 className="text-lg font-bold">{step.title}</h3>
                 </div>
-                <p className="mt-3 text-sm leading-7 text-foreground/80">{step.body}</p>
-                <p className={cn("mt-2 rounded-lg px-3 py-2 text-[13px] text-muted-foreground", t.mobileNote)}>{step.detail}</p>
               </div>
-              <div className={cn("grid place-items-center p-5", t.panel)}>{renderVisual(index, true)}</div>
-            </li>
-          ))}
-        </ol>
-      </div>
+              <p className="mt-2 text-[13px] leading-6 text-foreground/80">{step.body}</p>
+              <p className={cn("mt-2 rounded-lg px-3 py-2 text-xs leading-5 text-muted-foreground", t.mobileNote)}>{step.detail}</p>
+            </>
+          );
+        }}
+      />
     </section>
   );
 }
