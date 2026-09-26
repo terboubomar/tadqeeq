@@ -1,5 +1,29 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { ArrowLeft, Check, ChevronDown, Menu, Video, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Building2,
+  Calculator,
+  Check,
+  ChevronDown,
+  CircleHelp,
+  CreditCard,
+  FileSpreadsheet,
+  HandCoins,
+  LineChart,
+  Menu,
+  Percent,
+  Receipt,
+  RotateCcw,
+  Scale,
+  SearchCheck,
+  Store,
+  Tag,
+  Truck,
+  Upload,
+  Video,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { isOpsHost } from "@/lib/ops";
@@ -53,29 +77,29 @@ const AFTER = [
   "فترة مغلقة بسجل قابل للمراجعة",
 ];
 
-const STEPS = [
-  ["01", "ارفع الملفات", "ملف الطلبات وفاتورة المنصة بصيغتها الأصلية. يتعرّف تدقيق على المنصة والفترة تلقائياً."],
-  ["02", "نعيد الاحتساب", "محرك محاسبي ثابت يحتسب كل بند بمعادلات عقدك ويقارنه بما ورد في الفاتورة."],
-  ["03", "راجع الفروقات", "كل فرق يظهر مع مصدره ومعادلته والسطر المقابل في الفاتورة حتى تتخذ القرار."],
-  ["04", "استرد وأغلق", "جهّز مطالبة التعويض بأدلتها، ثم أغلق الفترة واحفظها في سجل قابل للمراجعة."],
+const STEPS: Array<[string, string, string, LucideIcon]> = [
+  ["01", "ارفع الملفات", "ملف الطلبات وفاتورة المنصة بصيغتها الأصلية. يتعرّف تدقيق على المنصة والفترة تلقائياً.", Upload],
+  ["02", "نعيد الاحتساب", "محرك محاسبي ثابت يحتسب كل بند بمعادلات عقدك ويقارنه بما ورد في الفاتورة.", Calculator],
+  ["03", "راجع الفروقات", "كل فرق يظهر مع مصدره ومعادلته والسطر المقابل في الفاتورة حتى تتخذ القرار.", SearchCheck],
+  ["04", "استرد وأغلق", "جهّز مطالبة التعويض بأدلتها، ثم أغلق الفترة واحفظها في سجل قابل للمراجعة.", HandCoins],
 ];
 
-const CHECKS = [
-  ["عمولة المبيعات", "حسب نسبة العقد لكل فرع وقناة"],
-  ["رسوم الدفع الإلكتروني", "مدى والبطاقات وآبل باي"],
-  ["حملات التوصيل المجاني", "حصة المطعم من كل حملة"],
-  ["التعويضات", "التكرار والفرع الخاطئ والطلبات المفقودة"],
-  ["رسوم العروض ووقت الانتظار", "مع قياس العائد على كل عرض"],
-  ["ضريبة القيمة المضافة", "على كل بند خاضع للضريبة"],
-  ["صافي التسوية", "المستحق مقابل المحوّل فعلياً"],
-  ["بنود غير مصنفة", "أي خصم لا يطابق خريطة الرسوم"],
+const CHECKS: Array<[string, string, LucideIcon]> = [
+  ["عمولة المبيعات", "حسب نسبة العقد لكل فرع وقناة", Percent],
+  ["رسوم الدفع الإلكتروني", "مدى والبطاقات وآبل باي", CreditCard],
+  ["حملات التوصيل المجاني", "حصة المطعم من كل حملة", Truck],
+  ["التعويضات", "التكرار والفرع الخاطئ والطلبات المفقودة", RotateCcw],
+  ["رسوم العروض ووقت الانتظار", "مع قياس العائد على كل عرض", Tag],
+  ["ضريبة القيمة المضافة", "على كل بند خاضع للضريبة", Receipt],
+  ["صافي التسوية", "المستحق مقابل المحوّل فعلياً", Scale],
+  ["بنود غير مصنفة", "أي خصم لا يطابق خريطة الرسوم", CircleHelp],
 ];
 
-const AUDIENCES = [
-  ["صاحب المطعم", "ارفع ملفين في نهاية الشهر واعرف قبل السداد إن كانت الفاتورة صحيحة."],
-  ["المدير المالي", "كل رقم مربوط بمصدره، وكل فرق له حالة ومسؤول قبل اعتماد الفترة."],
-  ["مجموعة مطاعم", "قارن الفروع والمنصات واعرف أين تتكرر الفروقات لتتفاوض بأرقام."],
-  ["فريق المحاسبة", "تدقيق منظم وسريع مع نتائج قابلة للتصدير والمراجعة."],
+const AUDIENCES: Array<[string, string, LucideIcon]> = [
+  ["صاحب المطعم", "ارفع ملفين في نهاية الشهر واعرف قبل السداد إن كانت الفاتورة صحيحة.", Store],
+  ["المدير المالي", "كل رقم مربوط بمصدره، وكل فرق له حالة ومسؤول قبل اعتماد الفترة.", LineChart],
+  ["مجموعة مطاعم", "قارن الفروع والمنصات واعرف أين تتكرر الفروقات لتتفاوض بأرقام.", Building2],
+  ["فريق المحاسبة", "تدقيق منظم وسريع مع نتائج قابلة للتصدير والمراجعة.", FileSpreadsheet],
 ];
 
 const FAQS = [
@@ -281,28 +305,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
           </div>
         </section>
 
-        <section id="how" className="bg-muted">
-          <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-24">
-            <SectionIntro eyebrow="كيف يعمل" title="أربع خطوات. بدون جداول يدوية." />
-            <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {STEPS.map(([n, title, body], index) => (
-                <li
-                  key={n}
-                  data-reveal
-                  style={{ transitionDelay: `${index * 0.1}s` }}
-                  className={cn(
-                    "flex flex-col gap-2.5 rounded-2xl p-6",
-                    index === STEPS.length - 1 ? "bg-ink text-ink-foreground" : "bg-card",
-                  )}
-                >
-                  <span className={cn("num text-sm font-semibold", index === STEPS.length - 1 ? "text-primary" : "text-primary-text")}>{n}</span>
-                  <h3 className="text-lg font-bold">{title}</h3>
-                  <p className={cn("text-sm leading-7", index === STEPS.length - 1 ? "text-ink-muted" : "text-muted-foreground")}>{body}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
+        <HowItWorks />
 
         <section id="features" className="bg-[oklch(0.975_0.018_85)]">
           <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:py-28">
@@ -338,44 +341,9 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-24">
-          <div className="flex flex-wrap items-end justify-between gap-6">
-            <SectionIntro eyebrow="ما الذي نراجعه" title="كل بند في الفاتورة، لا الإجمالي فقط." />
-            <p data-reveal className="max-w-md text-base leading-8 text-muted-foreground">
-              أي خصم لا يطابق خريطة الرسوم يظهر كبند غير مصنف بدلاً من أن يمر دون أن يلاحظه أحد.
-            </p>
-          </div>
-          <div className="mt-10 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-            {CHECKS.map(([title, body], index) => (
-              <div
-                key={title}
-                data-reveal
-                style={{ transitionDelay: `${(index % 4) * 0.08}s` }}
-                className={cn(
-                  "rounded-[14px] p-5",
-                  index === CHECKS.length - 1 ? "bg-ink text-ink-foreground" : "border border-border bg-card",
-                )}
-              >
-                <h3 className="font-bold">{title}</h3>
-                <p className={cn("mt-1.5 text-[13px]", index === CHECKS.length - 1 ? "text-ink-muted" : "text-muted-foreground")}>{body}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        <ChecksGrid />
 
-        <section className="bg-muted">
-          <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
-            <SectionIntro eyebrow="لمن تدقيق" title="لمن يملك الأرقام ويُسأل عنها." />
-            <div className="mt-9 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-              {AUDIENCES.map(([title, body], index) => (
-                <div key={title} data-reveal style={{ transitionDelay: `${index * 0.08}s` }} className="rounded-2xl bg-card p-6">
-                  <h3 className="text-lg font-bold">{title}</h3>
-                  <p className="mt-2 text-sm leading-7 text-muted-foreground">{body}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <Audiences />
 
         {plans.length ? <Pricing plans={plans} /> : null}
 
@@ -431,6 +399,180 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         <span className="num">© {new Date().getFullYear()} تدقيق</span>
       </footer>
     </div>
+  );
+}
+
+/** True once the element has scrolled into view (and stays true). */
+function useInView<T extends Element>(threshold = 0.3) {
+  const ref = useRef<T>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setInView(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { threshold },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [threshold]);
+  return [ref, inView] as const;
+}
+
+/** Steps through 0..count-1 while `active`; stays still for reduced-motion users. */
+function useCycle(count: number, active: boolean, delay: number) {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => setIndex((i) => (i + 1) % count), delay);
+    return () => window.clearInterval(timer);
+  }, [active, count, delay]);
+  return index;
+}
+
+function HowItWorks() {
+  const [ref, inView] = useInView<HTMLOListElement>();
+  const active = useCycle(STEPS.length, inView, 2200);
+  return (
+    <section id="how" className="overflow-hidden bg-muted">
+      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-24">
+        <SectionIntro eyebrow="كيف يعمل" title="أربع خطوات. بدون جداول يدوية." />
+        <ol ref={ref} className={cn("lp-steps relative mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4", inView && "is-in")}>
+          <span aria-hidden="true" className="absolute inset-x-8 top-[45px] z-10 hidden h-0.5 rounded-full bg-border lg:block">
+            <span
+              className="block h-full origin-right rounded-full bg-primary transition-transform duration-700 ease-out"
+              style={{ transform: `scaleX(${inView ? (active + 1) / STEPS.length : 0})` }}
+            />
+          </span>
+          {STEPS.map(([n, title, body, Icon], index) => {
+            const on = inView && index === active;
+            const done = inView && index < active;
+            return (
+              <li
+                key={n}
+                style={{ animationDelay: `${index * 0.12}s` }}
+                className={cn(
+                  "lp-step relative flex flex-col gap-3 rounded-2xl p-6 transition-[background-color,color,box-shadow,transform] duration-500",
+                  on ? "bg-ink text-ink-foreground shadow-[0_24px_48px_-24px_rgb(19_35_43/0.55)]" : "bg-card",
+                )}
+              >
+                <span
+                  className={cn(
+                    "relative z-20 grid size-11 place-items-center rounded-full border-2 transition-colors duration-500",
+                    on
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : done
+                        ? "border-primary bg-card text-primary-text"
+                        : "border-border bg-card text-muted-foreground",
+                  )}
+                >
+                  {done ? <Check className="size-5" /> : <Icon className="size-5" />}
+                </span>
+                <span className={cn("num text-sm font-semibold", on ? "text-primary" : "text-primary-text")}>{n}</span>
+                <h3 className="text-lg font-bold">{title}</h3>
+                <p className={cn("text-sm leading-7 transition-colors duration-500", on ? "text-ink-muted" : "text-muted-foreground")}>{body}</p>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+function ChecksGrid() {
+  const [ref, inView] = useInView<HTMLDivElement>(0.25);
+  const active = useCycle(CHECKS.length + 2, inView, 900);
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-24">
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <SectionIntro eyebrow="ما الذي نراجعه" title="كل بند في الفاتورة، لا الإجمالي فقط." />
+        <p data-reveal className="max-w-md text-base leading-8 text-muted-foreground">
+          أي خصم لا يطابق خريطة الرسوم يظهر كبند غير مصنف بدلاً من أن يمر دون أن يلاحظه أحد.
+        </p>
+      </div>
+      <div ref={ref} className={cn("lp-checks mt-10 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4", inView && "is-in")}>
+        {CHECKS.map(([title, body, Icon], index) => {
+          const flagged = index === CHECKS.length - 1;
+          const scanning = inView && index === active;
+          const checked = inView && index < active;
+          return (
+            <div
+              key={title}
+              style={{ animationDelay: `${(index % 4) * 0.08 + Math.floor(index / 4) * 0.16}s` }}
+              className={cn(
+                "lp-check group relative overflow-hidden rounded-[14px] border p-5 transition-[border-color,background-color,box-shadow,transform,opacity] duration-500 hover:-translate-y-1",
+                flagged && checked
+                  ? "border-ink bg-ink text-ink-foreground"
+                  : scanning
+                    ? "border-primary bg-card shadow-[0_0_0_4px_oklch(0.66_0.13_70/0.18)]"
+                    : "border-border bg-card",
+              )}
+            >
+              {scanning ? <span aria-hidden="true" className="lp-scanbar absolute inset-y-0 w-1/3" /> : null}
+              <div className="relative flex items-start justify-between gap-3">
+                <span
+                  className={cn(
+                    "grid size-10 place-items-center rounded-xl transition-colors duration-500",
+                    flagged && checked ? "bg-ink-foreground/10 text-primary" : "bg-muted text-primary-text",
+                  )}
+                >
+                  <Icon className="size-5" />
+                </span>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[11px] font-semibold transition-all duration-300",
+                    checked ? "scale-100 opacity-100" : "scale-75 opacity-0",
+                    flagged ? "bg-primary text-primary-foreground" : "bg-success/15 text-success",
+                  )}
+                >
+                  {flagged ? "يحتاج مراجعة" : "✓ تم التحقق"}
+                </span>
+              </div>
+              <h3 className="relative mt-4 font-bold">{title}</h3>
+              <p className={cn("relative mt-1.5 text-[13px]", flagged && checked ? "text-ink-muted" : "text-muted-foreground")}>{body}</p>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function Audiences() {
+  const [ref, inView] = useInView<HTMLDivElement>();
+  return (
+    <section className="overflow-hidden bg-muted">
+      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+        <SectionIntro eyebrow="لمن تدقيق" title="لمن يملك الأرقام ويُسأل عنها." />
+        <div ref={ref} className={cn("lp-audience mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4", inView && "is-in")}>
+          {AUDIENCES.map(([title, body, Icon], index) => (
+            <div
+              key={title}
+              style={{ animationDelay: `${index * 0.12}s` }}
+              className="lp-aud group relative overflow-hidden rounded-2xl bg-card p-6 transition-[transform,box-shadow,opacity] duration-700 hover:-translate-y-2 hover:shadow-[0_24px_48px_-28px_rgb(19_35_43/0.45)]"
+            >
+              <span aria-hidden="true" className="absolute -top-10 -end-10 size-28 rounded-full bg-primary/10 transition-transform duration-700 group-hover:scale-150" />
+              <span className="relative grid size-12 place-items-center rounded-2xl bg-ink text-primary transition-transform duration-500 group-hover:-rotate-6 group-hover:scale-110">
+                <Icon className="size-6" />
+              </span>
+              <h3 className="relative mt-5 text-lg font-bold">{title}</h3>
+              <p className="relative mt-2 text-sm leading-7 text-muted-foreground">{body}</p>
+              <span aria-hidden="true" className="absolute inset-x-6 bottom-0 h-1 origin-right scale-x-0 rounded-t-full bg-primary transition-transform duration-500 group-hover:scale-x-100" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
