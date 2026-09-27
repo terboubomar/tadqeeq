@@ -22,6 +22,7 @@ import { arabicDate } from "@/lib/format";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
 import { WORKSPACE_ROLE_LABELS, type WorkspacePermission } from "@/lib/workspace-access";
+import { LogoWordmark } from "@/components/brand/Logo";
 
 type NavItem = { to: string; label: string; permission: WorkspacePermission; adminOnly?: boolean };
 
@@ -150,8 +151,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="min-h-screen bg-background" dir="rtl">
         <header className="mx-auto flex max-w-3xl items-center justify-between border-b border-border px-5 py-4">
           <div className="flex items-center gap-2.5">
-            <span className="grid size-9 place-items-center rounded-[8px] bg-primary text-lg font-bold text-primary-foreground">ت</span>
-            <span className="text-lg font-bold">تدقيق</span>
+            <LogoWordmark title="تدقيق" className="h-8 text-ink" />
           </div>
           <button
             type="button"
@@ -185,12 +185,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               to="/dashboard"
               className="flex items-center gap-2.5 border-b border-ink-2 px-1.5 pb-4"
             >
-              <span className="grid size-[30px] place-items-center rounded-lg bg-primary text-[15px] font-bold text-primary-foreground">
-                ت
-              </span>
               <span>
-                <span className="block font-display text-[15px] font-bold leading-tight text-ink-foreground">تدقيق</span>
-                <span className="mt-0.5 block text-[11px] text-ink-muted">
+                <LogoWordmark title="تدقيق" className="h-7 text-ink-foreground" />
+                <span className="mt-1.5 block text-[11px] text-ink-muted">
                   مراجعة فواتير التوصيل
                 </span>
               </span>

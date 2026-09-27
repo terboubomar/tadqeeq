@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { OPS_ROLE_LABELS, opsAllowedHost, opsCan, type OpsSection } from "@/lib/ops";
 import { getOpsMe } from "@/lib/ops.functions";
 import { OpsRoleContext } from "@/components/OpsShared";
+import { LogoMark } from "@/components/brand/Logo";
 
 export const Route = createFileRoute("/ops")({
   ssr: false,
@@ -62,7 +63,7 @@ function OpsLayout() {
       <div dir="rtl" className="min-h-screen bg-muted/30 lg:flex">
         <aside className="border-b border-border bg-foreground text-background lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:shrink-0 lg:border-b-0">
           <div className="flex items-center gap-3 px-5 py-5">
-            <span className="grid size-9 place-items-center rounded-md bg-primary font-bold text-primary-foreground">ت</span>
+            <LogoMark className="h-8" />
             <div>
               <p className="text-sm font-bold">تدقيق · العمليات</p>
               <p className="text-[11px] opacity-60">{me.data.email} · {OPS_ROLE_LABELS[role]}</p>

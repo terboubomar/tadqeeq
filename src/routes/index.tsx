@@ -35,6 +35,7 @@ import { getRequestHost } from "@/lib/ops.functions";
 import { CORE_FEATURE_LABELS, PLAN_FEATURES, type PublicPlan } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 import { listPublicPlans } from "@/lib/plans.functions";
+import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
@@ -241,10 +242,11 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
       <div className="sticky top-0 z-40 px-3 pt-3 sm:px-6 sm:pt-4">
         <header className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 rounded-full border border-border bg-card/95 ps-4 pe-2 shadow-[0_12px_32px_-18px_rgb(19_35_43/0.28)] backdrop-blur sm:h-[68px] sm:ps-5">
           <Link to="/" aria-label="تدقيق — الرئيسية" className="flex items-center gap-2.5">
-            <span className="grid size-9 place-items-center rounded-[11px] bg-ink font-display text-lg font-extrabold text-primary">ت</span>
-            <span className="flex flex-col leading-tight">
-              <span className="font-display text-lg font-extrabold">تدقيق</span>
-              <span className="hidden text-[11px] text-muted-foreground sm:block">مراجعة فواتير التوصيل</span>
+            <LogoWordmark className="h-8 text-ink sm:h-9" />
+            <span className="hidden border-s border-border ps-2.5 text-[11px] leading-tight text-muted-foreground sm:block">
+              مراجعة فواتير
+              <br />
+              التوصيل
             </span>
           </Link>
           <nav aria-label="الرئيسية" className="hidden items-center gap-1 rounded-full bg-background p-1 text-sm lg:flex">
@@ -455,8 +457,8 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
 
       <footer className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 pb-10 text-[13px] text-muted-foreground sm:px-6">
         <div className="flex items-center gap-2.5">
-          <span className="grid size-7 place-items-center rounded-[7px] bg-primary font-display text-sm font-extrabold text-primary-foreground">ت</span>
-          <span>تدقيق · مراجعة فواتير التوصيل للمطاعم في السعودية</span>
+          <LogoWordmark className="h-6 text-ink" />
+          <span>مراجعة فواتير التوصيل للمطاعم في السعودية</span>
         </div>
         <span className="num">© {new Date().getFullYear()} تدقيق</span>
       </footer>
@@ -1489,7 +1491,7 @@ function HeroDashboard() {
       className="lp-slide flex overflow-hidden rounded-[18px] border border-border bg-card shadow-[0_30px_60px_-30px_rgb(19_35_43/0.25)] lg:-me-24 lg:rounded-e-none"
     >
       <div className="hidden w-14 shrink-0 flex-col items-center gap-4 bg-ink pt-5 sm:flex">
-        <span className="grid size-7 place-items-center rounded-[7px] bg-primary font-display text-xs font-extrabold text-primary-foreground">ت</span>
+        <LogoMark className="h-6 text-ink-foreground" />
         {[0.5, 0.3, 0.3, 0.3].map((o, i) => (
           <span key={i} className="h-[3px] w-[18px] rounded-sm bg-ink-foreground" style={{ opacity: o }} />
         ))}
