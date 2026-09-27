@@ -58,6 +58,9 @@ describe("ops client delete", () => {
     before("recovery_case_details", "periods");
     before("contract_fee_rules", "contract_versions");
     before("contract_versions", "platform_contracts");
+    before("compensation_cases", "telegram_order_evidence");
+    before("telegram_order_evidence", "telegram_branch_chats");
     before("compensation_cases", "branch_registry");
+    before("telegram_branch_chats", "branch_registry");
   });
 });

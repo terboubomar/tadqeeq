@@ -224,6 +224,7 @@ export async function setOpsClientStatusOnServer(input: { workspaceId: string; s
 // ---------------- Edit / archive / delete ----------------
 const ARCHIVE_ACTION = "client.archive";
 const UNARCHIVE_ACTION = "client.unarchive";
+const DELETE_ACTION = "client.delete";
 
 type ArchiveEvent = { action: string; at: string; previousStatus: OnboardingStatus | null };
 
@@ -319,15 +320,18 @@ export async function setOpsClientArchivedOnServer(input: { workspaceId: string;
   }
 }
 
-/** Workspace-owned tables, children first; their foreign keys to workspaces are ON DELETE RESTRICT. */
+/**
+ * Workspace-owned tables, children first; their foreign keys to workspaces are ON DELETE RESTRICT.
+ * compensation_cases references telegram_order_evidence, which references telegram_branch_chats.
+ */
 const OWNED_TABLES_DELETE_ORDER = [
   "recovery_case_events",
   "recovery_case_documents",
   "recovery_case_details",
   "compensation_appeal_marks",
+  "compensation_cases",
   "telegram_order_evidence",
   "telegram_branch_chats",
-  "compensation_cases",
   "exception_events",
   "format_change_alerts",
   "audit_source_files",
@@ -373,12 +377,29 @@ export async function deleteOpsClientOnServer(input: { workspaceId: string; conf
   const actor = await requireOps("clients");
   if (actor.role !== "owner") throw new Error("الحذف النهائي متاح لمالك لوحة العمليات فقط.");
 
-  const { data: ws, error: wsError } = await db().from("workspaces").select("id,name").eq("id", input.workspaceId).maybeSingle();
+  const { data: ws, error: wsError } = await db().from("workspaces").select("id,name,owner_user_id").eq("id", input.workspaceId).maybeSingle();
   if (wsError) throw new Error(wsError.message);
   if (!ws) throw new Error("العميل غير موجود.");
   if (input.confirmName.trim() !== String(ws.name).trim()) throw new Error("اسم الشركة المكتوب لا يطابق — لم يتم الحذف.");
-  const latest = (await latestArchiveEvents(input.workspaceId)).get(input.workspaceId);
-  if (latest?.action !== ARCHIVE_ACTION) throw new Error("أرشف العميل أولاً قبل الحذف النهائي.");
+
+  // Contract tables have database guards (approved versions are immutable, and every change writes an
+  // audit event scoped to the signed-in user's workspace) that a server-side delete cannot pass. Stop
+  // before deleting anything so the client is never left half-deleted.
+  const { count: contracts, error: contractsError } = await db()
+    .from("platform_contracts")
+    .select("id", { count: "exact", head: true })
+    .eq("workspace_id", input.workspaceId);
+  if (contractsError) throw new Error(contractsError.message);
+  if (contracts) {
+    throw new Error(
+      `لا يمكن حذف ${ws.name} نهائياً لأن لديه عقود منصات محفوظة (${contracts})، وسجل العقود محمي في قاعدة البيانات. أبقِه مؤرشفاً — الأرشفة توقف وصوله بالكامل.`,
+    );
+  }
+
+  const [{ data: onb }, { data: ownerProfile }] = await Promise.all([
+    db().from("workspace_onboarding").select("legal_name,cr_number,contact_email,contact_mobile").eq("workspace_id", input.workspaceId).maybeSingle(),
+    db().from("profiles").select("email").eq("id", ws.owner_user_id).maybeSingle(),
+  ]);
 
   const files = await collectWorkspaceFiles(input.workspaceId);
   const { data: memberRows } = await db().from("workspace_members").select("user_id").eq("workspace_id", input.workspaceId);
@@ -421,8 +442,61 @@ export async function deleteOpsClientOnServer(input: { workspaceId: string; conf
     } else usersDeleted += 1;
   }
 
-  await log(actor, "client.delete", "workspace", input.workspaceId, null, { name: ws.name, usersDeleted, usersKept, filesRemoved });
+  await log(actor, DELETE_ACTION, "workspace", input.workspaceId, null, {
+    name: ws.name,
+    legalName: onb?.legal_name ?? null,
+    crNumber: onb?.cr_number ?? null,
+    contactEmail: onb?.contact_email ?? null,
+    contactMobile: onb?.contact_mobile ?? null,
+    ownerEmail: ownerProfile?.email ?? null,
+    usersDeleted,
+    usersKept,
+    filesRemoved,
+  });
   return { usersDeleted, usersKept, filesRemoved };
+}
+
+export interface DeletedOpsClient {
+  workspaceId: string | null;
+  name: string;
+  legalName: string | null;
+  crNumber: string | null;
+  contactEmail: string | null;
+  contactMobile: string | null;
+  ownerEmail: string | null;
+  usersDeleted: number;
+  filesRemoved: number;
+  deletedAt: string;
+  deletedBy: string | null;
+}
+
+/** Permanently deleted clients, read back from the ops audit log. */
+export async function listDeletedOpsClientsOnServer(): Promise<DeletedOpsClient[]> {
+  await requireOps("clients");
+  const { data, error } = await db()
+    .from("ops_audit_log")
+    .select("entity_id,actor_email,metadata,created_at")
+    .eq("action", DELETE_ACTION)
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Row[]).map((r) => {
+    const m = (r["metadata"] ?? {}) as Row;
+    const text = (k: string) => (typeof m[k] === "string" && m[k] ? (m[k] as string) : null);
+    return {
+      workspaceId: (r["entity_id"] as string | null) ?? null,
+      name: text("name") ?? "—",
+      legalName: text("legalName"),
+      crNumber: text("crNumber"),
+      contactEmail: text("contactEmail"),
+      contactMobile: text("contactMobile"),
+      ownerEmail: text("ownerEmail"),
+      usersDeleted: Number(m["usersDeleted"] ?? 0),
+      filesRemoved: Number(m["filesRemoved"] ?? 0),
+      deletedAt: String(r["created_at"]),
+      deletedBy: (r["actor_email"] as string | null) ?? null,
+    };
+  });
 }
 
 export async function listClientNotesOnServer(workspaceId: string) {

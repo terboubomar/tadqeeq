@@ -55,6 +55,7 @@ export const setOpsClientArchived = createServerFn({ method: "POST" })
 export const deleteOpsClient = createServerFn({ method: "POST" })
   .validator(z.object({ workspaceId: z.string().uuid(), confirmName: z.string().max(200) }))
   .handler(({ data }) => S.deleteOpsClientOnServer(data));
+export const listDeletedOpsClients = createServerFn({ method: "POST" }).validator(empty).handler(() => S.listDeletedOpsClientsOnServer());
 export const listClientNotes = createServerFn({ method: "POST" })
   .validator(z.object({ workspaceId: z.string().uuid() }))
   .handler(({ data }) => S.listClientNotesOnServer(data.workspaceId));

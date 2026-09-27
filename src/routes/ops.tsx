@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
-import { Activity, CreditCard, FileClock, LayoutDashboard, Loader2, LogOut, Receipt, Users, UserCog } from "lucide-react";
+import { Activity, Archive, CreditCard, FileClock, LayoutDashboard, Loader2, LogOut, Receipt, Users, UserCog } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
@@ -38,6 +38,7 @@ export const Route = createFileRoute("/ops")({
 const NAV: { to: string; label: string; section: OpsSection; icon: typeof Users }[] = [
   { to: "/ops", label: "نظرة عامة", section: "overview", icon: LayoutDashboard },
   { to: "/ops/clients", label: "العملاء", section: "clients", icon: Users },
+  { to: "/ops/archive", label: "الأرشيف والمحذوفة", section: "clients", icon: Archive },
   { to: "/ops/subscriptions", label: "الاشتراكات", section: "subscriptions", icon: CreditCard },
   { to: "/ops/payments", label: "المدفوعات", section: "payments", icon: Receipt },
   { to: "/ops/usage", label: "الاستخدام", section: "usage", icon: Activity },

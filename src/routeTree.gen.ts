@@ -26,6 +26,7 @@ import { Route as OpsStaffRouteImport } from './routes/ops/staff'
 import { Route as OpsPaymentsRouteImport } from './routes/ops/payments'
 import { Route as OpsLogsRouteImport } from './routes/ops/logs'
 import { Route as OpsClientsRouteImport } from './routes/ops/clients'
+import { Route as OpsArchiveRouteImport } from './routes/ops/archive'
 import { Route as CompensationScannerRouteImport } from './routes/compensation/scanner'
 import { Route as CompensationEvidenceRouteImport } from './routes/compensation/evidence'
 import { Route as CompensationCasesRouteImport } from './routes/compensation/cases'
@@ -130,6 +131,11 @@ const OpsLogsRoute = OpsLogsRouteImport.update({
 const OpsClientsRoute = OpsClientsRouteImport.update({
   id: '/clients',
   path: '/clients',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsArchiveRoute = OpsArchiveRouteImport.update({
+  id: '/archive',
+  path: '/archive',
   getParentRoute: () => OpsRoute,
 } as any)
 const CompensationScannerRoute = CompensationScannerRouteImport.update({
@@ -269,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/compensation/cases': typeof CompensationCasesRoute
   '/compensation/evidence': typeof CompensationEvidenceRoute
   '/compensation/scanner': typeof CompensationScannerRoute
+  '/ops/archive': typeof OpsArchiveRoute
   '/ops/clients': typeof OpsClientsRoute
   '/ops/logs': typeof OpsLogsRoute
   '/ops/payments': typeof OpsPaymentsRoute
@@ -306,6 +313,7 @@ export interface FileRoutesByTo {
   '/compensation/cases': typeof CompensationCasesRoute
   '/compensation/evidence': typeof CompensationEvidenceRoute
   '/compensation/scanner': typeof CompensationScannerRoute
+  '/ops/archive': typeof OpsArchiveRoute
   '/ops/clients': typeof OpsClientsRoute
   '/ops/logs': typeof OpsLogsRoute
   '/ops/payments': typeof OpsPaymentsRoute
@@ -347,6 +355,7 @@ export interface FileRoutesById {
   '/compensation/cases': typeof CompensationCasesRoute
   '/compensation/evidence': typeof CompensationEvidenceRoute
   '/compensation/scanner': typeof CompensationScannerRoute
+  '/ops/archive': typeof OpsArchiveRoute
   '/ops/clients': typeof OpsClientsRoute
   '/ops/logs': typeof OpsLogsRoute
   '/ops/payments': typeof OpsPaymentsRoute
@@ -388,6 +397,7 @@ export interface FileRouteTypes {
     | '/compensation/cases'
     | '/compensation/evidence'
     | '/compensation/scanner'
+    | '/ops/archive'
     | '/ops/clients'
     | '/ops/logs'
     | '/ops/payments'
@@ -425,6 +435,7 @@ export interface FileRouteTypes {
     | '/compensation/cases'
     | '/compensation/evidence'
     | '/compensation/scanner'
+    | '/ops/archive'
     | '/ops/clients'
     | '/ops/logs'
     | '/ops/payments'
@@ -465,6 +476,7 @@ export interface FileRouteTypes {
     | '/compensation/cases'
     | '/compensation/evidence'
     | '/compensation/scanner'
+    | '/ops/archive'
     | '/ops/clients'
     | '/ops/logs'
     | '/ops/payments'
@@ -608,6 +620,13 @@ declare module '@tanstack/react-router' {
       path: '/clients'
       fullPath: '/ops/clients'
       preLoaderRoute: typeof OpsClientsRouteImport
+      parentRoute: typeof OpsRoute
+    }
+    '/ops/archive': {
+      id: '/ops/archive'
+      path: '/archive'
+      fullPath: '/ops/archive'
+      preLoaderRoute: typeof OpsArchiveRouteImport
       parentRoute: typeof OpsRoute
     }
     '/compensation/scanner': {
@@ -822,6 +841,7 @@ const CompensationRouteWithChildren = CompensationRoute._addFileChildren(
 )
 
 interface OpsRouteChildren {
+  OpsArchiveRoute: typeof OpsArchiveRoute
   OpsClientsRoute: typeof OpsClientsRoute
   OpsLogsRoute: typeof OpsLogsRoute
   OpsPaymentsRoute: typeof OpsPaymentsRoute
@@ -832,6 +852,7 @@ interface OpsRouteChildren {
 }
 
 const OpsRouteChildren: OpsRouteChildren = {
+  OpsArchiveRoute: OpsArchiveRoute,
   OpsClientsRoute: OpsClientsRoute,
   OpsLogsRoute: OpsLogsRoute,
   OpsPaymentsRoute: OpsPaymentsRoute,
