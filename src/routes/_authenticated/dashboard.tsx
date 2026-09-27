@@ -3,31 +3,38 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
+  AlertTriangle,
   Banknote,
+  CalendarDays,
+  ChevronLeft,
+  CircleAlert,
   CreditCard,
   Percent,
   Receipt,
   RefreshCw,
+  ShieldCheck,
   ShoppingBag,
+  ShoppingCart,
   Sparkles,
   Store,
   TrendingUp,
   Wallet,
 } from "lucide-react";
 import {
-  Area,
-  AreaChart,
   Bar,
-  BarChart,
   CartesianGrid,
+  ComposedChart,
+  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { EmptyState } from "@/components/AppShell";
+import { ActivityFeed, ChartCard, MetricCard, StatTiles, TrendCard, type FeedItem } from "@/components/dash/DashKit";
+import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { AI_UI_ENABLED } from "@/lib/ai/config";
-import { StatCard } from "@/components/StatCard";
+import { buildPeriodExceptions, summarizeExceptions } from "@/lib/exceptions";
 import { Button } from "@/components/ui/button";
 import { arabicDate, count, money, percent, sar, short } from "@/lib/format";
 import { reanalyzeAuditPeriod } from "@/lib/reanalyze-period.functions";
@@ -57,9 +64,12 @@ const chartStyle = {
   labelStyle: { color: "var(--color-muted-foreground)" },
 };
 
+type Metric = { label: string; value: string; hint?: string; icon: typeof Banknote; tone?: "default" | "positive" | "negative" };
+
 function Dashboard() {
   const queryClient = useQueryClient();
-  const { selected, isLoading } = useSelectedPeriod();
+  const { can } = useWorkspaceAccess();
+  const { selected, periods, isLoading } = useSelectedPeriod();
   const [reanalyzing, setReanalyzing] = useState(false);
 
   if (isLoading) {
@@ -108,362 +118,343 @@ function Dashboard() {
     }
   }
 
-  const topBranches = [...selected.branches].slice(0, 8).map((branch) => ({
-    name: branch.branch.length > 18 ? `${branch.branch.slice(0, 18)}…` : branch.branch,
-    [costLabel]: Number(
-      (
-        isHunger
-          ? branch.commission
-          : isKeeta
-            ? (branch.keetaTotalCostExVat ?? branch.totalCharges)
-            : branch.totalCharges
-      ).toFixed(2),
-    ),
-    مبيعات: Number((isHunger ? branch.netSales : branch.grossSales).toFixed(2)),
-  }));
+  const branchCost = (branch: (typeof selected.branches)[number]) =>
+    isHunger ? branch.commission : isKeeta ? (branch.keetaTotalCostExVat ?? branch.totalCharges) : branch.totalCharges;
+  const branchSales = (branch: (typeof selected.branches)[number]) => (isHunger ? branch.netSales : branch.grossSales);
+  const topBranches = [...selected.branches].sort((a, b) => branchCost(b) - branchCost(a)).slice(0, 8);
+  const maxBranchCost = Math.max(...topBranches.map(branchCost), 1);
 
-  const daily = selected.daily
+  const days = selected.daily
     .filter(
       (day) =>
         (!selected.period_start || day.date >= selected.period_start) &&
         (!selected.period_end || day.date <= selected.period_end),
     )
-    .sort((left, right) => left.date.localeCompare(right.date))
-    .map((day) => ({
-      date: day.date.slice(8, 10) + "/" + day.date.slice(5, 7),
-      مبيعات: Number((isHunger ? day.netSales : day.grossSales).toFixed(2)),
-      [costLabel]: Number(day.commission.toFixed(2)),
+    .sort((left, right) => left.date.localeCompare(right.date));
+  const daily = days.map((day) => ({
+    date: day.date.slice(8, 10) + "/" + day.date.slice(5, 7),
+    مبيعات: Number((isHunger ? day.netSales : day.grossSales).toFixed(2)),
+    [costLabel]: Number(day.commission.toFixed(2)),
+  }));
+  const salesTotal = days.reduce((sum, day) => sum + (isHunger ? day.netSales : day.grossSales), 0);
+  const costTotal = days.reduce((sum, day) => sum + day.commission, 0);
+  const busiest = days.reduce<(typeof days)[number] | null>((max, day) => (!max || day.orders > max.orders ? day : max), null);
+  const dayLabel = (date: string) => date.slice(8, 10) + "/" + date.slice(5, 7);
+
+  // Same platform, latest versions only, newest first — for the commission trend strip.
+  const history = periods
+    .filter((p) => p.platform === selected.platform && !p.superseded_by)
+    .sort((a, b) => (b.period_end ?? "").localeCompare(a.period_end ?? ""))
+    .slice(0, 3);
+
+  const exceptions = can("exceptions.read") ? buildPeriodExceptions(selected) : [];
+  const exceptionSummary = summarizeExceptions(exceptions);
+  const attention: FeedItem[] = exceptions
+    .filter((e) => e.status !== "closed" && e.status !== "recovered")
+    .sort((a, b) => b.potentialRecovery - a.potentialRecovery || b.reviewAmount - a.reviewAmount)
+    .slice(0, 6)
+    .map((e) => ({
+      id: e.id,
+      icon: e.severity === "critical" ? CircleAlert : AlertTriangle,
+      tone: e.severity === "critical" ? "critical" : e.severity === "high" ? "warning" : "default",
+      title: e.label,
+      meta: [e.categoryLabel, e.branch].filter(Boolean).join(" · "),
+      aside: e.potentialRecovery > 0 ? `${short(e.potentialRecovery)} ر.س` : undefined,
+      to: "/exceptions",
     }));
 
-  return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="audit-heading">اللوحة التنفيذية</h1>
-        <p className="audit-subtitle">
-          {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)} ·{" "}
-          <PlatformName platform={selected.platform} iconClassName="size-4 rounded" /> · <span className="num">{count(s.branchCount)}</span> فرع ·{" "}
-          <span className="num">{count(s.orders)}</span> طلب
-        </p>
-      </header>
+  const platformMetrics: Metric[] = isHunger
+    ? [
+        { label: "صافي مدفوعات البطاقات", value: sar(s.netBankCards ?? s.ccSuccess), hint: "التحصيل الفعلي بعد استبعاد Failed by vendor", icon: CreditCard },
+        {
+          label: "رسوم الدفع الإلكتروني",
+          value: sar(selected.invoice?.paymentFees ?? s.bankFeeSuccess + s.bankFeeRefunded + (s.walletFee ?? 0)),
+          hint:
+            selected.invoice?.paymentFees !== undefined
+              ? `الفاتورة: ${sar(selected.invoice.paymentFees)} · بطاقات قابلة للتحقق: ${sar(s.bankFeeSuccess + s.bankFeeRefunded)} · محافظ حسب الفاتورة: ${sar(s.walletFee ?? 0)}`
+              : s.bankRate > 0
+                ? `رسوم البطاقات المحتسبة بنسبة ${percent(s.bankRate)} ${
+                    s.bankRateSource === "invoice" ? "(مستنتجة من الفاتورة — غير مستقلة)" : s.bankRateSource === "manual" ? "(نسبة العقد)" : ""
+                  }`
+                : "لم تُحدَّد نسبة — أدخل نسبة العقد أو أرفق الفاتورة للتسوية",
+          icon: Banknote,
+          tone: s.bankRate > 0 ? "default" : "negative",
+        },
+        { label: "محافظ العملاء", value: sar(s.walletAmount), icon: Wallet },
+        { label: "محافظ المندوبين", value: sar(s.riderWallet), icon: Store },
+      ]
+    : isJahez
+      ? [
+          { label: "رسوم المدفوعات", value: sar(s.jahezPaymentFeesExVat ?? 0), hint: "Payment Fees من ملخص CSV", icon: CreditCard },
+          { label: "VAT رسوم المدفوعات المخصوم", value: sar(s.jahezPaymentFeesVat ?? 0), hint: "مجموع الضريبة المخصومة على مستوى الطلب", icon: Receipt },
+          { label: "عروض التوصيل المخصومة", value: sar(s.jahezDeliveryOfferInclVat ?? 0), hint: "القيمة المخصومة من التسوية شامل الضريبة", icon: Store },
+          {
+            label: "فرق صافي المطعم",
+            value: sar(s.jahezSettlementVariance ?? 0),
+            hint: "إعادة الاحتساب ناقص Restaurant Amount",
+            icon: Banknote,
+            tone: Math.abs(s.jahezSettlementVariance ?? 0) > 0.05 ? "negative" : "default",
+          },
+        ]
+      : [
+          {
+            label: s.keetaExcelPayable !== undefined ? "Payable الرسمي حسب كيتا" : "Payable حسب Order Summary",
+            value: sar(s.keetaExcelPayable ?? s.keetaSourcePayable ?? 0),
+            hint: s.keetaExcelPayable !== undefined ? "من ورقة Invoice Details داخل ملف كيتا" : "من عمود Payable to Restaurant في Order Summary",
+            icon: Banknote,
+          },
+          {
+            label: "فرق التسوية",
+            value: sar(s.keetaExcelPayableVariance ?? s.keetaSettlementVariance ?? 0),
+            hint: s.keetaExcelPayable !== undefined ? "المحتسب ناقص Payable في Invoice Details" : "المحتسب ناقص Payable في Order Summary",
+            icon: Receipt,
+            tone: Math.abs(s.keetaExcelPayableVariance ?? s.keetaSettlementVariance ?? 0) > 0.05 ? "negative" : "default",
+          },
+          { label: "رسوم البنك (بدون الضريبة)", value: sar(s.keetaBankFeesExVat ?? 0), icon: CreditCard },
+          { label: "التوصيل والحملات (بدون الضريبة)", value: sar(s.keetaDeliveryCampaignExVat ?? 0), icon: Store },
+        ];
 
-      <section className="rounded-xl border border-border bg-white px-4 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold">نسخة التدقيق</p>
-            <p className="num mt-1 text-[11.5px] text-muted-foreground">
-              Engine {selected.engine_version}
-              {selected.supersedes_period_id ? " · إعادة تحليل" : " · الإصدار الأصلي"}
-            </p>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={reanalyzing}
-            onClick={() => void reanalyzeCurrentPeriod()}
-          >
-            <RefreshCw className={reanalyzing ? "size-3.5 animate-spin" : "size-3.5"} />
-            {reanalyzing ? "جارٍ إعادة التحليل…" : "إعادة التحليل من ملفات المصدر"}
-          </Button>
-        </div>
-      </section>
-
-      {AI_UI_ENABLED ? (
-        <section className="rounded-xl border border-primary/15 bg-secondary/25 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <Sparkles className="size-4 text-primary" />
-                <h2 className="text-sm font-bold">إجراء سريع</h2>
-              </div>
-              <p className="mt-1.5 text-xs leading-6 text-muted-foreground">
-                افتح مساحة Tadqeeq AI للحصول على ملخص الفترة، مقارنة الفترة السابقة، وتفسير التغيّرات.
-              </p>
-            </div>
-            <Button asChild size="sm" className="shrink-0">
-              <Link to="/ai">
-                <Sparkles className="size-3.5" />
-                فتح Tadqeeq AI
-              </Link>
-            </Button>
-          </div>
-        </section>
-  
-      ) : null}
-
-      <section className="audit-kpi-strip grid gap-0 sm:grid-cols-2 xl:grid-cols-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0">
-        <StatCard
-          label={isHunger ? "المبيعات الإجمالية (شامل الضريبة)" : "المبيعات الإجمالية (شامل الضريبة)"}
-          value={sar(s.grossSales)}
-          icon={ShoppingBag}
-          tone="gold"
-        />
-        <StatCard
-          label={
-            isHunger
-              ? "صافي المبيعات الخاضعة للعمولة"
-              : isJahez
-                ? "صافي المطعم حسب جاهز"
-                : "صافي التسوية المحتسب"
-          }
-          value={sar(s.netSales)}
-          icon={TrendingUp}
-        />
-        <StatCard
-          label={
-            isHunger
-              ? "إجمالي العمولة"
-              : isJahez
-                ? "عمولة جاهز (بدون الضريبة)"
-                : "عمولة كيتا (بدون الضريبة)"
-          }
-          value={sar(s.commission)}
-          hint={`بنسبة ${percent(s.commissionPct)} من الأساس`}
-          icon={Percent}
-          tone="negative"
-        />
-        <StatCard
-          label={
-            isHunger
-              ? "إجمالي ما خصمته المنصة"
-              : isJahez
-                ? "فاتورة جاهز المحتسبة (بدون الضريبة)"
-                : "تكلفة المنصة (بدون الضريبة)"
-          }
-          value={sar(s.totalCharges)}
-          hint={
-            isHunger
-              ? "عمولة + رسوم دفع + حملات + تعويضات"
-              : isJahez
-                ? "عمولة + رسوم مدفوعات + عروض توصيل حسب قواعد الفاتورة"
-                : `تكلفة فعلية ${percent(s.keetaPlatformCostPct ?? 0)} من المبيعات بدون الضريبة`
-          }
-          icon={Receipt}
-          tone="negative"
-        />
-      </section>
-
-      {isHunger ? (
-        <section className="audit-kpi-strip grid gap-0 sm:grid-cols-2 xl:grid-cols-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0">
-          <StatCard
-            label="صافي مدفوعات البطاقات"
-            value={sar(s.netBankCards ?? s.ccSuccess)}
-            hint="التحصيل الفعلي بعد استبعاد Failed by vendor"
-            icon={CreditCard}
-          />
-          <StatCard
-            label="رسوم الدفع الإلكتروني"
-            value={sar(
-              selected.invoice?.paymentFees ??
-                s.bankFeeSuccess + s.bankFeeRefunded + (s.walletFee ?? 0),
-            )}
-            hint={
-              selected.invoice?.paymentFees !== undefined
-                ? `الفاتورة: ${sar(selected.invoice.paymentFees)} · بطاقات قابلة للتحقق: ${sar(
-                    s.bankFeeSuccess + s.bankFeeRefunded,
-                  )} · محافظ حسب الفاتورة: ${sar(s.walletFee ?? 0)}`
-                : s.bankRate > 0
-                  ? `رسوم البطاقات المحتسبة بنسبة ${percent(s.bankRate)} ${
-                      s.bankRateSource === "invoice"
-                        ? "(مستنتجة من الفاتورة — غير مستقلة)"
-                        : s.bankRateSource === "manual"
-                          ? "(نسبة العقد)"
-                          : ""
-                    }`
-                  : "لم تُحدَّد نسبة — أدخل نسبة العقد أو أرفق الفاتورة للتسوية"
-            }
-            icon={Banknote}
-            tone={s.bankRate > 0 ? "default" : "negative"}
-          />
-          <StatCard label="محافظ العملاء" value={sar(s.walletAmount)} icon={Wallet} />
-          <StatCard label="محافظ المندوبين" value={sar(s.riderWallet)} icon={Store} />
-        </section>
-      ) : isJahez ? (
-        <section className="audit-kpi-strip grid gap-0 sm:grid-cols-2 xl:grid-cols-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0">
-          <StatCard
-            label="رسوم المدفوعات"
-            value={sar(s.jahezPaymentFeesExVat ?? 0)}
-            hint="Payment Fees من ملخص CSV"
-            icon={CreditCard}
-          />
-          <StatCard
-            label="VAT رسوم المدفوعات المخصوم"
-            value={sar(s.jahezPaymentFeesVat ?? 0)}
-            hint="مجموع الضريبة المخصومة على مستوى الطلب"
-            icon={Receipt}
-          />
-          <StatCard
-            label="عروض التوصيل المخصومة"
-            value={sar(s.jahezDeliveryOfferInclVat ?? 0)}
-            hint="القيمة المخصومة من التسوية شامل الضريبة"
-            icon={Store}
-          />
-          <StatCard
-            label="فرق صافي المطعم"
-            value={sar(s.jahezSettlementVariance ?? 0)}
-            hint="إعادة الاحتساب ناقص Restaurant Amount"
-            icon={Banknote}
-            tone={Math.abs(s.jahezSettlementVariance ?? 0) > 0.05 ? "negative" : "default"}
-          />
-        </section>
-      ) : (
-        <section className="audit-kpi-strip grid gap-0 sm:grid-cols-2 xl:grid-cols-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0">
-          <StatCard
-            label={s.keetaExcelPayable !== undefined ? "Payable الرسمي حسب كيتا" : "Payable حسب Order Summary"}
-            value={sar(s.keetaExcelPayable ?? s.keetaSourcePayable ?? 0)}
-            hint={
-              s.keetaExcelPayable !== undefined
-                ? "من ورقة Invoice Details داخل ملف كيتا"
-                : "من عمود Payable to Restaurant في Order Summary"
-            }
-            icon={Banknote}
-          />
-          <StatCard
-            label="فرق التسوية"
-            value={sar(s.keetaExcelPayableVariance ?? s.keetaSettlementVariance ?? 0)}
-            hint={
-              s.keetaExcelPayable !== undefined
-                ? "المحتسب ناقص Payable في Invoice Details"
-                : "المحتسب ناقص Payable في Order Summary"
-            }
-            icon={Receipt}
-            tone={
-              Math.abs(s.keetaExcelPayableVariance ?? s.keetaSettlementVariance ?? 0) > 0.05
-                ? "negative"
-                : "default"
-            }
-          />
-          <StatCard
-            label="رسوم البنك (بدون الضريبة)"
-            value={sar(s.keetaBankFeesExVat ?? 0)}
-            icon={CreditCard}
-          />
-          <StatCard
-            label="التوصيل والحملات (بدون الضريبة)"
-            value={sar(s.keetaDeliveryCampaignExVat ?? 0)}
-            icon={Store}
-          />
-        </section>
-      )}
-
-      {isJahez && s.jahezCompensationTransactions !== undefined ? (
-        <section className="audit-kpi-strip grid gap-0 sm:grid-cols-2 xl:grid-cols-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0">
-          <StatCard
-            label="تعويضات مخصومة"
-            value={sar(s.jahezCompensationDebit ?? 0)}
-            hint={
+  const compensationMetrics: Metric[] | null =
+    isJahez && s.jahezCompensationTransactions !== undefined
+      ? [
+          {
+            label: "تعويضات مخصومة",
+            value: sar(s.jahezCompensationDebit ?? 0),
+            hint:
               (s.jahezCompensationTransactions ?? 0) +
               " حركة" +
-              ((s.jahezCompensationMatchedHistorical ?? 0) > 0
-                ? " · " + (s.jahezCompensationMatchedHistorical ?? 0) + " مرتبطة بفترة سابقة"
-                : "")
-            }
-            icon={Receipt}
-            tone="negative"
-          />
-          <StatCard
-            label="تعويضات مضافة"
-            value={sar(s.jahezCompensationCredit ?? 0)}
-            hint="Credit في تقرير التعويضات"
-            icon={Banknote}
-            tone="positive"
-          />
-          <StatCard
-            label="صافي أثر التعويضات"
-            value={sar(s.jahezCompensationNetImpact ?? 0)}
-            hint={
+              ((s.jahezCompensationMatchedHistorical ?? 0) > 0 ? " · " + (s.jahezCompensationMatchedHistorical ?? 0) + " مرتبطة بفترة سابقة" : ""),
+            icon: Receipt,
+            tone: "negative",
+          },
+          { label: "تعويضات مضافة", value: sar(s.jahezCompensationCredit ?? 0), hint: "Credit في تقرير التعويضات", icon: Banknote, tone: "positive" },
+          {
+            label: "صافي أثر التعويضات",
+            value: sar(s.jahezCompensationNetImpact ?? 0),
+            hint:
               (s.jahezCompensationDuplicateCandidates ?? 0) > 0
                 ? (s.jahezCompensationDuplicateCandidates ?? 0) + " حالة تكرار مشتبه بها"
-                : "Debit ناقص Credit"
-            }
-            icon={Receipt}
-            tone={(s.jahezCompensationNetImpact ?? 0) > 0 ? "negative" : "default"}
-          />
-          <StatCard
-            label="صافي المطعم بعد التعويضات"
-            value={sar(s.jahezAdjustedRestaurantAmount ?? s.netSales)}
-            hint={
+                : "Debit ناقص Credit",
+            icon: Receipt,
+            tone: (s.jahezCompensationNetImpact ?? 0) > 0 ? "negative" : "default",
+          },
+          {
+            label: "صافي المطعم بعد التعويضات",
+            value: sar(s.jahezAdjustedRestaurantAmount ?? s.netSales),
+            hint:
               (s.jahezCompensationUnknownOrders ?? 0) > 0
                 ? (s.jahezCompensationUnknownOrders ?? 0) + " طلب تعويض بدون مصدر متاح"
-                : "Restaurant Amount ناقص صافي التعويضات"
-            }
-            icon={Banknote}
+                : "Restaurant Amount ناقص صافي التعويضات",
+            icon: Banknote,
+          },
+        ]
+      : null;
+
+  return (
+    <div className="space-y-5">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="audit-heading">اللوحة التنفيذية</h1>
+          <p className="audit-subtitle">
+            {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)} ·{" "}
+            <PlatformName platform={selected.platform} iconClassName="size-4 rounded" /> · <span className="num">{count(s.branchCount)}</span> فرع ·{" "}
+            <span className="num">{count(s.orders)}</span> طلب
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className="num rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-muted-foreground"
+            title={selected.supersedes_period_id ? "إعادة تحليل" : "الإصدار الأصلي"}
+          >
+            Engine {selected.engine_version}
+            {selected.supersedes_period_id ? " · إعادة تحليل" : ""}
+          </span>
+          <Button type="button" size="sm" variant="outline" disabled={reanalyzing} onClick={() => void reanalyzeCurrentPeriod()}>
+            <RefreshCw className={reanalyzing ? "size-3.5 animate-spin" : "size-3.5"} />
+            {reanalyzing ? "جارٍ إعادة التحليل…" : "إعادة التحليل"}
+          </Button>
+          {AI_UI_ENABLED ? (
+            <Button asChild size="sm">
+              <Link to="/ai">
+                <Sparkles className="size-3.5" />
+                Tadqeeq AI
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+      </header>
+
+      <div className="grid gap-5 xl:grid-cols-12">
+        <div className="space-y-5 xl:col-span-7">
+          <StatTiles
+            items={[
+              { label: "المبيعات الإجمالية (شامل الضريبة)", value: sar(s.grossSales), icon: ShoppingBag, tone: "gold" },
+              {
+                label: isHunger ? "صافي المبيعات الخاضعة للعمولة" : isJahez ? "صافي المطعم حسب جاهز" : "صافي التسوية المحتسب",
+                value: sar(s.netSales),
+                icon: TrendingUp,
+              },
+              {
+                label: isHunger ? "إجمالي العمولة" : isJahez ? "عمولة جاهز (بدون الضريبة)" : "عمولة كيتا (بدون الضريبة)",
+                value: sar(s.commission),
+                hint: `بنسبة ${percent(s.commissionPct)} من الأساس`,
+                icon: Percent,
+                tone: "negative",
+              },
+              {
+                label: isHunger ? "إجمالي ما خصمته المنصة" : isJahez ? "فاتورة جاهز المحتسبة (بدون الضريبة)" : "تكلفة المنصة (بدون الضريبة)",
+                value: sar(s.totalCharges),
+                hint: isHunger
+                  ? "عمولة + رسوم دفع + حملات + تعويضات"
+                  : isJahez
+                    ? "عمولة + رسوم مدفوعات + عروض توصيل"
+                    : `تكلفة فعلية ${percent(s.keetaPlatformCostPct ?? 0)} من المبيعات بدون الضريبة`,
+                icon: Receipt,
+                tone: "negative",
+              },
+              { label: "الطلبات", value: count(s.orders), icon: ShoppingCart },
+              { label: "متوسط قيمة الطلب", value: sar(s.orders ? s.grossSales / s.orders : 0), icon: Store },
+            ]}
           />
+          <div className="grid gap-5 md:grid-cols-2">
+            <TrendCard
+              value={percent(s.commissionPct)}
+              label={isHunger ? "نسبة العمولة" : "نسبة عمولة المنصة"}
+              description={`${costLabel} اليومية خلال الفترة · والشريط أدناه لآخر فترات ${selected.platform === "hungerstation" ? "هنقرستيشن" : selected.platform === "jahez" ? "جاهز" : "كيتا"}.`}
+              data={days.map((d) => ({ label: dayLabel(d.date), value: d.commission }))}
+              format={(v) => sar(v)}
+              band={history.map((p) => ({ value: percent(p.summary.commissionPct, 1), label: p.label }))}
+            />
+            <TrendCard
+              value={count(s.orders)}
+              label="الطلبات"
+              description="عدد الطلبات يومياً خلال الفترة."
+              variant="bars"
+              data={days.map((d) => ({ label: dayLabel(d.date), value: d.orders }))}
+              format={(v) => `${count(v)} طلب`}
+              band={[
+                { value: count(days.length ? Math.round(s.orders / days.length) : 0), label: "متوسط يومي" },
+                { value: count(busiest?.orders ?? 0), label: busiest ? `أعلى يوم ${dayLabel(busiest.date)}` : "أعلى يوم" },
+                { value: count(days.length), label: "أيام" },
+              ]}
+            />
+          </div>
+        </div>
+
+        <ChartCard
+          className="xl:col-span-5"
+          title={isHunger ? "المبيعات والعمولة يومياً" : isJahez ? "المبيعات وعمولة جاهز يومياً" : "المبيعات وتكلفة المنصة يومياً"}
+          totals={[
+            { label: isHunger ? "صافي المبيعات" : "المبيعات", value: sar(salesTotal) },
+            { label: "متوسط يومي", value: sar(days.length ? salesTotal / days.length : 0) },
+            { label: costLabel, value: sar(costTotal), tone: "negative" },
+          ]}
+        >
+          <div className="h-[23rem]" dir="ltr">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={daily} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+                <YAxis tickFormatter={(value: number) => short(value)} tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" width={44} />
+                <Tooltip {...chartStyle} formatter={(value: number) => money(value)} />
+                <Bar dataKey="مبيعات" fill="var(--color-chart-1)" radius={[4, 4, 0, 0]} maxBarSize={22} />
+                <Line type="monotone" dataKey={costLabel} stroke="var(--color-chart-2)" strokeWidth={2} dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-3 flex justify-center gap-5 text-[11.5px] text-muted-foreground">
+            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-chart-1" /> {isHunger ? "صافي المبيعات" : "المبيعات"}</span>
+            <span className="flex items-center gap-1.5"><span className="h-0.5 w-3 rounded bg-chart-2" /> {costLabel}</span>
+          </div>
+        </ChartCard>
+      </div>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {platformMetrics.map((m) => (
+          <MetricCard key={m.label} label={m.label} value={m.value} hint={m.hint} icon={m.icon} tone={m.tone} />
+        ))}
+      </section>
+
+      {compensationMetrics ? (
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {compensationMetrics.map((m) => (
+            <MetricCard key={m.label} label={m.label} value={m.value} hint={m.hint} icon={m.icon} tone={m.tone} />
+          ))}
         </section>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-5">
-        <section className="panel p-4 xl:col-span-3">
-          <h2 className="text-sm font-semibold">
-            {isHunger ? "المبيعات والعمولة يومياً" : isJahez ? "المبيعات وعمولة جاهز يومياً" : "المبيعات وتكلفة المنصة يومياً"}
-          </h2>
-          <div className="mt-4 h-72" dir="ltr">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={daily} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--color-chart-1)" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="var(--color-chart-1)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
-                <YAxis
-                  tickFormatter={(value: number) => short(value)}
-                  tick={{ fontSize: 11 }}
-                  stroke="var(--color-muted-foreground)"
-                  width={50}
-                />
-                <Tooltip
-                  {...chartStyle}
-                  formatter={(value: number) => money(value)}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="مبيعات"
-                  stroke="var(--color-chart-1)"
-                  fill="url(#salesFill)"
-                  strokeWidth={2}
-                />
-                <Area
-                  type="monotone"
-                  dataKey={costLabel}
-                  stroke="var(--color-chart-4)"
-                  fill="transparent"
-                  strokeWidth={2}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+      <div className="grid gap-5 xl:grid-cols-12">
+        <ChartCard
+          className="xl:col-span-7"
+          title={isHunger ? "أعلى الفروع عمولةً" : isJahez ? "أعلى الفروع تكلفة فاتورة" : "أعلى الفروع تكلفة منصة"}
+          action={
+            <Link to="/branches" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+              كل الفروع <ChevronLeft className="size-3.5" />
+            </Link>
+          }
+          bodyClassName="p-0"
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] text-sm">
+              <thead className="text-xs text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="px-5 py-2.5 text-start font-medium">الفرع</th>
+                  <th className="px-3 py-2.5 text-start font-medium">{isHunger ? "صافي المبيعات" : "المبيعات"}</th>
+                  <th className="px-3 py-2.5 text-start font-medium">{costLabel}</th>
+                  <th className="w-40 px-5 py-2.5 text-start font-medium">النسبة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topBranches.map((branch) => {
+                  const cost = branchCost(branch);
+                  const sales = branchSales(branch);
+                  return (
+                    <tr key={branch.branch} className="border-b border-border/70 last:border-0">
+                      <td className="max-w-[220px] truncate px-5 py-3 font-medium" title={branch.branch}>{branch.branch}</td>
+                      <td className="px-3 py-3"><span className="num">{money(sales)}</span></td>
+                      <td className="px-3 py-3"><span className="num text-destructive">{money(cost)}</span></td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                            <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.max(4, (cost / maxBranchCost) * 100)}%` }} />
+                          </span>
+                          <span className="num w-12 text-end text-xs text-muted-foreground">{percent(sales ? cost / sales : 0, 1)}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </section>
+        </ChartCard>
 
-        <section className="panel p-4 xl:col-span-2">
-          <h2 className="text-sm font-semibold">
-            {isHunger ? "أعلى الفروع عمولةً" : isJahez ? "أعلى الفروع تكلفة فاتورة" : "أعلى الفروع تكلفة منصة"}
-          </h2>
-          <div className="mt-4 h-72" dir="ltr">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topBranches} layout="vertical" margin={{ left: 8, right: 12 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
-                <XAxis
-                  type="number"
-                  tickFormatter={(value: number) => short(value)}
-                  tick={{ fontSize: 11 }}
-                  stroke="var(--color-muted-foreground)"
-                />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  width={110}
-                  tick={{ fontSize: 10 }}
-                  stroke="var(--color-muted-foreground)"
-                />
-                <Tooltip {...chartStyle} formatter={(value: number) => money(value)} />
-                <Bar dataKey={costLabel} fill="var(--color-chart-1)" radius={[0, 6, 6, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
+        <div className="space-y-5 xl:col-span-5">
+          {can("exceptions.read") ? (
+            <>
+              <MetricCard
+                highlight
+                to="/exceptions"
+                label="قابل للاسترداد من المنصة"
+                value={sar(exceptionSummary.potentialRecovery)}
+                hint={`${count(exceptionSummary.openCount)} استثناء مفتوح · ${count(exceptionSummary.criticalCount)} حرج · تحت المراجعة ${sar(exceptionSummary.underReview)}`}
+                icon={ShieldCheck}
+              />
+              <ChartCard
+                title="يحتاج انتباهك"
+                action={
+                  <Link to="/exceptions" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                    مركز الاستثناءات <ChevronLeft className="size-3.5" />
+                  </Link>
+                }
+              >
+                <ActivityFeed items={attention} empty="لا توجد استثناءات مفتوحة في هذه الفترة." />
+              </ChartCard>
+            </>
+          ) : (
+            <MetricCard label="أيام الفترة" value={count(days.length)} hint={`${arabicDate(selected.period_start)} — ${arabicDate(selected.period_end)}`} icon={CalendarDays} />
+          )}
+        </div>
       </div>
     </div>
   );

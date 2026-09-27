@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ChevronDown, Lock, LogOut, PanelRightClose, PanelRightOpen, Upload } from "lucide-react";
+import { AlertTriangle, CalendarClock, ChevronDown, Lock, LogOut, PanelRightClose, PanelRightOpen, Sparkles, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -19,12 +19,13 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { AI_UI_ENABLED } from "@/lib/ai/config";
 import { buildPeriodExceptions, summarizeExceptions } from "@/lib/exceptions";
-import { arabicDate } from "@/lib/format";
+import { arabicDate, count, sar } from "@/lib/format";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
 import { WORKSPACE_ROLE_LABELS, type WorkspacePermission } from "@/lib/workspace-access";
 import { LogoWordmark } from "@/components/brand/Logo";
 import { PlatformName } from "@/components/brand/PlatformLogo";
+import { NotificationBell, UserMenu, type AppNotice } from "@/components/dash/TopBarMenus";
 
 type NavItem = { to: string; label: string; permission: WorkspacePermission; adminOnly?: boolean };
 
@@ -143,6 +144,57 @@ export function AppShell({ children }: { children: ReactNode }) {
     ? summarizeExceptions(buildPeriodExceptions(selected))
     : null;
 
+  const notices: AppNotice[] = [];
+  if (exceptionSummary && exceptionSummary.openCount > 0 && can("exceptions.read") && selected) {
+    notices.push({
+      id: "exceptions",
+      icon: AlertTriangle,
+      tone: exceptionSummary.criticalCount > 0 ? "critical" : "warning",
+      title: `${count(exceptionSummary.openCount)} استثناء مفتوح في ${selected.label}`,
+      body: `${count(exceptionSummary.criticalCount)} حرج · قابل للاسترداد ${sar(exceptionSummary.potentialRecovery)}`,
+      to: "/exceptions",
+    });
+  }
+  if (context.trial) {
+    notices.push({
+      id: "trial",
+      icon: Sparkles,
+      tone: trialUploadUsed ? "warning" : "info",
+      title: trialUploadUsed ? "استخدمت رفع التجربة المجانية" : "أنت على التجربة المجانية",
+      body: "اشترك لرفع فترات ومنصات أخرى وفتح بقية الأقسام.",
+      to: "/subscribe",
+    });
+  } else if (context.uploadLimit !== null && context.uploadsThisMonth >= context.uploadLimit) {
+    notices.push({
+      id: "upload-limit",
+      icon: Upload,
+      tone: "warning",
+      title: "وصلت حد الرفع لهذا الشهر",
+      body: `${count(context.uploadsThisMonth)} / ${count(context.uploadLimit)} رفعة · تواصل معنا لترقية الباقة.`,
+      to: "/subscribe",
+    });
+  }
+  const latest = periods.reduce<string | null>((max, p) => (p.period_end && (!max || p.period_end > max) ? p.period_end : max), null);
+  if (can("imports.create") && !locked) {
+    if (!periods.length) {
+      notices.push({ id: "first-upload", icon: Upload, tone: "info", title: "ارفع أول فترة", body: "ملف الطلبات وفاتورة المنصة لبدء التدقيق.", to: "/import" });
+    } else if (latest && Date.now() - new Date(latest).getTime() > 21 * 864e5) {
+      notices.push({
+        id: "stale",
+        icon: CalendarClock,
+        tone: "info",
+        title: "حان وقت رفع الفترة الجديدة",
+        body: `آخر فترة مرفوعة تنتهي في ${arabicDate(latest)}.`,
+        to: "/import",
+      });
+    }
+  }
+  const planLine = context.trial
+    ? `تجربة مجانية · الرفع ${Math.min(context.uploadsThisMonth, context.uploadLimit ?? 0)} / ${context.uploadLimit}`
+    : context.planName
+      ? `باقة ${context.planName} · الرفع هذا الشهر ${context.uploadsThisMonth}${context.uploadLimit !== null ? ` / ${context.uploadLimit}` : ""}`
+      : null;
+
   async function signOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
@@ -257,35 +309,15 @@ export function AppShell({ children }: { children: ReactNode }) {
             </nav>
 
             <div className="mt-auto border-t border-ink-2 px-2 pt-3">
-              <div className="mb-3 rounded-lg bg-ink-2 px-2.5 py-2 text-[11px] leading-5">
-                <p className="font-semibold text-ink-foreground">
-                  {context.fullName || context.email || "مستخدم Tadqeeq"}
-                </p>
-                <p className="text-ink-muted">
-                  {WORKSPACE_ROLE_LABELS[context.role]} · {context.workspaceName}
-                </p>
+              <div className="rounded-lg bg-ink-2 px-2.5 py-2.5 text-[11px] leading-5">
+                <p className="font-semibold text-ink-foreground">{context.workspaceName}</p>
+                <p className="text-ink-muted">{planLine ?? WORKSPACE_ROLE_LABELS[context.role]}</p>
                 {context.trial ? (
-                  <p className="mt-1 text-ink-muted">
-                    تجربة مجانية · الرفع {Math.min(context.uploadsThisMonth, context.uploadLimit ?? 0)} / {context.uploadLimit}
-                  </p>
-                ) : context.planName ? (
-                  <p className="mt-1 text-ink-muted">
-                    باقة {context.planName} · الرفع هذا الشهر {context.uploadsThisMonth}
-                    {context.uploadLimit !== null ? ` / ${context.uploadLimit}` : ""}
-                  </p>
+                  <Link to="/subscribe" className="mt-2 inline-block rounded-md bg-primary px-2.5 py-1 font-semibold text-primary-foreground">
+                    اشترك الآن
+                  </Link>
                 ) : null}
               </div>
-              <p className="text-[11px] leading-5 text-ink-muted">
-                صلاحيات العرض والتعديل مرتبطة بدورك داخل حساب الشركة.
-              </p>
-              <button
-                type="button"
-                onClick={signOut}
-                className="mt-3 flex w-full items-center gap-2 rounded-[7px] px-2 py-2 text-start text-xs text-ink-muted transition-colors hover:bg-ink-2 hover:text-ink-foreground"
-              >
-                <LogOut className="size-3.5" />
-                تسجيل الخروج
-              </button>
             </div>
           </div>
           </aside>
@@ -294,7 +326,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="min-w-0 flex-1">
           <header
             data-noprint
-            className="sticky top-0 z-20 flex flex-wrap items-center gap-2.5 border-b border-border bg-background/90 px-4 py-2.5 backdrop-blur-md sm:px-5"
+            className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-background/90 px-3 py-2.5 backdrop-blur-md sm:flex-wrap sm:gap-2.5 sm:px-5"
           >
             <button
               type="button"
@@ -306,7 +338,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </button>
             {selected ? (
               <>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground max-md:hidden">
                   <span>المنصة</span>
                   <span className="rounded-[7px] border border-input bg-card px-2.5 py-1.5 text-[13px] text-foreground">
                     <PlatformName platform={selected.platform} iconClassName="size-4 rounded" />
@@ -314,9 +346,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
 
                 <label className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-                  <span>الفترة</span>
+                  <span className="max-sm:hidden">الفترة</span>
                   <Select value={selected.id} onValueChange={select}>
-                    <SelectTrigger className="h-8 min-w-[170px] max-w-[260px] bg-card text-[13px]">
+                    <SelectTrigger className="h-8 min-w-[140px] max-w-[260px] bg-card text-[13px] sm:min-w-[170px]">
                       <SelectValue placeholder="اختر الفترة" />
                     </SelectTrigger>
                     <SelectContent>
@@ -329,12 +361,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </Select>
                 </label>
 
-                <span className="num rounded-[7px] border border-input bg-card px-2.5 py-1.5 text-[12px] text-foreground/80">
+                <span className="num rounded-[7px] border border-input bg-card px-2.5 py-1.5 text-[12px] text-foreground/80 max-lg:hidden">
                   {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)}
                 </span>
               </>
             ) : (
-              <p className="text-sm text-muted-foreground">
+              <p className="min-w-0 truncate text-sm text-muted-foreground">
                 لا توجد بيانات بعد — ابدأ من صفحة رفع البيانات.
               </p>
             )}
@@ -345,10 +377,20 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Button asChild size="sm">
                 <Link to="/import">
                   <Upload className="size-3.5" />
-                  رفع بيانات
+                  <span className="max-sm:hidden">رفع بيانات</span>
                 </Link>
               </Button>
             ) : null}
+            <NotificationBell notices={notices} />
+            <UserMenu
+              name={context.fullName || context.email || "مستخدم Tadqeeq"}
+              email={context.email}
+              role={WORKSPACE_ROLE_LABELS[context.role]}
+              workspace={context.workspaceName}
+              planLine={planLine}
+              canManageUsers={can("users.manage")}
+              onSignOut={() => void signOut()}
+            />
           </header>
 
           <div
