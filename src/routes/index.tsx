@@ -38,7 +38,7 @@ import { cn } from "@/lib/utils";
 import { listPublicPlans } from "@/lib/plans.functions";
 import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
 import { SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
-import { PlatformName, PlatformWordmark } from "@/components/brand/PlatformLogo";
+import { PlatformIcon, PlatformName, PlatformWordmark } from "@/components/brand/PlatformLogo";
 import { PLATFORM_KEYS } from "@/lib/platforms";
 
 export const Route = createFileRoute("/")({
@@ -373,8 +373,12 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         <section className="overflow-hidden">
           <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:py-20">
             <div className="lp-stagger flex flex-col gap-6">
-              <p className="flex items-center gap-2 text-[13px] font-semibold text-primary-text">
-                <span className="size-1.5 rounded-full bg-primary" />
+              <p className="flex items-center gap-2.5 text-[13px] font-semibold text-primary-text">
+                <span aria-hidden="true" className="flex">
+                  {PLATFORM_KEYS.map((key, i) => (
+                    <PlatformIcon key={key} platform={key} className={cn("size-6 rounded-full ring-2 ring-background", i > 0 && "-ms-2")} />
+                  ))}
+                </span>
                 تدقيق فواتير هنقرستيشن وكيتا وجاهز
               </p>
               <h1 className="font-display text-4xl font-extrabold leading-[1.3] sm:text-5xl lg:text-[3.6rem]">
@@ -902,7 +906,9 @@ function AudienceVisual({ kind, active }: { kind: string; active: boolean }) {
     ];
     return (
       <div className={card}>
-        <p className="text-sm font-semibold">ملخص الشهر · هنقرستيشن</p>
+        <p className="flex items-center gap-1.5 text-sm font-semibold">
+          ملخص الشهر · <PlatformName platform="hungerstation" />
+        </p>
         <div className="mt-4 space-y-2.5">
           {rows.map(([label, value, tone], i) => (
             <div
@@ -1650,7 +1656,9 @@ function HeroDashboard() {
         <div className="flex items-end justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold text-primary-text">اللوحة التنفيذية</p>
-            <p className="mt-1 font-display text-lg font-bold">جاهز · سبتمبر</p>
+            <p className="mt-1 flex items-center gap-2 font-display text-lg font-bold">
+              <PlatformName platform="jahez" iconClassName="size-6 rounded-md" /> · سبتمبر
+            </p>
           </div>
           <span className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground">مثال توضيحي</span>
         </div>
@@ -1719,7 +1727,10 @@ function InvoiceMock() {
     <div data-reveal aria-hidden="true" className="flex flex-col gap-4 rounded-[22px] bg-secondary p-5 sm:p-9">
       <div className="grid gap-3.5 sm:grid-cols-2">
         <div className="rounded-2xl bg-card p-5">
-          <p className="text-xs text-muted-foreground">حسب فاتورة المنصة</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">حسب فاتورة المنصة</p>
+            <PlatformName platform="hungerstation" className="text-[11px] font-semibold" iconClassName="size-4 rounded" />
+          </div>
           <p className="num mt-2.5 text-3xl font-semibold">16,590.00</p>
           <p className="mt-2 text-xs text-muted-foreground">عمولة 20% محتسبة</p>
         </div>
@@ -2073,7 +2084,10 @@ function HowStepVisual({ step, active }: { step: number; active: boolean }) {
           ))}
         </div>
         <div {...rise(0.5, "mt-3 flex flex-wrap gap-2 text-[11px]")}>
-          <span className="rounded-full bg-ink px-2.5 py-1 text-ink-foreground">المنصة: هنقرستيشن</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-ink py-1 ps-1 pe-2.5 text-ink-foreground">
+            <PlatformIcon platform="hungerstation" className="size-4 rounded-full" />
+            المنصة: هنقرستيشن
+          </span>
           <span className="rounded-full bg-muted px-2.5 py-1">الفترة: أغسطس</span>
           <span className="rounded-full bg-muted px-2.5 py-1">12 فرعاً</span>
         </div>
@@ -2115,7 +2129,9 @@ function HowStepVisual({ step, active }: { step: number; active: boolean }) {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-sm font-semibold">فرق عمولة الفرع</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">فرع النرجس · هنقرستيشن · أغسطس</p>
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+              فرع النرجس · <PlatformName platform="hungerstation" iconClassName="size-4 rounded" /> · أغسطس
+            </p>
           </div>
           <span className="rounded-full bg-destructive/12 px-2.5 py-1 text-[11px] font-semibold text-destructive">حرج</span>
         </div>
@@ -2173,8 +2189,8 @@ function HowStepVisual({ step, active }: { step: number; active: boolean }) {
           <span className="rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-semibold text-success">أغسطس · مغلقة</span>
         </div>
         <div className="mt-3 space-y-1.5 text-[12px] text-muted-foreground">
-          <div className="flex justify-between"><span>يوليو · هنقرستيشن</span><span>مغلقة</span></div>
-          <div className="flex justify-between"><span>يونيو · جاهز</span><span>مغلقة</span></div>
+          <div className="flex justify-between"><span className="flex items-center gap-1">يوليو · <PlatformName platform="hungerstation" iconClassName="size-4 rounded" /></span><span>مغلقة</span></div>
+          <div className="flex justify-between"><span className="flex items-center gap-1">يونيو · <PlatformName platform="jahez" iconClassName="size-4 rounded" /></span><span>مغلقة</span></div>
         </div>
       </div>
     </div>
@@ -2262,7 +2278,9 @@ function CompensationStepVisual({ step, active }: { step: number; active: boolea
     ];
     return (
       <div className={cn("w-full max-w-md rounded-2xl bg-card p-5", shadow)}>
-        <p className="text-sm font-semibold">تعويضات فاتورة هنقرستيشن · سبتمبر</p>
+        <p className="flex items-center gap-1.5 text-sm font-semibold">
+          تعويضات فاتورة <PlatformName platform="hungerstation" /> · سبتمبر
+        </p>
         <div className="mt-4 space-y-2">
           {rows.map(([order, amount, status, tone], i) => (
             <div key={order} {...rise(0.1 + i * 0.12)}>
