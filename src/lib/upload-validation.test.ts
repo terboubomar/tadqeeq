@@ -7,8 +7,12 @@ import {
 
 describe("upload size validation", () => {
   test("accepts files at or below the 25 MB limit", () => {
-    expect(uploadSizeError(0)).toBeNull();
+    expect(uploadSizeError(1)).toBeNull();
     expect(uploadSizeError(MAX_UPLOAD_SIZE_BYTES)).toBeNull();
+  });
+
+  test("rejects empty files before upload", () => {
+    expect(uploadSizeError(0)).toContain("الملف فارغ");
   });
 
   test("rejects files larger than 25 MB before parsing", () => {

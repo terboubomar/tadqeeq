@@ -91,6 +91,10 @@ function validateFile(
     return;
   }
 
+  if (file.size === 0) {
+    throw new Error("ملف " + label + " فارغ. صدّر الملف من المنصة مرة أخرى ثم ارفعه.");
+  }
+
   if (!Number.isFinite(file.size) || file.size < 0 || file.size > MAX_UPLOAD_SIZE_BYTES) {
     throw new Error(
       "حجم ملف " + label + " يتجاوز الحد المسموح وهو 25 MB.",

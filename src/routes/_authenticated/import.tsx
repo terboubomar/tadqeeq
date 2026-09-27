@@ -1,16 +1,18 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Check,
   FileSpreadsheet,
   FileText,
   Loader2,
+  RotateCcw,
   Settings2,
   Upload,
 } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -161,6 +163,24 @@ function ImportPage() {
   const [bankRate, setBankRate] = useState("");
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+
+  // While the server is analysing, show elapsed time and warn before the tab is closed or reloaded.
+  useEffect(() => {
+    if (!busy) return;
+    const tick = window.setInterval(() => setElapsed(Math.floor((Date.now() - (startedAt ?? Date.now())) / 1000)), 1000);
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => {
+      window.clearInterval(tick);
+      window.removeEventListener("beforeunload", warn);
+    };
+  }, [busy, startedAt]);
   const [mappingReview, setMappingReview] =
     useState<HungerStationMappingReview | null>(null);
   const [mappingSelections, setMappingSelections] = useState<
@@ -233,6 +253,9 @@ function ImportPage() {
     if (!acquireImportRun(runLock)) return;
 
     setBusy(true);
+    setRunError(null);
+    setStartedAt(Date.now());
+    setElapsed(0);
     setMappingReview(null);
     let savedSuccessfully = false;
 
@@ -299,9 +322,9 @@ function ImportPage() {
       navigate({ to: "/dashboard" });
     } catch (error) {
       console.error(error);
-      toast.error(
-        error instanceof Error ? error.message : "تعذّر تحليل وحفظ الملفات",
-      );
+      const message = error instanceof Error ? error.message : "تعذّر تحليل وحفظ الملفات";
+      setRunError(message);
+      toast.error(message);
     } finally {
       finishImportRun(runLock, savedSuccessfully);
       if (!savedSuccessfully) setBusy(false);
@@ -413,6 +436,35 @@ function ImportPage() {
           ) : null}
         </div>
 
+        {busy ? (
+          <div role="status" aria-live="polite" className="flex items-start gap-3 border-t border-border/80 bg-secondary/40 px-5 py-4">
+            <Loader2 className="mt-0.5 size-5 shrink-0 animate-spin text-primary-text" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">
+                جارٍ تحليل الملفات على الخادم · <span className="num">{elapsed}</span> ث
+              </p>
+              <p className="mt-0.5 text-[12.5px] leading-6 text-muted-foreground">
+                قراءة الطلبات ثم مطابقتها مع الفاتورة وحفظ الفترة. يستغرق عادة أقل من دقيقة، وقد يطول مع ملفات PDF الكبيرة. لا تغلق الصفحة حتى ينتهي.
+              </p>
+            </div>
+          </div>
+        ) : runError ? (
+          <div role="alert" className="flex flex-wrap items-start gap-3 border-t border-destructive/25 bg-destructive/5 px-5 py-4">
+            <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-destructive">لم يكتمل التحليل</p>
+              <p className="mt-0.5 text-[12.5px] leading-6 text-foreground/80">{runError}</p>
+              <p className="mt-1 text-[12px] text-muted-foreground">لم يُحفظ شيء. صحّح الملف إن لزم ثم أعد المحاولة.</p>
+            </div>
+            {step === STEPS.length - 1 && !mappingReview ? (
+              <Button type="button" size="sm" variant="outline" onClick={() => void run()}>
+                <RotateCcw className="size-3.5" />
+                إعادة المحاولة
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="flex flex-wrap items-center gap-2 border-t border-border/80 bg-background/45 px-5 py-3.5">
           {step > 0 ? (
             <Button
@@ -431,7 +483,7 @@ function ImportPage() {
           <span className="flex-1" />
 
           {step < STEPS.length - 1 ? (
-            <Button type="button" onClick={nextStep}>
+            <Button type="button" onClick={nextStep} disabled={busy}>
               التالي
               <ArrowLeft className="size-4" />
             </Button>
