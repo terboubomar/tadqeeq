@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, CheckCircle2, MinusCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileSearch, FileText, MinusCircle, Scale } from "lucide-react";
 import { useState } from "react";
 
 import { EmptyState } from "@/components/AppShell";
-import { StatCard } from "@/components/StatCard";
+import { Callout, ChartCard, MetricCard, Segmented, SegmentBar } from "@/components/dash/DashKit";
 import { arabicDate, money, percent, sar } from "@/lib/format";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
@@ -30,7 +30,8 @@ const DEFAULT_TOLERANCE = 1; // ريال
 
 function InvoiceCheck() {
   const { selected, isLoading } = useSelectedPeriod();
-  const [flaggedOnly, setFlaggedOnly] = useState(false);
+  const [view, setView] = useState<"all" | "flagged">("all");
+  const flaggedOnly = view === "flagged";
 
   if (isLoading) {
     return <p className="py-20 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>;
@@ -103,116 +104,127 @@ function InvoiceCheck() {
     (check) => check.invoiced === undefined && check.evidence !== "invoice_only",
   ).length;
   const visibleChecks = flaggedOnly ? checks.filter(needsReview) : checks;
+  const invoiceOnlyCount = checks.filter((check) => check.evidence === "invoice_only").length;
+  const flaggedPresent = checks.filter((check) => needsReview(check) && check.invoiced !== undefined).length;
+  const matchedCount = Math.max(checks.length - flaggedPresent - missingCount - invoiceOnlyCount, 0);
+  const keetaExcelOnly = selected.platform === "keeta" && !hasPdfInvoice && hasKeetaExcelControl;
+  const overClaimed = totalDiff > DEFAULT_TOLERANCE;
+  const underClaimed = totalDiff < -DEFAULT_TOLERANCE;
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="audit-heading">مطابقة الفاتورة</h1>
-          <p className="audit-subtitle">
-            {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)}
-          </p>
-        </div>
-        <label data-noprint className="flex cursor-pointer items-center gap-2 text-[12.5px] text-foreground/80">
-          <input
-            type="checkbox"
-            checked={flaggedOnly}
-            onChange={(event) => setFlaggedOnly(event.target.checked)}
-            className="size-[15px] accent-primary"
-          />
-          البنود غير المطابقة فقط
-        </label>
+    <div className="space-y-5">
+      <header>
+        <h1 className="audit-heading">مطابقة الفاتورة</h1>
+        <p className="audit-subtitle">
+          {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)}
+        </p>
       </header>
 
       {!hasOfficialControl ? (
-        <div className="panel flex items-start gap-3 border-warning/40 p-4">
-          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-warning" />
-          <div>
-            <p className="font-semibold">لم تُرفق فاتورة لهذه الفترة</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {selected.platform === "keeta"
-                ? "تمت مطابقة التسوية داخلياً مع Order Summary فقط. هذا الملف لا يحتوي Invoice Details ولم تُرفق فاتورة PDF."
-                : selected.platform === "jahez"
-                  ? "تمت إعادة بناء صافي المطعم والفاتورة من CSV. أرفق فاتورة جاهز PDF لإضافة المطابقة الضريبية الرسمية."
-                  : "الأرقام أدناه محتسبة من بيانات الطلبات فقط. أعد رفع الفترة مع ملف الفاتورة (PDF) لإظهار الفروقات."}
-            </p>
-          </div>
-        </div>
+        <Callout tone="warning" icon={AlertTriangle} title="لم تُرفق فاتورة لهذه الفترة">
+          {selected.platform === "keeta"
+            ? "تمت مطابقة التسوية داخلياً مع Order Summary فقط. هذا الملف لا يحتوي Invoice Details ولم تُرفق فاتورة PDF."
+            : selected.platform === "jahez"
+              ? "تمت إعادة بناء صافي المطعم والفاتورة من CSV. أرفق فاتورة جاهز PDF لإضافة المطابقة الضريبية الرسمية."
+              : "الأرقام أدناه محتسبة من بيانات الطلبات فقط. أعد رفع الفترة مع ملف الفاتورة (PDF) لإظهار الفروقات."}
+        </Callout>
       ) : (
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div
+        <div className="grid gap-4 lg:grid-cols-12">
+          <section
             className={cn(
-              "rounded-[10px] border p-4",
-              Math.abs(totalDiff) > DEFAULT_TOLERANCE
-                ? "border-destructive/25 bg-destructive/[0.035]"
-                : "border-success/25 bg-success/[0.035]",
+              "rounded-[14px] border p-5 lg:col-span-5",
+              overClaimed ? "border-ink bg-ink text-ink-foreground" : "border-success/25 bg-success/5",
             )}
           >
-            <p className="text-xs font-semibold text-foreground/80">فرق المطالبة عن المحتسب</p>
+            <div className="flex items-center justify-between gap-3">
+              <p className={cn("text-[12.5px]", overClaimed ? "text-ink-muted" : "text-muted-foreground")}>فرق المطالبة عن المحتسب</p>
+              <span
+                className={cn(
+                  "grid size-8 place-items-center rounded-lg",
+                  overClaimed ? "bg-ink-2 text-primary" : "bg-success-soft text-success",
+                )}
+              >
+                {overClaimed ? <AlertTriangle className="size-4" /> : <CheckCircle2 className="size-4" />}
+              </span>
+            </div>
             <p
               className={cn(
-                "num mt-2 text-[30px] font-semibold tracking-[-0.02em]",
-                totalDiff > DEFAULT_TOLERANCE
-                  ? "text-destructive"
-                  : totalDiff < -DEFAULT_TOLERANCE
-                    ? "text-success"
-                    : "text-foreground",
+                "num mt-1 whitespace-nowrap text-[32px] font-semibold leading-10 tracking-[-0.02em]",
+                overClaimed ? "text-primary" : underClaimed ? "text-success" : "text-foreground",
               )}
             >
-              {money(totalDiff)} <span className="font-sans text-sm font-normal text-muted-foreground">ر.س</span>
+              {money(totalDiff)} <span className="font-sans text-sm font-normal opacity-70">ر.س</span>
             </p>
-            <p className="mt-2 text-[12.5px] leading-6 text-foreground/75">
-              {totalDiff > DEFAULT_TOLERANCE
-                ? "المنصة طالبت بمبلغ أعلى من المحتسب. راجع البنود المعلَّمة."
-                : totalDiff < -DEFAULT_TOLERANCE
+            <p className={cn("mt-2 text-[12.5px] leading-6", overClaimed ? "text-ink-muted" : "text-foreground/75")}>
+              {overClaimed
+                ? "المنصة طالبت بمبلغ أعلى من المحتسب. راجع البنود المعلَّمة وافتح استثناءً لكل فرق."
+                : underClaimed
                   ? "المطالبة أقل من المحتسب."
                   : "البنود القابلة للتحقق مستقلاً مطابقة ضمن هامش التسامح."}
             </p>
+          </section>
+          <div className="grid gap-4 sm:grid-cols-3 lg:col-span-7">
+            <MetricCard
+              label="بنود تحتاج مراجعة"
+              value={String(flaggedCount)}
+              hint={"من أصل " + checks.length + " بند مطابَق"}
+              icon={FileSearch}
+              tone={flaggedCount ? "negative" : "default"}
+            />
+            <MetricCard
+              label="بنود لم تُقرأ من الفاتورة"
+              value={String(missingCount)}
+              hint="قيمة المقارنة الرسمية غير متاحة أو لم تُستخرج"
+              icon={MinusCircle}
+              tone="gold"
+            />
+            <MetricCard
+              label={keetaExcelOnly ? "Invoice amount حسب Invoice Details" : "إجمالي الفاتورة شامل الضريبة"}
+              value={keetaExcelOnly ? sar(selected.invoice?.keetaExcelInvoiceAmount ?? 0) : sar(selected.invoice?.totalIncVat ?? 0)}
+              hint={
+                keetaExcelOnly
+                  ? "ضابط رسمي من ورقة Invoice Details داخل ملف كيتا"
+                  : selected.invoice?.invoiceNo
+                    ? "فاتورة رقم " + selected.invoice.invoiceNo
+                    : "حسب ملف PDF"
+              }
+              icon={FileText}
+            />
           </div>
-          <StatCard
-            label="بنود تحتاج مراجعة"
-            value={String(flaggedCount)}
-            hint={"من أصل " + checks.length + " بند مطابَق"}
-            tone={flaggedCount ? "negative" : "default"}
-          />
-          <StatCard
-            label="بنود لم تُقرأ من الفاتورة"
-            value={String(missingCount)}
-            hint="قيمة المقارنة الرسمية غير متاحة أو لم تُستخرج"
-            tone="gold"
-          />
-          <StatCard
-            label={
-              selected.platform === "keeta" && !hasPdfInvoice && hasKeetaExcelControl
-                ? "Invoice amount حسب Invoice Details"
-                : "إجمالي الفاتورة شامل الضريبة"
-            }
-            value={
-              selected.platform === "keeta" && !hasPdfInvoice && hasKeetaExcelControl
-                ? sar(selected.invoice?.keetaExcelInvoiceAmount ?? 0)
-                : sar(selected.invoice?.totalIncVat ?? 0)
-            }
-            hint={
-              selected.platform === "keeta" && !hasPdfInvoice && hasKeetaExcelControl
-                ? "ضابط رسمي من ورقة Invoice Details داخل ملف كيتا"
-                : selected.invoice?.invoiceNo
-                  ? "فاتورة رقم " + selected.invoice.invoiceNo
-                  : "حسب ملف PDF"
-            }
-          />
-        </section>
+        </div>
       )}
 
-      <section className="overflow-hidden rounded-[10px] border border-border bg-white">
-        <div className="flex items-center justify-between gap-3 border-b border-border/80 px-4 py-3">
-          <h2 className="text-sm font-semibold">دفتر المطابقة</h2>
-          <span className="text-[11.5px] text-muted-foreground">
-            الحدود تختلف حسب نوع البند ومصدر الدليل
-          </span>
-        </div>
+      {checks.length ? (
+        <ChartCard title="حالة البنود" action={<span className="text-[11.5px] text-muted-foreground">{checks.length} بند</span>}>
+          <SegmentBar
+            segments={[
+              { key: "ok", label: "مطابق", value: matchedCount, display: String(matchedCount), color: "var(--color-success)" },
+              { key: "flag", label: "يحتاج مراجعة", value: flaggedPresent, display: String(flaggedPresent), color: "var(--color-destructive)" },
+              { key: "missing", label: "لم يُقرأ", value: missingCount, display: String(missingCount), color: "var(--color-ink-muted)" },
+              { key: "inv", label: "من الفاتورة فقط", value: invoiceOnlyCount, display: String(invoiceOnlyCount), color: "var(--color-primary)" },
+            ]}
+          />
+        </ChartCard>
+      ) : null}
+
+      <ChartCard
+        title="دفتر المطابقة"
+        bodyClassName="p-0"
+        action={
+          <Segmented
+            value={view}
+            onChange={setView}
+            options={[
+              { value: "all", label: "كل البنود" },
+              { value: "flagged", label: `غير المطابقة (${flaggedCount})` },
+            ]}
+          />
+        }
+      >
+        <p className="border-b border-border/70 px-5 py-2 text-[11.5px] text-muted-foreground">الحدود تختلف حسب نوع البند ومصدر الدليل.</p>
         <div data-scroll className="overflow-x-auto">
         <table className="w-full min-w-[780px] text-[13.5px]">
-          <thead className="bg-surface-raised">
+          <thead className="bg-muted/40">
             <tr>
               <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
                 البند
@@ -363,17 +375,13 @@ function InvoiceCheck() {
           </tbody>
         </table>
         </div>
-      </section>
+        {!visibleChecks.length ? <p className="px-5 py-8 text-center text-sm text-muted-foreground">لا توجد بنود غير مطابقة — كل شيء ضمن هامش التسامح.</p> : null}
+      </ChartCard>
 
-      <section className="grid gap-3 sm:grid-cols-2">
-        <div className="panel p-4">
-          <h2 className="text-sm font-semibold">
-            {selected.platform === "keeta" && !hasPdfInvoice && hasKeetaExcelControl
-              ? "الضوابط الرسمية كما وردت في Excel"
-              : "بنود الفاتورة كما وردت"}
-          </h2>
+      <section className="grid gap-4 lg:grid-cols-2">
+        <ChartCard title={keetaExcelOnly ? "الضوابط الرسمية كما وردت في Excel" : "بنود الفاتورة كما وردت"}>
           {selected.invoice?.lines?.length ? (
-            <ul className="mt-3 space-y-2 text-sm">
+            <ul className="space-y-2 text-sm">
               {selected.invoice.lines.map((line) => (
                 <li
                   key={line.label}
@@ -385,13 +393,12 @@ function InvoiceCheck() {
               ))}
             </ul>
           ) : (
-            <p className="mt-3 text-sm text-muted-foreground">لم تُقرأ أي بنود أو ضوابط رسمية إضافية.</p>
+            <p className="text-sm text-muted-foreground">لم تُقرأ أي بنود أو ضوابط رسمية إضافية.</p>
           )}
-        </div>
+        </ChartCard>
 
-        <div className="panel p-4">
-          <h2 className="text-sm font-semibold">أساس الاحتساب</h2>
-          <dl className="mt-3 space-y-2 text-sm">
+        <ChartCard title="أساس الاحتساب" action={<Scale className="size-4 text-muted-foreground" />}>
+          <dl className="space-y-2 text-sm">
             {selected.platform === "jahez" ? (
               <>
                 <Row label="Order Amount" value={sar(selected.summary.grossSales)} />
@@ -497,7 +504,7 @@ function InvoiceCheck() {
               </>
             )}
           </dl>
-        </div>
+        </ChartCard>
       </section>
     </div>
   );

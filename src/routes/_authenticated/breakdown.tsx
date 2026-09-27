@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Download, Layers3, ListOrdered, Percent, Receipt } from "lucide-react";
 
 import { EmptyState } from "@/components/AppShell";
+import { BarList, ChartCard, StatTiles } from "@/components/dash/DashKit";
 import { Button } from "@/components/ui/button";
 import { exportXlsx, type ExportColumn } from "@/lib/export";
-import { count, money, percent } from "@/lib/format";
+import { count, money, percent, sar } from "@/lib/format";
 import { useSelectedPeriod } from "@/lib/use-period";
 
 export const Route = createFileRoute("/_authenticated/breakdown")({
@@ -112,6 +114,14 @@ function BreakdownPage() {
     { key: "amount", header: "المبلغ", type: "money" },
   ];
 
+  const ranked = charges.map((line, index) => ({ ...line, color: COLORS[index % COLORS.length] })).sort((x, y) => y.amount - x.amount);
+  const largest = ranked[0];
+  const maxCharge = Math.max(...ranked.map((line) => Math.abs(line.amount)), 1);
+  const statuses = Object.entries(s.statusCounts ?? {}).sort((x, y) => y[1] - x[1]);
+  const statusTotal = statuses.reduce((sum, [, value]) => sum + value, 0);
+  const maxStatus = Math.max(...statuses.map(([, value]) => value), 1);
+  const maxDiscount = Math.max(...discounts.map((line) => Math.abs(line.amount)), 1);
+
   return (
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -133,113 +143,76 @@ function BreakdownPage() {
             )
           }
         >
+          <Download className="size-3.5" />
           تصدير Excel
         </Button>
       </header>
 
-      <section className="rounded-[10px] border border-border bg-white p-[18px]">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold">
-              {isHunger
-                ? "تكوين خصومات المنصة"
-                : isJahez
-                  ? "تكوين فاتورة جاهز بدون الضريبة"
-                  : "تكوين تكلفة كيتا بدون الضريبة"}
-            </h2>
-            <p className="mt-1 text-[11.5px] text-muted-foreground">
-              توزيع البنود كنسبة من إجمالي تكلفة المنصة في الفترة المحددة.
-            </p>
-          </div>
-          <div className="text-end">
-            <p className="text-[11px] text-muted-foreground">الإجمالي</p>
-            <p className="num mt-0.5 text-xl font-semibold">{money(total)} ر.س</p>
-          </div>
+      <StatTiles
+        cols={4}
+        items={[
+          { label: isHunger ? "إجمالي خصومات المنصة" : "إجمالي تكلفة المنصة (بدون الضريبة)", value: sar(total), icon: Receipt, tone: "negative" },
+          { label: "من المبيعات الإجمالية", value: percent(s.grossSales ? total / s.grossSales : 0), icon: Percent },
+          { label: "أكبر بند", value: largest ? sar(largest.amount) : "—", hint: largest?.label, icon: Layers3, tone: "gold" },
+          { label: "عدد البنود", value: count(charges.length), hint: statusTotal ? `${count(statusTotal)} طلب في الفترة` : undefined, icon: ListOrdered },
+        ]}
+      />
+
+      <ChartCard
+        title={isHunger ? "تكوين خصومات المنصة" : isJahez ? "تكوين فاتورة جاهز بدون الضريبة" : "تكوين تكلفة كيتا بدون الضريبة"}
+        action={<span className="text-[11.5px] text-muted-foreground">نسبة كل بند من إجمالي تكلفة المنصة</span>}
+      >
+        <div className="flex h-3 overflow-hidden rounded-full bg-muted">
+          {charges.map((line, index) => (
+            <span
+              key={line.label}
+              title={line.label}
+              style={{ width: `${Math.max(total > 0 ? (line.amount / total) * 100 : 0, 0.5)}%`, background: COLORS[index % COLORS.length] }}
+            />
+          ))}
         </div>
-
-        <div className="mt-5 flex h-[12px] overflow-hidden rounded-full bg-muted">
-          {charges.map((line, index) => {
-            const share = total > 0 ? line.amount / total : 0;
-            return (
-              <span
-                key={line.label}
-                title={line.label}
-                style={{
-                  width: `${Math.max(share * 100, 0.5)}%`,
-                  background: COLORS[index % COLORS.length],
-                }}
-              />
-            );
-          })}
+        <div className="mt-6">
+          <BarList
+            items={ranked.map((line) => ({
+              key: line.label,
+              label: line.label,
+              value: money(line.amount),
+              share: percent(total > 0 ? line.amount / total : 0, 1),
+              size: Math.abs(line.amount) / maxCharge,
+              color: line.color,
+            }))}
+            empty="لا توجد تكاليف في هذه الفترة."
+          />
         </div>
+      </ChartCard>
 
-        <div className="mt-5 grid gap-x-8 md:grid-cols-2">
-          {charges.map((line, index) => {
-            const share = total > 0 ? line.amount / total : 0;
-            return (
-              <div
-                key={line.label}
-                className="flex items-center gap-3 border-b border-border/60 py-2.5"
-              >
-                <span
-                  className="size-2.5 shrink-0 rounded-[3px]"
-                  style={{ background: COLORS[index % COLORS.length] }}
-                />
-                <span className="min-w-0 flex-1 text-[13px]">{line.label}</span>
-                <span className="num text-[12px] text-muted-foreground">
-                  {percent(share, 1)}
-                </span>
-                <span className="num min-w-[88px] text-end text-[13px] font-semibold">
-                  {money(line.amount)}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <ChartCard title={isHunger ? "الخصومات التسويقية والمرتجعات" : isJahez ? "بنود تسوية جاهز" : "مؤشرات التسوية"}>
+          <BarList
+            items={discounts.map((line) => ({
+              key: line.label,
+              label: line.label,
+              value: money(line.amount),
+              size: Math.abs(line.amount) / maxDiscount,
+              color: line.amount < 0 ? "var(--color-destructive)" : "var(--color-chart-2)",
+            }))}
+            empty="لا توجد قيم في هذه الفترة."
+          />
+        </ChartCard>
 
-      <div className="grid gap-3 lg:grid-cols-2">
-        <section className="panel p-4">
-          <h2 className="text-sm font-semibold">
-            {isHunger
-              ? "الخصومات التسويقية والمرتجعات"
-              : isJahez
-                ? "بنود تسوية جاهز"
-                : "مؤشرات التسوية"}
-          </h2>
-          {discounts.length ? (
-            <dl className="mt-3">
-              {discounts.map((line) => (
-                <div
-                  key={line.label}
-                  className="flex items-center justify-between gap-3 border-b border-border/60 py-2"
-                >
-                  <dt className="text-[12.5px] text-muted-foreground">{line.label}</dt>
-                  <dd className="num text-[13px] font-semibold">{money(line.amount)}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : (
-            <p className="mt-3 text-sm text-muted-foreground">لا توجد قيم في هذه الفترة.</p>
-          )}
-        </section>
-
-        <section className="panel p-4">
-          <h2 className="text-sm font-semibold">حالات الطلبات</h2>
-          <dl className="mt-3">
-            {Object.entries(s.statusCounts ?? {})
-              .sort((a, b) => b[1] - a[1])
-              .map(([status, value]) => (
-                <div
-                  key={status}
-                  className="flex items-center justify-between gap-3 border-b border-border/60 py-2"
-                >
-                  <dt className="text-[12.5px] text-muted-foreground">{status}</dt>
-                  <dd className="num text-[13px] font-semibold">{count(value)}</dd>
-                </div>
-              ))}
-          </dl>
-        </section>
+        <ChartCard title="حالات الطلبات" totals={statusTotal ? [{ label: "إجمالي الطلبات", value: count(statusTotal) }] : undefined}>
+          <BarList
+            items={statuses.map(([status, value]) => ({
+              key: status,
+              label: status,
+              value: count(value),
+              share: statusTotal ? percent(value / statusTotal, 1) : undefined,
+              size: value / maxStatus,
+              color: "var(--color-chart-3)",
+            }))}
+            empty="لا توجد حالات طلبات في هذه الفترة."
+          />
+        </ChartCard>
       </div>
     </div>
   );

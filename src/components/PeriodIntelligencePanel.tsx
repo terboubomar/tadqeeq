@@ -54,9 +54,9 @@ export function PeriodIntelligencePanel({
 
   if (!previous) {
     return (
-      <section className="rounded-xl border border-border bg-white p-4">
+      <section className="panel p-5">
         <div className="flex items-center gap-2">
-          <GitCompareArrows className="size-4 text-primary" />
+          <GitCompareArrows className="size-4 text-primary-text" />
           <h2 className="text-sm font-bold">ذكاء الفترات</h2>
           <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
             مقارنة حتمية
@@ -72,7 +72,7 @@ export function PeriodIntelligencePanel({
 
   if (!built.comparison) {
     return (
-      <section className="rounded-xl border border-destructive/20 bg-destructive/[0.03] p-4">
+      <section className="rounded-[14px] border border-destructive/20 bg-destructive/[0.03] p-5">
         <div className="flex items-center gap-2">
           <GitCompareArrows className="size-4 text-destructive" />
           <h2 className="text-sm font-bold">ذكاء الفترات</h2>
@@ -137,14 +137,16 @@ function PeriodComparisonView({
   }
 
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-white">
-      <div className="border-b border-border bg-secondary/20 p-4">
+    <section className="panel overflow-hidden">
+      <div className="border-b border-border p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <GitCompareArrows className="size-4 text-primary" />
-              <h2 className="text-sm font-bold">ذكاء الفترات · مقارنة بالفترة السابقة</h2>
-              <span className="rounded-full border border-primary/15 bg-white px-2 py-0.5 text-[10px] font-semibold text-primary">
+              <span className="grid size-8 place-items-center rounded-lg bg-secondary text-primary-text">
+                <GitCompareArrows className="size-4" />
+              </span>
+              <h2 className="text-[15px] font-bold">ذكاء الفترات · مقارنة بالفترة السابقة</h2>
+              <span className="rounded-full border border-primary/20 bg-secondary px-2 py-0.5 text-[10px] font-semibold text-primary-text">
                 أرقام حتمية
               </span>
             </div>
@@ -187,7 +189,7 @@ function PeriodComparisonView({
         ) : null}
       </div>
 
-      <div className="space-y-5 p-4">
+      <div className="space-y-5 p-5">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard metric={metrics.get("gross_sales")} />
           <MetricCard metric={metrics.get("orders")} />
@@ -229,9 +231,9 @@ function PeriodComparisonView({
         ) : null}
 
         <div className="grid gap-4 xl:grid-cols-5">
-          <div className="overflow-hidden rounded-lg border border-border xl:col-span-3">
-            <div className="border-b border-border bg-secondary/30 px-3 py-2.5">
-              <h3 className="text-xs font-bold">أكبر تحركات الفروع</h3>
+          <div className="overflow-hidden rounded-xl border border-border xl:col-span-3">
+            <div className="border-b border-border bg-muted/40 px-4 py-2.5">
+              <h3 className="text-[13px] font-bold">أكبر تحركات الفروع</h3>
             </div>
             {branchMovements.length ? (
               <div className="overflow-x-auto">
@@ -276,9 +278,9 @@ function PeriodComparisonView({
             )}
           </div>
 
-          <div className="rounded-lg border border-border xl:col-span-2">
-            <div className="border-b border-border bg-secondary/30 px-3 py-2.5">
-              <h3 className="text-xs font-bold">تحرك الاستثناءات حسب الفئة</h3>
+          <div className="overflow-hidden rounded-xl border border-border xl:col-span-2">
+            <div className="border-b border-border bg-muted/40 px-4 py-2.5">
+              <h3 className="text-[13px] font-bold">تحرك الاستثناءات حسب الفئة</h3>
             </div>
             <div className="divide-y divide-border/70">
               {categoryMovements.length ? (
@@ -334,18 +336,20 @@ function MetricCard({
   const Icon = positive ? ArrowUpRight : negative ? ArrowDownRight : Minus;
 
   return (
-    <div className="rounded-lg border border-border bg-white p-3">
+    <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[10.5px] font-medium leading-5 text-muted-foreground">{metric.label}</p>
-        <Icon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+        <p className="text-[12px] font-medium leading-5 text-muted-foreground">{metric.label}</p>
+        <span className={"grid size-6 shrink-0 place-items-center rounded-md " + (positive ? "bg-secondary text-primary-text" : negative ? "bg-muted text-muted-foreground" : "bg-muted text-muted-foreground")}>
+          <Icon className="size-3.5" />
+        </span>
       </div>
-      <p className={compact ? "mt-1 text-sm font-bold num" : "mt-1 text-base font-bold num"}>
-        {formatValue(metric.current, metric.unit)}
+      <p className={"mt-1 whitespace-nowrap font-semibold " + (compact ? "text-[15px]" : "text-[19px]")}>
+        <span className="num">{formatValue(metric.current, metric.unit)}</span>
       </p>
-      <p className="mt-1 text-[10.5px] text-muted-foreground">
+      <p className="mt-1 text-[11px] text-muted-foreground">
         السابق: <span className="num">{formatValue(metric.previous, metric.unit)}</span>
       </p>
-      <p className="mt-1 text-[10.5px] font-medium">
+      <p className="mt-1 text-[11px] font-medium">
         {metric.unit === "ratio" ? (
           <SignedPoints value={metric.percentagePointChange ?? metric.delta * 100} />
         ) : (
@@ -377,13 +381,13 @@ function ExposureCard({
   unit: "sar" | "count";
 }) {
   return (
-    <div className="rounded-lg border border-border bg-white p-3">
-      <p className="text-[10.5px] font-medium leading-5 text-muted-foreground">{label}</p>
-      <p className="mt-1 text-base font-bold num">{formatValue(current, unit)}</p>
-      <p className="mt-1 text-[10.5px] text-muted-foreground">
+    <div className="rounded-xl border border-border bg-muted/30 p-4">
+      <p className="text-[12px] font-medium leading-5 text-muted-foreground">{label}</p>
+      <p className="mt-1 whitespace-nowrap text-[19px] font-semibold"><span className="num">{formatValue(current, unit)}</span></p>
+      <p className="mt-1 text-[11px] text-muted-foreground">
         السابق: <span className="num">{formatValue(previous, unit)}</span>
       </p>
-      <p className="mt-1 text-[10.5px] font-medium">{formatSignedValue(delta, unit)}</p>
+      <p className="mt-1 text-[11px] font-medium"><span className="num">{formatSignedValue(delta, unit)}</span></p>
     </div>
   );
 }

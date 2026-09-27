@@ -28,9 +28,9 @@ export interface StatTile {
 }
 
 /** Grid of small stats split by hairlines: icon, value, label. */
-export function StatTiles({ items, className }: { items: StatTile[]; className?: string }) {
+export function StatTiles({ items, cols = 3, className }: { items: StatTile[]; cols?: 3 | 4; className?: string }) {
   return (
-    <section className={cn("panel grid overflow-hidden sm:grid-cols-2 lg:grid-cols-3", className)}>
+    <section className={cn("panel grid overflow-hidden sm:grid-cols-2", cols === 4 ? "xl:grid-cols-4" : "lg:grid-cols-3", className)}>
       {items.map((item) => (
         <div
           key={item.label}
@@ -279,5 +279,122 @@ export function ActivityFeed({ items, empty }: { items: FeedItem[]; empty: strin
         );
       })}
     </ul>
+  );
+}
+
+const calloutTone = {
+  success: { box: "border-success/25 bg-success/5", icon: "text-success", title: "" },
+  danger: { box: "border-destructive/25 bg-destructive/5", icon: "text-destructive", title: "text-destructive" },
+  warning: { box: "border-warning/30 bg-warning/5", icon: "text-warning", title: "" },
+  info: { box: "border-primary/20 bg-secondary/40", icon: "text-primary-text", title: "" },
+} as const;
+
+/** Inline notice with an icon, a bold title and an explanation. */
+export function Callout({
+  tone,
+  icon: Icon,
+  title,
+  children,
+  className,
+}: {
+  tone: keyof typeof calloutTone;
+  icon: LucideIcon;
+  title: string;
+  children?: ReactNode;
+  className?: string;
+}) {
+  const t = calloutTone[tone];
+  return (
+    <section className={cn("flex items-start gap-3 rounded-[14px] border p-4", t.box, className)}>
+      <Icon className={cn("mt-0.5 size-5 shrink-0", t.icon)} />
+      <div className="min-w-0">
+        <h2 className={cn("text-sm font-bold", t.title)}>{title}</h2>
+        {children ? <div className="mt-1 text-[12.5px] leading-6 text-muted-foreground">{children}</div> : null}
+      </div>
+    </section>
+  );
+}
+
+export interface BarListItem {
+  key: string;
+  label: string;
+  value: string;
+  /** 0–1: the bar length relative to the largest item. */
+  size: number;
+  share?: string;
+  sub?: string;
+  color?: string;
+}
+
+/** Ranked rows with a proportional bar under each label. */
+export function BarList({ items, empty = "لا توجد بيانات." }: { items: BarListItem[]; empty?: string }) {
+  if (!items.length) return <p className="py-4 text-center text-sm text-muted-foreground">{empty}</p>;
+  return (
+    <ul className="space-y-3.5">
+      {items.map((item) => (
+        <li key={item.key}>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="min-w-0 truncate text-[13px] font-medium" title={item.label}>
+              {item.color ? <span className="me-2 inline-block size-2.5 rounded-[3px] align-middle" style={{ background: item.color }} /> : null}
+              {item.label}
+            </span>
+            <span className="flex shrink-0 items-baseline gap-2">
+              {item.share ? <span className="num text-[11.5px] text-muted-foreground">{item.share}</span> : null}
+              <span className="num text-[13px] font-semibold">{item.value}</span>
+            </span>
+          </div>
+          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full"
+              style={{ width: `${Math.max(item.size * 100, item.size > 0 ? 1.5 : 0)}%`, background: item.color ?? "var(--color-primary)" }}
+            />
+          </div>
+          {item.sub ? <p className="mt-1 text-[11px] leading-5 text-muted-foreground">{item.sub}</p> : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** One bar split into coloured segments with a legend of counts or amounts. */
+export function SegmentBar({ segments }: { segments: { key: string; label: string; value: number; display: string; color: string }[] }) {
+  const total = segments.reduce((sum, s) => sum + Math.max(s.value, 0), 0);
+  return (
+    <div>
+      <div className="flex h-3 overflow-hidden rounded-full bg-muted">
+        {segments.map((s) =>
+          s.value > 0 ? (
+            <span key={s.key} title={s.label} style={{ width: `${(s.value / (total || 1)) * 100}%`, background: s.color }} />
+          ) : null,
+        )}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+        {segments.map((s) => (
+          <span key={s.key} className="flex items-center gap-1.5 text-[12px]">
+            <span className="size-2.5 rounded-[3px]" style={{ background: s.color }} />
+            <span className="text-muted-foreground">{s.label}</span>
+            <span className="num font-semibold">{s.display}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Pill toggle between a few views, e.g. all rows vs. flagged rows. */
+export function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { value: T; label: string }[] }) {
+  return (
+    <div data-noprint className="inline-flex rounded-lg border border-border bg-background p-0.5 text-[12px]">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          className={cn("rounded-md px-2.5 py-1 transition-colors", value === o.value ? "bg-ink font-semibold text-ink-foreground" : "text-muted-foreground hover:text-foreground")}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
   );
 }

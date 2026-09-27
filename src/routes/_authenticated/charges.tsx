@@ -8,14 +8,13 @@ import {
 import { useMemo } from "react";
 
 import { EmptyState } from "@/components/AppShell";
-import { StatCard } from "@/components/StatCard";
-import { Badge } from "@/components/ui/badge";
+import { BarList, Callout, ChartCard, SegmentBar, StatTiles } from "@/components/dash/DashKit";
 import {
   MARKETPLACE_CHARGE_CATEGORY_LABELS,
   buildMarketplaceChargeMap,
   type MarketplaceChargeLine,
 } from "@/lib/charges-mapper";
-import { percent, sar } from "@/lib/format";
+import { money, percent, sar } from "@/lib/format";
 import { useSelectedPeriod } from "@/lib/use-period";
 
 export const Route = createFileRoute("/_authenticated/charges")({
@@ -75,79 +74,91 @@ function MarketplaceChargesPage() {
     (line) => line.scope === "outside_audit_total",
   );
 
+  const byCategory = new Map<string, number>();
+  for (const line of auditLines) byCategory.set(line.category, (byCategory.get(line.category) ?? 0) + line.amount);
+  const categories = [...byCategory.entries()].sort((x, y) => y[1] - x[1]);
+  const maxCategory = Math.max(...categories.map(([, amount]) => Math.abs(amount)), 1);
+  const closed = Math.abs(map.reconciliationVariance) <= 0.05;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <header>
         <h1 className="audit-heading">خريطة رسوم المنصات</h1>
         <p className="audit-subtitle">
-          {selected.label} · تصنيف حتمي للبنود الموجودة في نتيجة التدقيق
-          بدون تغيير معادلات المحرك.
+          {selected.label} · تصنيف حتمي للبنود الموجودة في نتيجة التدقيق بدون تغيير معادلات المحرك.
         </p>
       </header>
 
-      <section className="audit-kpi-strip grid gap-0 sm:grid-cols-2 xl:grid-cols-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0">
-        <StatCard
-          label="إجمالي رسوم التدقيق"
-          value={sar(map.auditTotalCharges)}
-          icon={CircleDollarSign}
-          tone="gold"
-        />
-        <StatCard
-          label="مصنف بثقة"
-          value={sar(map.mappedAuditAmount)}
-          hint={String(map.mappedLineCount) + " بند مصنف"}
-          icon={CheckCircle2}
-          tone="positive"
-        />
-        <StatCard
-          label="غير مصنف"
-          value={sar(map.unmappedAuditAmount)}
-          hint={String(map.unmappedLineCount) + " بند يحتاج تصنيف"}
-          icon={AlertTriangle}
-          tone={map.unmappedAuditAmount > 0.05 ? "negative" : "positive"}
-        />
-        <StatCard
-          label="تغطية التصنيف"
-          value={percent(map.coveragePct)}
-          hint={
-            Math.abs(map.reconciliationVariance) <= 0.05
-              ? "الخريطة مقفلة على إجمالي الرسوم"
-              : "يوجد فرق في الإقفال"
-          }
-          icon={Layers3}
-        />
-      </section>
+      <StatTiles
+        cols={4}
+        items={[
+          { label: "إجمالي رسوم التدقيق", value: sar(map.auditTotalCharges), icon: CircleDollarSign, tone: "gold" },
+          { label: "مصنف بثقة", value: sar(map.mappedAuditAmount), hint: String(map.mappedLineCount) + " بند مصنف", icon: CheckCircle2, tone: "positive" },
+          {
+            label: "غير مصنف",
+            value: sar(map.unmappedAuditAmount),
+            hint: String(map.unmappedLineCount) + " بند يحتاج تصنيف",
+            icon: AlertTriangle,
+            tone: map.unmappedAuditAmount > 0.05 ? "negative" : "positive",
+          },
+          { label: "تغطية التصنيف", value: percent(map.coveragePct), hint: closed ? "الخريطة مقفلة على إجمالي الرسوم" : "يوجد فرق في الإقفال", icon: Layers3 },
+        ]}
+      />
 
       {map.unmappedAuditAmount > 0.05 ? (
-        <section className="rounded-xl border border-destructive/25 bg-destructive/5 p-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
-            <div>
-              <h2 className="text-sm font-bold text-destructive">
-                يوجد مبلغ غير مصنف يحتاج مراجعة
-              </h2>
-              <p className="mt-1 text-xs leading-6 text-muted-foreground">
-                لم يضع Tadqeeq هذا المبلغ تلقائياً تحت “أخرى”. سيظهر أيضاً
-                في مركز الاستثناءات كبند رقابي، لكن لن يُعامل كاسترداد محتمل
-                حتى توجد قاعدة أو مستند يثبت التصنيف والحق المالي.
-              </p>
-            </div>
-          </div>
-        </section>
+        <Callout tone="danger" icon={AlertTriangle} title="يوجد مبلغ غير مصنف يحتاج مراجعة">
+          لم يضع Tadqeeq هذا المبلغ تلقائياً تحت “أخرى”. سيظهر أيضاً في مركز الاستثناءات كبند رقابي، لكن لن يُعامل كاسترداد محتمل حتى
+          توجد قاعدة أو مستند يثبت التصنيف والحق المالي.
+        </Callout>
       ) : (
-        <section className="rounded-xl border border-success/25 bg-success/5 p-4">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
-            <div>
-              <h2 className="text-sm font-bold">كل رسوم أساس التدقيق مصنفة</h2>
-              <p className="mt-1 text-xs leading-6 text-muted-foreground">
-                مجموع البنود المصنفة يطابق summary.totalCharges ضمن هامش
-                الإقفال.
-              </p>
-            </div>
-          </div>
-        </section>
+        <Callout tone="success" icon={CheckCircle2} title="كل رسوم أساس التدقيق مصنفة">
+          مجموع البنود المصنفة يطابق إجمالي الرسوم ضمن هامش الإقفال.
+        </Callout>
       )}
+
+      <div className="grid gap-5 xl:grid-cols-12">
+        <ChartCard
+          className="xl:col-span-7"
+          title="الرسوم حسب التصنيف"
+          totals={[
+            { label: "إجمالي رسوم التدقيق", value: sar(map.auditTotalCharges) },
+            ...(map.outsideAuditAmount ? [{ label: "بنود خارج الإجمالي", value: sar(map.outsideAuditAmount) }] : []),
+          ]}
+        >
+          <BarList
+            items={categories.map(([category, amount]) => ({
+              key: category,
+              label: MARKETPLACE_CHARGE_CATEGORY_LABELS[category as MarketplaceChargeLine["category"]],
+              value: money(amount),
+              share: map.auditTotalCharges ? percent(amount / map.auditTotalCharges, 1) : undefined,
+              size: Math.abs(amount) / maxCategory,
+              color: category === "unmapped" ? "var(--color-destructive)" : undefined,
+            }))}
+          />
+        </ChartCard>
+        <ChartCard className="xl:col-span-5" title="تغطية التصنيف" totals={[{ label: "من إجمالي الرسوم مصنف", value: percent(map.coveragePct), tone: closed ? "positive" : "negative" }]}>
+          <SegmentBar
+            segments={[
+              { key: "mapped", label: "مصنف", value: map.mappedAuditAmount, display: money(map.mappedAuditAmount), color: "var(--color-success)" },
+              { key: "unmapped", label: "غير مصنف", value: map.unmappedAuditAmount, display: money(map.unmappedAuditAmount), color: "var(--color-destructive)" },
+            ]}
+          />
+          <dl className="mt-5 space-y-2 text-[12.5px]">
+            <div className="flex justify-between gap-3 border-b border-border/60 pb-2">
+              <dt className="text-muted-foreground">بنود مصنفة</dt>
+              <dd className="num font-semibold">{map.mappedLineCount}</dd>
+            </div>
+            <div className="flex justify-between gap-3 border-b border-border/60 pb-2">
+              <dt className="text-muted-foreground">بنود غير مصنفة</dt>
+              <dd className="num font-semibold">{map.unmappedLineCount}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">فرق الإقفال</dt>
+              <dd className={"num font-semibold " + (closed ? "text-success" : "text-destructive")}>{money(map.reconciliationVariance)}</dd>
+            </div>
+          </dl>
+        </ChartCard>
+      </div>
 
       <ChargeTable
         title="البنود الداخلة في إجمالي رسوم التدقيق"
@@ -176,13 +187,8 @@ function ChargeTable({
   lines: MarketplaceChargeLine[];
 }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-white">
-      <div className="border-b border-border px-4 py-3">
-        <h2 className="text-sm font-bold">{title}</h2>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          {subtitle}
-        </p>
-      </div>
+    <ChartCard title={title} bodyClassName="p-0">
+      <p className="border-b border-border/70 px-5 py-2 text-[11.5px] leading-5 text-muted-foreground">{subtitle}</p>
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[820px] text-sm">
@@ -218,18 +224,23 @@ function ChargeTable({
                   {FUNDING_LABELS[line.fundingSource]}
                 </td>
                 <td className="px-4 py-3">
-                  <Badge variant={line.mapped ? "secondary" : "destructive"}>
+                  <span
+                    className={
+                      "whitespace-nowrap rounded-full px-2 py-1 text-[11px] font-semibold " +
+                      (line.mapped ? "bg-success/10 text-success" : "bg-destructive-soft text-destructive")
+                    }
+                  >
                     {line.mapped ? "مصنف" : "غير مصنف"}
-                  </Badge>
+                  </span>
                 </td>
-                <td className="num px-4 py-3 text-end font-semibold">
-                  {sar(line.amount)}
+                <td className="px-4 py-3 text-end font-semibold">
+                  <span className="num whitespace-nowrap">{sar(line.amount)}</span>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-    </section>
+    </ChartCard>
   );
 }
