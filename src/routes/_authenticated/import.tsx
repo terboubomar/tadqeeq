@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangle,
+  Info,
   ArrowLeft,
   ArrowRight,
   Check,
@@ -16,6 +17,13 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -163,7 +171,8 @@ function ImportPage() {
   const [bankRate, setBankRate] = useState("");
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
-  const [runError, setRunError] = useState<string | null>(null);
+  // Outcome of "run analysis" shown as a popup so it cannot be missed.
+  const [notice, setNotice] = useState<RunNotice | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
 
@@ -245,7 +254,7 @@ function ImportPage() {
     } = {},
   ) {
     if (!dataFile) {
-      toast.error("اختر ملف بيانات الطلبات أولاً");
+      setNotice({ kind: "missing" });
       setStep(1);
       return;
     }
@@ -253,7 +262,7 @@ function ImportPage() {
     if (!acquireImportRun(runLock)) return;
 
     setBusy(true);
-    setRunError(null);
+    setNotice(null);
     setStartedAt(Date.now());
     setElapsed(0);
     setMappingReview(null);
@@ -291,23 +300,12 @@ function ImportPage() {
         );
         setMappingReview(response.review);
         setMappingSelections(suggestedSelections);
-        toast.info(
-          "تحتاج مطابقة فروع هنقرستيشن إلى تأكيدك قبل حفظ الفترة.",
-        );
+        setNotice({ kind: "mapping" });
         return;
       }
 
       if (response.status === "duplicate") {
-        toast.error("هذه الفترة محفوظة مسبقاً", {
-          description: "يمكنك فتح الفترة المحفوظة بدلاً من إنشاء نسخة مكررة.",
-          action: {
-            label: "فتح الفترة",
-            onClick: () => {
-              setSelectedPeriodId(response.existingPeriodId);
-              navigate({ to: "/dashboard" });
-            },
-          },
-        });
+        setNotice({ kind: "duplicate", periodId: response.existingPeriodId });
         return;
       }
 
@@ -323,8 +321,7 @@ function ImportPage() {
     } catch (error) {
       console.error(error);
       const message = error instanceof Error ? error.message : "تعذّر تحليل وحفظ الملفات";
-      setRunError(message);
-      toast.error(message);
+      setNotice({ kind: "error", message });
     } finally {
       finishImportRun(runLock, savedSuccessfully);
       if (!savedSuccessfully) setBusy(false);
@@ -436,34 +433,19 @@ function ImportPage() {
           ) : null}
         </div>
 
-        {busy ? (
-          <div role="status" aria-live="polite" className="flex items-start gap-3 border-t border-border/80 bg-secondary/40 px-5 py-4">
-            <Loader2 className="mt-0.5 size-5 shrink-0 animate-spin text-primary-text" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold">
-                جارٍ تحليل الملفات على الخادم · <span className="num">{elapsed}</span> ث
-              </p>
-              <p className="mt-0.5 text-[12.5px] leading-6 text-muted-foreground">
-                قراءة الطلبات ثم مطابقتها مع الفاتورة وحفظ الفترة. يستغرق عادة أقل من دقيقة، وقد يطول مع ملفات PDF الكبيرة. لا تغلق الصفحة حتى ينتهي.
-              </p>
-            </div>
-          </div>
-        ) : runError ? (
-          <div role="alert" className="flex flex-wrap items-start gap-3 border-t border-destructive/25 bg-destructive/5 px-5 py-4">
-            <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-destructive">لم يكتمل التحليل</p>
-              <p className="mt-0.5 text-[12.5px] leading-6 text-foreground/80">{runError}</p>
-              <p className="mt-1 text-[12px] text-muted-foreground">لم يُحفظ شيء. صحّح الملف إن لزم ثم أعد المحاولة.</p>
-            </div>
-            {step === STEPS.length - 1 && !mappingReview ? (
-              <Button type="button" size="sm" variant="outline" onClick={() => void run()}>
-                <RotateCcw className="size-3.5" />
-                إعادة المحاولة
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
+        <RunDialog
+          busy={busy}
+          elapsed={elapsed}
+          notice={notice}
+          canRetry={step === STEPS.length - 1 && !mappingReview}
+          onClose={() => setNotice(null)}
+          onRetry={() => void run()}
+          onOpenPeriod={(periodId) => {
+            setNotice(null);
+            setSelectedPeriodId(periodId);
+            navigate({ to: "/dashboard" });
+          }}
+        />
 
         <div className="flex flex-wrap items-center gap-2 border-t border-border/80 bg-background/45 px-5 py-3.5">
           {step > 0 ? (
@@ -1094,5 +1076,118 @@ function ReviewRow({
         {value}
       </dd>
     </div>
+  );
+}
+
+type RunNotice =
+  | { kind: "missing" }
+  | { kind: "mapping" }
+  | { kind: "duplicate"; periodId: string }
+  | { kind: "error"; message: string };
+
+function RunDialog({
+  busy,
+  elapsed,
+  notice,
+  canRetry,
+  onClose,
+  onRetry,
+  onOpenPeriod,
+}: {
+  busy: boolean;
+  elapsed: number;
+  notice: RunNotice | null;
+  canRetry: boolean;
+  onClose: () => void;
+  onRetry: () => void;
+  onOpenPeriod: (periodId: string) => void;
+}) {
+  const open = busy || notice !== null;
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => !next && !busy && onClose()}>
+      <DialogContent
+        dir="rtl"
+        className={cn("max-w-md text-right [&>button]:left-4 [&>button]:right-auto", busy && "[&>button]:hidden")}
+        onEscapeKeyDown={(event) => busy && event.preventDefault()}
+        onInteractOutside={(event) => busy && event.preventDefault()}
+      >
+        {busy ? (
+          <div role="status" aria-live="polite" className="flex flex-col items-center gap-3 py-2 text-center">
+            <Loader2 className="size-10 animate-spin text-primary-text" />
+            <DialogTitle className="text-base">جارٍ تحليل الملفات على الخادم</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              الوقت المنقضي: <span className="num">{elapsed}</span> ث
+            </p>
+            <DialogDescription className="text-[13px] leading-6">
+              قراءة الطلبات ثم مطابقتها مع الفاتورة وحفظ الفترة. يستغرق عادة أقل من دقيقة، وقد يطول مع ملفات PDF الكبيرة. لا تغلق الصفحة حتى ينتهي.
+            </DialogDescription>
+          </div>
+        ) : notice?.kind === "error" ? (
+          <>
+            <div className="flex items-start gap-3 pt-2">
+              <AlertTriangle className="mt-0.5 size-6 shrink-0 text-destructive" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <DialogTitle className="text-base text-destructive">لم يكتمل التحليل</DialogTitle>
+                <DialogDescription className="text-sm leading-6 text-foreground/85">{notice.message}</DialogDescription>
+                <p className="text-[12.5px] text-muted-foreground">لم يُحفظ شيء. صحّح الملف إن لزم ثم أعد المحاولة.</p>
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:justify-start">
+              {canRetry ? (
+                <Button type="button" onClick={onRetry}>
+                  <RotateCcw className="size-4" />
+                  إعادة المحاولة
+                </Button>
+              ) : null}
+              <Button type="button" variant="outline" onClick={onClose}>
+                إغلاق
+              </Button>
+            </DialogFooter>
+          </>
+        ) : notice?.kind === "duplicate" ? (
+          <>
+            <div className="flex items-start gap-3 pt-2">
+              <AlertTriangle className="mt-0.5 size-6 shrink-0 text-primary-text" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <DialogTitle className="text-base">هذه الفترة محفوظة مسبقاً</DialogTitle>
+                <DialogDescription className="text-sm leading-6">
+                  يمكنك فتح الفترة المحفوظة بدلاً من إنشاء نسخة مكررة.
+                </DialogDescription>
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:justify-start">
+              <Button type="button" onClick={() => onOpenPeriod(notice.periodId)}>
+                فتح الفترة
+              </Button>
+              <Button type="button" variant="outline" onClick={onClose}>
+                إغلاق
+              </Button>
+            </DialogFooter>
+          </>
+        ) : notice ? (
+          <>
+            <div className="flex items-start gap-3 pt-2">
+              <Info className="mt-0.5 size-6 shrink-0 text-primary-text" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <DialogTitle className="text-base">
+                  {notice.kind === "missing" ? "ملف البيانات مطلوب" : "راجع مطابقة الفروع"}
+                </DialogTitle>
+                <DialogDescription className="text-sm leading-6">
+                  {notice.kind === "missing"
+                    ? "اختر ملف بيانات الطلبات أولاً ثم اضغط بدء التحليل."
+                    : "تحتاج مطابقة فروع هنقرستيشن إلى تأكيدك قبل حفظ الفترة. راجع الفروع في الصفحة ثم اضغط تأكيد الربط وإعادة التحليل."}
+                </DialogDescription>
+              </div>
+            </div>
+            <DialogFooter className="sm:justify-start">
+              <Button type="button" onClick={onClose}>
+                حسناً
+              </Button>
+            </DialogFooter>
+          </>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }
