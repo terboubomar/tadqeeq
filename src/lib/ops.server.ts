@@ -145,14 +145,21 @@ export interface OpsClient {
 
 export async function listOpsClientsOnServer(): Promise<OpsClient[]> {
   await requireOps("clients");
+  return loadOpsClients();
+}
+
+/** Every client, or only `workspaceId` when given. Callers check ops access first. */
+async function loadOpsClients(workspaceId?: string): Promise<OpsClient[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const scoped = (q: any, column = "workspace_id") => (workspaceId ? q.eq(column, workspaceId) : q);
   const [{ data: ws }, { data: onb }, { data: members }, { data: subs }, { data: pays }, { data: profiles }, archives] = await Promise.all([
-    db().from("workspaces").select("id,name,owner_user_id,created_at"),
-    db().from("workspace_onboarding").select("*"),
-    db().from("workspace_members").select("workspace_id,status"),
-    db().from("subscriptions").select("workspace_id,price,cycle,status,ends_on,created_at").order("created_at", { ascending: false }),
-    db().from("payments").select("workspace_id,amount"),
+    scoped(db().from("workspaces").select("id,name,owner_user_id,created_at"), "id"),
+    scoped(db().from("workspace_onboarding").select("*")),
+    scoped(db().from("workspace_members").select("workspace_id,status")),
+    scoped(db().from("subscriptions").select("workspace_id,price,cycle,status,ends_on,created_at").order("created_at", { ascending: false })),
+    scoped(db().from("payments").select("workspace_id,amount")),
     db().from("profiles").select("id,email"),
-    latestArchiveEvents(),
+    latestArchiveEvents(workspaceId),
   ]);
   const onbMap = new Map(((onb ?? []) as Row[]).map((r) => [String(r["workspace_id"]), r]));
   const emails = new Map(((profiles ?? []) as Row[]).map((r) => [String(r["id"]), (r["email"] as string) ?? null]));
@@ -638,6 +645,173 @@ export async function getReceiptUrlOnServer(id: string) {
 }
 
 // ---------------- Usage ----------------
+// ---------------- Client profile ----------------
+export interface OpsClientProfile {
+  client: OpsClient;
+  journey: { signedUpAt: string; submittedAt: string | null; meetingAt: string | null; meetingNote: string | null; paidAt: string | null; activatedAt: string | null };
+  usage: { audits: number; uploads: number; aiCalls30d: number; evidence: number; trialUploads: number; lastUpload: string | null; lastLogin: string | null };
+  members: { id: string; email: string | null; fullName: string | null; role: string; status: string; joinedAt: string | null; lastLogin: string | null; isOwner: boolean }[];
+  branches: { id: string; name: string; active: boolean; hungerstation: boolean; jahez: boolean; keeta: boolean }[];
+  periods: { id: string; label: string | null; platform: string; start: string | null; end: string | null; createdAt: string; superseded: boolean }[];
+  /** null when the viewer's role cannot see subscriptions or payments. */
+  subscriptions: { id: string; planName: string | null; price: number; cycle: Cycle; status: SubscriptionStatus; branchCount: number; startsOn: string; endsOn: string | null; notes: string | null }[] | null;
+  payments: { id: string; amount: number; paidOn: string; reference: string | null; notes: string | null; hasReceipt: boolean }[] | null;
+  timeline: { id: string; source: "ops" | "client"; action: string; actor: string; details: string; createdAt: string }[];
+}
+
+export async function getOpsClientProfileOnServer(workspaceId: string): Promise<OpsClientProfile> {
+  const actor = await requireOps("clients");
+  const [client] = await loadOpsClients(workspaceId);
+  if (!client) throw new Error("العميل غير موجود أو تم حذفه.");
+  const canSubs = opsCan(actor.role, "subscriptions");
+  const canPays = opsCan(actor.role, "payments");
+  const since = new Date(Date.now() - 30 * 864e5).toISOString();
+  const count = (table: string, extra?: (q: any) => any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    const q = db().from(table).select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId);
+    return extra ? extra(q) : q;
+  };
+  const [
+    { data: onb },
+    { data: ws },
+    { data: members },
+    { data: branches },
+    { data: periods },
+    { data: lastFile },
+    audits,
+    uploads,
+    ai,
+    evidence,
+    trial,
+    { data: opsEvents },
+    { data: clientEvents },
+    subs,
+    pays,
+    { data: plans },
+    logins,
+  ] = await Promise.all([
+    db().from("workspace_onboarding").select("created_at,submitted_at,meeting_at,meeting_note,paid_at,activated_at").eq("workspace_id", workspaceId).maybeSingle(),
+    db().from("workspaces").select("owner_user_id,created_at").eq("id", workspaceId).maybeSingle(),
+    db().from("workspace_members").select("id,user_id,role,status,joined_at,created_at").eq("workspace_id", workspaceId).order("created_at"),
+    db().from("branch_registry").select("id,name,active,hungerstation_id,jahez_id,keeta_id").eq("workspace_id", workspaceId).order("name"),
+    db().from("periods").select("id,label,platform,period_start,period_end,created_at,superseded_at").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(100),
+    db().from("audit_source_files").select("created_at").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(1),
+    count("periods"),
+    count("audit_source_files"),
+    count("ai_usage", (q) => q.gte("created_at", since)),
+    count("telegram_order_evidence"),
+    db().from("workspace_audit_events").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("event_type", TRIAL_UPLOAD_EVENT),
+    db().from("ops_audit_log").select("id,action,actor_email,metadata,created_at").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(100),
+    db().from("workspace_audit_events").select("id,event_type,actor_user_id,metadata,created_at").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(100),
+    canSubs ? db().from("subscriptions").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }) : Promise.resolve({ data: null }),
+    canPays ? db().from("payments").select("*").eq("workspace_id", workspaceId).order("paid_on", { ascending: false }) : Promise.resolve({ data: null }),
+    canSubs ? db().from("subscription_plans").select("id,name") : Promise.resolve({ data: [] }),
+    lastSignIns(),
+  ]);
+
+  const memberRows = (members ?? []) as Row[];
+  const userIds = [...new Set([...memberRows.map((m) => String(m["user_id"])), ...((clientEvents ?? []) as Row[]).map((e) => String(e["actor_user_id"]))])];
+  const { data: profiles } = userIds.length
+    ? await db().from("profiles").select("id,email,full_name").in("id", userIds)
+    : { data: [] };
+  const profile = new Map(((profiles ?? []) as Row[]).map((p) => [String(p["id"]), p]));
+  const planNames = new Map(((plans ?? []) as Row[]).map((p) => [String(p["id"]), String(p["name"])]));
+  const text = (r: Row | null | undefined, k: string) => (r && typeof r[k] === "string" && r[k] ? (r[k] as string) : null);
+  const ownerId = String((ws as Row | null)?.["owner_user_id"] ?? "");
+  const activeLogins = memberRows.filter((m) => m["status"] === "active").map((m) => logins.get(String(m["user_id"]))).filter(Boolean) as string[];
+
+  return {
+    client,
+    journey: {
+      signedUpAt: text(ws as Row, "created_at") ?? client.createdAt,
+      submittedAt: text(onb as Row, "submitted_at"),
+      meetingAt: text(onb as Row, "meeting_at"),
+      meetingNote: text(onb as Row, "meeting_note"),
+      paidAt: text(onb as Row, "paid_at"),
+      activatedAt: text(onb as Row, "activated_at"),
+    },
+    usage: {
+      audits: audits.count ?? 0,
+      uploads: uploads.count ?? 0,
+      aiCalls30d: ai.count ?? 0,
+      evidence: evidence.count ?? 0,
+      trialUploads: trial.count ?? 0,
+      lastUpload: text(((lastFile ?? []) as Row[])[0], "created_at"),
+      lastLogin: activeLogins.sort().at(-1) ?? null,
+    },
+    members: memberRows.map((m) => {
+      const p = profile.get(String(m["user_id"]));
+      return {
+        id: String(m["id"]),
+        email: text(p, "email"),
+        fullName: text(p, "full_name"),
+        role: String(m["role"]),
+        status: String(m["status"]),
+        joinedAt: text(m, "joined_at") ?? text(m, "created_at"),
+        lastLogin: logins.get(String(m["user_id"])) ?? null,
+        isOwner: String(m["user_id"]) === ownerId,
+      };
+    }),
+    branches: ((branches ?? []) as Row[]).map((b) => ({
+      id: String(b["id"]),
+      name: String(b["name"]),
+      active: b["active"] !== false,
+      hungerstation: !!b["hungerstation_id"],
+      jahez: !!b["jahez_id"],
+      keeta: !!b["keeta_id"],
+    })),
+    periods: ((periods ?? []) as Row[]).map((p) => ({
+      id: String(p["id"]),
+      label: text(p, "label"),
+      platform: String(p["platform"]),
+      start: text(p, "period_start"),
+      end: text(p, "period_end"),
+      createdAt: String(p["created_at"]),
+      superseded: !!p["superseded_at"],
+    })),
+    subscriptions: subs.data
+      ? ((subs.data ?? []) as Row[]).map((s) => ({
+          id: String(s["id"]),
+          planName: s["plan_id"] ? planNames.get(String(s["plan_id"])) ?? null : null,
+          price: Number(s["price"]),
+          cycle: s["cycle"] as Cycle,
+          status: s["status"] as SubscriptionStatus,
+          branchCount: Number(s["branch_count"]),
+          startsOn: String(s["starts_on"]),
+          endsOn: text(s, "ends_on"),
+          notes: text(s, "notes"),
+        }))
+      : null,
+    payments: pays.data
+      ? ((pays.data ?? []) as Row[]).map((p) => ({
+          id: String(p["id"]),
+          amount: Number(p["amount"]),
+          paidOn: String(p["paid_on"]),
+          reference: text(p, "reference"),
+          notes: text(p, "notes"),
+          hasReceipt: !!p["receipt_path"],
+        }))
+      : null,
+    timeline: [
+      ...((opsEvents ?? []) as Row[]).map((e) => ({
+        id: `ops-${String(e["id"])}`,
+        source: "ops" as const,
+        action: String(e["action"]),
+        actor: text(e, "actor_email") ?? "—",
+        details: JSON.stringify(e["metadata"] ?? {}),
+        createdAt: String(e["created_at"]),
+      })),
+      ...((clientEvents ?? []) as Row[]).map((e) => ({
+        id: `client-${String(e["id"])}`,
+        source: "client" as const,
+        action: String(e["event_type"]),
+        actor: text(profile.get(String(e["actor_user_id"])), "email") ?? String(e["actor_user_id"]).slice(0, 8),
+        details: JSON.stringify(e["metadata"] ?? {}),
+        createdAt: String(e["created_at"]),
+      })),
+    ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+  };
+}
+
 // ---------------- Tasks (action center) ----------------
 /** Last sign-in per user; one admin page covers every account the platform has today. */
 async function lastSignIns(): Promise<Map<string, string>> {

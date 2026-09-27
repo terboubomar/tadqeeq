@@ -27,8 +27,8 @@ const exact = (iso: string | null, kind: OpsTaskKind) =>
   !iso
     ? null
     : kind === "meeting_upcoming" || kind === "meeting_missed"
-      ? new Date(iso).toLocaleString("ar-SA-u-ca-gregory", { timeZone: "Asia/Riyadh", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })
-      : new Date(iso).toLocaleDateString("ar-SA-u-ca-gregory", { timeZone: "Asia/Riyadh", day: "numeric", month: "short", year: "numeric" });
+      ? new Date(iso).toLocaleString("ar-SA-u-ca-gregory-nu-latn", { timeZone: "Asia/Riyadh", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })
+      : new Date(iso).toLocaleDateString("ar-SA-u-ca-gregory-nu-latn", { timeZone: "Asia/Riyadh", day: "numeric", month: "short", year: "numeric" });
 
 function Tasks() {
   const role = useOpsRole();
@@ -109,8 +109,8 @@ function TaskRow({ t }: { t: OpsTask }) {
           </a>
         ) : null}
         <Link
-          to="/ops/clients"
-          search={{ open: t.workspaceId }}
+          to="/ops/clients/$workspaceId"
+          params={{ workspaceId: t.workspaceId }}
           className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
         >
           فتح العميل

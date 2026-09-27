@@ -6,12 +6,12 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { opsCan } from "@/lib/ops";
 import { listDeletedOpsClients, listOpsClients } from "@/lib/ops.functions";
-import { ClientRow } from "@/components/OpsClientRow";
+import { ClientListRow } from "@/components/OpsClientForms";
 import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
 export const Route = createFileRoute("/ops/archive")({ component: ArchivePage });
 
-const when = (iso: string) => new Date(iso).toLocaleString("ar-SA-u-ca-gregory", { timeZone: "Asia/Riyadh", dateStyle: "medium", timeStyle: "short" });
+const when = (iso: string) => new Date(iso).toLocaleString("ar-SA-u-ca-gregory-nu-latn", { timeZone: "Asia/Riyadh", dateStyle: "medium", timeStyle: "short" });
 
 function ArchivePage() {
   const role = useOpsRole();
@@ -61,8 +61,7 @@ function ArchivePage() {
           <div className="space-y-2">
             {archived.map((c) => (
               <div key={c.workspaceId}>
-                {c.archivedAt ? <p className="mb-1 text-[11px] text-muted-foreground">أُرشف {when(c.archivedAt)}</p> : null}
-                <ClientRow c={c} canEdit={role !== "support"} canDelete={role === "owner"} />
+                <ClientListRow c={c} meta={c.archivedAt ? `أُرشف ${new Date(c.archivedAt).toISOString().slice(0, 10)}` : undefined} />
               </div>
             ))}
           </div>

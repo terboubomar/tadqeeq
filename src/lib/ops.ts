@@ -1,3 +1,5 @@
+import { ONBOARDING_STATUS_LABELS, type OnboardingStatus } from "./onboarding";
+
 export type OpsRole = "owner" | "finance" | "sales" | "support";
 export type OpsSection = "overview" | "clients" | "subscriptions" | "payments" | "usage" | "logs" | "staff";
 
@@ -70,3 +72,49 @@ export const OPS_ACTION_LABELS: Record<string, string> = {
 };
 
 export const opsActionLabel = (action: string) => OPS_ACTION_LABELS[action] ?? action;
+
+/** One-line Arabic summary of an audit event's details, for timelines. Empty when there is nothing useful to add. */
+export function opsEventSummary(action: string, detailsJson: string): string {
+  let d: Record<string, unknown> = {};
+  try {
+    d = JSON.parse(detailsJson) as Record<string, unknown>;
+  } catch {
+    return "";
+  }
+  const str = (k: string) => (typeof d[k] === "string" ? (d[k] as string) : null);
+  const num = (k: string) => (typeof d[k] === "number" ? (d[k] as number) : null);
+  switch (action) {
+    case "client.status": {
+      const s = str("status");
+      return s ? `الحالة: ${ONBOARDING_STATUS_LABELS[s as OnboardingStatus] ?? s}` : "";
+    }
+    case "client.unarchive": {
+      const s = str("restoredStatus");
+      return s ? `أُعيد إلى: ${ONBOARDING_STATUS_LABELS[s as OnboardingStatus] ?? s}` : "";
+    }
+    case "client.update":
+      return str("name") ? `الاسم: ${str("name")}` : "";
+    case "subscription.create":
+    case "subscription.update": {
+      const status = str("status");
+      const price = num("price");
+      const cycle = str("cycle");
+      return [
+        status ? SUBSCRIPTION_STATUS_LABELS[status as SubscriptionStatus] ?? status : null,
+        price !== null ? sarFmt(price) : null,
+        cycle ? CYCLE_LABELS[cycle as Cycle] ?? cycle : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    }
+    case "payment.record":
+      return num("amount") !== null ? sarFmt(num("amount")!) : "";
+    case "trial.upload":
+      return str("platform") ?? "";
+    case "user_invited":
+    case "user_access_changed":
+      return [str("email"), str("role")].filter(Boolean).join(" · ");
+    default:
+      return "";
+  }
+}

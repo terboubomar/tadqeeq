@@ -49,6 +49,7 @@ import { Route as AuthenticatedBreakdownRouteImport } from './routes/_authentica
 import { Route as AuthenticatedBranchesRouteImport } from './routes/_authenticated/branches'
 import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
 import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
+import { Route as OpsClientsWorkspaceIdRouteImport } from './routes/ops/clients_.$workspaceId'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -251,6 +252,11 @@ const AuthenticatedAiRoute = AuthenticatedAiRouteImport.update({
   path: '/ai',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const OpsClientsWorkspaceIdRoute = OpsClientsWorkspaceIdRouteImport.update({
+  id: '/clients_/$workspaceId',
+  path: '/clients/$workspaceId',
+  getParentRoute: () => OpsRoute,
+} as any)
 const ApiPublicTelegramWebhookRoute =
   ApiPublicTelegramWebhookRouteImport.update({
     id: '/api/public/telegram-webhook',
@@ -299,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/compensation/': typeof CompensationIndexRoute
   '/ops/': typeof OpsIndexRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
+  '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -339,6 +346,7 @@ export interface FileRoutesByTo {
   '/compensation': typeof CompensationIndexRoute
   '/ops': typeof OpsIndexRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
+  '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -383,6 +391,7 @@ export interface FileRoutesById {
   '/compensation/': typeof CompensationIndexRoute
   '/ops/': typeof OpsIndexRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
+  '/ops/clients_/$workspaceId': typeof OpsClientsWorkspaceIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -427,6 +436,7 @@ export interface FileRouteTypes {
     | '/compensation/'
     | '/ops/'
     | '/api/public/telegram-webhook'
+    | '/ops/clients/$workspaceId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -467,6 +477,7 @@ export interface FileRouteTypes {
     | '/compensation'
     | '/ops'
     | '/api/public/telegram-webhook'
+    | '/ops/clients/$workspaceId'
   id:
     | '__root__'
     | '/'
@@ -510,6 +521,7 @@ export interface FileRouteTypes {
     | '/compensation/'
     | '/ops/'
     | '/api/public/telegram-webhook'
+    | '/ops/clients_/$workspaceId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -807,6 +819,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAiRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/ops/clients_/$workspaceId': {
+      id: '/ops/clients_/$workspaceId'
+      path: '/clients/$workspaceId'
+      fullPath: '/ops/clients/$workspaceId'
+      preLoaderRoute: typeof OpsClientsWorkspaceIdRouteImport
+      parentRoute: typeof OpsRoute
+    }
     '/api/public/telegram-webhook': {
       id: '/api/public/telegram-webhook'
       path: '/api/public/telegram-webhook'
@@ -889,6 +908,7 @@ interface OpsRouteChildren {
   OpsTasksRoute: typeof OpsTasksRoute
   OpsUsageRoute: typeof OpsUsageRoute
   OpsIndexRoute: typeof OpsIndexRoute
+  OpsClientsWorkspaceIdRoute: typeof OpsClientsWorkspaceIdRoute
 }
 
 const OpsRouteChildren: OpsRouteChildren = {
@@ -902,6 +922,7 @@ const OpsRouteChildren: OpsRouteChildren = {
   OpsTasksRoute: OpsTasksRoute,
   OpsUsageRoute: OpsUsageRoute,
   OpsIndexRoute: OpsIndexRoute,
+  OpsClientsWorkspaceIdRoute: OpsClientsWorkspaceIdRoute,
 }
 
 const OpsRouteWithChildren = OpsRoute._addFileChildren(OpsRouteChildren)
