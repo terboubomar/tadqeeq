@@ -1,14 +1,23 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /ops
+Disallow: /accept-invite
+Disallow: /dashboard
+Disallow: /import
+Disallow: /invoice-check
+Disallow: /exceptions
+Disallow: /charges
+Disallow: /breakdown
+Disallow: /branches
+Disallow: /contracts
+Disallow: /daily
+Disallow: /history
+Disallow: /promotions
+Disallow: /settings
+Disallow: /team
+Disallow: /ai
+Disallow: /ask
+Disallow: /compensation
+
+Sitemap: https://tadqeeq.app/sitemap.xml

@@ -14,6 +14,7 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "تسجيل الدخول · تدقيق" },
+      { name: "robots", content: "noindex, follow" },
       { name: "description", content: "سجّل الدخول لمراجعة فواتير هنقرستيشن وكيتا وجاهز ومطابقتها ببيانات الطلبات." },
       { property: "og:title", content: "تسجيل الدخول · تدقيق" },
       { property: "og:description", content: "سجّل الدخول لمراجعة فواتير تطبيقات التوصيل." },

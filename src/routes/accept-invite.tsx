@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { NOINDEX } from "@/lib/seo";
 
 export const Route = createFileRoute("/accept-invite")({
   head: () => ({
     meta: [
+      NOINDEX,
       { title: "قبول دعوة Tadqeeq" },
       { name: "description", content: "إكمال إعداد حساب المستخدم في Tadqeeq." },
     ],

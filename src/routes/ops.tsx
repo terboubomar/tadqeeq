@@ -12,6 +12,7 @@ import { OPS_ROLE_LABELS, opsAllowedHost, opsCan, type OpsSection } from "@/lib/
 import { getOpsMe } from "@/lib/ops.functions";
 import { OpsRoleContext } from "@/components/OpsShared";
 import { LogoMark } from "@/components/brand/Logo";
+import { NOINDEX } from "@/lib/seo";
 
 export const Route = createFileRoute("/ops")({
   ssr: false,
@@ -20,6 +21,7 @@ export const Route = createFileRoute("/ops")({
   },
   head: () => ({
     meta: [
+      NOINDEX,
       { title: "لوحة العمليات · تدقيق" },
       { name: "description", content: "لوحة داخلية لإدارة العملاء والاشتراكات والمدفوعات." },
       { property: "og:title", content: "لوحة العمليات · تدقيق" },

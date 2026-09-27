@@ -36,6 +36,7 @@ import { CORE_FEATURE_LABELS, PLAN_FEATURES, type PublicPlan } from "@/lib/plans
 import { cn } from "@/lib/utils";
 import { listPublicPlans } from "@/lib/plans.functions";
 import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
+import { SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
@@ -44,19 +45,22 @@ export const Route = createFileRoute("/")({
   },
   head: () => ({
     meta: [
-      { title: "تدقيق · تدقيق فواتير هنقرستيشن وكيتا وجاهز للمطاعم" },
-      { name: "description", content: "منصة سعودية تعيد احتساب فواتير تطبيقات التوصيل وتكشف الفروقات لكل فرع." },
-      { property: "og:title", content: "تدقيق · لا تدفع فاتورة المنصة قبل ما تتأكد منها" },
-      { property: "og:description", content: "أعد احتساب كل بند في فواتير هنقرستيشن وكيتا وجاهز، واسترجع التعويضات بأدلة موثقة." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { title: HOME_TITLE },
+      { name: "description", content: HOME_DESCRIPTION },
+      ...socialMeta({ title: HOME_TITLE, description: HOME_DESCRIPTION, path: "/" }),
     ],
+    links: [canonical("/")],
+    scripts: [jsonLd(HOME_SCHEMA)],
   }),
   loader: () => listPublicPlans(),
   errorComponent: () => <Landing plans={[]} />,
   notFoundComponent: () => <Landing plans={[]} />,
   component: LandingRoute,
 });
+
+const HOME_TITLE = "تدقيق فواتير هنقرستيشن وجاهز وكيتا للمطاعم | تدقيق";
+const HOME_DESCRIPTION =
+  "تدقيق يعيد احتساب كل بند في فواتير هنقرستيشن وجاهز وكيتا من ملف طلباتك وعقدك، ويكشف فروقات العمولة والرسوم لكل فرع، ويجهّز مطالبات التعويض بالأدلة.";
 
 const NAV = [
   ["#features", "المنتج"],
@@ -185,6 +189,48 @@ const FAQS = [
   ["هل يحتاج موظف الفرع تطبيقاً لإرسال الأدلة؟", "لا. يرسل الصورة أو الفيديو في قروب الفرع على Telegram، والبوت يربطه برقم الطلب."],
   ["هل بيانات شركتي منفصلة؟", "نعم. لكل شركة مساحة خاصة، مع صلاحيات تحدد ما يراه ويعدله كل موظف."],
 ];
+
+const HOME_SCHEMA = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: SITE_NAME,
+      alternateName: SITE_NAME_EN,
+      url: SITE_URL,
+      logo: `${SITE_URL}/apple-touch-icon.png`,
+      areaServed: "SA",
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: SITE_NAME,
+      inLanguage: "ar-SA",
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: SITE_NAME,
+      alternateName: SITE_NAME_EN,
+      url: SITE_URL,
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      inLanguage: "ar-SA",
+      description: HOME_DESCRIPTION,
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: FAQS.map(([question, answer]) => ({
+        "@type": "Question",
+        name: question,
+        acceptedAnswer: { "@type": "Answer", text: answer },
+      })),
+    },
+  ],
+};
 
 const BARS = [
   [82, 74],
@@ -1297,8 +1343,8 @@ function ChecksGrid() {
     window.scrollTo({ top: top + scrollable * 0.9 * ((index + 0.3) / CHECKS.length), behavior: "smooth" });
   }
 
-  const intro = (
-    <SectionIntro eyebrow="ما الذي نراجعه" title="كل بند في الفاتورة، لا الإجمالي فقط.">
+  const intro = (heading: "h2" | "aria") => (
+    <SectionIntro eyebrow="ما الذي نراجعه" title="كل بند في الفاتورة، لا الإجمالي فقط." heading={heading}>
       أي خصم لا يطابق خريطة الرسوم يظهر كبند غير مصنف بدلاً من أن يمر دون أن يلاحظه أحد.
     </SectionIntro>
   );
@@ -1348,7 +1394,7 @@ function ChecksGrid() {
         <div className="sticky top-0 flex h-screen items-center">
           <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center gap-12 px-6 pt-20">
             <div>
-              <div className="[&_h2]:text-[2.2rem] [&_h2]:leading-[1.35]">{intro}</div>
+              <div className="[&_h2]:text-[2.2rem] [&_h2]:leading-[1.35]">{intro("h2")}</div>
               <div className="mt-6">{status(desktop)}</div>
               <CheckExplainer
                 key={desktop.focus}
@@ -1374,7 +1420,7 @@ function ChecksGrid() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-2xl px-4 pt-20 sm:px-6 lg:hidden">{intro}</div>
+      <div className="mx-auto max-w-2xl px-4 pt-20 sm:px-6 lg:hidden">{intro("aria")}</div>
       <div ref={mobileTrackRef} className="relative lg:hidden" style={{ height: `${100 + CHECKS.length * 40}vh` }}>
         <div className="sticky top-0 flex h-[100svh] flex-col px-4 pt-[88px] pb-4 sm:px-6 sm:pt-[100px]">
           <div className="mx-auto flex min-h-0 w-full max-w-xl flex-1 flex-col">
@@ -1465,20 +1511,30 @@ function SectionIntro({
   eyebrow,
   title,
   tone = "primary",
+  heading = "h2",
   children,
 }: {
   eyebrow: string;
   title: string;
   tone?: "primary" | "success";
+  /** "aria" keeps heading semantics without a second <h2> when a section renders its intro twice (desktop + phone). */
+  heading?: "h2" | "aria";
   children?: ReactNode;
 }) {
+  const titleClass = "mt-3 font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]";
   return (
     <div data-reveal className="flex flex-col">
       <p className={cn("flex items-center gap-2 text-[13px] font-semibold", tone === "success" ? "text-success" : "text-primary-text")}>
         <span className={cn("size-1.5 rounded-full", tone === "success" ? "bg-success" : "bg-primary")} />
         {eyebrow}
       </p>
-      <h2 className="mt-3 font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]">{title}</h2>
+      {heading === "h2" ? (
+        <h2 className={titleClass}>{title}</h2>
+      ) : (
+        <p role="heading" aria-level={2} className={titleClass}>
+          {title}
+        </p>
+      )}
       {children ? <div className="mt-4 flex flex-col text-base leading-8 text-muted-foreground sm:text-[17px]">{children}</div> : null}
     </div>
   );
@@ -1710,7 +1766,7 @@ function ScrollFlow({
     window.scrollTo({ top: top + scrollable * 0.92 * ((index + 0.3) / count), behavior: "smooth" });
   }
 
-  const intro = <SectionIntro eyebrow={eyebrow} title={title} tone={t.eyebrowTone} />;
+  const intro = (heading: "h2" | "aria") => <SectionIntro eyebrow={eyebrow} title={title} tone={t.eyebrowTone} heading={heading} />;
   const counter = (i: number) => `${String(i + 1).padStart(2, "0")} / ${String(count).padStart(2, "0")}`;
 
   return (
@@ -1719,7 +1775,7 @@ function ScrollFlow({
         <div className="sticky top-0 flex h-screen items-center">
           <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center gap-12 px-6 pt-20">
             <div>
-              <div className="[&_h2]:text-[2.2rem] [&_h2]:leading-[1.35]">{intro}</div>
+              <div className="[&_h2]:text-[2.2rem] [&_h2]:leading-[1.35]">{intro("h2")}</div>
               <ol className="relative mt-6">
                 <span aria-hidden="true" className={cn("absolute inset-y-4 start-[19px] w-0.5 rounded-full", t.track)}>
                   <span
@@ -1799,7 +1855,7 @@ function ScrollFlow({
         </div>
       </div>
 
-      <div className="mx-auto max-w-2xl px-4 pt-20 sm:px-6 lg:hidden">{intro}</div>
+      <div className="mx-auto max-w-2xl px-4 pt-20 sm:px-6 lg:hidden">{intro("aria")}</div>
       <MobilePinned
         labels={steps.map((step) => step.title)}
         panelClass={t.panel}

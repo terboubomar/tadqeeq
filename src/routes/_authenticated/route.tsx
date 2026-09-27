@@ -4,8 +4,10 @@ import { AppShell } from "@/components/AppShell";
 import { WorkspaceAccessProvider } from "@/components/WorkspaceAccessProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { isOpsHost } from "@/lib/ops";
+import { NOINDEX } from "@/lib/seo";
 
 export const Route = createFileRoute("/_authenticated")({
+  head: () => ({ meta: [NOINDEX] }),
   ssr: false,
   beforeLoad: async () => {
     if (isOpsHost(window.location.host)) throw redirect({ to: "/ops" });

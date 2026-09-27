@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { SITE_NAME } from "@/lib/seo";
 
 function NotFoundComponent() {
   return (
@@ -82,9 +83,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "أعد احتساب عمولات هنقرستيشن وكيتا وجاهز وجاهز من بيانات الطلبات الخام، وقارنها بالفاتورة لاكتشاف الفروقات.",
+          "أعد احتساب عمولات هنقرستيشن وجاهز وكيتا من بيانات الطلبات الخام، وقارنها بالفاتورة لاكتشاف الفروقات.",
       },
+      { name: "theme-color", content: "#13232B" },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: SITE_NAME },
+      { property: "og:locale", content: "ar_SA" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [

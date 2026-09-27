@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isOpsHost } from "@/lib/ops";
 import { cn } from "@/lib/utils";
 import { WORKSPACE_ROLE_LABELS, type WorkspacePermission } from "@/lib/workspace-access";
+import { NOINDEX } from "@/lib/seo";
 
 export const Route = createFileRoute("/compensation")({
   ssr: false,
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/compensation")({
   head: () => ({
     meta: [
       { title: "مركز التعويضات · تدقيق" },
+      NOINDEX,
       {
         name: "description",
         content: "متابعة مطالبات التعويض من منصات التوصيل: المطالَب والمسترَد والأدلة وملفات الاعتراض.",
