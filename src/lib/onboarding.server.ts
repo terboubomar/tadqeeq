@@ -6,9 +6,12 @@ import {
   isValidNationalId,
   isValidVat,
   normalizeDigits,
+  latestSuspension,
   normalizeSaudiMobile,
+  REACTIVATION_REQUEST_EVENT,
   type OnboardingRecord,
   type OnboardingStatus,
+  type SuspensionInfo,
 } from "./onboarding";
 import { requireServerUserAnyStatus } from "./server-auth.server";
 
@@ -49,6 +52,7 @@ async function toRecord(row: Row, workspaceName: string): Promise<OnboardingReco
     paidAt: s("paid_at"),
     activatedAt: s("activated_at"),
     createdAt: s("created_at") ?? "",
+    suspension: null,
   };
 }
 
@@ -65,7 +69,91 @@ export async function getMyOnboardingOnServer(): Promise<OnboardingRecord> {
     status: "active",
     created_at: new Date().toISOString(),
   };
-  return toRecord(row, ctx.workspaceName);
+  const record = await toRecord(row, ctx.workspaceName);
+  if (record.status === "suspended") {
+    record.suspension = await loadSuspension(ctx.workspaceId, typeof row["updated_at"] === "string" ? row["updated_at"] : null);
+  }
+  return record;
+}
+
+/** Why and since when the workspace is suspended, its last subscription, and any reactivation request. */
+export async function loadSuspension(workspaceId: string, statusUpdatedAt: string | null): Promise<SuspensionInfo> {
+  const [{ data: events }, { data: request }, { data: sub }] = await Promise.all([
+    db()
+      .from("ops_audit_log")
+      .select("action,metadata,created_at")
+      .eq("workspace_id", workspaceId)
+      .in("action", ["client.status", "client.archive", "subscription.create", "subscription.update"])
+      .order("created_at", { ascending: false })
+      .limit(20),
+    db()
+      .from("workspace_audit_events")
+      .select("created_at")
+      .eq("workspace_id", workspaceId)
+      .eq("event_type", REACTIVATION_REQUEST_EVENT)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    db()
+      .from("subscriptions")
+      .select("plan_id,price,cycle,status,ends_on")
+      .eq("workspace_id", workspaceId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  const latest = latestSuspension(
+    ((events ?? []) as Row[]).map((e) => ({
+      action: String(e["action"]),
+      metadata: (e["metadata"] ?? null) as Record<string, unknown> | null,
+      createdAt: String(e["created_at"]),
+    })),
+  );
+  let planName: string | null = null;
+  if (sub?.plan_id) {
+    const { data: plan } = await db().from("subscription_plans").select("name").eq("id", sub.plan_id).maybeSingle();
+    planName = (plan?.name as string | undefined) ?? null;
+  }
+  const since = latest.since ?? statusUpdatedAt;
+  const requestedAt = typeof request?.created_at === "string" ? request.created_at : null;
+  return {
+    ...latest,
+    since,
+    // A request made before the current suspension belongs to an earlier one.
+    reactivationRequestedAt: requestedAt && (!since || requestedAt > since) ? requestedAt : null,
+    subscription: sub
+      ? {
+          planName,
+          price: Number(sub.price),
+          cycle: sub.cycle === "yearly" ? "yearly" : "monthly",
+          status: String(sub.status),
+          endsOn: typeof sub.ends_on === "string" ? sub.ends_on : null,
+        }
+      : null,
+  };
+}
+
+/** A suspended client asks the ops team to reactivate the account; shows up in the ops task list. */
+export async function requestReactivationOnServer(input: { note?: string }): Promise<{ requestedAt: string }> {
+  const ctx = await requireServerUserAnyStatus();
+  const { data: onb } = await db().from("workspace_onboarding").select("status,updated_at").eq("workspace_id", ctx.workspaceId).maybeSingle();
+  if (onb?.status !== "suspended") throw new Error("حسابك غير موقوف.");
+  const current = await loadSuspension(ctx.workspaceId, typeof onb?.updated_at === "string" ? onb.updated_at : null);
+  if (current.reactivationRequestedAt) return { requestedAt: current.reactivationRequestedAt };
+  const { data, error } = await db()
+    .from("workspace_audit_events")
+    .insert({
+      workspace_id: ctx.workspaceId,
+      actor_user_id: ctx.actorUserId,
+      event_type: REACTIVATION_REQUEST_EVENT,
+      entity_type: "workspace",
+      entity_id: ctx.workspaceId,
+      metadata: { note: input.note?.trim() || null },
+    })
+    .select("created_at")
+    .single();
+  if (error) throw new Error(error.message);
+  return { requestedAt: String(data.created_at) };
 }
 
 export interface SubmitOnboardingInput {

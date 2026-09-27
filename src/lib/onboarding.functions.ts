@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   getMyOnboardingOnServer,
   listTenantsOnServer,
+  requestReactivationOnServer,
   setTenantStatusOnServer,
   submitOnboardingOnServer,
 } from "./onboarding.server";
@@ -31,7 +32,11 @@ export const submitOnboarding = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => submitOnboardingOnServer(data));
 
-export const listTenants = createServerFn({ method: "POST" })
+export const requestReactivation = createServerFn({ method: "POST" })
+  .validator(z.object({ note: z.string().max(1000).optional() }))
+  .handler(async ({ data }) => requestReactivationOnServer(data));
+
+export const listTenants =createServerFn({ method: "POST" })
   .validator(z.object({}))
   .handler(async () => listTenantsOnServer());
 

@@ -5,7 +5,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { buildOpsTasks, type OpsTask, type OpsTaskClient } from "./ops-tasks";
 import { TRIAL_UPLOAD_EVENT, type PlanFeature } from "./plans";
 import { opsCan, type Cycle, type OpsRole, type OpsSection, type SubscriptionStatus } from "./ops";
-import type { OnboardingStatus } from "./onboarding";
+import { loadSuspension } from "./onboarding.server";
+import { REACTIVATION_REQUEST_EVENT, type OnboardingStatus, type SuspensionInfo, type SuspensionReason } from "./onboarding";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = () => supabaseAdmin as any;
@@ -213,7 +214,14 @@ async function loadOpsClients(workspaceId?: string): Promise<OpsClient[]> {
   return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export async function setOpsClientStatusOnServer(input: { workspaceId: string; status: OnboardingStatus; adminNote?: string }) {
+export async function setOpsClientStatusOnServer(input: {
+  workspaceId: string;
+  status: OnboardingStatus;
+  adminNote?: string;
+  /** Only for suspensions: shown to the client on the suspended screen. */
+  reason?: SuspensionReason;
+  clientMessage?: string;
+}) {
   const actor = await requireOps("clients");
   if (actor.role === "support") throw new Error("دور الدعم لا يستطيع تغيير حالة العميل.");
   const now = new Date().toISOString();
@@ -226,7 +234,8 @@ export async function setOpsClientStatusOnServer(input: { workspaceId: string; s
     ? await db().from("workspace_onboarding").update(patch).eq("workspace_id", input.workspaceId)
     : await db().from("workspace_onboarding").insert({ workspace_id: input.workspaceId, ...patch });
   if (error) throw new Error(error.message);
-  await log(actor, "client.status", "workspace", input.workspaceId, input.workspaceId, { status: input.status });
+  const suspension = input.status === "suspended" ? { reason: input.reason ?? "payment", message: input.clientMessage?.trim() || null } : {};
+  await log(actor, "client.status", "workspace", input.workspaceId, input.workspaceId, { status: input.status, ...suspension });
 }
 
 // ---------------- Edit / archive / delete ----------------
@@ -582,7 +591,11 @@ export async function saveSubscriptionOnServer(input: {
   if (error) throw new Error(error.message);
   // Sync workspace access with subscription state.
   if (input.status === "suspended" || input.status === "cancelled") {
+    const { data: o } = await db().from("workspace_onboarding").select("status").eq("workspace_id", input.workspaceId).maybeSingle();
     await db().from("workspace_onboarding").update({ status: "suspended", updated_at: new Date().toISOString() }).eq("workspace_id", input.workspaceId);
+    if (o?.status !== "suspended") {
+      await log(actor, "client.status", "workspace", input.workspaceId, input.workspaceId, { status: "suspended", reason: "payment", source: "subscription" });
+    }
   } else if (input.status === "active") {
     const { data: o } = await db().from("workspace_onboarding").select("status").eq("workspace_id", input.workspaceId).maybeSingle();
     if (o?.status === "suspended") await db().from("workspace_onboarding").update({ status: "active", updated_at: new Date().toISOString() }).eq("workspace_id", input.workspaceId);
@@ -657,6 +670,8 @@ export interface OpsClientProfile {
   subscriptions: { id: string; planName: string | null; price: number; cycle: Cycle; status: SubscriptionStatus; branchCount: number; startsOn: string; endsOn: string | null; notes: string | null }[] | null;
   payments: { id: string; amount: number; paidOn: string; reference: string | null; notes: string | null; hasReceipt: boolean }[] | null;
   timeline: { id: string; source: "ops" | "client"; action: string; actor: string; details: string; createdAt: string }[];
+  /** Set only while the client is suspended. */
+  suspension: SuspensionInfo | null;
 }
 
 export async function getOpsClientProfileOnServer(workspaceId: string): Promise<OpsClientProfile> {
@@ -689,7 +704,7 @@ export async function getOpsClientProfileOnServer(workspaceId: string): Promise<
     { data: plans },
     logins,
   ] = await Promise.all([
-    db().from("workspace_onboarding").select("created_at,submitted_at,meeting_at,meeting_note,paid_at,activated_at").eq("workspace_id", workspaceId).maybeSingle(),
+    db().from("workspace_onboarding").select("created_at,updated_at,submitted_at,meeting_at,meeting_note,paid_at,activated_at").eq("workspace_id", workspaceId).maybeSingle(),
     db().from("workspaces").select("owner_user_id,created_at").eq("id", workspaceId).maybeSingle(),
     db().from("workspace_members").select("id,user_id,role,status,joined_at,created_at").eq("workspace_id", workspaceId).order("created_at"),
     db().from("branch_registry").select("id,name,active,hungerstation_id,jahez_id,keeta_id").eq("workspace_id", workspaceId).order("name"),
@@ -719,8 +734,11 @@ export async function getOpsClientProfileOnServer(workspaceId: string): Promise<
   const ownerId = String((ws as Row | null)?.["owner_user_id"] ?? "");
   const activeLogins = memberRows.filter((m) => m["status"] === "active").map((m) => logins.get(String(m["user_id"]))).filter(Boolean) as string[];
 
+  const suspension = client.status === "suspended" ? await loadSuspension(workspaceId, text(onb as Row, "updated_at")) : null;
+
   return {
     client,
+    suspension,
     journey: {
       signedUpAt: text(ws as Row, "created_at") ?? client.createdAt,
       submittedAt: text(onb as Row, "submitted_at"),
@@ -833,6 +851,13 @@ export async function getOpsTasksOnServer(): Promise<{ tasks: OpsTask[]; finance
     latestArchiveEvents(),
     lastSignIns(),
   ]);
+  const { data: requests } = await db()
+    .from("workspace_audit_events")
+    .select("workspace_id,created_at")
+    .eq("event_type", REACTIVATION_REQUEST_EVENT)
+    .order("created_at", { ascending: false });
+  const latestRequest = new Map<string, string>();
+  for (const r of (requests ?? []) as Row[]) if (!latestRequest.has(String(r["workspace_id"]))) latestRequest.set(String(r["workspace_id"]), String(r["created_at"]));
   const onbMap = new Map(((onb ?? []) as Row[]).map((r) => [String(r["workspace_id"]), r]));
   const subMap = new Map<string, Row>();
   for (const s of (subs ?? []) as Row[]) if (!subMap.has(String(s["workspace_id"]))) subMap.set(String(s["workspace_id"]), s);
@@ -866,6 +891,12 @@ export async function getOpsTasksOnServer(): Promise<{ tasks: OpsTask[]; finance
       archived,
       trialUploads: trialCount.get(id) ?? 0,
       lastLogin: lastLogin.get(id) ?? null,
+      // Only requests sent after the latest status change belong to the current suspension.
+      reactivationRequestedAt: (() => {
+        const at = latestRequest.get(id);
+        const changed = text("updated_at");
+        return at && (!changed || at > changed) ? at : null;
+      })(),
       subscription: sub ? { status: sub["status"] as SubscriptionStatus, endsOn: (sub["ends_on"] as string | null) ?? null } : null,
     };
   });

@@ -21,7 +21,15 @@ export const getOpsClientProfile = createServerFn({ method: "POST" })
 export const getOpsTasks =createServerFn({ method: "POST" }).validator(empty).handler(() => S.getOpsTasksOnServer());
 export const listOpsClients =createServerFn({ method: "POST" }).validator(empty).handler(() => S.listOpsClientsOnServer());
 export const setOpsClientStatus = createServerFn({ method: "POST" })
-  .validator(z.object({ workspaceId: z.string().uuid(), status: onbStatus, adminNote: z.string().max(2000).optional() }))
+  .validator(
+    z.object({
+      workspaceId: z.string().uuid(),
+      status: onbStatus,
+      adminNote: z.string().max(2000).optional(),
+      reason: z.enum(["payment", "request", "other"]).optional(),
+      clientMessage: z.string().max(500).optional(),
+    }),
+  )
   .handler(({ data }) => S.setOpsClientStatusOnServer(data));
 const optionalText = (max: number) =>
   z

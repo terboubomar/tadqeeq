@@ -185,6 +185,20 @@ async function sendMessage(chatId: number, text: string, replyTo?: number): Prom
   }
 }
 
+const SUSPENDED_REPLY = "حساب المنشأة في Tadqeeq موقوف مؤقتاً، لذلك لن تُسجَّل الأدلة حتى إعادة تفعيل الحساب.";
+
+/** Suspended workspaces keep their groups linked, but the bot stops recording anything for them. */
+async function workspaceSuspended(workspaceId: string | null): Promise<boolean> {
+  if (!workspaceId) return false;
+  const { data, error } = await adminDb()
+    .from("workspace_onboarding")
+    .select("status")
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.status === "suspended";
+}
+
 async function connectBranch(message: TelegramMessage, code: string): Promise<void> {
   if (!["group", "supergroup"].includes(message.chat.type)) {
     await sendMessage(
@@ -211,6 +225,10 @@ async function connectBranch(message: TelegramMessage, code: string): Promise<vo
       "رمز الربط غير صالح أو انتهت صلاحيته. أنشئ رمزاً جديداً من Tadqeeq.",
       message.message_id,
     );
+    return;
+  }
+  if (await workspaceSuspended(connection.workspace_id)) {
+    await sendMessage(message.chat.id, SUSPENDED_REPLY, message.message_id);
     return;
   }
 
@@ -373,6 +391,10 @@ async function storeEvidence(
       "هذا القروب غير مربوط بـ Tadqeeq. أنشئ رمز ربط من مركز التعويضات ثم استخدم /connect CODE.",
       incomingMessage.message_id,
     );
+    return;
+  }
+  if (await workspaceSuspended(connection.workspace_id)) {
+    await sendMessage(incomingMessage.chat.id, SUSPENDED_REPLY, incomingMessage.message_id);
     return;
   }
 

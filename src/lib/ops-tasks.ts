@@ -3,6 +3,7 @@ import type { SubscriptionStatus } from "./ops";
 import { TRIAL_UPLOAD_LIMIT } from "./plans";
 
 export type OpsTaskKind =
+  | "reactivation_request"
   | "trial_used"
   | "new_signup"
   | "meeting_missed"
@@ -16,6 +17,7 @@ export type OpsTaskKind =
 
 /** Task groups in the order they are shown; `finance` groups are only built for roles that see subscriptions. */
 export const OPS_TASK_GROUPS: { kind: OpsTaskKind; title: string; hint: string; finance?: boolean }[] = [
+  { kind: "reactivation_request", title: "طلبات إعادة التفعيل", hint: "عملاء موقوفون طلبوا إعادة التفعيل — تأكد من السداد ثم فعّل الحساب." },
   { kind: "trial_used", title: "جرّبوا المنصة ولم يشتركوا", hint: "رفعوا ملف التجربة — أفضل وقت للتواصل وعرض الاشتراك." },
   { kind: "new_signup", title: "تسجيلات جديدة", hint: "لم يكملوا بيانات الشركة بعد." },
   { kind: "meeting_missed", title: "اجتماعات مضت ولم تُحدَّث", hint: "حدّث الحالة بعد الاجتماع: بانتظار التحويل أو إيقاف." },
@@ -40,6 +42,8 @@ export interface OpsTaskClient {
   archived: boolean;
   trialUploads: number;
   lastLogin: string | null;
+  /** Sent by a suspended client after the latest status change. */
+  reactivationRequestedAt: string | null;
   subscription: { status: SubscriptionStatus; endsOn: string | null } | null;
 }
 
@@ -94,6 +98,7 @@ export function buildOpsTasks(clients: OpsTaskClient[], now: Date, opts: { finan
         break;
       }
       case "suspended":
+        if (c.reactivationRequestedAt) add("reactivation_request", c.reactivationRequestedAt);
         break;
     }
   }

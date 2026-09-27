@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Archive, ArchiveRestore, ArrowRight, Check, Loader2, Mail, MessageCircle, Paperclip, Pencil, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowRight, BellRing, Check, Loader2, Mail, MessageCircle, PauseCircle, Paperclip, Pencil, Trash2 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -9,7 +9,14 @@ import { Input } from "@/components/ui/input";
 import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
 import { ClientAvatar, ClientStatusBadge, DeleteClientConfirm, EditClientForm } from "@/components/OpsClientForms";
 import { OpsDenied, useOpsRole } from "@/components/OpsShared";
-import { normalizeSaudiMobile, ONBOARDING_STATUS_LABELS, type OnboardingStatus } from "@/lib/onboarding";
+import {
+  normalizeSaudiMobile,
+  ONBOARDING_STATUS_LABELS,
+  SUSPENSION_REASONS,
+  type OnboardingStatus,
+  type SuspensionInfo,
+  type SuspensionReason,
+} from "@/lib/onboarding";
 import { CYCLE_LABELS, opsActionLabel, opsCan, opsEventSummary, sarFmt, SUBSCRIPTION_STATUS_LABELS } from "@/lib/ops";
 import { addClientNote, getOpsClientProfile, getReceiptUrl, listClientNotes, setOpsClientArchived, setOpsClientStatus } from "@/lib/ops.functions";
 import type { OpsClientProfile } from "@/lib/ops.server";
@@ -65,7 +72,7 @@ function ClientProfilePage() {
   const qc = useQueryClient();
   const allowed = opsCan(role, "clients");
   const q = useQuery({ queryKey: ["ops-client", workspaceId], queryFn: () => getOpsClientProfile({ data: { workspaceId } }), enabled: allowed });
-  const [panel, setPanel] = useState<"edit" | "delete" | null>(null);
+  const [panel, setPanel] = useState<"edit" | "delete" | "suspend" | null>(null);
 
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ["ops-client", workspaceId] });
@@ -81,9 +88,11 @@ function ClientProfilePage() {
     onError: (e) => toast.error((e as Error).message),
   });
   const status = useMutation({
-    mutationFn: (s: OnboardingStatus) => setOpsClientStatus({ data: { workspaceId, status: s } }),
-    onSuccess: () => {
-      toast.success("تم تحديث الحالة");
+    mutationFn: (input: { status: OnboardingStatus; reason?: SuspensionReason; clientMessage?: string }) =>
+      setOpsClientStatus({ data: { workspaceId, ...input } }),
+    onSuccess: (_, input) => {
+      toast.success(input.status === "suspended" ? "تم إيقاف الحساب — سيرى العميل سبب الإيقاف عند الدخول" : "تم تحديث الحالة");
+      setPanel(null);
       refresh();
     },
     onError: (e) => toast.error((e as Error).message),
@@ -180,6 +189,16 @@ function ClientProfilePage() {
           </div>
         ) : null}
 
+        {c.status === "suspended" && p.suspension ? (
+          <SuspensionBanner
+            info={p.suspension}
+            archived={c.archived}
+            canEdit={canEdit}
+            busy={status.isPending}
+            onReactivate={() => status.mutate({ status: "active" })}
+          />
+        ) : null}
+
         {/* Pipeline */}
         <div className="mt-5 border-t border-border pt-4">
           <ol className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0 sm:pb-0">
@@ -210,12 +229,15 @@ function ClientProfilePage() {
                   size="sm"
                   variant={s.status === "suspended" ? "destructive" : c.status === s.status ? "default" : "outline"}
                   disabled={status.isPending || c.status === s.status}
-                  onClick={() => status.mutate(s.status)}
+                  onClick={() => (s.status === "suspended" ? setPanel(panel === "suspend" ? null : "suspend") : status.mutate({ status: s.status }))}
                 >
                   {s.label}
                 </Button>
               ))}
             </div>
+          ) : null}
+          {panel === "suspend" && canEdit ? (
+            <SuspendPanel busy={status.isPending} onCancel={() => setPanel(null)} onConfirm={(reason, clientMessage) => status.mutate({ status: "suspended", reason, clientMessage })} />
           ) : null}
         </div>
       </section>
@@ -252,6 +274,87 @@ function ClientProfilePage() {
       {tab === "audits" ? <AuditsTab p={p} /> : null}
       {tab === "activity" ? <ActivityTab p={p} /> : null}
       {tab === "notes" ? <NotesTab workspaceId={workspaceId} /> : null}
+    </div>
+  );
+}
+
+function SuspensionBanner({
+  info,
+  archived,
+  canEdit,
+  busy,
+  onReactivate,
+}: {
+  info: SuspensionInfo;
+  archived: boolean;
+  canEdit: boolean;
+  busy: boolean;
+  onReactivate: () => void;
+}) {
+  return (
+    <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm">
+      <div className="flex flex-wrap items-start gap-3">
+        <PauseCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
+        <div className="min-w-52 flex-1 space-y-1">
+          <p className="font-semibold">
+            الحساب موقوف{archived ? " ومؤرشف" : ""} · {SUSPENSION_REASONS[info.reason].label}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {info.since ? `منذ ${fmtDateTime(info.since)} · ` : ""}كل الميزات متوقفة، ويرى العميل عند الدخول: «{SUSPENSION_REASONS[info.reason].title}»
+          </p>
+          {info.message ? <p className="text-xs">رسالتك للعميل: {info.message}</p> : null}
+          {info.reactivationRequestedAt ? (
+            <p className="flex items-center gap-1.5 pt-1 text-xs font-semibold text-primary-text">
+              <BellRing className="size-3.5" /> طلب العميل إعادة التفعيل في {fmtDateTime(info.reactivationRequestedAt)}
+            </p>
+          ) : null}
+        </div>
+        {canEdit && !archived ? (
+          <Button size="sm" disabled={busy} onClick={onReactivate}>
+            إعادة التفعيل
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function SuspendPanel({ busy, onCancel, onConfirm }: { busy: boolean; onCancel: () => void; onConfirm: (reason: SuspensionReason, message?: string) => void }) {
+  const [reason, setReason] = useState<SuspensionReason>("payment");
+  const [message, setMessage] = useState("");
+  return (
+    <div className="mt-3 space-y-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm">
+      <p className="font-semibold text-destructive">إيقاف الحساب وكل الميزات</p>
+      <div className="flex flex-wrap gap-x-5 gap-y-2">
+        {(Object.keys(SUSPENSION_REASONS) as SuspensionReason[]).map((r) => (
+          <label key={r} className="flex items-center gap-2">
+            <input type="radio" name="suspend-reason" checked={reason === r} onChange={() => setReason(r)} />
+            {SUSPENSION_REASONS[r].label}
+          </label>
+        ))}
+      </div>
+      <label className="block text-xs text-muted-foreground">
+        رسالة تظهر للعميل (اختياري)
+        <Input
+          value={message}
+          maxLength={500}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="مثلاً: انتهى اشتراكك في 5 أكتوبر — جدّد لإعادة فتح الحساب"
+          className="mt-1 bg-background text-sm text-foreground"
+        />
+      </label>
+      <div className="rounded-md border border-border bg-background p-3 text-xs">
+        <p className="text-muted-foreground">ما سيراه العميل عند الدخول:</p>
+        <p className="mt-1 font-semibold">{SUSPENSION_REASONS[reason].title}</p>
+        <p className="mt-0.5 leading-5 text-muted-foreground">{SUSPENSION_REASONS[reason].body}</p>
+      </div>
+      <div className="flex gap-2">
+        <Button size="sm" variant="destructive" disabled={busy} onClick={() => onConfirm(reason, message.trim() || undefined)}>
+          {busy ? <Loader2 className="size-3.5 animate-spin" /> : <PauseCircle className="size-3.5" />}
+          إيقاف الحساب
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>إلغاء</Button>
+      </div>
     </div>
   );
 }

@@ -15,6 +15,7 @@ const client = (over: Partial<OpsTaskClient>): OpsTaskClient => ({
   archived: false,
   trialUploads: 0,
   lastLogin: "2026-09-26T00:00:00Z",
+  reactivationRequestedAt: null,
   subscription: { status: "active", endsOn: "2027-01-01" },
   ...over,
 });
@@ -51,6 +52,16 @@ describe("buildOpsTasks", () => {
     ];
     expect(kinds(clients)).toEqual(["owes:overdue", "late:overdue", "soon:renewal_due", "nosub:no_subscription"]);
     expect(kinds(clients, false)).toEqual([]);
+  });
+
+  test("suspended clients show up only when they ask to be reactivated", () => {
+    expect(
+      kinds([
+        client({ name: "quiet", status: "suspended" }),
+        client({ name: "asked", status: "suspended", reactivationRequestedAt: "2026-09-27T08:00:00Z" }),
+        client({ name: "archived", status: "suspended", archived: true, reactivationRequestedAt: "2026-09-27T08:00:00Z" }),
+      ]),
+    ).toEqual(["asked:reactivation_request"]);
   });
 
   test("inactive active clients, and archived clients are skipped", () => {

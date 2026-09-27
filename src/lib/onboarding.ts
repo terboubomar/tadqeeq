@@ -44,6 +44,69 @@ export interface OnboardingRecord {
   paidAt: string | null;
   activatedAt: string | null;
   createdAt: string;
+  /** Set only while the workspace is suspended. */
+  suspension: SuspensionInfo | null;
+}
+
+export type SuspensionReason = "payment" | "request" | "other";
+
+export const SUSPENSION_REASONS: Record<SuspensionReason, { label: string; title: string; body: string }> = {
+  payment: {
+    label: "المدفوعات (لا يوجد اشتراك ساري أو لم يُسدَّد)",
+    title: "تم إيقاف حسابك بسبب المدفوعات",
+    body: "لا يوجد اشتراك ساري لحسابك أو لم نستلم سداد الاشتراك، لذلك أوقفنا جميع ميزات تدقيق مؤقتاً حتى تجديد الاشتراك.",
+  },
+  request: {
+    label: "بطلب من العميل",
+    title: "تم إيقاف حسابك بناءً على طلبك",
+    body: "أوقفنا حسابك مؤقتاً كما طلبت. يمكنك طلب إعادة التفعيل في أي وقت.",
+  },
+  other: {
+    label: "سبب آخر",
+    title: "تم إيقاف حسابك مؤقتاً",
+    body: "أوقف فريق تدقيق حسابك مؤقتاً. تواصل معنا لمعرفة التفاصيل وإعادة التفعيل.",
+  },
+};
+
+export const isSuspensionReason = (v: unknown): v is SuspensionReason => typeof v === "string" && v in SUSPENSION_REASONS;
+
+export interface SuspensionInfo {
+  reason: SuspensionReason;
+  /** Message the ops team wrote for the client when suspending. */
+  message: string | null;
+  since: string | null;
+  /** Latest reactivation request sent after the suspension, if any. */
+  reactivationRequestedAt: string | null;
+  subscription: { planName: string | null; price: number; cycle: "monthly" | "yearly"; status: string; endsOn: string | null } | null;
+}
+
+export const REACTIVATION_REQUEST_EVENT = "reactivation.request";
+
+/**
+ * Why the workspace is suspended, from ops audit events newest first. Suspensions without a
+ * recorded reason (older ones, or from a cancelled subscription) are treated as payment.
+ */
+export function latestSuspension(events: { action: string; metadata: Record<string, unknown> | null; createdAt: string }[]): {
+  reason: SuspensionReason;
+  message: string | null;
+  since: string | null;
+} {
+  for (const e of events) {
+    const m = e.metadata ?? {};
+    if (e.action === "client.status") {
+      if (m["status"] !== "suspended") break;
+      return {
+        reason: isSuspensionReason(m["reason"]) ? m["reason"] : "payment",
+        message: typeof m["message"] === "string" && m["message"].trim() ? m["message"].trim() : null,
+        since: e.createdAt,
+      };
+    }
+    if (e.action === "client.archive") return { reason: "other", message: null, since: e.createdAt };
+    if ((e.action === "subscription.create" || e.action === "subscription.update") && (m["status"] === "suspended" || m["status"] === "cancelled")) {
+      return { reason: "payment", message: null, since: e.createdAt };
+    }
+  }
+  return { reason: "payment", message: null, since: null };
 }
 
 const toAsciiDigits = (value: string) =>

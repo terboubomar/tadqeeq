@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, CheckCircle2, Loader2, Lock, Upload } from "lucide-react";
+import { CalendarClock, CheckCircle2, CircleDot, Loader2, Lock, PauseCircle, ShieldCheck, Upload } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -15,9 +15,10 @@ import {
   normalizeSaudiMobile,
   ONBOARDING_STATUS_LABELS,
   ONBOARDING_STEPS,
+  SUSPENSION_REASONS,
   type OnboardingRecord,
 } from "@/lib/onboarding";
-import { getMyOnboarding, submitOnboarding } from "@/lib/onboarding.functions";
+import { getMyOnboarding, requestReactivation, submitOnboarding } from "@/lib/onboarding.functions";
 
 export function OnboardingGate({ children }: { children: ReactNode }) {
   const { context } = useWorkspaceAccess();
@@ -39,6 +40,7 @@ export function OnboardingScreen() {
   }
   const record = query.data;
   if (record.status === "pending_details") return <OnboardingForm record={record} />;
+  if (record.status === "suspended") return <SuspendedScreen record={record} />;
   return <LockedStatus record={record} />;
 }
 
@@ -52,6 +54,123 @@ function formatRiyadh(iso: string | null) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(iso));
+}
+
+const PAUSED_FEATURES = [
+  "رفع الفواتير وتحليلها",
+  "اللوحة والتقارير والتفصيل اليومي",
+  "مركز الاستثناءات والتعويضات",
+  "العقود ومطابقة الرسوم",
+  "Tadqeeq AI",
+  "بوت Telegram لجمع أدلة الطلبات",
+];
+
+const formatDay = (iso: string | null) =>
+  iso
+    ? new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", { timeZone: "Asia/Riyadh", day: "numeric", month: "long", year: "numeric" }).format(new Date(iso))
+    : null;
+
+function SuspendedScreen({ record }: { record: OnboardingRecord }) {
+  const queryClient = useQueryClient();
+  const [note, setNote] = useState("");
+  const suspension = record.suspension;
+  const reason = SUSPENSION_REASONS[suspension?.reason ?? "payment"];
+  const sub = suspension?.subscription ?? null;
+  const request = useMutation({
+    mutationFn: () => requestReactivation({ data: { note: note.trim() || undefined } }),
+    onSuccess: async () => {
+      toast.success("تم إرسال طلبك — سيتواصل معك فريق تدقيق قريباً.");
+      await queryClient.invalidateQueries({ queryKey: ["my-onboarding"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const requestedAt = suspension?.reactivationRequestedAt ?? null;
+
+  return (
+    <div className="mx-auto max-w-2xl space-y-4 py-8">
+      <div className="panel overflow-hidden">
+        <div className="border-b border-destructive/20 bg-destructive/5 p-6 sm:p-8">
+          <div className="flex items-start gap-3">
+            <span className="grid size-12 shrink-0 place-items-center rounded-full bg-destructive/10 text-destructive">
+              <PauseCircle className="size-6" />
+            </span>
+            <div>
+              <h1 className="text-xl font-bold">{reason.title}</h1>
+              <p className="mt-1.5 text-sm leading-7 text-muted-foreground">{reason.body}</p>
+              {suspension?.since ? <p className="mt-2 text-xs text-muted-foreground">منذ {formatDay(suspension.since)}</p> : null}
+            </div>
+          </div>
+          {suspension?.message ? (
+            <p className="mt-5 rounded-[8px] border border-border bg-background p-3 text-sm leading-6">
+              <span className="font-semibold">رسالة من فريق تدقيق: </span>
+              {suspension.message}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="grid gap-6 p-6 sm:grid-cols-2 sm:p-8">
+          <div>
+            <h2 className="text-sm font-bold">الميزات المتوقفة</h2>
+            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+              {PAUSED_FEATURES.map((f) => (
+                <li key={f} className="flex items-center gap-2">
+                  <CircleDot className="size-3.5 shrink-0 text-destructive/70" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-start gap-2 rounded-[8px] bg-secondary p-3 text-sm">
+              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
+              <p>بياناتك وفتراتك وتقاريرك محفوظة كما هي، وتعود كاملة فور إعادة التفعيل.</p>
+            </div>
+            {sub ? (
+              <div className="rounded-[8px] border border-border p-3 text-sm">
+                <p className="text-xs text-muted-foreground">آخر اشتراك</p>
+                <p className="mt-1 font-semibold">
+                  {sub.planName ?? "اشتراك مخصص"} ·{" "}
+                  <span className="num">{new Intl.NumberFormat("en-US").format(sub.price)}</span> ر.س {sub.cycle === "yearly" ? "سنوياً" : "شهرياً"}
+                </p>
+                {sub.endsOn ? (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {sub.endsOn < new Date().toISOString().slice(0, 10) ? "انتهى في" : "ينتهي في"} {formatDay(sub.endsOn)}
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <div className="rounded-[8px] border border-border p-3 text-sm text-muted-foreground">لا يوجد اشتراك مسجّل لحسابك.</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="panel p-6 sm:p-8">
+        <h2 className="font-bold">إعادة تفعيل الحساب</h2>
+        {requestedAt ? (
+          <div className="mt-3 flex items-start gap-2 text-sm">
+            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+            <p>
+              أرسلت طلب إعادة التفعيل في {formatDay(requestedAt)}. سيتواصل معك فريق تدقيق لإتمام {suspension?.reason === "payment" ? "تجديد الاشتراك والسداد" : "إعادة التفعيل"}.
+            </p>
+          </div>
+        ) : (
+          <>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {suspension?.reason === "payment"
+                ? "أرسل طلباً وسيتواصل معك فريق تدقيق لتجديد الاشتراك وتأكيد التحويل، ثم نعيد فتح كل الميزات."
+                : "أرسل طلباً وسيتواصل معك فريق تدقيق."}
+            </p>
+            <Textarea className="mt-4" placeholder="ملاحظة للفريق (اختياري) — مثلاً: تم التحويل اليوم، أو أفضل وقت للتواصل" value={note} onChange={(e) => setNote(e.target.value)} />
+            <Button className="mt-3" disabled={request.isPending} onClick={() => request.mutate()}>
+              {request.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+              طلب إعادة التفعيل
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function LockedStatus({ record }: { record: OnboardingRecord }) {
