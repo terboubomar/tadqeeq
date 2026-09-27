@@ -44,3 +44,29 @@ export function opsAllowedHost(host: string): boolean {
 
 export const sarFmt = (n: number) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Math.round(n)) + " ر.س";
+
+/** Readable names for ops and client audit events shown in the logs. */
+export const OPS_ACTION_LABELS: Record<string, string> = {
+  "client.status": "تغيير حالة العميل",
+  "client.update": "تعديل بيانات العميل",
+  "client.note": "ملاحظة على العميل",
+  "client.archive": "أرشفة عميل",
+  "client.unarchive": "استعادة عميل من الأرشيف",
+  "client.delete": "حذف عميل نهائياً",
+  "subscription.create": "إنشاء اشتراك",
+  "subscription.update": "تعديل اشتراك",
+  "plan.create": "إنشاء باقة",
+  "plan.update": "تعديل باقة",
+  "payment.record": "تسجيل دفعة",
+  "payment.delete": "حذف دفعة",
+  "staff.add": "إضافة عضو للفريق",
+  "staff.remove": "إزالة عضو من الفريق",
+  "trial.upload": "رفع ملف التجربة",
+  user_invited: "دعوة مستخدم",
+  user_access_changed: "تغيير صلاحيات مستخدم",
+  user_suspended: "إيقاف مستخدم",
+  user_removed: "إزالة مستخدم",
+  user_password_set: "تعيين كلمة مرور",
+};
+
+export const opsActionLabel = (action: string) => OPS_ACTION_LABELS[action] ?? action;

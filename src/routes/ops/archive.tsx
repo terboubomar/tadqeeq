@@ -11,7 +11,7 @@ import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
 export const Route = createFileRoute("/ops/archive")({ component: ArchivePage });
 
-const when = (iso: string) => new Date(iso).toLocaleString("ar-SA", { timeZone: "Asia/Riyadh", dateStyle: "medium", timeStyle: "short" });
+const when = (iso: string) => new Date(iso).toLocaleString("ar-SA-u-ca-gregory", { timeZone: "Asia/Riyadh", dateStyle: "medium", timeStyle: "short" });
 
 function ArchivePage() {
   const role = useOpsRole();

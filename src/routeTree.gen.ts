@@ -21,8 +21,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as OpsIndexRouteImport } from './routes/ops/index'
 import { Route as CompensationIndexRouteImport } from './routes/compensation/index'
 import { Route as OpsUsageRouteImport } from './routes/ops/usage'
+import { Route as OpsTasksRouteImport } from './routes/ops/tasks'
 import { Route as OpsSubscriptionsRouteImport } from './routes/ops/subscriptions'
 import { Route as OpsStaffRouteImport } from './routes/ops/staff'
+import { Route as OpsPlansRouteImport } from './routes/ops/plans'
 import { Route as OpsPaymentsRouteImport } from './routes/ops/payments'
 import { Route as OpsLogsRouteImport } from './routes/ops/logs'
 import { Route as OpsClientsRouteImport } from './routes/ops/clients'
@@ -108,6 +110,11 @@ const OpsUsageRoute = OpsUsageRouteImport.update({
   path: '/usage',
   getParentRoute: () => OpsRoute,
 } as any)
+const OpsTasksRoute = OpsTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => OpsRoute,
+} as any)
 const OpsSubscriptionsRoute = OpsSubscriptionsRouteImport.update({
   id: '/subscriptions',
   path: '/subscriptions',
@@ -116,6 +123,11 @@ const OpsSubscriptionsRoute = OpsSubscriptionsRouteImport.update({
 const OpsStaffRoute = OpsStaffRouteImport.update({
   id: '/staff',
   path: '/staff',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsPlansRoute = OpsPlansRouteImport.update({
+  id: '/plans',
+  path: '/plans',
   getParentRoute: () => OpsRoute,
 } as any)
 const OpsPaymentsRoute = OpsPaymentsRouteImport.update({
@@ -279,8 +291,10 @@ export interface FileRoutesByFullPath {
   '/ops/clients': typeof OpsClientsRoute
   '/ops/logs': typeof OpsLogsRoute
   '/ops/payments': typeof OpsPaymentsRoute
+  '/ops/plans': typeof OpsPlansRoute
   '/ops/staff': typeof OpsStaffRoute
   '/ops/subscriptions': typeof OpsSubscriptionsRoute
+  '/ops/tasks': typeof OpsTasksRoute
   '/ops/usage': typeof OpsUsageRoute
   '/compensation/': typeof CompensationIndexRoute
   '/ops/': typeof OpsIndexRoute
@@ -317,8 +331,10 @@ export interface FileRoutesByTo {
   '/ops/clients': typeof OpsClientsRoute
   '/ops/logs': typeof OpsLogsRoute
   '/ops/payments': typeof OpsPaymentsRoute
+  '/ops/plans': typeof OpsPlansRoute
   '/ops/staff': typeof OpsStaffRoute
   '/ops/subscriptions': typeof OpsSubscriptionsRoute
+  '/ops/tasks': typeof OpsTasksRoute
   '/ops/usage': typeof OpsUsageRoute
   '/compensation': typeof CompensationIndexRoute
   '/ops': typeof OpsIndexRoute
@@ -359,8 +375,10 @@ export interface FileRoutesById {
   '/ops/clients': typeof OpsClientsRoute
   '/ops/logs': typeof OpsLogsRoute
   '/ops/payments': typeof OpsPaymentsRoute
+  '/ops/plans': typeof OpsPlansRoute
   '/ops/staff': typeof OpsStaffRoute
   '/ops/subscriptions': typeof OpsSubscriptionsRoute
+  '/ops/tasks': typeof OpsTasksRoute
   '/ops/usage': typeof OpsUsageRoute
   '/compensation/': typeof CompensationIndexRoute
   '/ops/': typeof OpsIndexRoute
@@ -401,8 +419,10 @@ export interface FileRouteTypes {
     | '/ops/clients'
     | '/ops/logs'
     | '/ops/payments'
+    | '/ops/plans'
     | '/ops/staff'
     | '/ops/subscriptions'
+    | '/ops/tasks'
     | '/ops/usage'
     | '/compensation/'
     | '/ops/'
@@ -439,8 +459,10 @@ export interface FileRouteTypes {
     | '/ops/clients'
     | '/ops/logs'
     | '/ops/payments'
+    | '/ops/plans'
     | '/ops/staff'
     | '/ops/subscriptions'
+    | '/ops/tasks'
     | '/ops/usage'
     | '/compensation'
     | '/ops'
@@ -480,8 +502,10 @@ export interface FileRouteTypes {
     | '/ops/clients'
     | '/ops/logs'
     | '/ops/payments'
+    | '/ops/plans'
     | '/ops/staff'
     | '/ops/subscriptions'
+    | '/ops/tasks'
     | '/ops/usage'
     | '/compensation/'
     | '/ops/'
@@ -587,6 +611,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OpsUsageRouteImport
       parentRoute: typeof OpsRoute
     }
+    '/ops/tasks': {
+      id: '/ops/tasks'
+      path: '/tasks'
+      fullPath: '/ops/tasks'
+      preLoaderRoute: typeof OpsTasksRouteImport
+      parentRoute: typeof OpsRoute
+    }
     '/ops/subscriptions': {
       id: '/ops/subscriptions'
       path: '/subscriptions'
@@ -599,6 +630,13 @@ declare module '@tanstack/react-router' {
       path: '/staff'
       fullPath: '/ops/staff'
       preLoaderRoute: typeof OpsStaffRouteImport
+      parentRoute: typeof OpsRoute
+    }
+    '/ops/plans': {
+      id: '/ops/plans'
+      path: '/plans'
+      fullPath: '/ops/plans'
+      preLoaderRoute: typeof OpsPlansRouteImport
       parentRoute: typeof OpsRoute
     }
     '/ops/payments': {
@@ -845,8 +883,10 @@ interface OpsRouteChildren {
   OpsClientsRoute: typeof OpsClientsRoute
   OpsLogsRoute: typeof OpsLogsRoute
   OpsPaymentsRoute: typeof OpsPaymentsRoute
+  OpsPlansRoute: typeof OpsPlansRoute
   OpsStaffRoute: typeof OpsStaffRoute
   OpsSubscriptionsRoute: typeof OpsSubscriptionsRoute
+  OpsTasksRoute: typeof OpsTasksRoute
   OpsUsageRoute: typeof OpsUsageRoute
   OpsIndexRoute: typeof OpsIndexRoute
 }
@@ -856,8 +896,10 @@ const OpsRouteChildren: OpsRouteChildren = {
   OpsClientsRoute: OpsClientsRoute,
   OpsLogsRoute: OpsLogsRoute,
   OpsPaymentsRoute: OpsPaymentsRoute,
+  OpsPlansRoute: OpsPlansRoute,
   OpsStaffRoute: OpsStaffRoute,
   OpsSubscriptionsRoute: OpsSubscriptionsRoute,
+  OpsTasksRoute: OpsTasksRoute,
   OpsUsageRoute: OpsUsageRoute,
   OpsIndexRoute: OpsIndexRoute,
 }

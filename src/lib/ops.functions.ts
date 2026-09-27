@@ -15,7 +15,8 @@ export const getRequestHost = createServerFn({ method: "GET" }).handler(() => S.
 
 export const getOpsMe = createServerFn({ method: "POST" }).validator(empty).handler(() => S.getOpsMeOnServer());
 export const getOpsOverview = createServerFn({ method: "POST" }).validator(empty).handler(() => S.getOpsOverviewOnServer());
-export const listOpsClients = createServerFn({ method: "POST" }).validator(empty).handler(() => S.listOpsClientsOnServer());
+export const getOpsTasks = createServerFn({ method: "POST" }).validator(empty).handler(() => S.getOpsTasksOnServer());
+export const listOpsClients =createServerFn({ method: "POST" }).validator(empty).handler(() => S.listOpsClientsOnServer());
 export const setOpsClientStatus = createServerFn({ method: "POST" })
   .validator(z.object({ workspaceId: z.string().uuid(), status: onbStatus, adminNote: z.string().max(2000).optional() }))
   .handler(({ data }) => S.setOpsClientStatusOnServer(data));

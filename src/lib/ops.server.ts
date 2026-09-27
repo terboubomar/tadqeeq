@@ -2,7 +2,8 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-import type { PlanFeature } from "./plans";
+import { buildOpsTasks, type OpsTask, type OpsTaskClient } from "./ops-tasks";
+import { TRIAL_UPLOAD_EVENT, type PlanFeature } from "./plans";
 import { opsCan, type Cycle, type OpsRole, type OpsSection, type SubscriptionStatus } from "./ops";
 import type { OnboardingStatus } from "./onboarding";
 
@@ -637,20 +638,78 @@ export async function getReceiptUrlOnServer(id: string) {
 }
 
 // ---------------- Usage ----------------
+// ---------------- Tasks (action center) ----------------
+/** Last sign-in per user; one admin page covers every account the platform has today. */
+async function lastSignIns(): Promise<Map<string, string>> {
+  const { data } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+  const out = new Map<string, string>();
+  for (const u of data?.users ?? []) if (u.last_sign_in_at) out.set(u.id, u.last_sign_in_at);
+  return out;
+}
+
+export async function getOpsTasksOnServer(): Promise<{ tasks: OpsTask[]; finance: boolean; archivedCount: number }> {
+  const actor = await requireOps("clients");
+  const finance = opsCan(actor.role, "subscriptions");
+  const [{ data: ws }, { data: onb }, { data: subs }, { data: members }, { data: trial }, archives, logins] = await Promise.all([
+    db().from("workspaces").select("id,name,created_at"),
+    db().from("workspace_onboarding").select("workspace_id,status,meeting_at,updated_at,contact_mobile,contact_email"),
+    db().from("subscriptions").select("workspace_id,status,ends_on,created_at").order("created_at", { ascending: false }),
+    db().from("workspace_members").select("workspace_id,user_id,status"),
+    db().from("workspace_audit_events").select("workspace_id").eq("event_type", TRIAL_UPLOAD_EVENT),
+    latestArchiveEvents(),
+    lastSignIns(),
+  ]);
+  const onbMap = new Map(((onb ?? []) as Row[]).map((r) => [String(r["workspace_id"]), r]));
+  const subMap = new Map<string, Row>();
+  for (const s of (subs ?? []) as Row[]) if (!subMap.has(String(s["workspace_id"]))) subMap.set(String(s["workspace_id"]), s);
+  const trialCount = new Map<string, number>();
+  for (const t of (trial ?? []) as Row[]) trialCount.set(String(t["workspace_id"]), (trialCount.get(String(t["workspace_id"])) ?? 0) + 1);
+  const lastLogin = new Map<string, string>();
+  for (const m of (members ?? []) as Row[]) {
+    if (m["status"] !== "active") continue;
+    const at = logins.get(String(m["user_id"]));
+    const id = String(m["workspace_id"]);
+    if (at && (!lastLogin.has(id) || lastLogin.get(id)! < at)) lastLogin.set(id, at);
+  }
+
+  let archivedCount = 0;
+  const clients: OpsTaskClient[] = ((ws ?? []) as Row[]).map((w) => {
+    const id = String(w["id"]);
+    const o = onbMap.get(id) ?? {};
+    const text = (k: string) => (typeof o[k] === "string" && o[k] ? (o[k] as string) : null);
+    const sub = subMap.get(id);
+    const archived = archives.get(id)?.action === ARCHIVE_ACTION;
+    if (archived) archivedCount += 1;
+    return {
+      workspaceId: id,
+      name: String(w["name"]),
+      status: (text("status") ?? "active") as OnboardingStatus,
+      createdAt: String(w["created_at"]),
+      updatedAt: text("updated_at"),
+      meetingAt: text("meeting_at"),
+      contactMobile: text("contact_mobile"),
+      contactEmail: text("contact_email"),
+      archived,
+      trialUploads: trialCount.get(id) ?? 0,
+      lastLogin: lastLogin.get(id) ?? null,
+      subscription: sub ? { status: sub["status"] as SubscriptionStatus, endsOn: (sub["ends_on"] as string | null) ?? null } : null,
+    };
+  });
+  return { tasks: buildOpsTasks(clients, new Date(), { finance }), finance, archivedCount };
+}
+
 export async function getOpsUsageOnServer() {
   await requireOps("usage");
   const since = new Date(Date.now() - 30 * 864e5).toISOString();
-  const [{ data: ws }, { data: periods }, { data: files }, { data: ai }, { data: ev }, { data: members }, users] = await Promise.all([
+  const [{ data: ws }, { data: periods }, { data: files }, { data: ai }, { data: ev }, { data: members }, lastLogin] = await Promise.all([
     db().from("workspaces").select("id,name"),
     db().from("periods").select("workspace_id,created_at"),
     db().from("audit_source_files").select("workspace_id,created_at"),
     db().from("ai_usage").select("workspace_id").gte("created_at", since),
     db().from("telegram_order_evidence").select("workspace_id"),
     db().from("workspace_members").select("workspace_id,user_id,status"),
-    supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
+    lastSignIns(),
   ]);
-  const lastLogin = new Map<string, string>();
-  for (const u of users.data?.users ?? []) if (u.last_sign_in_at) lastLogin.set(u.id, u.last_sign_in_at);
   const tally = (rows: unknown) => {
     const m = new Map<string, number>();
     for (const r of (rows ?? []) as Row[]) m.set(String(r["workspace_id"]), (m.get(String(r["workspace_id"])) ?? 0) + 1);
@@ -681,14 +740,21 @@ export async function getOpsUsageOnServer() {
 // ---------------- Logs ----------------
 export async function getOpsLogsOnServer() {
   await requireOps("logs");
-  const [{ data: ops }, { data: wsEvents }, { data: ws }] = await Promise.all([
+  const [{ data: ops }, { data: wsEvents }, { data: ws }, { data: profiles }] = await Promise.all([
     db().from("ops_audit_log").select("*").order("created_at", { ascending: false }).limit(200),
     db().from("workspace_audit_events").select("*").order("created_at", { ascending: false }).limit(200),
     db().from("workspaces").select("id,name"),
+    db().from("profiles").select("id,email"),
   ]);
   const names = new Map(((ws ?? []) as Row[]).map((w) => [String(w["id"]), String(w["name"])]));
-  const a = ((ops ?? []) as Row[]).map((r) => ({ id: String(r["id"]), source: "ops" as const, action: String(r["action"]), actor: (r["actor_email"] as string) ?? "—", workspace: r["workspace_id"] ? names.get(String(r["workspace_id"])) ?? "—" : "—", details: JSON.stringify(r["metadata"] ?? {}), createdAt: String(r["created_at"]) }));
-  const b = ((wsEvents ?? []) as Row[]).map((r) => ({ id: String(r["id"]), source: "client" as const, action: String(r["event_type"]), actor: String(r["actor_user_id"]).slice(0, 8), workspace: names.get(String(r["workspace_id"])) ?? "—", details: JSON.stringify(r["metadata"] ?? {}), createdAt: String(r["created_at"]) }));
+  const emails = new Map(((profiles ?? []) as Row[]).map((p) => [String(p["id"]), (p["email"] as string | null) ?? null]));
+  const a = ((ops ?? []) as Row[]).map((r) => {
+    const meta = (r["metadata"] ?? {}) as Row;
+    // Deleted clients keep their name in the event metadata only.
+    const workspace = (r["workspace_id"] ? names.get(String(r["workspace_id"])) : null) ?? (typeof meta["name"] === "string" ? meta["name"] : null) ?? "—";
+    return { id: String(r["id"]), source: "ops" as const, action: String(r["action"]), actor: (r["actor_email"] as string) ?? "—", workspace, details: JSON.stringify(meta), createdAt: String(r["created_at"]) };
+  });
+  const b = ((wsEvents ?? []) as Row[]).map((r) => ({ id: String(r["id"]), source: "client" as const, action: String(r["event_type"]), actor: emails.get(String(r["actor_user_id"])) ?? String(r["actor_user_id"]).slice(0, 8), workspace: names.get(String(r["workspace_id"])) ?? "—", details: JSON.stringify(r["metadata"] ?? {}), createdAt: String(r["created_at"]) }));
   return [...a, ...b].sort((x, y) => y.createdAt.localeCompare(x.createdAt)).slice(0, 300);
 }
 

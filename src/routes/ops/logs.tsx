@@ -3,7 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
-import { opsCan } from "@/lib/ops";
+import { opsActionLabel, opsCan } from "@/lib/ops";
+import { Input } from "@/components/ui/input";
 import { getOpsLogs } from "@/lib/ops.functions";
 import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
@@ -12,15 +13,22 @@ export const Route = createFileRoute("/ops/logs")({ component: Logs });
 function Logs() {
   const role = useOpsRole();
   const [src, setSrc] = useState<"all" | "ops" | "client">("all");
+  const [search, setSearch] = useState("");
   const q = useQuery({ queryKey: ["ops-logs"], queryFn: () => getOpsLogs({ data: {} }), enabled: opsCan(role, "logs") });
   if (!opsCan(role, "logs")) return <OpsDenied />;
-  const rows = (q.data ?? []).filter((r) => src === "all" || r.source === src);
+  const needle = search.trim().toLowerCase();
+  const rows = (q.data ?? []).filter(
+    (r) => (src === "all" || r.source === src) && (!needle || `${r.workspace} ${r.actor} ${r.action} ${opsActionLabel(r.action)}`.toLowerCase().includes(needle)),
+  );
   return (
     <div>
       <OpsHeader title="السجلات" sub="آخر 300 حدث">
+        <div className="flex gap-2">
+        <Input placeholder="بحث بالعميل أو المنفّذ أو الإجراء" value={search} onChange={(e) => setSearch(e.target.value)} className="w-60" />
         <select className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={src} onChange={(e) => setSrc(e.target.value as typeof src)}>
           <option value="all">الكل</option><option value="ops">إجراءات فريق العمليات</option><option value="client">أحداث العملاء</option>
         </select>
+        </div>
       </OpsHeader>
       <section className="panel overflow-x-auto">
         {q.isLoading ? <Loader2 className="m-4 size-5 animate-spin" /> : (
@@ -29,10 +37,10 @@ function Logs() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.source + r.id} className="border-t border-border align-top">
-                  <td className="num whitespace-nowrap p-3">{new Date(r.createdAt).toLocaleString("ar-SA")}</td>
+                  <td className="num whitespace-nowrap p-3">{new Date(r.createdAt).toLocaleString("ar-SA-u-ca-gregory", { timeZone: "Asia/Riyadh" })}</td>
                   <td className="p-3">{r.source === "ops" ? "العمليات" : "العميل"}</td>
-                  <td className="p-3 font-mono text-xs">{r.action}</td>
-                  <td className="p-3 text-xs">{r.actor}</td>
+                  <td className="p-3"><span className="font-medium">{opsActionLabel(r.action)}</span>{opsActionLabel(r.action) !== r.action ? <span className="block font-mono text-[10px] text-muted-foreground">{r.action}</span> : null}</td>
+                  <td className="p-3 text-xs" dir="ltr">{r.actor}</td>
                   <td className="p-3">{r.workspace}</td>
                   <td className="max-w-xs truncate p-3 font-mono text-[11px] text-muted-foreground" title={r.details}>{r.details}</td>
                 </tr>

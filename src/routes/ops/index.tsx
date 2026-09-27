@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ChevronLeft, ListTodo, Loader2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { sarFmt, opsCan } from "@/lib/ops";
-import { getOpsOverview } from "@/lib/ops.functions";
+import { getOpsOverview, getOpsTasks } from "@/lib/ops.functions";
+import { OPS_TASK_GROUPS } from "@/lib/ops-tasks";
 import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
 export const Route = createFileRoute("/ops/")({ component: Overview });
@@ -21,6 +22,7 @@ function Kpi({ label, value, tone }: { label: string; value: string | number; to
 function Overview() {
   const role = useOpsRole();
   const q = useQuery({ queryKey: ["ops-overview"], queryFn: () => getOpsOverview({ data: {} }), enabled: opsCan(role, "overview") });
+  const tasks = useQuery({ queryKey: ["ops-tasks"], queryFn: () => getOpsTasks({ data: {} }), enabled: opsCan(role, "clients"), staleTime: 60_000 });
   if (!opsCan(role, "overview")) return <OpsDenied />;
   if (q.isLoading) return <Loader2 className="size-5 animate-spin" />;
   if (q.error || !q.data) return <p className="text-sm text-destructive">{(q.error as Error)?.message}</p>;
@@ -28,6 +30,21 @@ function Overview() {
   return (
     <div className="space-y-5">
       <OpsHeader title="نظرة عامة" sub="الإيرادات المتكررة وحالة العملاء" />
+      {tasks.data?.tasks.length ? (
+        <Link to="/ops/tasks" className="panel flex flex-wrap items-center gap-3 p-4 transition-colors hover:border-primary/40">
+          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground"><ListTodo className="size-5" /></span>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold"><span className="num">{tasks.data.tasks.length}</span> مهمة تحتاج إجراء</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {OPS_TASK_GROUPS.map((g) => [g.title, tasks.data!.tasks.filter((t) => t.kind === g.kind).length] as const)
+                .filter(([, n]) => n)
+                .map(([title, n]) => `${title} ${n}`)
+                .join(" · ")}
+            </p>
+          </div>
+          <ChevronLeft className="size-4 text-muted-foreground" />
+        </Link>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi label="الإيراد السنوي المتكرر (ARR)" value={sarFmt(d.arr)} tone="good" />
         <Kpi label="الإيراد الشهري المتكرر (MRR)" value={sarFmt(d.mrr)} />

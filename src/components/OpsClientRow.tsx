@@ -24,12 +24,25 @@ const STEPS: { status: OnboardingStatus; label: string }[] = [
   { status: "suspended", label: "إيقاف" },
 ];
 
-export function ClientRow({ c, canEdit, canDelete }: { c: OpsClient; canEdit: boolean; canDelete: boolean }) {
+export function ClientRow({
+  c,
+  canEdit,
+  canDelete,
+  defaultOpen = false,
+}: {
+  c: OpsClient;
+  canEdit: boolean;
+  canDelete: boolean;
+  defaultOpen?: boolean;
+}) {
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const refresh = () => void qc.invalidateQueries({ queryKey: ["ops-clients"] });
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ["ops-clients"] });
+    void qc.invalidateQueries({ queryKey: ["ops-tasks"] });
+  };
   const archive = useMutation({
     mutationFn: (archived: boolean) => setOpsClientArchived({ data: { workspaceId: c.workspaceId, archived } }),
     onSuccess: (_, archived) => {
@@ -42,7 +55,7 @@ export function ClientRow({ c, canEdit, canDelete }: { c: OpsClient; canEdit: bo
   const notes = useQuery({ queryKey: ["ops-notes", c.workspaceId], queryFn: () => listClientNotes({ data: { workspaceId: c.workspaceId } }), enabled: open });
   const status = useMutation({
     mutationFn: (s: OnboardingStatus) => setOpsClientStatus({ data: { workspaceId: c.workspaceId, status: s } }),
-    onSuccess: () => { toast.success("تم التحديث"); void qc.invalidateQueries({ queryKey: ["ops-clients"] }); },
+    onSuccess: () => { toast.success("تم التحديث"); refresh(); },
     onError: (e) => toast.error((e as Error).message),
   });
   const addNote = useMutation({
