@@ -19,6 +19,7 @@ import type {
 import type { CompensationPlatformKey } from "@/lib/compensation-overview";
 import { sar } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { PlatformName } from "@/components/brand/PlatformLogo";
 
 export const Route = createFileRoute("/compensation/evidence")({ component: EvidencePage });
 
@@ -237,9 +238,9 @@ function EvidencePage() {
                 <SelectValue placeholder="اختر المنصة" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="hungerstation">هنقرستيشن</SelectItem>
-                <SelectItem value="keeta">كيتا</SelectItem>
-                <SelectItem value="jahez">جاهز</SelectItem>
+                <SelectItem value="hungerstation"><PlatformName platform="hungerstation" /></SelectItem>
+                <SelectItem value="keeta"><PlatformName platform="keeta" /></SelectItem>
+                <SelectItem value="jahez"><PlatformName platform="jahez" /></SelectItem>
               </SelectContent>
             </Select>
           </Field>

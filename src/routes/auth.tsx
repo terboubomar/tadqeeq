@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { lovable } from "@/integrations/lovable/index";
 import { supabase } from "@/integrations/supabase/client";
 import { LogoLockup, LogoWordmark } from "@/components/brand/Logo";
+import { PlatformName } from "@/components/brand/PlatformLogo";
+import { PLATFORM_KEYS } from "@/lib/platforms";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -85,7 +87,7 @@ function AuthPage() {
       <aside className="hidden bg-ink p-12 text-ink-foreground lg:flex lg:flex-col lg:justify-between">
         <LogoLockup title="تدقيق" className="h-16 text-ink-foreground" />
         <div><h2 className="max-w-md font-display text-4xl font-bold leading-[1.55]">دقّق فواتير منصات التوصيل قبل السداد</h2><p className="mt-5 max-w-md text-base leading-8 text-ink-muted">مساحة سعودية واحدة لمطابقة الفواتير، متابعة التعويضات، وتحليل أداء الفروع.</p></div>
-        <p className="text-sm text-ink-muted">هنقرستيشن · كيتا · جاهز</p>
+        <ul aria-label="المنصات المدعومة" className="flex flex-wrap gap-2 text-sm text-ink-foreground">{PLATFORM_KEYS.map((key) => (<li key={key} className="rounded-full bg-ink-foreground/10 py-1 ps-1 pe-3"><PlatformName platform={key} iconClassName="rounded-full" /></li>))}</ul>
       </aside>
       <main className="flex items-center justify-center px-4 py-10 sm:px-8">
       <div className="w-full max-w-[430px] rounded-[16px] border border-border bg-card p-7 shadow-panel sm:p-9">

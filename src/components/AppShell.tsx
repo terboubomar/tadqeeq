@@ -23,6 +23,7 @@ import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
 import { WORKSPACE_ROLE_LABELS, type WorkspacePermission } from "@/lib/workspace-access";
 import { LogoWordmark } from "@/components/brand/Logo";
+import { PlatformName } from "@/components/brand/PlatformLogo";
 
 type NavItem = { to: string; label: string; permission: WorkspacePermission; adminOnly?: boolean };
 
@@ -293,7 +294,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span>المنصة</span>
                   <span className="rounded-[7px] border border-input bg-card px-2.5 py-1.5 text-[13px] text-foreground">
-                    {selected.platform === "hungerstation" ? "هنقرستيشن" : selected.platform === "keeta" ? "كيتا" : "جاهز"}
+                    <PlatformName platform={selected.platform} iconClassName="size-4 rounded" />
                   </span>
                 </div>
 

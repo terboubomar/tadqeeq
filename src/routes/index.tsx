@@ -38,6 +38,8 @@ import { cn } from "@/lib/utils";
 import { listPublicPlans } from "@/lib/plans.functions";
 import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
 import { SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
+import { PlatformName, PlatformWordmark } from "@/components/brand/PlatformLogo";
+import { PLATFORM_KEYS } from "@/lib/platforms";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
@@ -408,13 +410,15 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         </section>
 
         <section className="border-y border-border">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-12 gap-y-4 px-4 py-8 text-sm text-muted-foreground sm:px-6">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-8 gap-y-4 px-4 py-8 text-sm text-muted-foreground sm:gap-x-10 sm:px-6">
             <span>يدعم فواتير وملفات:</span>
-            {["هنقرستيشن", "كيتا", "جاهز"].map((name) => (
-              <span key={name} className="font-display text-xl font-bold text-foreground">
-                {name}
-              </span>
-            ))}
+            <ul className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+              {PLATFORM_KEYS.map((key) => (
+                <li key={key}>
+                  <PlatformWordmark platform={key} className="h-10 sm:h-12" />
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 
@@ -535,9 +539,9 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
               نعيد احتساب كل بند في فواتير تطبيقات التوصيل من طلباتك وعقدك، ونجهّز مطالبات التعويض بالأدلة لكل فرع.
             </p>
             <ul aria-label="المنصات المدعومة" className="flex flex-wrap gap-2 text-xs font-semibold">
-              {["هنقرستيشن", "جاهز", "كيتا"].map((name) => (
-                <li key={name} className="rounded-full border border-border bg-card px-3 py-1">
-                  {name}
+              {PLATFORM_KEYS.map((key) => (
+                <li key={key} className="rounded-full border border-border bg-card py-1 ps-1 pe-3">
+                  <PlatformName platform={key} iconClassName="size-5 rounded-full" />
                 </li>
               ))}
             </ul>

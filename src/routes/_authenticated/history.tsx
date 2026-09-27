@@ -10,6 +10,7 @@ import { arabicDate, count, money, percent } from "@/lib/format";
 import { deletePeriod } from "@/lib/periods";
 import { setSelectedPeriodId, useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
+import { PlatformName } from "@/components/brand/PlatformLogo";
 
 export const Route = createFileRoute("/_authenticated/history")({
   head: () => ({
@@ -92,7 +93,7 @@ function HistoryPage() {
                     <Td mono>
                       {arabicDate(period.period_start)} — {arabicDate(period.period_end)}
                     </Td>
-                    <Td>{period.platform === "hungerstation" ? "هنقرستيشن" : period.platform === "keeta" ? "كيتا" : "جاهز"}</Td>
+                    <Td><PlatformName platform={period.platform} /></Td>
                     <Td mono>{count(period.summary?.orders ?? 0)}</Td>
                     <Td mono>{money(period.summary?.grossSales ?? 0)}</Td>
                     <Td mono>{money(period.summary?.commission ?? 0)}</Td>

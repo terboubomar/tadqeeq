@@ -15,6 +15,7 @@ import {
 } from "@/lib/compensation-overview";
 import { count, money, percent } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { PlatformName } from "@/components/brand/PlatformLogo";
 
 export const Route = createFileRoute("/compensation/")({ component: CompensationOverviewPage });
 
@@ -171,7 +172,7 @@ function CompensationOverviewPage() {
             return (
               <div key={row.platform} className="space-y-1.5">
                 <div className="flex justify-between text-sm">
-                  <span className="font-semibold">{PLATFORM_LABELS[row.platform]}</span>
+                  <PlatformName platform={row.platform} className="font-semibold" />
                   <span className="num text-muted-foreground">
                     {money(row.recovered)} / {money(row.claimed)}
                   </span>

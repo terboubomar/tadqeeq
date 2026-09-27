@@ -30,6 +30,7 @@ import {
   uploadSizeError,
 } from "@/lib/upload-validation";
 import { cn } from "@/lib/utils";
+import { PlatformName } from "@/components/brand/PlatformLogo";
 
 export const Route = createFileRoute("/_authenticated/import")({
   head: () => ({
@@ -694,7 +695,7 @@ function PlatformStep({
               )}
             >
               <span className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold">{item.label}</span>
+                <PlatformName platform={item.id} className="text-sm font-semibold" iconClassName="size-6 rounded-md" />
                 <span
                   className={cn(
                     "grid size-4 place-items-center rounded-full border",

@@ -35,6 +35,7 @@ import {
 import { exportXlsx } from "@/lib/export";
 import { count, money } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { PlatformName } from "@/components/brand/PlatformLogo";
 
 export const Route = createFileRoute("/compensation/cases")({ component: CasesPage });
 
@@ -253,7 +254,7 @@ function CasesPage() {
                         {r.orderNumber}
                       </button>
                     </td>
-                    <td className="px-2">{platformLabel(r.platform)}</td>
+                    <td className="px-2"><PlatformName platform={r.platform} /></td>
                     <td className="px-2">{r.branchName || "—"}</td>
                     <td className="max-w-[220px] truncate px-2" title={r.compensationReason}>
                       {r.compensationReason}
@@ -518,7 +519,7 @@ function CaseView({
       ) : null}
 
       <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-        <Info label="المنصة" value={platformLabel(item.platform)} />
+        <Info label="المنصة" value={<PlatformName platform={item.platform} />} />
         <Info label="الفرع" value={item.branchName || "—"} />
         <Info label="المبلغ" value={`${money(item.compensationAmount)} ر.س`} />
         <Info label="مرجع المنصة" value={item.aggregatorCaseReference || "—"} />
@@ -684,7 +685,7 @@ function IconAction({
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>
       <dt className="text-xs text-muted-foreground">{label}</dt>

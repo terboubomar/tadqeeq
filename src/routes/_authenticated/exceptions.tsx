@@ -55,6 +55,7 @@ import { arabicDate, sar } from "@/lib/format";
 import { updateExceptionWorkflow } from "@/lib/periods";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
+import { PlatformName } from "@/components/brand/PlatformLogo";
 
 export const Route = createFileRoute("/_authenticated/exceptions")({
   head: () => ({
@@ -144,7 +145,7 @@ function ExceptionsPage() {
           <h1 className="audit-heading">مركز الاستثناءات</h1>
           <p className="audit-subtitle">
             {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)} ·{" "}
-            {selected.platform === "hungerstation" ? "هنقرستيشن" : selected.platform === "keeta" ? "كيتا" : "جاهز"}
+            <PlatformName platform={selected.platform} iconClassName="size-4 rounded" />
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             يعرض فقط الفروقات المستقلة القابلة للإجراء في الملف المحدد؛ المجاميع الرقابية والبنود غير القابلة للتحقق تبقى في مطابقة الفاتورة.
@@ -335,7 +336,7 @@ function ExceptionRow({
           </p>
         </div>
       </Td>
-      <Td>{item.platform === "hungerstation" ? "هنقرستيشن" : item.platform === "keeta" ? "كيتا" : "جاهز"}</Td>
+      <Td><PlatformName platform={item.platform} /></Td>
       <Td>
         {item.branch ? (
           <div className="max-w-48">

@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { arabicDate, count, money, percent, sar, short } from "@/lib/format";
 import { reanalyzeAuditPeriod } from "@/lib/reanalyze-period.functions";
 import { setSelectedPeriodId, useSelectedPeriod } from "@/lib/use-period";
+import { PlatformName } from "@/components/brand/PlatformLogo";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -78,7 +79,6 @@ function Dashboard() {
   const isHunger = selected.platform === "hungerstation";
   const isKeeta = selected.platform === "keeta";
   const isJahez = selected.platform === "jahez";
-  const platformLabel = isHunger ? "هنقرستيشن" : isKeeta ? "كيتا" : "جاهز";
   const costLabel = isHunger ? "عمولة" : isJahez ? "تكلفة الفاتورة" : "تكلفة المنصة";
   async function reanalyzeCurrentPeriod() {
     if (!selected) return;
@@ -141,7 +141,7 @@ function Dashboard() {
         <h1 className="audit-heading">اللوحة التنفيذية</h1>
         <p className="audit-subtitle">
           {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)} ·{" "}
-          {platformLabel} · <span className="num">{count(s.branchCount)}</span> فرع ·{" "}
+          <PlatformName platform={selected.platform} iconClassName="size-4 rounded" /> · <span className="num">{count(s.branchCount)}</span> فرع ·{" "}
           <span className="num">{count(s.orders)}</span> طلب
         </p>
       </header>

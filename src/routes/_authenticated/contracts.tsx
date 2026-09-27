@@ -72,6 +72,7 @@ import {
 } from "@/lib/upload-validation";
 import { listPeriods } from "@/lib/periods";
 import { cn } from "@/lib/utils";
+import { PlatformName } from "@/components/brand/PlatformLogo";
 
 export const Route = createFileRoute("/_authenticated/contracts")({
   head: () => ({
@@ -264,7 +265,7 @@ function ContractsPage() {
                           {contract.name}
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {PLATFORM_LABELS[contract.platform]}
+                          <PlatformName platform={contract.platform} iconClassName="size-4 rounded" />
                         </p>
                       </div>
                       <span className="num rounded-full bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
@@ -595,7 +596,7 @@ function ContractHeader({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-bold">{contract.name}</h2>
-              <Badge variant="secondary">{PLATFORM_LABELS[contract.platform]}</Badge>
+              <Badge variant="secondary" className="gap-1.5 ps-1"><PlatformName platform={contract.platform} iconClassName="size-4 rounded" /></Badge>
             </div>
             <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
               {contract.externalReference ? (
@@ -678,7 +679,7 @@ function ArchivedContracts({
             <div key={contract.id} className="flex items-center justify-between gap-3 px-5 py-3">
               <div>
                 <p className="text-sm">{contract.name}</p>
-                <p className="text-xs text-muted-foreground">{PLATFORM_LABELS[contract.platform]}</p>
+                <p className="text-xs text-muted-foreground"><PlatformName platform={contract.platform} iconClassName="size-4 rounded" /></p>
               </div>
               <Button
                 size="sm"
