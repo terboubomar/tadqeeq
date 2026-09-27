@@ -1,6 +1,7 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  ArrowUp,
   Building2,
   Calculator,
   Check,
@@ -68,6 +69,27 @@ const NAV = [
   ["#compensation", "مركز التعويضات"],
   ["#pricing", "الخطط والأسعار"],
   ["#faq", "الأسئلة"],
+] as const;
+
+const FOOTER_GROUPS = [
+  {
+    title: "المنتج",
+    links: [
+      ["#features", "مطابقة الفاتورة"],
+      ["#compensation", "مركز التعويضات"],
+      ["#products", "كل الأدوات"],
+      ["#checks", "ما الذي نراجعه"],
+    ],
+  },
+  {
+    title: "تعرّف على تدقيق",
+    links: [
+      ["#how", "كيف يعمل"],
+      ["#who", "لمن تدقيق"],
+      ["#pricing", "الخطط والأسعار"],
+      ["#faq", "الأسئلة الشائعة"],
+    ],
+  },
 ] as const;
 
 const BEFORE = [
@@ -275,9 +297,11 @@ function useScrollReveal() {
 function Landing({ plans }: { plans: PublicPlan[] }) {
   const rootRef = useScrollReveal();
   const [menuOpen, setMenuOpen] = useState(false);
+  const hasSection = (href: string) => href !== "#pricing" || plans.length > 0;
+  const navItems = NAV.filter(([href]) => hasSection(href));
 
   return (
-    <div ref={rootRef} className="lp-root min-h-screen bg-background" dir="rtl">
+    <div ref={rootRef} id="top" className="lp-root min-h-screen bg-background" dir="rtl">
       <div className="flex items-center justify-center gap-3 bg-ink px-4 py-2.5 text-center text-xs text-ink-foreground sm:text-[13px]">
         <span className="lp-pulse shrink-0 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-primary-foreground">جديد</span>
         <span className="hidden sm:inline">مركز التعويضات: اعترض على التعويضات بفيديو من قروب الفرع على Telegram</span>
@@ -296,7 +320,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
             </span>
           </Link>
           <nav aria-label="الرئيسية" className="hidden items-center gap-1 rounded-full bg-background p-1 text-sm lg:flex">
-            {NAV.map(([href, label]) => (
+            {navItems.map(([href, label]) => (
               <a
                 key={href}
                 href={href}
@@ -331,7 +355,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         </header>
         {menuOpen ? (
           <nav aria-label="القائمة" className="mx-auto mt-2 flex max-w-7xl flex-col rounded-2xl border border-border bg-card p-2 shadow-lg lg:hidden">
-            {NAV.map(([href, label]) => (
+            {navItems.map(([href, label]) => (
               <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-muted">
                 {label}
               </a>
@@ -501,12 +525,78 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         </section>
       </main>
 
-      <footer className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 pb-10 text-[13px] text-muted-foreground sm:px-6">
-        <div className="flex items-center gap-2.5">
-          <LogoWordmark className="h-6 text-ink" />
-          <span>مراجعة فواتير التوصيل للمطاعم في السعودية</span>
+      <footer className="mt-4 border-t border-border bg-[oklch(0.975_0.018_85)]">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,2fr)] lg:gap-16">
+          <div className="flex flex-col items-start gap-4">
+            <Link to="/" aria-label="تدقيق — الرئيسية">
+              <LogoWordmark className="h-9 text-ink" />
+            </Link>
+            <p className="max-w-sm text-sm leading-7 text-muted-foreground">
+              نعيد احتساب كل بند في فواتير تطبيقات التوصيل من طلباتك وعقدك، ونجهّز مطالبات التعويض بالأدلة لكل فرع.
+            </p>
+            <ul aria-label="المنصات المدعومة" className="flex flex-wrap gap-2 text-xs font-semibold">
+              {["هنقرستيشن", "جاهز", "كيتا"].map((name) => (
+                <li key={name} className="rounded-full border border-border bg-card px-3 py-1">
+                  {name}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <nav aria-label="روابط التذييل" className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3">
+            {FOOTER_GROUPS.map((group) => (
+              <div key={group.title}>
+                <h2 className="text-sm font-bold">{group.title}</h2>
+                <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+                  {group.links
+                    .filter(([href]) => hasSection(href))
+                    .map(([href, label]) => (
+                      <li key={href}>
+                        <a href={href} className="transition-colors hover:text-foreground">
+                          {label}
+                        </a>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            ))}
+            <div>
+              <h2 className="text-sm font-bold">الحساب</h2>
+              <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+                <li>
+                  <Link to="/auth" search={{ mode: "signup" }} className="transition-colors hover:text-foreground">
+                    إنشاء حساب
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/auth" className="transition-colors hover:text-foreground">
+                    تسجيل الدخول
+                  </Link>
+                </li>
+              </ul>
+              <Link
+                to="/auth"
+                search={{ mode: "signup" }}
+                className="mt-5 inline-flex h-10 items-center gap-2 rounded-full bg-ink px-4 text-[13px] font-semibold text-ink-foreground transition-transform hover:-translate-y-0.5"
+              >
+                ابدأ مجاناً
+                <ArrowLeft className="size-3.5" />
+              </Link>
+            </div>
+          </nav>
         </div>
-        <span className="num">© {new Date().getFullYear()} تدقيق</span>
+
+        <div className="border-t border-border">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-5 text-xs text-muted-foreground sm:px-6">
+            <p>
+              <span className="num">© {new Date().getFullYear()}</span> تدقيق · مراجعة فواتير التوصيل للمطاعم · صُنع في السعودية
+            </p>
+            <a href="#top" className="inline-flex items-center gap-1.5 font-semibold transition-colors hover:text-foreground">
+              العودة للأعلى
+              <ArrowUp className="size-3.5" />
+            </a>
+          </div>
+        </div>
       </footer>
     </div>
   );
@@ -1389,7 +1479,7 @@ function ChecksGrid() {
     index < active ? "checked" : index === active ? "scanning" : "idle";
 
   return (
-    <section aria-label="ما الذي نراجعه">
+    <section id="checks" aria-label="ما الذي نراجعه">
       <div ref={trackRef} className="relative hidden lg:block" style={{ height: `${CHECKS.length * 45 + 70}vh` }}>
         <div className="sticky top-0 flex h-screen items-center">
           <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center gap-12 px-6 pt-20">
