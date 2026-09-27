@@ -211,6 +211,13 @@
       "when": 1790302639960,
       "tag": "0029_plan_features_and_upload_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1790302739960,
+      "tag": "0030_evidence_media_size_limit",
+      "breakpoints": true
     }
   ]
 }

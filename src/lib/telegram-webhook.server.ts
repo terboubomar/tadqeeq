@@ -350,6 +350,33 @@ async function detectOrderNumber(media: TelegramMedia): Promise<string | null> {
   }
 }
 
+/** Telegram bots can download files up to 20 MB, so evidence videos can be that large. */
+export const EVIDENCE_MEDIA_LIMIT_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Stores an evidence file in the private bucket. The bucket was created with a
+ * 2 MB cap meant for thumbnails, which rejects most videos; when that happens,
+ * raise the cap to the Telegram limit once and retry.
+ */
+export async function uploadEvidenceObject(
+  path: string,
+  bytes: ArrayBuffer | Uint8Array,
+  contentType: string,
+): Promise<string | null> {
+  const upload = () =>
+    supabaseAdmin.storage.from(THUMBNAIL_BUCKET).upload(path, bytes, { contentType, upsert: true });
+  let { error } = await upload();
+  if (error && /size|exceed|too large|413/i.test(error.message)) {
+    const { error: bucketError } = await supabaseAdmin.storage.updateBucket(THUMBNAIL_BUCKET, {
+      public: false,
+      fileSizeLimit: EVIDENCE_MEDIA_LIMIT_BYTES,
+    });
+    if (bucketError) console.error("Evidence bucket limit update failed", bucketError.message);
+    else ({ error } = await upload());
+  }
+  return error ? error.message : null;
+}
+
 async function archiveOriginalMedia(
   userId: string,
   evidenceId: string,
@@ -359,13 +386,12 @@ async function archiveOriginalMedia(
     const file = await downloadTelegramFile(media.fileId, 20_000_000);
     if (!file) return;
     const ext = file.filePath.split(".").pop()?.toLowerCase() || "bin";
-    const { error } = await supabaseAdmin.storage
-      .from(THUMBNAIL_BUCKET)
-      .upload(`${userId}/media/${evidenceId}.${ext}`, file.bytes, {
-        contentType: mimeFromPath(file.filePath),
-        upsert: true,
-      });
-    if (error) console.error("Evidence media archive failed", error.message);
+    const error = await uploadEvidenceObject(
+      `${userId}/media/${evidenceId}.${ext}`,
+      file.bytes,
+      mimeFromPath(file.filePath),
+    );
+    if (error) console.error("Evidence media archive failed", error);
   } catch (error) {
     console.error("Evidence media archive failed", error);
   }

@@ -258,12 +258,12 @@ function mapCase(row: {
 }
 
 export async function listTelegramBranchConnectionsOnServer(): Promise<TelegramBranchConnection[]> {
-  const { client, userId } = await requireWorkspacePermission("telegram.read");
+  const { client, workspaceId } = await requireWorkspacePermission("telegram.read");
   const db = dynamicDb(client);
   const { data, error } = await db
     .from("telegram_branch_chats")
     .select("*")
-    .eq("user_id", userId)
+    .eq("workspace_id", workspaceId)
     .order("branch_name", { ascending: true });
 
   if (error) throw new Error(error.message);
@@ -405,13 +405,13 @@ export async function setTelegramBranchConnectionActiveOnServer(
   id: string,
   active: boolean,
 ): Promise<TelegramBranchConnection> {
-  const { client, userId } = await requireWorkspacePermission("telegram.manage");
+  const { client, workspaceId } = await requireWorkspacePermission("telegram.manage");
   const db = dynamicDb(client);
   const { data, error } = await db
     .from("telegram_branch_chats")
     .update({ active, updated_at: new Date().toISOString() })
     .eq("id", id)
-    .eq("user_id", userId)
+    .eq("workspace_id", workspaceId)
     .select("*")
     .maybeSingle();
 
@@ -485,14 +485,14 @@ export async function configureTelegramWebhookOnServer(): Promise<TelegramIntegr
 
 async function branchNamesById(
   client: ServerUserClient,
-  userId: string,
+  workspaceId: string,
   ids: string[],
 ): Promise<Map<string, string>> {
   if (!ids.length) return new Map();
   const { data, error } = await client
     .from("telegram_branch_chats")
     .select("id, branch_name")
-    .eq("user_id", userId)
+    .eq("workspace_id", workspaceId)
     .in("id", ids);
 
   if (error) throw new Error(error.message);
@@ -562,7 +562,6 @@ export async function searchCompensationEvidenceOnServer(
         .from("telegram_order_evidence")
         .select("*")
         .eq("workspace_id", workspaceId)
-        .eq("user_id", userId)
         .like("order_lookup_key", suffixPattern)
         .order("captured_at", { ascending: false })
         .limit(25),
@@ -586,7 +585,7 @@ export async function searchCompensationEvidenceOnServer(
       ),
     ),
   );
-  const branches = await branchNamesById(client, userId, branchChatIds);
+  const branches = await branchNamesById(client, workspaceId, branchChatIds);
 
   const evidence = await Promise.all(
     (evidenceRows ?? []).map(async (row: {
@@ -613,7 +612,8 @@ export async function searchCompensationEvidenceOnServer(
       mediaType: row.media_type,
       durationSeconds: row.duration_seconds,
       fileSizeBytes: row.file_size_bytes,
-      thumbnailUrl: await signedThumbnail(client, row.thumbnail_storage_path),
+      // Rows are already limited by RLS; the thumbnail sits in the connecting account's folder.
+      thumbnailUrl: await signedThumbnail(adminDb, row.thumbnail_storage_path),
       telegramUrl: telegramMessageUrl(row.telegram_chat_id, row.telegram_message_id),
     })),
   );
@@ -647,7 +647,7 @@ export async function searchCompensationEvidenceOnServer(
 
 async function assertOwnedEvidence(
   client: ServerUserClient,
-  userId: string,
+  workspaceId: string,
   evidenceId: string | null | undefined,
 ): Promise<{
   id: string;
@@ -661,7 +661,7 @@ async function assertOwnedEvidence(
     .from("telegram_order_evidence")
     .select("id, captured_at, sender_name, branch_chat_id, branch_id")
     .eq("id", evidenceId)
-    .eq("user_id", userId)
+    .eq("workspace_id", workspaceId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("دليل Telegram المحدد غير موجود.");
@@ -753,7 +753,7 @@ export async function saveCompensationCaseOnServer(
   if (!reason || reason.length > 1000) throw new Error("سبب التعويض مطلوب.");
   if (!explanation || explanation.length > 6000) throw new Error("شرح الموظف مطلوب.");
 
-  const evidence = await assertOwnedEvidence(client, userId, input.evidenceId);
+  const evidence = await assertOwnedEvidence(client, workspaceId, input.evidenceId);
   const period = await assertOwnedPeriod(workspaceId, userId, input.periodId);
 
   if (period && period.platform !== input.platform) {
@@ -764,7 +764,7 @@ export async function saveCompensationCaseOnServer(
   let branchId = evidence?.branch_id ?? null;
 
   if (!branchName && evidence) {
-    const branches = await branchNamesById(client, userId, [evidence.branch_chat_id]);
+    const branches = await branchNamesById(client, workspaceId, [evidence.branch_chat_id]);
     branchName = branches.get(evidence.branch_chat_id) ?? null;
   }
 
@@ -913,28 +913,34 @@ export interface EvidenceMediaLinks {
 export async function getEvidenceMediaOnServer(
   evidenceId: string,
 ): Promise<EvidenceMediaLinks> {
-  const { client, userId, workspaceId } = await requireWorkspacePermission("telegram.read");
+  const context = await requireWorkspacePermission("telegram.read");
+  const { client, workspaceId } = context;
+  // Any workspace member with access may open evidence, not only the account that
+  // connected the branch, so the row is not filtered by the current user.
   const { data: row, error } = await dynamicDb(client)
     .from("telegram_order_evidence")
-    .select("id, order_number, telegram_file_id")
+    .select("id, user_id, branch_id, order_number, telegram_file_id")
     .eq("id", evidenceId)
     .eq("workspace_id", workspaceId)
-    .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!row) throw new Error("الدليل غير موجود.");
+  assertBranchAccess(context, row.branch_id);
 
-  const folder = `${userId}/media`;
+  // Access is checked above; storage is read with the service role because the
+  // file lives in the folder of the account that connected the branch.
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { mimeFromPath, uploadEvidenceObject } = await import("./telegram-webhook.server");
+  const bucket = supabaseAdmin.storage.from(THUMBNAIL_BUCKET);
+  const folder = `${row.user_id}/media`;
   const findStored = async () => {
-    const { data } = await client.storage
-      .from(THUMBNAIL_BUCKET)
-      .list(folder, { search: row.id, limit: 5 });
+    const { data } = await bucket.list(folder, { search: row.id, limit: 5 });
     return data?.find((item) => item.name.startsWith(row.id)) ?? null;
   };
 
   let stored = await findStored();
   if (!stored) {
-    // Older evidence: fetch the original from Telegram once and archive it.
+    // Not archived yet (older evidence, or a video the bucket refused): fetch it from Telegram once.
     const token = process.env["TELEGRAM_BOT_TOKEN"]?.trim();
     if (!token) throw new Error("إعدادات Telegram غير مكتملة.");
     const info = await fetch(`https://api.telegram.org/bot${token}/getFile`, {
@@ -944,33 +950,27 @@ export async function getEvidenceMediaOnServer(
     }).then((r) => r.json() as Promise<{ ok?: boolean; result?: { file_path?: string } }>);
     const filePath = info.result?.file_path;
     if (!info.ok || !filePath) {
-      throw new Error("تعذّر جلب الملف من Telegram (الحد الأقصى 20 ميجابايت).");
+      throw new Error("تعذّر جلب الملف من Telegram. الملفات الأكبر من 20 ميجابايت لا يمكن جلبها، افتحها من Telegram مباشرة.");
     }
     const response = await fetch(`https://api.telegram.org/file/bot${token}/${filePath}`);
     if (!response.ok) throw new Error("تعذّر تنزيل الملف من Telegram.");
     const bytes = await response.arrayBuffer();
     const ext = filePath.split(".").pop()?.toLowerCase() || "bin";
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { mimeFromPath } = await import("./telegram-webhook.server");
-    const { error: uploadError } = await supabaseAdmin.storage
-      .from(THUMBNAIL_BUCKET)
-      .upload(`${folder}/${row.id}.${ext}`, bytes, {
-        contentType: mimeFromPath(filePath),
-        upsert: true,
-      });
-    if (uploadError) throw new Error("تعذّر حفظ نسخة من الدليل.");
+    const uploadError = await uploadEvidenceObject(`${folder}/${row.id}.${ext}`, bytes, mimeFromPath(filePath));
+    if (uploadError) {
+      console.error("Evidence media upload failed", uploadError);
+      throw new Error("تعذّر حفظ نسخة من الدليل. حاول مرة أخرى أو افتحه من Telegram.");
+    }
     stored = await findStored();
     if (!stored) throw new Error("تعذّر تجهيز الدليل.");
   }
 
   const path = `${folder}/${stored.name}`;
   const ext = stored.name.split(".").pop()?.toLowerCase() ?? "";
-  const kind = ["mp4", "mov", "webm", "mkv"].includes(ext) ? "video" : "image";
+  const kind = ["mp4", "mov", "webm", "mkv", "m4v"].includes(ext) ? "video" : "image";
   const [preview, download] = await Promise.all([
-    client.storage.from(THUMBNAIL_BUCKET).createSignedUrl(path, 900),
-    client.storage
-      .from(THUMBNAIL_BUCKET)
-      .createSignedUrl(path, 900, { download: `order-${row.order_number}.${ext}` }),
+    bucket.createSignedUrl(path, 900),
+    bucket.createSignedUrl(path, 900, { download: `order-${row.order_number}.${ext}` }),
   ]);
   if (preview.error || download.error) throw new Error("تعذّر إنشاء رابط الدليل.");
   return { kind, previewUrl: preview.data.signedUrl, downloadUrl: download.data.signedUrl };
