@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { isValidCr, isValidNationalId, isValidVat, normalizeSaudiMobile } from "./onboarding";
 import * as S from "./ops.server";
 
 const empty = z.object({}).optional();
@@ -18,6 +19,42 @@ export const listOpsClients = createServerFn({ method: "POST" }).validator(empty
 export const setOpsClientStatus = createServerFn({ method: "POST" })
   .validator(z.object({ workspaceId: z.string().uuid(), status: onbStatus, adminNote: z.string().max(2000).optional() }))
   .handler(({ data }) => S.setOpsClientStatusOnServer(data));
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .nullable()
+    .transform((v) => (v ? v : null));
+const checked = (max: number, valid: (v: string) => boolean, message: string) =>
+  optionalText(max).refine((v) => v === null || valid(v), { message });
+
+export const updateOpsClient = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      workspaceId: z.string().uuid(),
+      name: z.string().trim().min(1, "اسم الشركة مطلوب").max(120),
+      legalName: optionalText(200),
+      brandName: optionalText(120),
+      crNumber: checked(20, isValidCr, "رقم السجل التجاري غير صحيح (10 أرقام)."),
+      vatNumber: checked(20, isValidVat, "الرقم الضريبي غير صحيح (15 رقماً)."),
+      contactName: optionalText(120),
+      contactMobile: optionalText(20)
+        .refine((v) => v === null || normalizeSaudiMobile(v) !== null, { message: "رقم الجوال غير صحيح." })
+        .transform((v) => (v === null ? null : normalizeSaudiMobile(v))),
+      contactEmail: checked(200, (v) => z.string().email().safeParse(v).success, "البريد الإلكتروني غير صحيح."),
+      contactNationalId: checked(20, isValidNationalId, "رقم الهوية غير صحيح."),
+      branchCount: z.number().int().min(0).max(100_000).nullable(),
+      adminNote: optionalText(2000),
+    }),
+  )
+  .handler(({ data }) => S.updateOpsClientOnServer(data));
+export const setOpsClientArchived = createServerFn({ method: "POST" })
+  .validator(z.object({ workspaceId: z.string().uuid(), archived: z.boolean() }))
+  .handler(({ data }) => S.setOpsClientArchivedOnServer(data));
+export const deleteOpsClient = createServerFn({ method: "POST" })
+  .validator(z.object({ workspaceId: z.string().uuid(), confirmName: z.string().max(200) }))
+  .handler(({ data }) => S.deleteOpsClientOnServer(data));
 export const listClientNotes = createServerFn({ method: "POST" })
   .validator(z.object({ workspaceId: z.string().uuid() }))
   .handler(({ data }) => S.listClientNotesOnServer(data.workspaceId));

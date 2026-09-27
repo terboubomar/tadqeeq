@@ -137,17 +137,21 @@ export interface OpsClient {
   subscriptionCycle: Cycle | null;
   subscriptionEndsOn: string | null;
   paidTotal: number;
+  /** Archived clients are suspended and hidden from the default list. */
+  archived: boolean;
+  archivedAt: string | null;
 }
 
 export async function listOpsClientsOnServer(): Promise<OpsClient[]> {
   await requireOps("clients");
-  const [{ data: ws }, { data: onb }, { data: members }, { data: subs }, { data: pays }, { data: profiles }] = await Promise.all([
+  const [{ data: ws }, { data: onb }, { data: members }, { data: subs }, { data: pays }, { data: profiles }, archives] = await Promise.all([
     db().from("workspaces").select("id,name,owner_user_id,created_at"),
     db().from("workspace_onboarding").select("*"),
     db().from("workspace_members").select("workspace_id,status"),
     db().from("subscriptions").select("workspace_id,price,cycle,status,ends_on,created_at").order("created_at", { ascending: false }),
     db().from("payments").select("workspace_id,amount"),
     db().from("profiles").select("id,email"),
+    latestArchiveEvents(),
   ]);
   const onbMap = new Map(((onb ?? []) as Row[]).map((r) => [String(r["workspace_id"]), r]));
   const emails = new Map(((profiles ?? []) as Row[]).map((r) => [String(r["id"]), (r["email"] as string) ?? null]));
@@ -193,6 +197,8 @@ export async function listOpsClientsOnServer(): Promise<OpsClient[]> {
         subscriptionCycle: (sub?.["cycle"] as Cycle) ?? null,
         subscriptionEndsOn: (sub?.["ends_on"] as string) ?? null,
         paidTotal: paid.get(id) ?? 0,
+        archived: archives.get(id)?.action === ARCHIVE_ACTION,
+        archivedAt: archives.get(id)?.action === ARCHIVE_ACTION ? archives.get(id)!.at : null,
       } satisfies OpsClient;
     }),
   );
@@ -213,6 +219,210 @@ export async function setOpsClientStatusOnServer(input: { workspaceId: string; s
     : await db().from("workspace_onboarding").insert({ workspace_id: input.workspaceId, ...patch });
   if (error) throw new Error(error.message);
   await log(actor, "client.status", "workspace", input.workspaceId, input.workspaceId, { status: input.status });
+}
+
+// ---------------- Edit / archive / delete ----------------
+const ARCHIVE_ACTION = "client.archive";
+const UNARCHIVE_ACTION = "client.unarchive";
+
+type ArchiveEvent = { action: string; at: string; previousStatus: OnboardingStatus | null };
+
+/** Latest archive/unarchive event per workspace (archive state lives in the ops audit log). */
+async function latestArchiveEvents(workspaceId?: string): Promise<Map<string, ArchiveEvent>> {
+  let query = db()
+    .from("ops_audit_log")
+    .select("workspace_id,action,metadata,created_at")
+    .in("action", [ARCHIVE_ACTION, UNARCHIVE_ACTION])
+    .order("created_at", { ascending: false });
+  if (workspaceId) query = query.eq("workspace_id", workspaceId);
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  const out = new Map<string, ArchiveEvent>();
+  for (const r of (data ?? []) as Row[]) {
+    const id = String(r["workspace_id"]);
+    if (out.has(id)) continue;
+    const meta = (r["metadata"] ?? {}) as Row;
+    out.set(id, {
+      action: String(r["action"]),
+      at: String(r["created_at"]),
+      previousStatus: typeof meta["previousStatus"] === "string" ? (meta["previousStatus"] as OnboardingStatus) : null,
+    });
+  }
+  return out;
+}
+
+async function requireClientEditor(): Promise<OpsActor> {
+  const actor = await requireOps("clients");
+  if (actor.role === "support") throw new Error("دور الدعم لا يستطيع تعديل بيانات العميل.");
+  return actor;
+}
+
+async function writeOnboarding(workspaceId: string, patch: Row) {
+  const { data: existing } = await db().from("workspace_onboarding").select("workspace_id").eq("workspace_id", workspaceId).maybeSingle();
+  const { error } = existing
+    ? await db().from("workspace_onboarding").update(patch).eq("workspace_id", workspaceId)
+    : await db().from("workspace_onboarding").insert({ workspace_id: workspaceId, ...patch });
+  if (error) throw new Error(error.message);
+}
+
+export interface OpsClientEdit {
+  workspaceId: string;
+  name: string;
+  legalName: string | null;
+  brandName: string | null;
+  crNumber: string | null;
+  vatNumber: string | null;
+  contactName: string | null;
+  contactMobile: string | null;
+  contactEmail: string | null;
+  contactNationalId: string | null;
+  branchCount: number | null;
+  adminNote: string | null;
+}
+
+export async function updateOpsClientOnServer(input: OpsClientEdit) {
+  const actor = await requireClientEditor();
+  const { error } = await db().from("workspaces").update({ name: input.name }).eq("id", input.workspaceId);
+  if (error) throw new Error(error.message);
+  await writeOnboarding(input.workspaceId, {
+    legal_name: input.legalName,
+    brand_name: input.brandName,
+    cr_number: input.crNumber,
+    vat_number: input.vatNumber,
+    contact_name: input.contactName,
+    contact_mobile: input.contactMobile,
+    contact_email: input.contactEmail,
+    contact_national_id: input.contactNationalId,
+    branch_count: input.branchCount,
+    admin_note: input.adminNote,
+    updated_at: new Date().toISOString(),
+  });
+  await log(actor, "client.update", "workspace", input.workspaceId, input.workspaceId, { name: input.name });
+}
+
+/** Archive = suspend access and hide from the default list; the previous status is kept for restoring. */
+export async function setOpsClientArchivedOnServer(input: { workspaceId: string; archived: boolean }) {
+  const actor = await requireClientEditor();
+  const latest = (await latestArchiveEvents(input.workspaceId)).get(input.workspaceId);
+  const isArchived = latest?.action === ARCHIVE_ACTION;
+  if (isArchived === input.archived) return;
+
+  if (input.archived) {
+    const { data: onb } = await db().from("workspace_onboarding").select("status").eq("workspace_id", input.workspaceId).maybeSingle();
+    const previousStatus = (onb?.status as OnboardingStatus | undefined) ?? "active";
+    await writeOnboarding(input.workspaceId, { status: "suspended", updated_at: new Date().toISOString() });
+    await log(actor, ARCHIVE_ACTION, "workspace", input.workspaceId, input.workspaceId, { previousStatus });
+  } else {
+    const restore = latest?.previousStatus && latest.previousStatus !== "suspended" ? latest.previousStatus : "pending_details";
+    await writeOnboarding(input.workspaceId, { status: restore, updated_at: new Date().toISOString() });
+    await log(actor, UNARCHIVE_ACTION, "workspace", input.workspaceId, input.workspaceId, { restoredStatus: restore });
+  }
+}
+
+/** Workspace-owned tables, children first; their foreign keys to workspaces are ON DELETE RESTRICT. */
+const OWNED_TABLES_DELETE_ORDER = [
+  "recovery_case_events",
+  "recovery_case_documents",
+  "recovery_case_details",
+  "compensation_appeal_marks",
+  "telegram_order_evidence",
+  "telegram_branch_chats",
+  "compensation_cases",
+  "exception_events",
+  "format_change_alerts",
+  "audit_source_files",
+  "promotion_audits",
+  "ai_usage",
+  "hungerstation_branch_mappings",
+  "contract_rule_events",
+  "contract_fee_rules",
+  "contract_documents",
+  "contract_versions",
+  "platform_contracts",
+  "periods",
+  "branch_registry",
+];
+
+/** Files stored for a workspace: [table, path column, bucket]. */
+const WORKSPACE_FILES: Array<[string, string, string]> = [
+  ["audit_source_files", "storage_path", "source-files"],
+  ["format_change_alerts", "storage_path", "source-files"],
+  ["contract_documents", "storage_path", "contract-files"],
+  ["recovery_case_documents", "storage_path", "recovery-case-files"],
+  ["telegram_order_evidence", "thumbnail_storage_path", "telegram-evidence-thumbnails"],
+  ["payments", "receipt_path", RECEIPTS],
+  ["workspace_onboarding", "logo_path", LOGOS],
+];
+
+async function collectWorkspaceFiles(workspaceId: string): Promise<Map<string, string[]>> {
+  const byBucket = new Map<string, string[]>();
+  for (const [table, column, bucket] of WORKSPACE_FILES) {
+    const { data, error } = await db().from(table).select(column).eq("workspace_id", workspaceId);
+    if (error) throw new Error(`${table}: ${error.message}`);
+    const paths = ((data ?? []) as Row[]).map((r) => r[column]).filter((p): p is string => typeof p === "string" && p.length > 0);
+    if (paths.length) byBucket.set(bucket, [...(byBucket.get(bucket) ?? []), ...paths]);
+  }
+  return byBucket;
+}
+
+/**
+ * Permanently deletes an archived client: its data, files, the workspace, and user accounts that
+ * belong to no other workspace (ops staff and platform admins are always kept).
+ */
+export async function deleteOpsClientOnServer(input: { workspaceId: string; confirmName: string }) {
+  const actor = await requireOps("clients");
+  if (actor.role !== "owner") throw new Error("الحذف النهائي متاح لمالك لوحة العمليات فقط.");
+
+  const { data: ws, error: wsError } = await db().from("workspaces").select("id,name").eq("id", input.workspaceId).maybeSingle();
+  if (wsError) throw new Error(wsError.message);
+  if (!ws) throw new Error("العميل غير موجود.");
+  if (input.confirmName.trim() !== String(ws.name).trim()) throw new Error("اسم الشركة المكتوب لا يطابق — لم يتم الحذف.");
+  const latest = (await latestArchiveEvents(input.workspaceId)).get(input.workspaceId);
+  if (latest?.action !== ARCHIVE_ACTION) throw new Error("أرشف العميل أولاً قبل الحذف النهائي.");
+
+  const files = await collectWorkspaceFiles(input.workspaceId);
+  const { data: memberRows } = await db().from("workspace_members").select("user_id").eq("workspace_id", input.workspaceId);
+  const memberIds = [...new Set(((memberRows ?? []) as Row[]).map((r) => String(r["user_id"])))];
+
+  for (const table of OWNED_TABLES_DELETE_ORDER) {
+    const { error } = await db().from(table).delete().eq("workspace_id", input.workspaceId);
+    if (error) throw new Error(`تعذّر حذف بيانات ${table}: ${error.message}`);
+  }
+  const { error: deleteError } = await db().from("workspaces").delete().eq("id", input.workspaceId);
+  if (deleteError) throw new Error(`تعذّر حذف مساحة العمل: ${deleteError.message}`);
+
+  let filesRemoved = 0;
+  for (const [bucket, paths] of files) {
+    for (let i = 0; i < paths.length; i += 100) {
+      const chunk = paths.slice(i, i + 100);
+      const { error } = await supabaseAdmin.storage.from(bucket).remove(chunk);
+      if (error) console.error(`Failed to remove files from ${bucket}`, error.message);
+      else filesRemoved += chunk.length;
+    }
+  }
+
+  const [{ data: staff }, { data: admins }, { data: otherMemberships }] = await Promise.all([
+    db().from("ops_staff").select("user_id").in("user_id", memberIds.length ? memberIds : ["00000000-0000-0000-0000-000000000000"]),
+    db().from("platform_admins").select("user_id").in("user_id", memberIds.length ? memberIds : ["00000000-0000-0000-0000-000000000000"]),
+    db().from("workspace_members").select("user_id").in("user_id", memberIds.length ? memberIds : ["00000000-0000-0000-0000-000000000000"]),
+  ]);
+  const keep = new Set([...((staff ?? []) as Row[]), ...((admins ?? []) as Row[]), ...((otherMemberships ?? []) as Row[])].map((r) => String(r["user_id"])));
+  let usersDeleted = 0;
+  let usersKept = 0;
+  for (const userId of memberIds) {
+    if (keep.has(userId)) {
+      usersKept += 1;
+      continue;
+    }
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (error) {
+      usersKept += 1;
+      console.error("Failed to delete client user", userId, error.message);
+    } else usersDeleted += 1;
+  }
+
+  await log(actor, "client.delete", "workspace", input.workspaceId, null, { name: ws.name, usersDeleted, usersKept, filesRemoved });
+  return { usersDeleted, usersKept, filesRemoved };
 }
 
 export async function listClientNotesOnServer(workspaceId: string) {

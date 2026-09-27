@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronDown, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -8,7 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ONBOARDING_STATUS_LABELS, type OnboardingStatus } from "@/lib/onboarding";
 import { opsCan, sarFmt, SUBSCRIPTION_STATUS_LABELS, CYCLE_LABELS } from "@/lib/ops";
-import { addClientNote, listClientNotes, listOpsClients, setOpsClientStatus } from "@/lib/ops.functions";
+import {
+  addClientNote,
+  deleteOpsClient,
+  listClientNotes,
+  listOpsClients,
+  setOpsClientArchived,
+  setOpsClientStatus,
+  updateOpsClient,
+} from "@/lib/ops.functions";
 import type { OpsClient } from "@/lib/ops.server";
 import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
@@ -29,29 +37,45 @@ function Clients() {
   if (!opsCan(role, "clients")) return <OpsDenied />;
   const rows = (q.data ?? []).filter((c) => {
     const text = `${c.name} ${c.legalName ?? ""} ${c.crNumber ?? ""} ${c.contactEmail ?? ""} ${c.ownerEmail ?? ""}`.toLowerCase();
-    return (filter === "all" || c.status === filter) && text.includes(search.toLowerCase());
+    const matchesFilter = filter === "archived" ? c.archived : !c.archived && (filter === "all" || c.status === filter);
+    return matchesFilter && text.includes(search.toLowerCase());
   });
   return (
     <div>
-      <OpsHeader title="العملاء" sub={`${q.data?.length ?? 0} شركة`}>
+      <OpsHeader
+        title="العملاء"
+        sub={`${(q.data ?? []).filter((c) => !c.archived).length} شركة · ${(q.data ?? []).filter((c) => c.archived).length} مؤرشفة`}
+      >
         <div className="flex gap-2">
           <Input placeholder="بحث بالاسم، السجل، البريد" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />
           <select value={filter} onChange={(e) => setFilter(e.target.value)} className="rounded-md border border-input bg-background px-2 text-sm">
             <option value="all">كل الحالات</option>
             {Object.entries(ONBOARDING_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            <option value="archived">المؤرشفة</option>
           </select>
         </div>
       </OpsHeader>
       {q.isLoading ? <Loader2 className="size-5 animate-spin" /> : q.error ? <p className="text-sm text-destructive">{(q.error as Error).message}</p> : (
-        <div className="space-y-2">{rows.map((c) => <ClientRow key={c.workspaceId} c={c} canEdit={role !== "support"} />)}</div>
+        <div className="space-y-2">{rows.map((c) => <ClientRow key={c.workspaceId} c={c} canEdit={role !== "support"} canDelete={role === "owner"} />)}</div>
       )}
     </div>
   );
 }
 
-function ClientRow({ c, canEdit }: { c: OpsClient; canEdit: boolean }) {
+function ClientRow({ c, canEdit, canDelete }: { c: OpsClient; canEdit: boolean; canDelete: boolean }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const refresh = () => void qc.invalidateQueries({ queryKey: ["ops-clients"] });
+  const archive = useMutation({
+    mutationFn: (archived: boolean) => setOpsClientArchived({ data: { workspaceId: c.workspaceId, archived } }),
+    onSuccess: (_, archived) => {
+      toast.success(archived ? "تمت أرشفة العميل وإيقاف وصوله" : "تمت استعادة العميل");
+      refresh();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
   const [note, setNote] = useState("");
   const notes = useQuery({ queryKey: ["ops-notes", c.workspaceId], queryFn: () => listClientNotes({ data: { workspaceId: c.workspaceId } }), enabled: open });
   const status = useMutation({
@@ -75,7 +99,11 @@ function ClientRow({ c, canEdit }: { c: OpsClient; canEdit: boolean }) {
           <p className="font-semibold">{c.name}</p>
           <p className="text-xs text-muted-foreground">{c.ownerEmail ?? c.contactEmail ?? "—"}</p>
         </div>
-        <span className="rounded-full bg-muted px-2.5 py-1 text-xs">{ONBOARDING_STATUS_LABELS[c.status] ?? c.status}</span>
+        {c.archived ? (
+          <span className="rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive">مؤرشف</span>
+        ) : (
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs">{ONBOARDING_STATUS_LABELS[c.status] ?? c.status}</span>
+        )}
         <span className="text-xs text-muted-foreground">{c.subscriptionStatus ? `${SUBSCRIPTION_STATUS_LABELS[c.subscriptionStatus]} · ${sarFmt(c.subscriptionPrice ?? 0)} ${CYCLE_LABELS[c.subscriptionCycle ?? "monthly"]}` : "بدون اشتراك"}</span>
         <span className="num text-xs text-muted-foreground">{c.users} مستخدم</span>
         <ChevronDown className={`size-4 transition-transform ${open ? "rotate-180" : ""}`} />
@@ -97,6 +125,32 @@ function ClientRow({ c, canEdit }: { c: OpsClient; canEdit: boolean }) {
             <Field k="إجمالي المدفوع" v={sarFmt(c.paidTotal)} />
           </div>
           {canEdit ? (
+            <div className="flex flex-wrap gap-2 border-b border-border pb-4">
+              <Button size="sm" variant="outline" onClick={() => setEditing((v) => !v)}>
+                <Pencil className="size-3.5" />
+                {editing ? "إغلاق التعديل" : "تعديل البيانات"}
+              </Button>
+              <Button size="sm" variant="outline" disabled={archive.isPending} onClick={() => archive.mutate(!c.archived)}>
+                {c.archived ? <ArchiveRestore className="size-3.5" /> : <Archive className="size-3.5" />}
+                {c.archived ? "استعادة من الأرشيف" : "أرشفة"}
+              </Button>
+              {canDelete ? (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={!c.archived}
+                  title={c.archived ? undefined : "أرشف العميل أولاً"}
+                  onClick={() => setConfirmingDelete((v) => !v)}
+                >
+                  <Trash2 className="size-3.5" />
+                  حذف نهائي
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+          {editing && canEdit ? <EditClientForm c={c} onDone={() => { setEditing(false); refresh(); }} /> : null}
+          {confirmingDelete && canDelete && c.archived ? <DeleteClientConfirm c={c} onCancel={() => setConfirmingDelete(false)} onDeleted={refresh} /> : null}
+          {canEdit && !c.archived ? (
             <div className="flex flex-wrap gap-2">
               {STEPS.map((s) => (
                 <Button key={s.status} size="sm" variant={s.status === "suspended" ? "destructive" : c.status === s.status ? "default" : "outline"} disabled={status.isPending || c.status === s.status} onClick={() => status.mutate(s.status)}>{s.label}</Button>
@@ -117,6 +171,116 @@ function ClientRow({ c, canEdit }: { c: OpsClient; canEdit: boolean }) {
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function EditClientForm({ c, onDone }: { c: OpsClient; onDone: () => void }) {
+  const [form, setForm] = useState({
+    name: c.name,
+    legalName: c.legalName ?? "",
+    brandName: c.brandName ?? "",
+    crNumber: c.crNumber ?? "",
+    vatNumber: c.vatNumber ?? "",
+    contactName: c.contactName ?? "",
+    contactMobile: c.contactMobile ?? "",
+    contactEmail: c.contactEmail ?? "",
+    contactNationalId: c.contactNationalId ?? "",
+    branchCount: c.branchCount === null ? "" : String(c.branchCount),
+    adminNote: c.adminNote ?? "",
+  });
+  const save = useMutation({
+    mutationFn: () =>
+      updateOpsClient({
+        data: {
+          workspaceId: c.workspaceId,
+          ...form,
+          branchCount: form.branchCount.trim() === "" ? null : Number(form.branchCount),
+        },
+      }),
+    onSuccess: () => {
+      toast.success("تم حفظ بيانات العميل");
+      onDone();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+  const fields: Array<[keyof typeof form, string, string?]> = [
+    ["name", "اسم الشركة في تدقيق"],
+    ["legalName", "الاسم القانوني"],
+    ["brandName", "العلامة التجارية"],
+    ["crNumber", "السجل التجاري", "ltr"],
+    ["vatNumber", "الرقم الضريبي", "ltr"],
+    ["branchCount", "عدد الفروع", "ltr"],
+    ["contactName", "جهة الاتصال"],
+    ["contactMobile", "الجوال", "ltr"],
+    ["contactEmail", "البريد", "ltr"],
+    ["contactNationalId", "الهوية", "ltr"],
+  ];
+  return (
+    <form
+      className="space-y-3 rounded-lg border border-border bg-muted/30 p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        save.mutate();
+      }}
+    >
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {fields.map(([key, label, dir]) => (
+          <label key={key} className="text-xs text-muted-foreground">
+            {label}
+            <Input
+              dir={dir}
+              inputMode={key === "branchCount" ? "numeric" : undefined}
+              value={form[key]}
+              onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+              className="mt-1 bg-background text-sm text-foreground"
+            />
+          </label>
+        ))}
+      </div>
+      <label className="block text-xs text-muted-foreground">
+        ملاحظة داخلية
+        <Input value={form.adminNote} onChange={(e) => setForm((f) => ({ ...f, adminNote: e.target.value }))} className="mt-1 bg-background text-sm text-foreground" />
+      </label>
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={save.isPending || !form.name.trim()}>
+          {save.isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}
+          حفظ
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onDone}>إلغاء</Button>
+      </div>
+    </form>
+  );
+}
+
+function DeleteClientConfirm({ c, onCancel, onDeleted }: { c: OpsClient; onCancel: () => void; onDeleted: () => void }) {
+  const [typed, setTyped] = useState("");
+  const remove = useMutation({
+    mutationFn: () => deleteOpsClient({ data: { workspaceId: c.workspaceId, confirmName: typed } }),
+    onSuccess: (r) => {
+      toast.success(`تم حذف ${c.name} نهائياً · حُذف ${r.usersDeleted} حساب مستخدم${r.usersKept ? ` وأُبقي ${r.usersKept}` : ""}`);
+      onDeleted();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+  return (
+    <div className="space-y-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm">
+      <p className="font-semibold text-destructive">حذف نهائي لا يمكن التراجع عنه</p>
+      <p className="leading-6 text-muted-foreground">
+        سيُحذف كل ما يخص هذا العميل: الفترات والملفات والعقود والتعويضات والاشتراكات والمدفوعات، وحسابات المستخدمين التابعة له فقط
+        (لا تُحذف حسابات فريق العمليات أو المستخدمين المرتبطين بشركات أخرى). سجل العمليات يحتفظ بقيد الحذف.
+      </p>
+      <label className="block text-xs text-muted-foreground">
+        اكتب اسم الشركة للتأكيد: <span className="font-semibold text-foreground">{c.name}</span>
+        <Input value={typed} onChange={(e) => setTyped(e.target.value)} className="mt-1 bg-background" />
+      </label>
+      <div className="flex gap-2">
+        <Button size="sm" variant="destructive" disabled={typed.trim() !== c.name.trim() || remove.isPending} onClick={() => remove.mutate()}>
+          {remove.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+          حذف نهائي
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>إلغاء</Button>
+      </div>
     </div>
   );
 }
