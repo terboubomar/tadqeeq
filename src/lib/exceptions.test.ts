@@ -275,6 +275,64 @@ describe("Exception Center", () => {
     expect(summary.potentialRecovery).toBe(0);
   });
 
+  test("card fees printed under other commission become one classification note with nothing to recover", () => {
+    const period = hungerPeriod();
+    period.invoice.checks = [];
+    period.branches = [
+      {
+        ...period.branches[0]!,
+        branch: "Past - Malqa",
+        branchId: "132263",
+        commission: 100,
+        invoiceCommission: 100,
+        bankFeeSuccess: 4639.3,
+        bankFeeRefunded: 0,
+        rdfCampaigns: 32159.13,
+        compensation: 0,
+        jokerFees: 0,
+        waitingTimeFees: 0,
+        invoicePaymentFees: 0,
+        invoiceWalletFee: 0,
+        invoiceCardPaymentFees: 0,
+        invoiceOtherCharges: 36798.44,
+        invoiceOnlyBranchCharges: 0,
+        branchAuditStatus: "matched" as const,
+      },
+    ];
+
+    const exceptions = buildPeriodExceptions(period);
+    expect(exceptions.map((e) => e.code)).toEqual(["HS_BRANCH_FEE_CLASSIFICATION"]);
+    expect(exceptions[0]?.severity).toBe("low");
+    const summary = summarizeExceptions(exceptions);
+    expect(summary.underReview).toBe(0);
+    expect(summary.potentialRecovery).toBe(0);
+  });
+
+  test("real card-fee and other-fee gaps that do not offset are still reported separately", () => {
+    const period = hungerPeriod();
+    period.invoice.checks = [];
+    period.branches = [
+      {
+        ...period.branches[0]!,
+        commission: 100,
+        invoiceCommission: 100,
+        bankFeeSuccess: 100,
+        bankFeeRefunded: 0,
+        rdfCampaigns: 500,
+        compensation: 0,
+        jokerFees: 0,
+        waitingTimeFees: 0,
+        invoiceCardPaymentFees: 140,
+        invoiceOtherCharges: 560,
+        invoiceOnlyBranchCharges: 0,
+        branchAuditStatus: "matched" as const,
+      },
+    ];
+
+    const codes = buildPeriodExceptions(period).map((e) => e.code).sort();
+    expect(codes).toEqual(["HS_BRANCH_CARD_FEE_VARIANCE", "HS_BRANCH_OTHER_FEES_VARIANCE"]);
+  });
+
   test("reconciles one residual operational invoice branch while keeping fixed-fee rows invoice-only", () => {
     const period = hungerPeriod();
 

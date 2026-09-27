@@ -516,26 +516,61 @@ function hungerBranchExceptions(period: StoredPeriod): AuditException[] {
       invoiced: branch.invoiceCommission,
       tolerance: HUNGERSTATION_TOLERANCES.commission,
     });
-    pushBranchVariance(result, period, {
-      branch: branch.branch,
-      branchId: branch.branchId,
-      category: "payment_fee",
-      code: "HS_BRANCH_CARD_FEE_VARIANCE",
-      label: "فرق رسوم الدفع بالبطاقات للفرع",
-      computed: paymentComputed,
-      invoiced: invoiceCardPaymentFees,
-      tolerance: HUNGERSTATION_TOLERANCES.paymentFee,
-    });
-    pushBranchVariance(result, period, {
-      branch: branch.branch,
-      branchId: branch.branchId,
-      category: "other_fee",
-      code: "HS_BRANCH_OTHER_FEES_VARIANCE",
-      label: "فرق الرسوم الأخرى للفرع",
-      computed: otherComputed,
-      invoiced: otherInvoiced,
-      tolerance: HUNGERSTATION_TOLERANCES.otherFee,
-    });
+    const cardDiff = invoiceCardPaymentFees !== undefined ? invoiceCardPaymentFees - paymentComputed : undefined;
+    const otherDiff = otherInvoiced !== undefined ? otherInvoiced - otherComputed : undefined;
+    // The branch "other commission" is total − commission − payment fees, so card fees that the
+    // invoice prints elsewhere (or rows we could not read) show up as a card-fee shortfall and an
+    // equal other-fee excess. Together they match: report one classification note, not two claims.
+    const offsetting =
+      cardDiff !== undefined &&
+      otherDiff !== undefined &&
+      Math.abs(cardDiff) > HUNGERSTATION_TOLERANCES.paymentFee &&
+      Math.abs(otherDiff) > HUNGERSTATION_TOLERANCES.otherFee &&
+      Math.sign(cardDiff) !== Math.sign(otherDiff) &&
+      Math.abs(cardDiff + otherDiff) <= Math.max(HUNGERSTATION_TOLERANCES.paymentFee, HUNGERSTATION_TOLERANCES.otherFee, 1);
+
+    if (offsetting) {
+      result.push(
+        makeException(period, {
+          code: "HS_BRANCH_FEE_CLASSIFICATION",
+          sourceLevel: "branch",
+          branch: branch.branch,
+          branchId: branch.branchId,
+          category: "payment_fee",
+          label: "اختلاف تصنيف رسوم الدفع في فاتورة الفرع",
+          computed: paymentComputed + otherComputed,
+          invoiced: invoiceCardPaymentFees! + otherInvoiced!,
+          tolerance: Math.max(HUNGERSTATION_TOLERANCES.paymentFee, HUNGERSTATION_TOLERANCES.otherFee, 1),
+          evidence: "mixed",
+          forceReviewAmount: 0,
+          forcePotentialRecovery: 0,
+          hint:
+            `رسوم الدفع بالبطاقات المحتسبة (${paymentComputed.toFixed(2)} ر.س) ظهرت في فاتورة هذا الفرع ضمن «عمولات أخرى» ` +
+            `أو لم تُقرأ صفوفها. مجموع رسوم الدفع والرسوم الأخرى مطابق للمحتسب، فلا يوجد مبلغ مستحق للاسترداد.`,
+        }),
+      );
+    } else {
+      pushBranchVariance(result, period, {
+        branch: branch.branch,
+        branchId: branch.branchId,
+        category: "payment_fee",
+        code: "HS_BRANCH_CARD_FEE_VARIANCE",
+        label: "فرق رسوم الدفع بالبطاقات للفرع",
+        computed: paymentComputed,
+        invoiced: invoiceCardPaymentFees,
+        tolerance: HUNGERSTATION_TOLERANCES.paymentFee,
+      });
+      pushBranchVariance(result, period, {
+        branch: branch.branch,
+        branchId: branch.branchId,
+        category: "other_fee",
+        code: "HS_BRANCH_OTHER_FEES_VARIANCE",
+        label: "فرق الرسوم الأخرى للفرع",
+        computed: otherComputed,
+        invoiced: otherInvoiced,
+        tolerance: HUNGERSTATION_TOLERANCES.otherFee,
+      });
+    }
     pushBranchVariance(result, period, {
       branch: branch.branch,
       branchId: branch.branchId,

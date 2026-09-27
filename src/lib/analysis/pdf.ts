@@ -144,9 +144,9 @@ function sumNumbers(...values: Array<number | undefined>): number {
 function parseHungerBranch(detailPage: string, onlinePage: string): HungerInvoiceBranch {
   const delivery = amountsAfter(detailPage, 3, "HS delivery commission");
   const pickup = amountsAfter(detailPage, 3, "HS Pickup Commission");
-  const bankSuccess = amountsAfter(detailPage, 3, "Successful Bank Fee");
-  const bankRefunded = amountsAfter(detailPage, 3, "Refunded Bank Fee");
-  const walletFee = amountsAfter(detailPage, 3, "Wallet Payments Fee");
+  const bankSuccess = amountsAfter(detailPage, 3, "Successful Bank Fees", "Successful Bank Fee");
+  const bankRefunded = amountsAfter(detailPage, 3, "Refunded Bank Fees", "Refunded Bank Fee");
+  const walletFee = amountsAfter(detailPage, 3, "Wallet Payments Fees", "Wallet Payments Fee", "Wallet Payment Fee");
   const rdf = amountsAfter(detailPage, 3, "RDF campaigns");
   const compensation = amountsAfter(detailPage, 3, "Customer Compensation");
   const waiting = amountsAfter(detailPage, 3, "Avoidable Waiting Time Fee");
@@ -165,7 +165,10 @@ function parseHungerBranch(detailPage: string, onlinePage: string): HungerInvoic
   );
 
   const salesCommission = sumNumbers(delivery[2], pickup[2]);
-  const paymentFees = sumNumbers(bankSuccess[2], bankRefunded[2], walletFee[2]);
+  // No payment-fee row found at all means we could not read them, not that they are zero.
+  // Leaving them undefined keeps card fees from being folded into "other commission" below.
+  const paymentFeeRowsFound = bankSuccess.length > 0 || bankRefunded.length > 0 || walletFee.length > 0;
+  const paymentFees = paymentFeeRowsFound ? sumNumbers(bankSuccess[2], bankRefunded[2], walletFee[2]) : undefined;
   const totalExVat = amountAfter(detailPage, "Total Commission");
   const invoiceOnlyCharges = sumNumbers(freeDelivery[2], printers[2], subscription[2]);
   const creditSales = amountsAfter(onlinePage, 3, "Credit Sales");
@@ -191,7 +194,7 @@ function parseHungerBranch(detailPage: string, onlinePage: string): HungerInvoic
     waitingTimeFees: waiting[2],
     invoiceOnlyCharges,
     otherCommission:
-      totalExVat !== undefined ? totalExVat - salesCommission - paymentFees : undefined,
+      totalExVat !== undefined && paymentFees !== undefined ? totalExVat - salesCommission - paymentFees : undefined,
     totalExVat,
     // Online-payments rows are printed as negative amounts when they are collections.
     // Flip those signs back into the same semantic direction as the Excel export.

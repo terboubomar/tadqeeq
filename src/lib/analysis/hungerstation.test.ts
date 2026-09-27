@@ -701,6 +701,42 @@ describe("HungerStation branch reconciliation", () => {
     expect(branch?.invoiceOnlyBranchCharges).toBeCloseTo(500, 2);
   });
 
+  test("leaves branch payment fees unread instead of folding them into other commission", () => {
+    const invoice = parseHungerInvoice(
+      "Sales Commission 27.75 4.16 31.91 " +
+        "Payment Fees 7.10 1.07 8.17 " +
+        "Total Invoice 52.35 7.85 60.20" +
+        "\n" +
+        "Invoice Details Branch A Commissions " +
+        "HS delivery commission 185.00 15.0% 27.75 " +
+        "Bank charges on card payments 210.00 2.5% 5.25 " +
+        "RDF campaigns 3.0 5.83 17.50 " +
+        "Total Commission 52.35" +
+        "\n" +
+        "Online Payments for branch Branch A Total Collections (214.50)",
+    );
+
+    const branch = invoice.branches?.[0];
+    expect(branch?.salesCommission).toBeCloseTo(27.75, 2);
+    expect(branch?.paymentFees).toBeUndefined();
+    expect(branch?.otherCommission).toBeUndefined();
+  });
+
+  test("reads plural bank fee labels", () => {
+    const invoice = parseHungerInvoice(
+      "Total Invoice 52.35 7.85 60.20" +
+        "\n" +
+        "Invoice Details Branch A Commissions " +
+        "HS delivery commission 185.00 15.0% 27.75 " +
+        "Successful Bank Fees 210.00 2.5% 5.25 " +
+        "Total Commission 33.00" +
+        "\n" +
+        "Online Payments for branch Branch A Total Collections (214.50)",
+    );
+    expect(invoice.branches?.[0]?.paymentFees).toBeCloseTo(5.25, 2);
+    expect(invoice.branches?.[0]?.otherCommission).toBeCloseTo(0, 2);
+  });
+
   test("does not charge wallet collections when the branch invoice has no Wallet Payments Fee", () => {
     const invoice = parseHungerInvoice(
       "Sales Commission 27.75 4.16 31.91 " +
