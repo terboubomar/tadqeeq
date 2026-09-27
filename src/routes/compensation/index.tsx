@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Loader2, Plus } from "lucide-react";
+import { AlarmClock, Loader2, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -132,7 +132,13 @@ function CompensationOverviewPage() {
         <Kpi
           label="متوسط أيام الاسترداد"
           value={o.avgDaysToRecover === null ? "—" : o.avgDaysToRecover.toFixed(1)}
-          hint="من إنشاء الحالة حتى تسجيل الاسترداد"
+          hint="من الإرسال للمنصة حتى تسجيل الاسترداد"
+        />
+        <Kpi
+          label="فرق الاسترداد الجزئي"
+          value={`${money(o.recoveryShortfall)} ر.س`}
+          tone={o.recoveryShortfall > 0 ? "bad" : undefined}
+          hint="المطالَب ناقص المدفوع فعلياً في الحالات المسترَدة"
         />
         {can("telegram.read") ? (
           <Kpi
@@ -146,6 +152,44 @@ function CompensationOverviewPage() {
           />
         ) : null}
       </section>
+
+      {o.followUps.length ? (
+        <section className="rounded-xl border border-warning/40 bg-warning/5 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <AlarmClock className="size-4 text-warning" />
+              تحتاج متابعة اليوم
+              <span className="num rounded-full bg-warning/15 px-2 py-0.5 text-xs text-warning">{count(o.followUps.length)}</span>
+            </h2>
+            <span className="text-xs text-muted-foreground">
+              مبالغ معلّقة <span className="num font-semibold text-foreground">{money(o.followUpAmount)}</span> ر.س
+            </span>
+          </div>
+          <ul className="mt-3 divide-y divide-border/70">
+            {o.followUps.slice(0, 6).map((f) => (
+              <li key={f.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
+                <Link
+                  to="/compensation/cases"
+                  search={{ open: f.id }}
+                  className="num font-semibold underline-offset-4 hover:underline"
+                  dir="ltr"
+                >
+                  {f.orderNumber}
+                </Link>
+                <PlatformName platform={f.platform} className="text-xs text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">{f.branchName || "—"}</span>
+                <span className="text-xs font-semibold text-warning">{f.followUp.label}</span>
+                <span className="num ms-auto font-semibold">{money(f.amount)} ر.س</span>
+              </li>
+            ))}
+          </ul>
+          {o.followUps.length > 6 ? (
+            <Link to="/compensation/cases" search={{ followup: true }} className="mt-2 inline-block text-xs font-semibold text-primary">
+              عرض كل الحالات التي تحتاج متابعة ←
+            </Link>
+          ) : null}
+        </section>
+      ) : null}
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <section className="rounded-xl border border-border bg-card p-4">

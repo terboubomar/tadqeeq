@@ -48,12 +48,153 @@ export const RANGE_LABELS: Record<OverviewRange, string> = {
 };
 
 export interface OverviewCase {
+  id?: string;
+  orderNumber?: string;
   platform: string;
   branchName: string | null;
   compensationAmount: number;
   status: string;
   createdAt: string;
   updatedAt: string;
+  /** Holds the status history and recovered amount under `workflow`. */
+  auditContext?: unknown;
+}
+
+// ---------------------------------------------------------------------------
+// Case workflow: status history, actual recovered amount and rejection reason.
+// Stored in audit_context.workflow so every status change keeps its date.
+// ---------------------------------------------------------------------------
+
+export interface CaseWorkflowEntry {
+  status: CompensationCaseStatus;
+  at: string;
+  note?: string | null;
+}
+
+export interface CaseWorkflow {
+  history: CaseWorkflowEntry[];
+  /** What the platform actually paid back; null until the case is recovered. */
+  recoveredAmount: number | null;
+  rejectionReason: string | null;
+}
+
+const MAX_HISTORY = 60;
+
+function isStatus(value: unknown): value is CompensationCaseStatus {
+  return typeof value === "string" && (CASE_STATUSES as string[]).includes(value);
+}
+
+export function readCaseWorkflow(auditContext: unknown): CaseWorkflow {
+  const empty: CaseWorkflow = { history: [], recoveredAmount: null, rejectionReason: null };
+  if (!auditContext || typeof auditContext !== "object" || Array.isArray(auditContext)) return empty;
+  const raw = (auditContext as Record<string, unknown>)["workflow"];
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return empty;
+  const value = raw as Record<string, unknown>;
+  const history = Array.isArray(value["history"])
+    ? value["history"].flatMap((entry): CaseWorkflowEntry[] => {
+        if (!entry || typeof entry !== "object") return [];
+        const e = entry as Record<string, unknown>;
+        if (!isStatus(e["status"]) || typeof e["at"] !== "string") return [];
+        return [{ status: e["status"], at: e["at"], note: typeof e["note"] === "string" ? e["note"] : null }];
+      })
+    : [];
+  const recovered = typeof value["recoveredAmount"] === "number" && Number.isFinite(value["recoveredAmount"])
+    ? value["recoveredAmount"]
+    : null;
+  return {
+    history,
+    recoveredAmount: recovered,
+    rejectionReason: typeof value["rejectionReason"] === "string" ? value["rejectionReason"] : null,
+  };
+}
+
+/** Next workflow state after a save. Recovered money survives closing the case. */
+export function advanceCaseWorkflow(
+  previous: CaseWorkflow,
+  previousStatus: string | null,
+  next: {
+    status: CompensationCaseStatus;
+    compensationAmount: number;
+    recoveredAmount?: number | null;
+    note?: string | null;
+  },
+  at: string,
+): CaseWorkflow {
+  const note = next.note?.trim() || null;
+  const changed = previousStatus !== next.status;
+  const history = changed
+    ? [...previous.history, { status: next.status, at, note }].slice(-MAX_HISTORY)
+    : previous.history;
+
+  let recoveredAmount: number | null = null;
+  if (next.status === "recovered") {
+    const requested =
+      next.recoveredAmount ??
+      (previousStatus === "recovered" ? previous.recoveredAmount : null) ??
+      next.compensationAmount;
+    recoveredAmount = round2(Math.min(Math.max(requested, 0), next.compensationAmount));
+  } else if (next.status === "closed" && (previousStatus === "recovered" || previousStatus === "closed")) {
+    recoveredAmount =
+      previousStatus === "recovered" && previous.recoveredAmount === null
+        ? next.compensationAmount
+        : previous.recoveredAmount;
+  }
+
+  let rejectionReason: string | null = null;
+  if (next.status === "rejected") {
+    rejectionReason = note ?? (previousStatus === "rejected" ? previous.rejectionReason : null);
+  } else if (next.status === "closed" && (previousStatus === "rejected" || previousStatus === "closed")) {
+    rejectionReason = previous.rejectionReason;
+  }
+
+  return { history, recoveredAmount, rejectionReason };
+}
+
+/** Last time the case entered the given status, from the history. */
+export function statusEnteredAt(item: Pick<OverviewCase, "auditContext">, status: CompensationCaseStatus): string | null {
+  const history = readCaseWorkflow(item.auditContext).history;
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    if (history[i]!.status === status) return history[i]!.at;
+  }
+  return null;
+}
+
+/** Money actually recovered for a case (partial refunds and closed-after-recovery included). */
+export function caseRecoveredAmount(item: OverviewCase): number {
+  const workflow = readCaseWorkflow(item.auditContext);
+  if (item.status === "recovered") return workflow.recoveredAmount ?? item.compensationAmount;
+  if (item.status === "closed" && workflow.recoveredAmount !== null) return workflow.recoveredAmount;
+  return 0;
+}
+
+export function isCaseRecovered(item: OverviewCase): boolean {
+  if (item.status === "recovered") return true;
+  return item.status === "closed" && readCaseWorkflow(item.auditContext).recoveredAmount !== null;
+}
+
+function recoveredAt(item: OverviewCase): string {
+  return statusEnteredAt(item, "recovered") ?? item.updatedAt;
+}
+
+/** Days after which a case needs a nudge: ready but not sent, or sent with no platform answer. */
+export const FOLLOW_UP_DAYS = { ready: 3, submitted: 7, accepted: 7 } as const;
+
+export interface CaseFollowUp {
+  kind: "not_sent" | "awaiting_platform" | "awaiting_payment";
+  days: number;
+  label: string;
+}
+
+export function caseFollowUp(item: OverviewCase, now: Date = new Date()): CaseFollowUp | null {
+  if (item.status !== "ready" && item.status !== "submitted" && item.status !== "accepted") return null;
+  const since = statusEnteredAt(item, item.status) ?? item.updatedAt;
+  const days = Math.floor((now.getTime() - time(since)) / DAY_MS);
+  if (days < FOLLOW_UP_DAYS[item.status]) return null;
+  if (item.status === "ready") return { kind: "not_sent", days, label: `جاهزة ولم تُرسل منذ ${days} يوم` };
+  if (item.status === "submitted") {
+    return { kind: "awaiting_platform", days, label: `بلا رد من المنصة منذ ${days} يوم` };
+  }
+  return { kind: "awaiting_payment", days, label: `مقبولة ولم تُسترد منذ ${days} يوم` };
 }
 
 export interface OverviewConnection {
@@ -73,6 +214,18 @@ export interface CompensationOverview {
   readyCount: number;
   rejectedCount: number;
   rejectedAmount: number;
+  /** Claimed minus actually paid on recovered cases (partial refunds). */
+  recoveryShortfall: number;
+  followUps: Array<{
+    id: string;
+    orderNumber: string;
+    platform: string;
+    branchName: string | null;
+    amount: number;
+    status: string;
+    followUp: CaseFollowUp;
+  }>;
+  followUpAmount: number;
   avgDaysToRecover: number | null;
   previousRecoveredAmount: number | null;
   statusCounts: Record<CompensationCaseStatus, number>;
@@ -141,6 +294,7 @@ export function buildCompensationOverview(
   let pending = 0;
   let pendingCount = 0;
   let rejectedAmount = 0;
+  let shortfall = 0;
   let recoverDays = 0;
   let recoverCount = 0;
 
@@ -154,9 +308,12 @@ export function buildCompensationOverview(
       pendingCount += 1;
     }
     if (item.status === "rejected") rejectedAmount += amount;
-    if (item.status === "recovered") {
-      recovered += amount;
-      const days = (time(item.updatedAt) - time(item.createdAt)) / DAY_MS;
+    if (isCaseRecovered(item)) {
+      const paid = caseRecoveredAmount(item);
+      recovered += paid;
+      shortfall += Math.max(0, amount - paid);
+      const from = statusEnteredAt(item, "submitted") ?? item.createdAt;
+      const days = (time(recoveredAt(item)) - time(from)) / DAY_MS;
       if (days >= 0) {
         recoverDays += days;
         recoverCount += 1;
@@ -172,9 +329,9 @@ export function buildCompensationOverview(
       platformCases
         .filter((item) => {
           const t = time(item.createdAt);
-          return item.status === "recovered" && t >= prevStart && t < start.getTime();
+          return isCaseRecovered(item) && t >= prevStart && t < start.getTime();
         })
-        .reduce((sum, item) => sum + item.compensationAmount, 0),
+        .reduce((sum, item) => sum + caseRecoveredAmount(item), 0),
     );
   }
 
@@ -184,11 +341,7 @@ export function buildCompensationOverview(
       platform,
       count: rows.length,
       claimed: round2(rows.reduce((sum, item) => sum + item.compensationAmount, 0)),
-      recovered: round2(
-        rows
-          .filter((item) => item.status === "recovered")
-          .reduce((sum, item) => sum + item.compensationAmount, 0),
-      ),
+      recovered: round2(rows.reduce((sum, item) => sum + caseRecoveredAmount(item), 0)),
     };
   });
 
@@ -211,9 +364,9 @@ export function buildCompensationOverview(
   for (const item of platformCases) {
     const claimedMonth = months[monthIndex.get(monthKey(item.createdAt)) ?? -1];
     if (claimedMonth) claimedMonth.claimed += item.compensationAmount;
-    if (item.status === "recovered") {
-      const recoveredMonth = months[monthIndex.get(monthKey(item.updatedAt)) ?? -1];
-      if (recoveredMonth) recoveredMonth.recovered += item.compensationAmount;
+    if (isCaseRecovered(item)) {
+      const recoveredMonth = months[monthIndex.get(monthKey(recoveredAt(item))) ?? -1];
+      if (recoveredMonth) recoveredMonth.recovered += caseRecoveredAmount(item);
     }
   }
   for (const m of months) {
@@ -233,7 +386,7 @@ export function buildCompensationOverview(
     row.count += 1;
     row.claimed += item.compensationAmount;
     if (SENT_STATUSES.has(item.status)) row.sent += item.compensationAmount;
-    if (item.status === "recovered") row.recovered += item.compensationAmount;
+    row.recovered += caseRecoveredAmount(item);
     branchMap.set(name, row);
   }
   const branches = [...branchMap.entries()]
@@ -247,6 +400,25 @@ export function buildCompensationOverview(
     }))
     .sort((a, b) => b.claimed - a.claimed);
 
+  // Follow-ups are today's to-do list, so they ignore the date range.
+  const followUps = platformCases
+    .flatMap((item) => {
+      const followUp = caseFollowUp(item, now);
+      if (!followUp) return [];
+      return [
+        {
+          id: item.id ?? "",
+          orderNumber: item.orderNumber ?? "",
+          platform: item.platform,
+          branchName: item.branchName,
+          amount: item.compensationAmount,
+          status: item.status,
+          followUp,
+        },
+      ];
+    })
+    .sort((a, b) => b.followUp.days - a.followUp.days || b.amount - a.amount);
+
   return {
     caseCount: cases.length,
     claimedAmount: round2(claimed),
@@ -257,6 +429,9 @@ export function buildCompensationOverview(
     readyCount: statusCounts.ready,
     rejectedCount: statusCounts.rejected,
     rejectedAmount: round2(rejectedAmount),
+    recoveryShortfall: round2(shortfall),
+    followUps,
+    followUpAmount: round2(followUps.reduce((sum, item) => sum + item.amount, 0)),
     avgDaysToRecover: recoverCount > 0 ? recoverDays / recoverCount : null,
     previousRecoveredAmount,
     statusCounts,

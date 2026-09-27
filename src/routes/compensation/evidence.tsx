@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, Search, Send, Video } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { AlertTriangle, Loader2, Search, Send, Video } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
-import { COMPENSATION_CASES_KEY, formatTimestamp } from "@/components/compensation/queries";
+import { COMPENSATION_CASES_KEY, formatTimestamp, useCompensationCases } from "@/components/compensation/queries";
 import { CompHeader, DraftBox, EvidenceActions, Field, Tag } from "@/components/compensation/shared";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import type {
   CompensationEvidenceRecord,
   JahezCompensationMatchRecord,
 } from "@/lib/compensation-evidence.server";
-import type { CompensationPlatformKey } from "@/lib/compensation-overview";
+import { caseStatusLabel, platformLabel, type CompensationPlatformKey } from "@/lib/compensation-overview";
 import { sar } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { PlatformName } from "@/components/brand/PlatformLogo";
@@ -37,6 +37,15 @@ function EvidencePage() {
   const [reason, setReason] = useState("");
   const [explanation, setExplanation] = useState("");
   const [generatedCase, setGeneratedCase] = useState<CompensationCaseRecord | null>(null);
+  const cases = useCompensationCases();
+  const orderKey = orderNumber.trim();
+  // Cases already opened for this order; a second claim would double-count the money.
+  const existingCases =
+    orderKey.length >= 3 && !generatedCase
+      ? (cases.data ?? []).filter(
+          (item) => item.orderNumber.trim() === orderKey && (!platform || item.platform === platform),
+        )
+      : [];
 
   const searchMutation = useMutation({
     mutationFn: (value: string) => searchCompensationEvidence({ data: { orderNumber: value } }),
@@ -92,7 +101,13 @@ function EvidencePage() {
   }
 
   const canSave =
-    canManage && !saveMutation.isPending && orderNumber.trim().length >= 3 && reason.trim() && explanation.trim();
+    canManage &&
+    !saveMutation.isPending &&
+    !generatedCase &&
+    existingCases.length === 0 &&
+    orderNumber.trim().length >= 3 &&
+    reason.trim() &&
+    explanation.trim();
 
   return (
     <div className="space-y-5">
@@ -107,7 +122,10 @@ function EvidencePage() {
           <Input
             aria-label="رقم الطلب"
             value={orderNumber}
-            onChange={(event) => setOrderNumber(event.target.value)}
+            onChange={(event) => {
+              setOrderNumber(event.target.value);
+              setGeneratedCase(null);
+            }}
             placeholder="رقم الطلب كاملاً أو آخر 4 أرقام منه"
             className="h-12 border-foreground/60 bg-card ps-10 text-base"
             dir="ltr"
@@ -285,6 +303,24 @@ function EvidencePage() {
           />
         </label>
 
+        {existingCases.length ? (
+          <div role="alert" className="mt-4 flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
+            <div>
+              <p className="font-semibold">يوجد حالة تعويض لهذا الطلب مسبقاً</p>
+              <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                {existingCases.map((item) => (
+                  <li key={item.id}>
+                    {platformLabel(item.platform)} · {caseStatusLabel(item.status)} ·{" "}
+                    <Link to="/compensation/cases" search={{ open: item.id }} className="font-semibold text-primary">
+                      فتح الحالة
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : null}
         {canManage ? (
           <div className="mt-4 flex flex-wrap justify-end gap-2">
             <Button type="button" variant="outline" disabled={!canSave} onClick={() => saveMutation.mutate("draft")}>

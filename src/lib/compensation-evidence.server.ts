@@ -9,6 +9,12 @@ import {
   telegramMessageUrl,
   type CompensationPlatform,
 } from "./compensation-evidence";
+import {
+  advanceCaseWorkflow,
+  CASE_STATUS_LABELS,
+  PLATFORM_LABELS,
+  readCaseWorkflow,
+} from "./compensation-overview";
 import type { StoredPeriod } from "./periods";
 import { assertBranchAccess, requireWorkspacePermission, type ServerUserClient } from "./server-auth.server";
 
@@ -114,6 +120,10 @@ export interface SaveCompensationCaseInput {
   employeeExplanation: string;
   status?: "draft" | "ready" | "submitted" | "accepted" | "rejected" | "recovered" | "closed";
   aggregatorCaseReference?: string | null;
+  /** Amount the platform actually paid back when marking the case recovered. */
+  recoveredAmount?: number | null;
+  /** Free note stored with the status change (e.g. the platform's rejection reason). */
+  statusNote?: string | null;
 }
 
 function normalizeBranchKey(value: string): string {
@@ -767,6 +777,54 @@ export async function saveCompensationCaseOnServer(
   assertBranchAccess(context, branchId);
 
   const amount = Math.round(input.compensationAmount * 100) / 100;
+  const status = input.status ?? "ready";
+  if (input.recoveredAmount != null && (!Number.isFinite(input.recoveredAmount) || input.recoveredAmount < 0)) {
+    throw new Error("المبلغ المسترَد يجب أن يكون مبلغاً صالحاً غير سالب.");
+  }
+  if (input.recoveredAmount != null && input.recoveredAmount > amount + 0.005) {
+    throw new Error("المبلغ المسترَد لا يمكن أن يتجاوز مبلغ التعويض المطالَب به.");
+  }
+
+  let existing: { status: string; audit_context: Json } | null = null;
+  if (input.id) {
+    const { data, error } = await db
+      .from("compensation_cases")
+      .select("status,audit_context")
+      .eq("id", input.id)
+      .eq("workspace_id", workspaceId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error("تعذّر العثور على حالة التعويض.");
+    existing = data;
+  } else {
+    // One claim per order and platform: a second case would double-count the money.
+    const { data, error } = await db
+      .from("compensation_cases")
+      .select("id,status")
+      .eq("workspace_id", workspaceId)
+      .eq("platform", input.platform)
+      .eq("order_number", orderNumber)
+      .limit(1);
+    if (error) throw new Error(error.message);
+    const duplicate = (data ?? [])[0] as { id: string; status: string } | undefined;
+    if (duplicate) {
+      const label = CASE_STATUS_LABELS[duplicate.status as keyof typeof CASE_STATUS_LABELS] ?? duplicate.status;
+      throw new Error(
+        `يوجد حالة تعويض لهذا الطلب على ${PLATFORM_LABELS[input.platform]} (الحالة: ${label}). افتحها من صفحة الحالات بدلاً من إنشاء حالة مكررة.`,
+      );
+    }
+  }
+
+  const now = new Date().toISOString();
+  const workflow = advanceCaseWorkflow(
+    readCaseWorkflow(existing?.audit_context),
+    existing?.status ?? null,
+    { status, compensationAmount: amount, recoveredAmount: input.recoveredAmount, note: input.statusNote },
+    now,
+  );
+  const baseContext = auditContextFor(period, orderNumber) as Record<string, Json>;
+  const auditContext = { ...baseContext, workflow: workflow as unknown as Json } as Json;
+
   const drafts = buildCompensationDisputeDraft({
     platform: input.platform,
     orderNumber,
@@ -790,12 +848,12 @@ export async function saveCompensationCaseOnServer(
     compensation_amount: amount,
     compensation_reason: reason,
     employee_explanation: explanation,
-    audit_context: auditContextFor(period, orderNumber),
+    audit_context: auditContext,
     draft_ar: drafts.ar,
     draft_en: drafts.en,
-    status: input.status ?? "ready",
+    status,
     aggregator_case_reference: input.aggregatorCaseReference?.trim() || null,
-    updated_at: new Date().toISOString(),
+    updated_at: now,
   };
 
   if (input.id) {

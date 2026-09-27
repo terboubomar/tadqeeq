@@ -107,6 +107,8 @@ export const saveCompensationCase = createServerFn({ method: "POST" })
       employeeExplanation: z.string().trim().min(1).max(6000),
       status: caseStatus.optional(),
       aggregatorCaseReference: z.string().trim().max(160).nullable().optional(),
+      recoveredAmount: z.number().finite().nonnegative().max(1_000_000_000).nullable().optional(),
+      statusNote: z.string().trim().max(1000).nullable().optional(),
     }),
   )
   .handler(async ({ data }) => {

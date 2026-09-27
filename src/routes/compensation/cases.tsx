@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, Download, Eye, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { AlarmClock, Check, Download, Eye, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -25,8 +25,12 @@ import type { CompensationCaseRecord } from "@/lib/compensation-evidence.server"
 import {
   CASE_STATUSES,
   CASE_WORKFLOW,
+  caseFollowUp,
+  caseRecoveredAmount,
   caseStatusLabel,
+  isCaseRecovered,
   nextCaseActions,
+  readCaseWorkflow,
   PLATFORM_LABELS,
   platformLabel,
   type CompensationCaseStatus,
@@ -37,7 +41,16 @@ import { count, money } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 
-export const Route = createFileRoute("/compensation/cases")({ component: CasesPage });
+export const Route = createFileRoute("/compensation/cases")({
+  validateSearch: (search: Record<string, unknown>): { followup?: boolean; open?: string } => ({
+    followup: search["followup"] === true || search["followup"] === "1" || search["followup"] === "true" ? true : undefined,
+    open: typeof search["open"] === "string" ? search["open"] : undefined,
+  }),
+  component: CasesPage,
+});
+
+/** Quick actions that need an amount or a reason open the case instead of saving blind. */
+const NEEDS_DETAILS = new Set<CompensationCaseStatus>(["recovered", "rejected"]);
 
 const PAGE_SIZE = 25;
 
@@ -50,7 +63,11 @@ function CasesPage() {
   const [branch, setBranch] = useState("all");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
-  const [dialog, setDialog] = useState<{ id: string; mode: "view" | "edit" } | null>(null);
+  const search = Route.useSearch();
+  const [followUpOnly, setFollowUpOnly] = useState(Boolean(search.followup));
+  const [dialog, setDialog] = useState<{ id: string; mode: "view" | "edit" } | null>(
+    search.open ? { id: search.open, mode: "view" } : null,
+  );
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const canManage = can("compensation.manage");
   const canDelete = canManage && ["owner", "admin", "auditor"].includes(context.role);
@@ -84,7 +101,10 @@ function CasesPage() {
           r.compensationReason.toLowerCase().includes(q)),
     );
   }, [rows, platform, branch, query]);
-  const filtered = status === "all" ? baseFiltered : baseFiltered.filter((r) => r.status === status);
+  const followUpCount = baseFiltered.filter((r) => caseFollowUp(r)).length;
+  const filtered = baseFiltered.filter(
+    (r) => (status === "all" || r.status === status) && (!followUpOnly || caseFollowUp(r)),
+  );
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pages - 1);
   const visible = filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
@@ -105,7 +125,10 @@ function CasesPage() {
             branch: r.branchName ?? "",
             reason: r.compensationReason,
             amount: r.compensationAmount,
+            recovered: caseRecoveredAmount(r),
             status: caseStatusLabel(r.status),
+            rejectionReason: readCaseWorkflow(r.auditContext).rejectionReason ?? "",
+            followUp: caseFollowUp(r)?.label ?? "",
             reference: r.aggregatorCaseReference ?? "",
             createdAt: formatTimestamp(r.createdAt),
             updatedAt: formatTimestamp(r.updatedAt),
@@ -116,7 +139,10 @@ function CasesPage() {
             { key: "branch", header: "الفرع" },
             { key: "reason", header: "السبب" },
             { key: "amount", header: "المبلغ", type: "money" },
+            { key: "recovered", header: "المسترَد فعلياً", type: "money" },
             { key: "status", header: "الحالة" },
+            { key: "rejectionReason", header: "سبب الرفض" },
+            { key: "followUp", header: "المتابعة" },
             { key: "reference", header: "مرجع المنصة" },
             { key: "createdAt", header: "تاريخ الإنشاء" },
             { key: "updatedAt", header: "آخر تحديث" },
@@ -213,6 +239,23 @@ function CasesPage() {
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          aria-pressed={followUpOnly}
+          onClick={() => {
+            setFollowUpOnly((v) => !v);
+            setPage(0);
+          }}
+          className={cn(
+            "inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors",
+            followUpOnly
+              ? "border-warning bg-warning/15 font-semibold text-warning"
+              : "border-input bg-card text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <AlarmClock className="size-4" />
+          تحتاج متابعة <span className="num">{count(followUpCount)}</span>
+        </button>
       </div>
 
       <section className="mt-4 overflow-hidden rounded-xl border border-border bg-card">
@@ -259,12 +302,20 @@ function CasesPage() {
                     <td className="max-w-[220px] truncate px-2" title={r.compensationReason}>
                       {r.compensationReason}
                     </td>
-                    <td className="num px-2">{money(r.compensationAmount)}</td>
+                    <td className="px-2">
+                      <span className="num">{money(r.compensationAmount)}</span>
+                      {isCaseRecovered(r) && caseRecoveredAmount(r) < r.compensationAmount ? (
+                        <span className="block text-[11px] text-warning">
+                          استُرد <span className="num">{money(caseRecoveredAmount(r))}</span>
+                        </span>
+                      ) : null}
+                    </td>
                     <td className={cn("px-2", r.evidenceId ? "text-success" : "text-muted-foreground")}>
                       {r.evidenceId ? "مرفق" : "لا يوجد"}
                     </td>
                     <td className="px-2">
                       <StatusBadge status={r.status} />
+                      <FollowUpNote item={r} />
                     </td>
                     <td className="num px-2 text-xs text-muted-foreground">{formatTimestamp(r.updatedAt)}</td>
                     <td className="px-2">
@@ -275,7 +326,11 @@ function CasesPage() {
                           variant="secondary"
                           className="h-7 text-xs"
                           disabled={updateCase.isPending}
-                          onClick={() => updateCase.mutate({ item: r, patch: { status: nextCaseActions(r.status)[0]!.status } })}
+                          onClick={() => {
+                            const next = nextCaseActions(r.status)[0]!.status;
+                            if (NEEDS_DETAILS.has(next)) setDialog({ id: r.id, mode: "view" });
+                            else updateCase.mutate({ item: r, patch: { status: next } });
+                          }}
                         >
                           <Check className="size-3.5" />
                           {nextCaseActions(r.status)[0]!.label}
@@ -384,6 +439,8 @@ type CasePatch = Partial<{
   employeeExplanation: string;
   status: CompensationCaseStatus;
   aggregatorCaseReference: string | null;
+  recoveredAmount: number | null;
+  statusNote: string | null;
 }>;
 
 function useUpdateCase(onSuccess?: () => void) {
@@ -406,6 +463,8 @@ function useUpdateCase(onSuccess?: () => void) {
           status: patch.status ?? (item.status as CompensationCaseStatus),
           aggregatorCaseReference:
             patch.aggregatorCaseReference !== undefined ? patch.aggregatorCaseReference : item.aggregatorCaseReference,
+          recoveredAmount: patch.recoveredAmount ?? null,
+          statusNote: patch.statusNote ?? null,
         },
       });
     },
@@ -431,10 +490,36 @@ function CaseView({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const update = useUpdateCase();
+  const update = useUpdateCase(() => setPending(null));
   const [reference, setReference] = useState(item.aggregatorCaseReference ?? "");
+  const [pending, setPending] = useState<CompensationCaseStatus | null>(null);
+  const [recovered, setRecovered] = useState(String(item.compensationAmount));
+  const [note, setNote] = useState("");
   const actions = nextCaseActions(item.status);
   const stepIndex = CASE_WORKFLOW.indexOf(item.status as CompensationCaseStatus);
+  const workflow = readCaseWorkflow(item.auditContext);
+  const followUp = caseFollowUp(item);
+  const paid = caseRecoveredAmount(item);
+
+  function confirmPending() {
+    if (!pending) return;
+    if (pending === "recovered") {
+      const value = Number(recovered.replace(/,/g, ""));
+      if (!Number.isFinite(value) || value < 0 || value > item.compensationAmount) {
+        toast.error("أدخل المبلغ المسترَد فعلياً (من 0 حتى مبلغ المطالبة).");
+        return;
+      }
+      update.mutate({
+        item,
+        patch: { status: "recovered", recoveredAmount: value, aggregatorCaseReference: reference.trim() || null },
+      });
+      return;
+    }
+    update.mutate({
+      item,
+      patch: { status: pending, statusNote: note.trim() || null, aggregatorCaseReference: reference.trim() || null },
+    });
+  }
 
   return (
     <>
@@ -503,19 +588,72 @@ function CaseView({
                   action.tone === "bad" && "border-destructive/40 text-destructive hover:bg-destructive/10",
                 )}
                 disabled={update.isPending}
-                onClick={() =>
+                aria-pressed={pending === action.status}
+                onClick={() => {
+                  if (NEEDS_DETAILS.has(action.status)) {
+                    setPending(action.status);
+                    return;
+                  }
                   update.mutate({
                     item,
                     patch: { status: action.status, aggregatorCaseReference: reference.trim() || null },
-                  })
-                }
+                  });
+                }}
               >
-                {update.isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                {update.isPending && !pending ? <Loader2 className="size-3.5 animate-spin" /> : null}
                 {action.label}
               </Button>
             ))}
           </div>
+          {pending ? (
+            <div className="mt-3 space-y-2 rounded-md border border-border bg-card p-3">
+              {pending === "recovered" ? (
+                <label className="block">
+                  <span className="text-xs font-semibold">المبلغ المسترَد فعلياً من المنصة (ر.س)</span>
+                  <Input
+                    value={recovered}
+                    onChange={(e) => setRecovered(e.target.value)}
+                    inputMode="decimal"
+                    dir="ltr"
+                    className="mt-1"
+                    autoFocus
+                  />
+                  <span className="mt-1 block text-[11px] text-muted-foreground">
+                    المطالَب <span className="num">{money(item.compensationAmount)}</span> ر.س. عدّله إذا كان الاسترداد جزئياً.
+                  </span>
+                </label>
+              ) : (
+                <label className="block">
+                  <span className="text-xs font-semibold">سبب الرفض كما ذكرته المنصة (اختياري)</span>
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    rows={2}
+                    autoFocus
+                    className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                    placeholder="مثال: الدليل غير واضح، انتهت مدة الاعتراض"
+                  />
+                </label>
+              )}
+              <div className="flex gap-2">
+                <Button type="button" size="sm" disabled={update.isPending} onClick={confirmPending}>
+                  {update.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+                  {pending === "recovered" ? "تأكيد الاسترداد" : "تأكيد الرفض"}
+                </Button>
+                <Button type="button" size="sm" variant="ghost" disabled={update.isPending} onClick={() => setPending(null)}>
+                  إلغاء
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </div>
+      ) : null}
+
+      {followUp ? (
+        <p className="flex items-center gap-2 rounded-lg bg-warning/12 px-3 py-2 text-sm font-semibold text-warning">
+          <AlarmClock className="size-4" />
+          {followUp.label}
+        </p>
       ) : null}
 
       <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
@@ -526,7 +664,37 @@ function CaseView({
         <Info label="تاريخ الإنشاء" value={formatTimestamp(item.createdAt)} />
         <Info label="آخر تحديث" value={formatTimestamp(item.updatedAt)} />
         <Info label="الدليل" value={item.evidenceId ? "مرفق" : "لا يوجد"} />
+        {isCaseRecovered(item) ? (
+          <Info
+            label="المسترَد فعلياً"
+            value={
+              <span className={paid < item.compensationAmount ? "text-warning" : "text-success"}>
+                {money(paid)} ر.س
+              </span>
+            }
+          />
+        ) : null}
       </dl>
+      {workflow.rejectionReason ? (
+        <p className="rounded-lg bg-destructive/8 px-3 py-2 text-sm">
+          <span className="font-semibold text-destructive">سبب الرفض: </span>
+          {workflow.rejectionReason}
+        </p>
+      ) : null}
+      {workflow.history.length ? (
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground">سجل الحالة</p>
+          <ol className="mt-2 space-y-1.5 border-s-2 border-border ps-3 text-sm">
+            {[...workflow.history].reverse().map((entry, index) => (
+              <li key={entry.at + index} className="flex flex-wrap items-baseline gap-x-2">
+                <span className="font-semibold">{caseStatusLabel(entry.status)}</span>
+                <span className="num text-xs text-muted-foreground">{formatTimestamp(entry.at)}</span>
+                {entry.note ? <span className="w-full text-xs text-muted-foreground">{entry.note}</span> : null}
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
       <div className="text-sm">
         <p className="text-xs font-semibold text-muted-foreground">السبب</p>
         <p className="mt-1">{item.compensationReason}</p>
@@ -691,5 +859,16 @@ function Info({ label, value }: { label: string; value: ReactNode }) {
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 font-semibold">{value}</dd>
     </div>
+  );
+}
+
+function FollowUpNote({ item }: { item: CompensationCaseRecord }) {
+  const followUp = caseFollowUp(item);
+  if (!followUp) return null;
+  return (
+    <span className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-warning">
+      <AlarmClock className="size-3" />
+      {followUp.label}
+    </span>
   );
 }
