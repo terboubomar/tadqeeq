@@ -7,7 +7,7 @@ _2026-09-27 · built with the seo-audit, competitor-profiling, site-architecture
 | # | Priority | Finding | Status |
 |---|---|---|---|
 | 1 | **Critical** | `https://tadqeeq.app/` returns 404 "No published build" — nothing can be indexed until the project is published from Lovable. | **Owner action**: click Publish in Lovable |
-| 2 | High | No `sitemap.xml`; `robots.txt` had no sitemap line and let crawlers into app screens. | Fixed |
+| 2 | High | No `sitemap.xml`; `robots.txt` had no sitemap line and let crawlers into app screens. | Fixed: `/sitemap.xml`, `/robots.txt` and `/llms.txt` are generated from `PUBLIC_PAGES` / private lists in `src/lib/seo.ts`; a test fails if a new route is not classified |
 | 3 | High | No canonical URL on the homepage. | Fixed |
 | 4 | High | No structured data. | Fixed: Organization, WebSite, SoftwareApplication, FAQPage (JSON-LD) |
 | 5 | Medium | No share image / `og:url` / `og:locale`; minimal Twitter tags. | Fixed: 1200×630 `/og.png`, full OG + Twitter set, `ar_SA` |
@@ -57,7 +57,7 @@ Already good: server-side rendered Arabic HTML (`lang="ar" dir="rtl"`), single H
 /مقارنة/فلوتيكس                     comparison (later)
 ```
 
-Rules: Arabic slugs (URL-encoded automatically), one topic per page, every guide links to the matching feature page and the calculator, homepage links to the hub. Add each new URL to `public/sitemap.xml`.
+Rules: Arabic slugs (URL-encoded automatically), one topic per page, every guide links to the matching feature page and the calculator, homepage links to the hub. Add each new page to `PUBLIC_PAGES` in `src/lib/seo.ts` (sitemap and llms.txt update automatically).
 
 ## 5. Content plan (first 8 weeks)
 
@@ -75,6 +75,9 @@ Rules: Arabic slugs (URL-encoded automatically), one topic per page, every guide
 Each guide: answer in the first 2 sentences (AI-search friendly), a worked example with SAR numbers labelled as examples, FAQ block with FAQPage schema, CTA to the calculator and signup.
 
 ## 6. Off-page
+
+Full plan, submission copy and tracker: `backlinks.md`, `backlink-tracker.csv`.
+
 
 - Saudi SaaS / F&B directories and Arabic startup lists; LinkedIn company page with the same name/logo; X account.
 - Partner content with POS/integrators (Foodics marketplace) and restaurant-owner communities.

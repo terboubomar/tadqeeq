@@ -30,3 +30,54 @@ export function socialMeta({ title, description, path }: { title: string; descri
 export function jsonLd(data: Record<string, unknown>) {
   return { type: "application/ld+json", children: JSON.stringify(data) };
 }
+
+export type PublicPage = {
+  path: string;
+  /** Last meaningful content change (YYYY-MM-DD). Update it when the page's content changes. */
+  lastmod: string;
+  changefreq: "daily" | "weekly" | "monthly" | "yearly";
+  priority: number;
+};
+
+/** Every page that should be indexed. Adding a public page here adds it to sitemap.xml and llms.txt. */
+export const PUBLIC_PAGES: PublicPage[] = [{ path: "/", lastmod: "2026-09-27", changefreq: "weekly", priority: 1 }];
+
+/** App sections whose every sub-path is private. */
+export const PRIVATE_PREFIXES = ["/api/", "/ops", "/compensation"];
+
+/** Single private screens, blocked exactly so future public pages that share a prefix stay crawlable. */
+export const PRIVATE_PAGES = [
+  "/accept-invite",
+  "/ai",
+  "/ask",
+  "/branches",
+  "/breakdown",
+  "/charges",
+  "/contracts",
+  "/daily",
+  "/dashboard",
+  "/exceptions",
+  "/history",
+  "/import",
+  "/invoice-check",
+  "/promotions",
+  "/settings",
+  "/team",
+];
+
+/** Crawlable so search engines can see their noindex tag, but never listed in the sitemap. */
+export const NOINDEX_PAGES = ["/auth"];
+
+/** AI search and assistant crawlers, named so it is explicit that they may read and cite public pages. */
+export const AI_CRAWLERS = [
+  "GPTBot",
+  "OAI-SearchBot",
+  "ChatGPT-User",
+  "ClaudeBot",
+  "Claude-SearchBot",
+  "Claude-User",
+  "PerplexityBot",
+  "Perplexity-User",
+  "Google-Extended",
+  "Applebot-Extended",
+];
