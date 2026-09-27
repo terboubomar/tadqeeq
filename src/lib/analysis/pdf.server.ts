@@ -8,7 +8,16 @@ export async function extractPdfTextServer(
   file: ArrayBuffer,
   maxPages = 3,
 ): Promise<string> {
-  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const [{ getDocument }, worker] = await Promise.all([
+    import("pdfjs-dist/legacy/build/pdf.mjs"),
+    import("pdfjs-dist/legacy/build/pdf.worker.mjs"),
+  ]);
+  // On the server PDF.js runs its worker in-process ("fake worker"). By default it loads
+  // pdf.worker.mjs with a runtime import that the Cloudflare Worker bundle cannot resolve
+  // ("No such module _libs/pdf.worker.mjs"), so register the bundled handler up front.
+  const pdfjsGlobal = globalThis as typeof globalThis & { pdfjsWorker?: { WorkerMessageHandler: unknown } };
+  pdfjsGlobal.pdfjsWorker ??= { WorkerMessageHandler: worker.WorkerMessageHandler };
+
   const loadingTask = getDocument({ data: new Uint8Array(file) });
   const doc = await loadingTask.promise;
 

@@ -43,6 +43,15 @@ describe("authoritative audit import boundary", () => {
     expect(pdf).toContain("getTextContent()");
   });
 
+  test("server PDF extraction registers the bundled worker handler", async () => {
+    // Cloudflare Workers cannot load pdf.worker.mjs at runtime ("No such module _libs/pdf.worker.mjs"),
+    // so the worker must be imported statically and registered before getDocument.
+    const pdf = await Bun.file("src/lib/analysis/pdf.server.ts").text();
+    expect(pdf).toContain('import("pdfjs-dist/legacy/build/pdf.worker.mjs")');
+    expect(pdf).toContain("pdfjsWorker ??= { WorkerMessageHandler");
+    expect(pdf.indexOf("pdfjsWorker ??=")).toBeLessThan(pdf.indexOf("getDocument({"));
+  });
+
   test("server auth requires a bearer header instead of body credentials", () => {
     expect(parseAuthorizationBearer("Bearer abc.def.ghi")).toBe("abc.def.ghi");
     expect(() => parseAuthorizationBearer(undefined)).toThrow();
