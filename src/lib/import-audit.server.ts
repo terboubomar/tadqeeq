@@ -1,3 +1,4 @@
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
 
 import { UnsupportedFormatError } from "./analysis/formats/types";
@@ -23,6 +24,7 @@ import {
   type HungerStationMappingReview,
 } from "./hungerstation-branch-review";
 import { normalizePeriodLabel, type StoredPeriod } from "./periods";
+import { TRIAL_UPLOAD_EVENT } from "./plans";
 import { requireServerUser, type ServerUserClient } from "./server-auth.server";
 import { safeStorageFileName, sha256Hex } from "./source-file-utils";
 import { MAX_UPLOAD_SIZE_BYTES } from "./upload-validation";
@@ -571,16 +573,34 @@ async function rollbackPeriod(
   }
 }
 
+async function recordTrialUpload(workspaceId: string, actorUserId: string, periodId: string, platform: string) {
+  // workspace_audit_events is not in the generated types yet; users can read it but only the service role writes.
+  const events = supabaseAdmin as unknown as {
+    from: (table: string) => { insert: (row: Record<string, unknown>) => PromiseLike<{ error: { message: string } | null }> };
+  };
+  const { error } = await events.from("workspace_audit_events").insert({
+    workspace_id: workspaceId,
+    actor_user_id: actorUserId,
+    event_type: TRIAL_UPLOAD_EVENT,
+    entity_type: "period",
+    entity_id: periodId,
+    metadata: { platform },
+  });
+  if (error) console.error("Failed to record trial upload", error.message);
+}
+
 export async function importAuditOnServer(
   form: FormData,
 ): Promise<ImportAuditResult> {
-  const { client, userId, uploadLimit, uploadsThisMonth, permissions } = await requireServerUser();
+  const { client, userId, uploadLimit, uploadsThisMonth, permissions, trial, workspaceId, actorUserId } = await requireServerUser();
   if (!permissions.includes("imports.create")) {
     throw new Error("ليس لديك صلاحية لرفع البيانات.");
   }
   if (uploadLimit !== null && uploadsThisMonth >= uploadLimit) {
     throw new Error(
-      `وصلت للحد الشهري لرفع الملفات في باقتك (${uploadLimit} رفعات). رقِّ باقتك أو انتظر بداية الشهر القادم.`,
+      trial
+        ? "استخدمت الرفع المتاح في التجربة المجانية. اشترك لرفع فترات ومنصات أخرى وفتح بقية الأقسام."
+        : `وصلت للحد الشهري لرفع الملفات في باقتك (${uploadLimit} رفعات). رقِّ باقتك أو انتظر بداية الشهر القادم.`,
     );
   }
   const platform = parsePlatform(formString(form, "platform"));
@@ -690,6 +710,8 @@ export async function importAuditOnServer(
         : "تعذّر تثبيت فترة التدقيق بشكل قابل لإعادة الإنتاج؛ تم التراجع عن الفترة الجديدة.",
     );
   }
+
+  if (trial) await recordTrialUpload(workspaceId, actorUserId, periodId, platform);
 
   return {
     status: "saved",

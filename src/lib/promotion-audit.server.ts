@@ -1,7 +1,7 @@
 import type { Tables } from "@/integrations/supabase/types";
 
 import { roundMoney } from "./analysis/parse";
-import { requireServerUser, type ServerUserClient } from "./server-auth.server";
+import { requireWorkspacePermission, type ServerUserClient } from "./server-auth.server";
 
 type PromotionAuditRow = Tables<"promotion_audits">;
 
@@ -105,7 +105,7 @@ async function assertOwnedPeriod(
 export async function listPromotionAuditsOnServer(
   periodId: string,
 ): Promise<PromotionAuditRecord[]> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("financials.read");
   await assertOwnedPeriod(client, userId, periodId);
 
   const { data, error } = await client
@@ -122,7 +122,7 @@ export async function listPromotionAuditsOnServer(
 export async function savePromotionAuditOnServer(
   input: SavePromotionAuditInput,
 ): Promise<PromotionAuditRecord> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("financials.read");
   await assertOwnedPeriod(client, userId, input.periodId);
 
   const name = input.name.trim();
@@ -200,7 +200,7 @@ export async function deletePromotionAuditOnServer(input: {
   id: string;
   periodId: string;
 }): Promise<string> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("financials.read");
   await assertOwnedPeriod(client, userId, input.periodId);
 
   const { data, error } = await client

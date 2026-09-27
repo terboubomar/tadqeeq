@@ -291,6 +291,8 @@ function ImportPage() {
       savedSuccessfully = true;
       setSelectedPeriodId(response.periodId);
       await queryClient.invalidateQueries({ queryKey: ["periods"] });
+      // Upload counts and trial limits live in the workspace context.
+      await queryClient.invalidateQueries({ queryKey: ["workspace-context"] });
       toast.success(
         `تم تحليل ${response.branchCount} فرع و${response.dailyCount} يوم على الخادم.`,
       );

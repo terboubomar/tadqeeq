@@ -8,7 +8,7 @@ import {
   type JahezContractCompliance,
 } from "./contract-compliance";
 import type { StoredPeriod } from "./periods";
-import { requireServerUser } from "./server-auth.server";
+import { requireWorkspacePermission } from "./server-auth.server";
 
 export type ContractComplianceResult =
   | {
@@ -25,7 +25,7 @@ export async function evaluateContractComplianceOnServer(input: {
   contractId: string;
   periodId: string;
 }): Promise<ContractComplianceResult> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("contracts.read");
 
   const { data: contract, error: contractError } = await client
     .from("platform_contracts")

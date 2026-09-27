@@ -19,6 +19,8 @@ export interface WorkspaceClientContext {
   planFeatures: string[] | null;
   uploadLimit: number | null;
   uploadsThisMonth: number;
+  trial: boolean;
+  planLockedPermissions: readonly WorkspacePermission[];
 }
 
 export async function getMyWorkspaceContextOnServer(): Promise<WorkspaceClientContext> {
@@ -49,5 +51,7 @@ export async function getMyWorkspaceContextOnServer(): Promise<WorkspaceClientCo
     planFeatures: context.planFeatures,
     uploadLimit: context.uploadLimit,
     uploadsThisMonth: context.uploadsThisMonth,
+    trial: context.trial,
+    planLockedPermissions: context.planLockedPermissions,
   };
 }

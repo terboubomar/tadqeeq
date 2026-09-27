@@ -10,7 +10,9 @@ describe("contract rulebook workflow", () => {
   test("keeps ownership and approval decisions server-authoritative", async () => {
     const source = await read("src/lib/contract-rulebook.server.ts");
 
-    expect(source).toContain("requireServerUser()");
+    expect(source).toContain('requireWorkspacePermission("contracts.read")');
+    expect(source).toContain('requireWorkspacePermission("contracts.manage")');
+    expect(source).not.toContain("requireServerUser()");
     expect(source).toContain("user_id: userId");
     expect(source).toContain("assertDraftVersion");
     expect(source).toContain('.update({ status: "approved" })');

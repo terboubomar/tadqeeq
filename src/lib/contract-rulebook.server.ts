@@ -15,7 +15,7 @@ import {
   type ContractVersionRecord,
 } from "./contract-rulebook";
 import { resolveContractRulePrecedence } from "./contract-rulebook-resolver";
-import { requireServerUser, type ServerUserClient } from "./server-auth.server";
+import { requireWorkspacePermission, type ServerUserClient } from "./server-auth.server";
 import { safeStorageFileName, sha256Hex } from "./source-file-utils";
 import { MAX_UPLOAD_SIZE_BYTES } from "./upload-validation";
 
@@ -204,7 +204,7 @@ function normalizeRule(input: SaveContractRuleInput) {
 }
 
 export async function listContractRulebookOnServer(): Promise<ContractRulebookSnapshot> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("contracts.read");
 
   const { data: allContractRows, error: contractsError } = await client
     .from("platform_contracts")
@@ -368,7 +368,7 @@ export async function updateContractOnServer(input: {
   externalReference?: string | null;
   counterparty?: string | null;
 }): Promise<{ ok: true }> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("contracts.manage");
   await assertOwnedContract(client, userId, input.contractId);
   const name = input.name.trim();
   if (!name) throw new Error("اسم العقد مطلوب.");
@@ -390,7 +390,7 @@ export async function setContractArchivedOnServer(input: {
   contractId: string;
   archived: boolean;
 }): Promise<{ ok: true }> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("contracts.manage");
   const { error } = await client
     .from("platform_contracts")
     .update({
@@ -411,7 +411,7 @@ export async function setContractArchivedOnServer(input: {
 export async function deleteContractOnServer(input: {
   contractId: string;
 }): Promise<{ ok: true }> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("contracts.manage");
   const { data: versions, error: versionsError } = await client
     .from("contract_versions")
     .select("id, status")
@@ -453,7 +453,7 @@ export async function deleteContractOnServer(input: {
 export async function createContractOnServer(
   input: CreateContractInput,
 ): Promise<{ contractId: string }> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("contracts.manage");
   const name = input.name.trim();
   if (!name) throw new Error("اسم العقد مطلوب.");
 
@@ -476,7 +476,7 @@ export async function createContractOnServer(
 export async function createContractVersionOnServer(
   input: CreateContractVersionInput,
 ): Promise<{ versionId: string }> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("contracts.manage");
   await assertOwnedContract(client, userId, input.contractId);
 
   if (
@@ -524,7 +524,7 @@ export async function createContractVersionOnServer(
 export async function saveContractRuleOnServer(
   input: SaveContractRuleInput,
 ): Promise<{ ruleId: string }> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("contracts.manage");
   await assertDraftVersion(client, userId, input.contractId, input.versionId);
   const normalized = normalizeRule(input);
 
@@ -577,7 +577,7 @@ export async function deleteContractRuleOnServer(input: {
   versionId: string;
   ruleId: string;
 }): Promise<{ ruleId: string }> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("contracts.manage");
   await assertDraftVersion(client, userId, input.contractId, input.versionId);
 
   const { data, error } = await client
@@ -599,7 +599,7 @@ export async function approveContractVersionOnServer(input: {
   contractId: string;
   versionId: string;
 }): Promise<{ versionId: string }> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("contracts.manage");
   await assertDraftVersion(client, userId, input.contractId, input.versionId);
 
   const { data, error } = await client
@@ -635,7 +635,7 @@ function contractDocumentFormFile(form: FormData, key: string): File | null {
 export async function uploadContractDocumentOnServer(
   form: FormData,
 ): Promise<{ documentId: string; sha256: string }> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("contracts.manage");
   const contractId = contractDocumentFormString(form, "contractId");
   const versionId = contractDocumentFormString(form, "versionId");
   const file = contractDocumentFormFile(form, "file");
@@ -741,7 +741,7 @@ export async function uploadContractDocumentOnServer(
 export async function resolveContractTermsOnServer(
   input: ResolveContractTermsInput,
 ): Promise<ContractTermsResolution> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("contracts.read");
   await assertOwnedContract(client, userId, input.contractId);
 
   const { data: versionRows, error: versionsError } = await client

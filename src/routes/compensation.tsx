@@ -4,6 +4,7 @@ import { ArrowRight, FileSearch, FileSpreadsheet, FileText, LayoutDashboard, Log
 
 import { useCompensationCases } from "@/components/compensation/queries";
 import { Denied } from "@/components/compensation/shared";
+import { LockedFeatureCard } from "@/components/PlanUpgrade";
 import { useWorkspaceAccess, WorkspaceAccessProvider } from "@/components/WorkspaceAccessProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { isOpsHost } from "@/lib/ops";
@@ -56,7 +57,8 @@ function CompensationShell() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname.replace(/\/+$/, "") || "/" });
-  const locked = context.onboardingStatus !== "active" && !context.isPlatformAdmin;
+  const locked = context.onboardingStatus !== "active" && !context.trial && !context.isPlatformAdmin;
+  const planLocked = !can("compensation.read") && context.planLockedPermissions.includes("compensation.read");
   const caseCount = useCompensationCases(!locked && can("compensation.read")).data?.length;
 
   async function signOut() {
@@ -75,6 +77,14 @@ function CompensationShell() {
             العودة إلى تدقيق
           </Link>
         </div>
+      </div>
+    );
+  }
+
+  if (planLocked) {
+    return (
+      <div dir="rtl" className="min-h-screen bg-background px-4 py-10">
+        <LockedFeatureCard permission="compensation.read" trial={context.trial} />
       </div>
     );
   }

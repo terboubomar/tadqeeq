@@ -25,7 +25,7 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
   return <OnboardingScreen />;
 }
 
-function OnboardingScreen() {
+export function OnboardingScreen() {
   const query = useQuery({
     queryKey: ["my-onboarding"],
     queryFn: () => getMyOnboarding({ data: {} }),

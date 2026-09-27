@@ -62,6 +62,7 @@ export const PRIVATE_PAGES = [
   "/invoice-check",
   "/promotions",
   "/settings",
+  "/subscribe",
   "/team",
 ];
 

@@ -1,11 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ChevronDown, LogOut, PanelRightClose, PanelRightOpen, Upload } from "lucide-react";
+import { ChevronDown, Lock, LogOut, PanelRightClose, PanelRightOpen, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import { AskTadqeeqWidget } from "@/components/AskTadqeeqWidget";
 import { OnboardingGate } from "@/components/OnboardingGate";
+import { LockedFeatureCard, TrialBanner, UpgradeCard } from "@/components/PlanUpgrade";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
 import {
@@ -93,7 +94,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { context, can } = useWorkspaceAccess();
-  const locked = context.onboardingStatus !== "active" && !context.isPlatformAdmin;
+  // Suspended (or otherwise unusable) workspaces only; trial workspaces use the app with their limits.
+  const locked = context.onboardingStatus !== "active" && !context.trial && !context.isPlatformAdmin;
+  const planLocked = (permission: WorkspacePermission) => context.planLockedPermissions.includes(permission);
+  const trialUploadUsed =
+    context.trial && context.uploadLimit !== null && context.uploadsThisMonth >= context.uploadLimit;
   const { periods, selected, select } = useSelectedPeriod(can("periods.read") && !locked);
   const [sidebarHidden, setSidebarHidden] = useState(false);
 
@@ -110,15 +115,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   const visibleGroups = NAV_GROUPS
     .map((group) => ({
       ...group,
-      items: group.items.filter(
-        (item) => can(item.permission) && (!item.adminOnly || context.isPlatformAdmin),
-      ),
+      items: group.items
+        .filter(
+          (item) =>
+            (can(item.permission) || planLocked(item.permission)) && (!item.adminOnly || context.isPlatformAdmin),
+        )
+        .map((item) => ({ ...item, locked: !can(item.permission) })),
     }))
     .filter((group) => group.items.length > 0);
   const visibleItems = visibleGroups.flatMap((group) => group.items);
   const requiredPermission = ROUTE_PERMISSIONS[pathname];
   const routeDenied = requiredPermission ? !can(requiredPermission) : false;
-  const firstAllowedRoute = visibleItems[0]?.to ?? "/auth";
+  const firstAllowedRoute = visibleItems.find((item) => !item.locked)?.to ?? "/auth";
 
   const [openGroups, setOpenGroups] = useState<string[]>(() =>
     NAV_GROUPS
@@ -221,7 +229,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                         return (
                           <Link
                             key={item.to}
-                            to={item.to}
+                            to={item.locked ? "/subscribe" : item.to}
+                            title={item.locked ? "متاح بعد الاشتراك" : undefined}
                             className={cn(
                               "flex w-full items-center justify-between gap-2 rounded-[7px] border px-2.5 py-[7px] text-[13px] transition-colors",
                               active
@@ -229,8 +238,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                                 : "border-transparent text-ink-muted hover:bg-ink-2 hover:text-ink-foreground",
                             )}
                           >
-                            <span>{item.label}</span>
-                            {badge ? (
+                            <span className={cn(item.locked && "opacity-60")}>{item.label}</span>
+                            {item.locked ? (
+                              <Lock aria-label="متاح بعد الاشتراك" className="size-3.5 shrink-0 text-primary" />
+                            ) : badge ? (
                               <span className="num inline-grid min-w-[18px] place-items-center rounded-full bg-destructive px-1.5 py-0.5 text-[10.5px] font-semibold text-white">
                                 {badge}
                               </span>
@@ -253,7 +264,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <p className="text-ink-muted">
                   {WORKSPACE_ROLE_LABELS[context.role]} · {context.workspaceName}
                 </p>
-                {context.planName ? (
+                {context.trial ? (
+                  <p className="mt-1 text-ink-muted">
+                    تجربة مجانية · الرفع {Math.min(context.uploadsThisMonth, context.uploadLimit ?? 0)} / {context.uploadLimit}
+                  </p>
+                ) : context.planName ? (
                   <p className="mt-1 text-ink-muted">
                     باقة {context.planName} · الرفع هذا الشهر {context.uploadsThisMonth}
                     {context.uploadLimit !== null ? ` / ${context.uploadLimit}` : ""}
@@ -346,7 +361,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               return (
                 <Link
                   key={item.to}
-                  to={item.to}
+                  to={item.locked ? "/subscribe" : item.to}
                   className={cn(
                     "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-[12.5px]",
                     active
@@ -355,6 +370,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   )}
                 >
                   {item.label}
+                  {item.locked ? <Lock aria-label="متاح بعد الاشتراك" className="size-3 text-primary" /> : null}
                   {badge ? (
                     <span className="num rounded-full bg-white/90 px-1.5 text-[10px] text-destructive">
                       {badge}
@@ -365,9 +381,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             })}
           </div>
 
+          {context.trial ? <TrialBanner uploadsUsed={context.uploadsThisMonth} uploadLimit={context.uploadLimit} /> : null}
+
           <div className="mx-auto w-full max-w-[1360px] px-4 pb-14 pt-[22px] sm:px-5">
             {locked ? (
               <OnboardingGate>{children}</OnboardingGate>
+            ) : routeDenied && requiredPermission && planLocked(requiredPermission) ? (
+              <LockedFeatureCard permission={requiredPermission} trial={context.trial} />
+            ) : pathname === "/import" && trialUploadUsed ? (
+              <UpgradeCard
+                title="استخدمت الرفع المتاح في التجربة المجانية"
+                body="نتائج الفترة التي رفعتها متاحة في اللوحة والتقارير. اشترك لرفع فترات ومنصات أخرى وفتح بقية الأقسام."
+              />
             ) : routeDenied ? (
               <div className="panel mx-auto mt-10 max-w-lg p-8 text-center">
                 <h1 className="text-lg font-bold">ليس لديك صلاحية للوصول إلى هذه الصفحة</h1>

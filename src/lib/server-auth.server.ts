@@ -9,7 +9,9 @@ import {
   type WorkspacePermission,
   type WorkspaceRole,
 } from "./workspace-access";
-import { filterPermissionsByPlan, isPlanFeature, type PlanFeature } from "./plans";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+import { isPlanFeature, isTrialStatus, resolvePlanAccess, TRIAL_UPLOAD_EVENT, type PlanFeature } from "./plans";
 
 export type ServerUserClient = ReturnType<typeof createServerUserClient>;
 
@@ -37,7 +39,12 @@ export interface ServerUserAuth {
   planName: string | null;
   planFeatures: PlanFeature[] | null;
   uploadLimit: number | null;
+  /** Uploads counted against uploadLimit: this month on a plan, all-time during the trial. */
   uploadsThisMonth: number;
+  /** Signed up but not activated yet: runs as a free trial limited to analysis. */
+  trial: boolean;
+  /** Allowed by the member's role but closed by the plan or trial. */
+  planLockedPermissions: readonly WorkspacePermission[];
   client: ServerUserClient;
 }
 
@@ -198,24 +205,64 @@ async function loadWorkspaceContext(
   const plan = (planData ?? {}) as Record<string, unknown>;
   const rawFeatures = plan["features"];
   const planFeatures = Array.isArray(rawFeatures) ? rawFeatures.filter(isPlanFeature) : null;
+  const onboardingStatus = typeof onboardingRow?.status === "string" ? onboardingRow.status : "active";
+  const isPlatformAdmin = adminFlag === true;
+
+  const trialUploads =
+    isTrialStatus(onboardingStatus) && !isPlatformAdmin ? await countTrialUploads(db, typedWorkspace.id) : 0;
+
+  const access = resolvePlanAccess({
+    rolePermissions: ROLE_PERMISSIONS[membership.role],
+    onboardingStatus,
+    isPlatformAdmin,
+    planFeatures,
+    uploadLimit: typeof plan["upload_limit"] === "number" ? plan["upload_limit"] : null,
+    uploadsThisMonth: typeof plan["uploads_this_month"] === "number" ? plan["uploads_this_month"] : 0,
+    trialUploads,
+  });
 
   return {
-    onboardingStatus:
-      typeof onboardingRow?.status === "string" ? onboardingRow.status : "active",
-    isPlatformAdmin: adminFlag === true,
+    onboardingStatus,
+    isPlatformAdmin,
     userId: typedWorkspace.owner_user_id,
     workspaceId: typedWorkspace.id,
     workspaceName: typedWorkspace.name,
     membershipId: membership.id,
     role: membership.role,
-    permissions: filterPermissionsByPlan(ROLE_PERMISSIONS[membership.role], planFeatures),
+    permissions: access.permissions,
     allowedBranchIds,
     globalBranchAccess,
     planName: typeof plan["plan_name"] === "string" ? plan["plan_name"] : null,
     planFeatures,
-    uploadLimit: typeof plan["upload_limit"] === "number" ? plan["upload_limit"] : null,
-    uploadsThisMonth: typeof plan["uploads_this_month"] === "number" ? plan["uploads_this_month"] : 0,
+    uploadLimit: access.uploadLimit,
+    uploadsThisMonth: access.uploadsUsed,
+    trial: access.trial,
+    planLockedPermissions: access.planLockedPermissions,
   };
+}
+
+/**
+ * Uploads a trial workspace has made. Periods can be deleted by the user, so the permanent
+ * trial.upload audit events (written with the service role, read-only for users) also count.
+ */
+type CountResult = { count: number | null; error: { message: string } | null };
+type CountQuery = PromiseLike<CountResult> & { eq: (column: string, value: string) => CountQuery };
+type CountClient = {
+  from: (table: string) => { select: (columns: string, options: { count: "exact"; head: true }) => CountQuery };
+};
+
+async function countTrialUploads(db: unknown, workspaceId: string): Promise<number> {
+  const [periods, events] = await Promise.all([
+    (db as CountClient).from("periods").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId),
+    (supabaseAdmin as unknown as CountClient)
+      .from("workspace_audit_events")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId)
+      .eq("event_type", TRIAL_UPLOAD_EVENT),
+  ]);
+  if (periods.error) throw new Error(periods.error.message);
+  if (events.error) console.error("Failed to count trial uploads", events.error.message);
+  return Math.max(periods.count ?? 0, events.count ?? 0);
 }
 
 export async function requireServerUserAnyStatus(): Promise<ServerUserAuth> {
@@ -239,11 +286,11 @@ export async function requireServerUserAnyStatus(): Promise<ServerUserAuth> {
   };
 }
 
-/** Signed-in user whose workspace is activated (onboarding complete). */
+/** Signed-in user whose workspace is activated, or on the free trial (limited by its permissions). */
 export async function requireServerUser(): Promise<ServerUserAuth> {
   const context = await requireServerUserAnyStatus();
-  if (context.onboardingStatus !== "active" && !context.isPlatformAdmin) {
-    throw new Error("حسابك قيد التفعيل — ستُفتح الميزات بعد إتمام التهيئة والدفع.");
+  if (context.onboardingStatus !== "active" && !context.trial && !context.isPlatformAdmin) {
+    throw new Error("الحساب موقوف مؤقتاً — تواصل معنا لإعادة التفعيل.");
   }
   return context;
 }

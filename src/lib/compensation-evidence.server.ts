@@ -10,7 +10,7 @@ import {
   type CompensationPlatform,
 } from "./compensation-evidence";
 import type { StoredPeriod } from "./periods";
-import { assertBranchAccess, requireServerUser, requireWorkspacePermission, type ServerUserClient } from "./server-auth.server";
+import { assertBranchAccess, requireWorkspacePermission, type ServerUserClient } from "./server-auth.server";
 
 const THUMBNAIL_BUCKET = "telegram-evidence-thumbnails";
 const CONNECTION_CODE_TTL_MINUTES = 30;
@@ -248,7 +248,7 @@ function mapCase(row: {
 }
 
 export async function listTelegramBranchConnectionsOnServer(): Promise<TelegramBranchConnection[]> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("telegram.read");
   const db = dynamicDb(client);
   const { data, error } = await db
     .from("telegram_branch_chats")
@@ -395,7 +395,7 @@ export async function setTelegramBranchConnectionActiveOnServer(
   id: string,
   active: boolean,
 ): Promise<TelegramBranchConnection> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("telegram.manage");
   const db = dynamicDb(client);
   const { data, error } = await db
     .from("telegram_branch_chats")
@@ -411,7 +411,7 @@ export async function setTelegramBranchConnectionActiveOnServer(
 }
 
 export async function getTelegramIntegrationStatusOnServer(): Promise<TelegramIntegrationStatus> {
-  await requireServerUser();
+  await requireWorkspacePermission("telegram.read");
   const token = process.env["TELEGRAM_BOT_TOKEN"]?.trim();
   const secret = process.env["TELEGRAM_WEBHOOK_SECRET"]?.trim();
   const origin = optionalPublicOrigin();
@@ -455,7 +455,7 @@ export async function getTelegramIntegrationStatusOnServer(): Promise<TelegramIn
 }
 
 export async function configureTelegramWebhookOnServer(): Promise<TelegramIntegrationStatus> {
-  await requireServerUser();
+  await requireWorkspacePermission("telegram.manage");
   const secret = requiredTelegramEnv("TELEGRAM_WEBHOOK_SECRET");
   const origin = optionalPublicOrigin();
   if (!origin) {

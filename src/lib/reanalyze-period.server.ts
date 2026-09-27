@@ -8,7 +8,7 @@ import {
   type SourceFile,
 } from "./import-audit.server";
 import type { StoredPeriod } from "./periods";
-import { requireServerUser, type ServerUserClient } from "./server-auth.server";
+import { requireWorkspacePermission, type ServerUserClient } from "./server-auth.server";
 import { sha256Hex } from "./source-file-utils";
 
 const SOURCE_BUCKET = "source-files";
@@ -195,7 +195,7 @@ async function rollbackVersion(
 export async function reanalyzePeriodOnServer(
   periodId: string,
 ): Promise<ReanalyzePeriodResult> {
-  const { client, userId } = await requireServerUser();
+  const { client, userId } = await requireWorkspacePermission("periods.reanalyze");
   const oldPeriod = await loadCurrentPeriod(client, userId, periodId);
   const originalSources = await loadSourceFiles(client, userId, periodId);
   const form = sourceForm(oldPeriod, originalSources);
