@@ -43,7 +43,13 @@ export async function saveRegistryBranch(input: BranchInput): Promise<void> {
     ? await table().update(row).eq("id", input.id)
     : await table().insert(row);
   if (error) {
-    if (error.code === "23505") throw new Error("يوجد فرع بنفس الاسم.");
+    if (error.code === "23505") {
+      const msg = `${error.message ?? ""} ${error.details ?? ""}`;
+      if (msg.includes("keeta")) throw new Error(`معرّف كيتا ${row.keeta_id} مستخدم مسبقاً لفرع آخر.`);
+      if (msg.includes("_hs_")) throw new Error(`معرّف هنقرستيشن ${row.hungerstation_id} مستخدم مسبقاً لفرع آخر.`);
+      if (msg.includes("jahez")) throw new Error(`معرّف جاهز ${row.jahez_id} مستخدم مسبقاً لفرع آخر.`);
+      throw new Error("يوجد فرع بنفس الاسم.");
+    }
     throw new Error(error.message);
   }
 }
