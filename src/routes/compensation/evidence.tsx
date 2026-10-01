@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { COMPENSATION_CASES_KEY, formatTimestamp, useCompensationCases } from "@/components/compensation/queries";
-import { CompHeader, DraftBox, EvidenceActions, Field, Tag } from "@/components/compensation/shared";
+import { CompHeader, DraftBox, EvidenceActions, EvidenceThumb, Field, Tag } from "@/components/compensation/shared";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,11 +153,7 @@ function EvidencePage() {
                   )}
                 >
                   <div className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-md bg-muted">
-                    {item.thumbnailUrl ? (
-                      <img src={item.thumbnailUrl} alt={"دليل الطلب " + item.orderNumber} className="h-full w-full object-cover" />
-                    ) : (
-                      <Video className="size-7 text-muted-foreground" />
-                    )}
+                    <EvidenceThumb id={item.id} available={canViewMedia && item.hasPreview} alt={"دليل الطلب " + item.orderNumber} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold">{item.branchName}</p>

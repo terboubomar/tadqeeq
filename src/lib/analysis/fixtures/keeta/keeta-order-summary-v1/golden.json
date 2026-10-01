@@ -1,0 +1,163 @@
+{
+  "branches": [
+    {
+      "approvedRefunds": 0,
+      "bankFeeRefunded": 0,
+      "bankFeeSuccess": 0,
+      "branch": "Branch A",
+      "branchId": "1001",
+      "ccRejected": 0,
+      "ccSuccess": 0,
+      "commission": 22.5,
+      "commissionPct": 0.15,
+      "compensation": 0,
+      "freeDeliveryOrders": 0,
+      "fulfillmentMods": 0,
+      "grossSales": 172.5,
+      "hsFoodDiscount": 0,
+      "jokerFees": 0,
+      "keetaAdvertisingExVat": 5,
+      "keetaAvgOrderValueInclVat": 86.25,
+      "keetaBankFeesExVat": 3.75,
+      "keetaCommissionExVat": 22.5,
+      "keetaCommissionInvoiceExVat": 42.25,
+      "keetaCommissionInvoiceInclVat": 48.5875,
+      "keetaCompensationExVat": 2,
+      "keetaCreditSales": 164.45,
+      "keetaDeliveryCampaignExVat": 15,
+      "keetaInputVat": 7.3875,
+      "keetaMerchantAdExVat": 0,
+      "keetaOtherExpensesExVat": 1,
+      "keetaPlatformCostPct": 0.328333,
+      "keetaPosFeesExVat": 0,
+      "keetaProductCampaignExVat": 5,
+      "keetaSalesExVat": 150,
+      "keetaSalesVat": 22.5,
+      "keetaSettlementVariance": 0,
+      "keetaSourcePayable": 115.8625,
+      "keetaTotalCostExVat": 49.25,
+      "keetaTotalCostInclVat": 56.6375,
+      "netSales": 115.8625,
+      "orders": 2,
+      "partialRefund": 0,
+      "rdfCampaigns": 0,
+      "restaurantFoodDiscount": 0,
+      "rewardsDiscount": 0,
+      "riderWallet": 0,
+      "totalCharges": 49.25,
+      "totalFoodDiscount": 0,
+      "waitingTimeFees": 0,
+      "walletAmount": 0
+    }
+  ],
+  "checks": [
+    {
+      "category": "settlement",
+      "code": "KEETA_ORDER_SUMMARY_PAYABLE",
+      "computed": 115.8625,
+      "coveredByBranches": false,
+      "evidence": "data",
+      "hint": "إعادة بناء التسوية من المبيعات والخصومات والرسوم، مقارنةً بعمود Payable to Restaurant داخل Order Summary.",
+      "invoiced": 115.8625,
+      "label": "صافي التسوية مقابل Order Summary Payable",
+      "tolerance": 0.05
+    }
+  ],
+  "daily": [
+    {
+      "ccSuccess": 0,
+      "commission": 35.5,
+      "date": "2026-08-01",
+      "grossSales": 115,
+      "netSales": 100,
+      "orders": 1
+    },
+    {
+      "ccSuccess": 0,
+      "commission": 13.75,
+      "date": "2026-08-02",
+      "grossSales": 57.5,
+      "netSales": 50,
+      "orders": 1
+    }
+  ],
+  "exceptions": [
+    {
+      "category": "unsupported_charge",
+      "id": "ex_1819hgz",
+      "label": "بنود خصم غير مصنفة في خريطة الرسوم",
+      "potentialRecovery": 0,
+      "reviewAmount": 1,
+      "severity": "low",
+      "tolerance": 0.05
+    }
+  ],
+  "formatIds": [
+    "keeta-order-summary-v1"
+  ],
+  "invoice": {
+    "lines": []
+  },
+  "label": "كيتا · 2026-08-01 — 2026-08-02",
+  "platform": "keeta",
+  "summary": {
+    "approvedRefunds": 0,
+    "bankFeeRefunded": 0,
+    "bankFeeSuccess": 0,
+    "bankRate": 0,
+    "bankRateSource": "none",
+    "branchCount": 1,
+    "ccRejected": 0,
+    "ccSuccess": 0,
+    "commission": 22.5,
+    "commissionPct": 0.15,
+    "compensation": 0,
+    "fulfillmentMods": 0,
+    "grossSales": 172.5,
+    "hsFoodDiscount": 0,
+    "invoiceOnlyExtras": 0,
+    "jokerFees": 0,
+    "keetaAdvertisingExVat": 5,
+    "keetaAvgOrderValueInclVat": 86.25,
+    "keetaBankFeesExVat": 3.75,
+    "keetaCommissionExVat": 22.5,
+    "keetaCommissionInvoiceExVat": 42.25,
+    "keetaCommissionInvoiceInclVat": 48.5875,
+    "keetaCompensationExVat": 2,
+    "keetaCreditSales": 164.45,
+    "keetaDeliveryCampaignExVat": 15,
+    "keetaInputVat": 7.3875,
+    "keetaMerchantAdExVat": 0,
+    "keetaOtherExpensesExVat": 1,
+    "keetaPlatformCostPct": 0.328333,
+    "keetaPosFeesExVat": 0,
+    "keetaProductCampaignExVat": 5,
+    "keetaSalesExVat": 150,
+    "keetaSalesVat": 22.5,
+    "keetaSettlementVariance": 0,
+    "keetaSourcePayable": 115.8625,
+    "keetaTotalCostExVat": 49.25,
+    "keetaTotalCostInclVat": 56.6375,
+    "netSales": 115.8625,
+    "orders": 2,
+    "partialRefund": 0,
+    "periodEnd": "2026-08-02",
+    "periodStart": "2026-08-01",
+    "platform": "keeta",
+    "rdfCampaigns": 0,
+    "restaurantFoodDiscount": 0,
+    "rewardsDiscount": 0,
+    "riderWallet": 0,
+    "statusCounts": {
+      "Completed": 2
+    },
+    "totalCharges": 49.25,
+    "totalFoodDiscount": 0,
+    "waitingTimeFees": 0,
+    "walletAmount": 0
+  },
+  "totals": {
+    "potentialRecovery": 0,
+    "reviewAmount": 1
+  }
+}

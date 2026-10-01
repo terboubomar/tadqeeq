@@ -1,4 +1,3 @@
-import { getRequestHeader } from "@tanstack/react-start/server";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
@@ -7,6 +6,7 @@ import {
   roleHasGlobalBranchAccess,
   type WorkspaceRole,
 } from "./workspace-access";
+import { getPublicOrigin } from "./public-origin.server";
 import { requireWorkspacePermission } from "./server-auth.server";
 
 export interface WorkspaceBranchOption {
@@ -148,20 +148,14 @@ async function authUserByEmail(email: string) {
 }
 
 function inviteRedirectUrl(): string | undefined {
-  const configured = process.env["TADQEEQ_PUBLIC_URL"]?.trim();
-  const origin = getRequestHeader("origin")?.trim();
-  const base = configured || origin;
-  if (!base) return undefined;
-
+  let origin: string | null = null;
   try {
-    const url = new URL(base);
-    if (url.protocol !== "https:" && url.hostname !== "localhost") {
-      return undefined;
-    }
-    return new URL("/accept-invite", url.origin).toString();
-  } catch {
-    return undefined;
+    // Invites may use the admin's own origin when TADQEEQ_PUBLIC_URL is not set.
+    origin = getPublicOrigin({ allowRequestOriginInProduction: true });
+  } catch (error) {
+    console.error("Invalid TADQEEQ_PUBLIC_URL", error);
   }
+  return origin ? new URL("/accept-invite", origin).toString() : undefined;
 }
 
 export async function listWorkspaceMembersOnServer(): Promise<WorkspaceMembersBundle> {

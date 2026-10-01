@@ -1,10 +1,10 @@
-import { getRequestHeader } from "@tanstack/react-start/server";
 
 import type { Json } from "@/integrations/supabase/types";
 
 import type { JahezCompensationTransaction } from "./analysis/types";
 import {
   buildCompensationDisputeDraft,
+  caseWriteErrorMessage,
   normalizeOrderLookupKey,
   telegramMessageUrl,
   type CompensationPlatform,
@@ -16,10 +16,12 @@ import {
   readCaseWorkflow,
 } from "./compensation-overview";
 import type { StoredPeriod } from "./periods";
+import { TELEGRAM_CONNECTION_CODE_TTL_MINUTES } from "./limits";
+import { logEvent } from "./observability";
+import { getPublicOrigin, requirePublicOrigin } from "./public-origin.server";
 import { assertBranchAccess, requireWorkspacePermission, type ServerUserClient } from "./server-auth.server";
 
-const THUMBNAIL_BUCKET = "telegram-evidence-thumbnails";
-const CONNECTION_CODE_TTL_MINUTES = 30;
+const CONNECTION_CODE_TTL_MINUTES = TELEGRAM_CONNECTION_CODE_TTL_MINUTES;
 const CONNECTION_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 // Workspace columns are introduced by migration 0026 before generated Supabase
 // types are refreshed. Keep the temporary escape hatch isolated here.
@@ -62,7 +64,8 @@ export interface CompensationEvidenceRecord {
   mediaType: string;
   durationSeconds: number | null;
   fileSizeBytes: number | null;
-  thumbnailUrl: string | null;
+  /** A small preview can be fetched from Telegram on demand (video thumbnail or the photo itself). */
+  hasPreview: boolean;
   telegramUrl: string | null;
 }
 
@@ -147,22 +150,12 @@ function requiredTelegramEnv(name: "TELEGRAM_BOT_TOKEN" | "TELEGRAM_WEBHOOK_SECR
   return value;
 }
 
-const STABLE_PUBLIC_ORIGIN =
-  "https://project--c8c8cb97-1c44-4eef-aea1-bca4bc93f7a1-dev.lovable.app";
-
+/** Status screens show "not configured" instead of failing when the origin is missing or invalid. */
 function optionalPublicOrigin(): string | null {
-  const configured = process.env["TADQEEQ_PUBLIC_URL"]?.trim();
-  const origin = configured || getRequestHeader("origin")?.trim() || "";
-
   try {
-    const parsed = new URL(origin);
-    // Telegram requires a public HTTPS URL; editor preview hosts are auth-gated.
-    if (parsed.protocol !== "https:" || parsed.hostname.startsWith("id-preview--")) {
-      return STABLE_PUBLIC_ORIGIN;
-    }
-    return parsed.origin;
+    return getPublicOrigin();
   } catch {
-    return STABLE_PUBLIC_ORIGIN;
+    return null;
   }
 }
 
@@ -467,10 +460,7 @@ export async function getTelegramIntegrationStatusOnServer(): Promise<TelegramIn
 export async function configureTelegramWebhookOnServer(): Promise<TelegramIntegrationStatus> {
   await requireWorkspacePermission("telegram.manage");
   const secret = requiredTelegramEnv("TELEGRAM_WEBHOOK_SECRET");
-  const origin = optionalPublicOrigin();
-  if (!origin) {
-    throw new Error("تعذّر تحديد رابط Tadqeeq العام. اضبط TADQEEQ_PUBLIC_URL.");
-  }
+  const origin = requirePublicOrigin();
 
   const webhookUrl = origin + "/api/public/telegram-webhook";
   await telegramApi<boolean>("setWebhook", {
@@ -497,18 +487,6 @@ async function branchNamesById(
 
   if (error) throw new Error(error.message);
   return new Map((data ?? []).map((row) => [row.id, row.branch_name]));
-}
-
-async function signedThumbnail(
-  client: ServerUserClient,
-  path: string | null,
-): Promise<string | null> {
-  if (!path) return null;
-  const { data, error } = await client.storage
-    .from(THUMBNAIL_BUCKET)
-    .createSignedUrl(path, 300);
-  if (error) return null;
-  return data.signedUrl;
 }
 
 function jahezMatchesForPeriod(
@@ -598,7 +576,7 @@ export async function searchCompensationEvidenceOnServer(
       media_type: string;
       duration_seconds: number | null;
       file_size_bytes: number | null;
-      thumbnail_storage_path: string | null;
+      thumbnail_file_id: string | null;
       telegram_chat_id: number;
       telegram_message_id: number;
     }) => ({
@@ -612,8 +590,8 @@ export async function searchCompensationEvidenceOnServer(
       mediaType: row.media_type,
       durationSeconds: row.duration_seconds,
       fileSizeBytes: row.file_size_bytes,
-      // Rows are already limited by RLS; the thumbnail sits in the connecting account's folder.
-      thumbnailUrl: await signedThumbnail(adminDb, row.thumbnail_storage_path),
+      hasPreview:
+        Boolean(row.thumbnail_file_id) || row.media_type === "photo" || row.media_type === "image_document",
       telegramUrl: telegramMessageUrl(row.telegram_chat_id, row.telegram_message_id),
     })),
   );
@@ -864,9 +842,11 @@ export async function saveCompensationCaseOnServer(
       .eq("workspace_id", workspaceId)
       .select("*")
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(caseWriteErrorMessage(error));
     if (!data) throw new Error("تعذّر العثور على حالة التعويض.");
-    return mapCase(data);
+    const saved = mapCase(data);
+    logCaseStatus(saved, existing?.status ?? null, workflow.recoveredAmount, context.actorUserId);
+    return saved;
   }
 
   const { data, error } = await db
@@ -874,9 +854,38 @@ export async function saveCompensationCaseOnServer(
     .insert(payload)
     .select("*")
     .single();
-  if (error) throw new Error(error.message);
-  return mapCase(data);
+  if (error) throw new Error(caseWriteErrorMessage(error));
+  const created = mapCase(data);
+  logEvent("compensation_case_created", {
+    case_id: created.id,
+    workspace_id: workspaceId,
+    platform: created.platform,
+    status: created.status,
+    amount: created.compensationAmount,
+    has_evidence: Boolean(created.evidenceId),
+    actor_user_id: context.actorUserId,
+  });
+  return created;
 }
+
+function logCaseStatus(
+  saved: CompensationCaseRecord,
+  previousStatus: string | null,
+  recoveredAmount: number | null,
+  actorUserId: string,
+): void {
+  if (previousStatus === saved.status) return;
+  const fields = { case_id: saved.id, from: previousStatus, to: saved.status, actor_user_id: actorUserId };
+  logEvent("compensation_status_changed", fields);
+  if (saved.status === "recovered") {
+    logEvent("compensation_recovered", {
+      ...fields,
+      claimed: saved.compensationAmount,
+      recovered: recoveredAmount ?? saved.compensationAmount,
+    });
+  }
+}
+
 
 export async function deleteCompensationCaseOnServer(id: string): Promise<void> {
   const { client, workspaceId } = await requireWorkspacePermission("compensation.manage");
@@ -902,76 +911,4 @@ export async function listCompensationCasesOnServer(limit = 200): Promise<Compen
     .limit(Math.min(Math.max(Math.trunc(limit), 1), 5000));
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapCase);
-}
-
-export interface EvidenceMediaLinks {
-  kind: "image" | "video";
-  previewUrl: string;
-  downloadUrl: string;
-}
-
-export async function getEvidenceMediaOnServer(
-  evidenceId: string,
-): Promise<EvidenceMediaLinks> {
-  const context = await requireWorkspacePermission("telegram.read");
-  const { client, workspaceId } = context;
-  // Any workspace member with access may open evidence, not only the account that
-  // connected the branch, so the row is not filtered by the current user.
-  const { data: row, error } = await dynamicDb(client)
-    .from("telegram_order_evidence")
-    .select("id, user_id, branch_id, order_number, telegram_file_id")
-    .eq("id", evidenceId)
-    .eq("workspace_id", workspaceId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!row) throw new Error("الدليل غير موجود.");
-  assertBranchAccess(context, row.branch_id);
-
-  // Access is checked above; storage is read with the service role because the
-  // file lives in the folder of the account that connected the branch.
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { mimeFromPath, uploadEvidenceObject } = await import("./telegram-webhook.server");
-  const bucket = supabaseAdmin.storage.from(THUMBNAIL_BUCKET);
-  const folder = `${row.user_id}/media`;
-  const findStored = async () => {
-    const { data } = await bucket.list(folder, { search: row.id, limit: 5 });
-    return data?.find((item) => item.name.startsWith(row.id)) ?? null;
-  };
-
-  let stored = await findStored();
-  if (!stored) {
-    // Not archived yet (older evidence, or a video the bucket refused): fetch it from Telegram once.
-    const token = process.env["TELEGRAM_BOT_TOKEN"]?.trim();
-    if (!token) throw new Error("إعدادات Telegram غير مكتملة.");
-    const info = await fetch(`https://api.telegram.org/bot${token}/getFile`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ file_id: row.telegram_file_id }),
-    }).then((r) => r.json() as Promise<{ ok?: boolean; result?: { file_path?: string } }>);
-    const filePath = info.result?.file_path;
-    if (!info.ok || !filePath) {
-      throw new Error("تعذّر جلب الملف من Telegram. الملفات الأكبر من 20 ميجابايت لا يمكن جلبها، افتحها من Telegram مباشرة.");
-    }
-    const response = await fetch(`https://api.telegram.org/file/bot${token}/${filePath}`);
-    if (!response.ok) throw new Error("تعذّر تنزيل الملف من Telegram.");
-    const bytes = await response.arrayBuffer();
-    const ext = filePath.split(".").pop()?.toLowerCase() || "bin";
-    const uploadError = await uploadEvidenceObject(`${folder}/${row.id}.${ext}`, bytes, mimeFromPath(filePath));
-    if (uploadError) {
-      console.error("Evidence media upload failed", uploadError);
-      throw new Error("تعذّر حفظ نسخة من الدليل. حاول مرة أخرى أو افتحه من Telegram.");
-    }
-    stored = await findStored();
-    if (!stored) throw new Error("تعذّر تجهيز الدليل.");
-  }
-
-  const path = `${folder}/${stored.name}`;
-  const ext = stored.name.split(".").pop()?.toLowerCase() ?? "";
-  const kind = ["mp4", "mov", "webm", "mkv", "m4v"].includes(ext) ? "video" : "image";
-  const [preview, download] = await Promise.all([
-    bucket.createSignedUrl(path, 900),
-    bucket.createSignedUrl(path, 900, { download: `order-${row.order_number}.${ext}` }),
-  ]);
-  if (preview.error || download.error) throw new Error("تعذّر إنشاء رابط الدليل.");
-  return { kind, previewUrl: preview.data.signedUrl, downloadUrl: download.data.signedUrl };
 }

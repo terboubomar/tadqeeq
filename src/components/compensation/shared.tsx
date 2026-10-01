@@ -1,11 +1,10 @@
-import { useMutation } from "@tanstack/react-query";
-import { Clipboard, Download, Eye, Loader2 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { Clipboard, Download, Eye, Loader2, Video } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { copyText } from "@/components/compensation/queries";
-import { getEvidenceMedia } from "@/lib/compensation-evidence.functions";
+import { fetchEvidenceMedia, saveEvidenceFile, type EvidenceMediaFile } from "@/components/compensation/evidence-media";
 import { caseStatusLabel } from "@/lib/compensation-overview";
 import { cn } from "@/lib/utils";
 
@@ -130,54 +129,90 @@ export function DraftBox({ title, value }: { title: string; value: string }) {
   );
 }
 
+/**
+ * Preview and download straight from Telegram. The file is fetched on demand, kept only in this
+ * tab's memory while the preview is open, and released when it closes or after a download.
+ */
 export function EvidenceActions({ id }: { id: string }) {
-  const [open, setOpen] = useState(false);
-  const media = useMutation({
-    mutationFn: () => getEvidenceMedia({ data: { id } }),
-    onError: (error: Error) => toast.error(error.message),
-  });
-  const load = async () => media.data ?? (await media.mutateAsync());
+  const [busy, setBusy] = useState<"preview" | "download" | null>(null);
+  const [preview, setPreview] = useState<{ url: string; kind: EvidenceMediaFile["kind"] } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => () => {
+    if (preview) URL.revokeObjectURL(preview.url);
+  }, [preview]);
+
+  async function run(action: "preview" | "download") {
+    if (action === "preview" && preview) {
+      setPreview(null);
+      return;
+    }
+    setBusy(action);
+    setError(null);
+    try {
+      const file = await fetchEvidenceMedia(id, "full");
+      if (action === "download") saveEvidenceFile(file);
+      else setPreview({ url: URL.createObjectURL(file.blob), kind: file.kind });
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "تعذّر جلب الدليل من Telegram.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setBusy(null);
+    }
+  }
 
   return (
     <div className="mt-2" onClick={(event) => event.stopPropagation()}>
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          disabled={media.isPending}
-          onClick={async () => {
-            await load();
-            setOpen((value) => !value);
-          }}
-        >
-          {media.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Eye className="size-3.5" />}
-          {open ? "إخفاء المعاينة" : "معاينة"}
+        <Button type="button" size="sm" variant="secondary" disabled={busy !== null} onClick={() => void run("preview")}>
+          {busy === "preview" ? <Loader2 className="size-3.5 animate-spin" /> : <Eye className="size-3.5" />}
+          {preview ? "إخفاء المعاينة" : "معاينة"}
         </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={media.isPending}
-          onClick={async () => {
-            const links = await load();
-            window.location.href = links.downloadUrl;
-          }}
-        >
-          <Download className="size-3.5" />
+        <Button type="button" size="sm" variant="outline" disabled={busy !== null} onClick={() => void run("download")}>
+          {busy === "download" ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
           تنزيل
         </Button>
       </div>
-      {open && media.data ? (
+      {error ? <p className="mt-2 text-xs text-destructive">{error}</p> : null}
+      {preview ? (
         <div className="mt-3 overflow-hidden rounded-md border border-border bg-muted">
-          {media.data.kind === "video" ? (
-            <video src={media.data.previewUrl} controls playsInline className="max-h-[60vh] w-full" />
+          {preview.kind === "video" ? (
+            <video src={preview.url} controls playsInline className="max-h-[60vh] w-full" />
           ) : (
-            <img src={media.data.previewUrl} alt="معاينة الدليل" className="max-h-[60vh] w-full object-contain" />
+            <img src={preview.url} alt="معاينة الدليل" className="max-h-[60vh] w-full object-contain" />
           )}
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** Small preview loaded from Telegram on demand; nothing is cached by Tadqeeq. */
+export function EvidenceThumb({ id, available, alt }: { id: string; available: boolean; alt: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!available) return;
+    let objectUrl: string | null = null;
+    let cancelled = false;
+    fetchEvidenceMedia(id, "thumb")
+      .then((file) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(file.blob);
+        setUrl(objectUrl);
+      })
+      .catch(() => setUrl(null));
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [id, available]);
+
+  return url ? (
+    <img src={url} alt={alt} className="h-full w-full object-cover" />
+  ) : (
+    <Video className="size-7 text-muted-foreground" />
   );
 }
 

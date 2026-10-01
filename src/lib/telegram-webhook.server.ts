@@ -5,8 +5,9 @@ import {
   normalizeOrderLookupKey,
 } from "./compensation-evidence";
 import { detectOrderNumberFromImage } from "./ai/order-number-vision.server";
+import { ORDER_NUMBER_DETECTION_MAX_BYTES, TELEGRAM_GET_FILE_LIMIT_BYTES } from "./limits";
+import { logEvent } from "./observability";
 
-const THUMBNAIL_BUCKET = "telegram-evidence-thumbnails";
 // Generated database types are refreshed after the workspace migration.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const adminDb = () => supabaseAdmin as any;
@@ -266,47 +267,6 @@ async function connectBranch(message: TelegramMessage, code: string): Promise<vo
   );
 }
 
-async function uploadThumbnail(
-  userId: string,
-  evidenceId: string,
-  thumbnailFileId: string | null,
-): Promise<string | null> {
-  if (!thumbnailFileId) return null;
-
-  try {
-    const file = await telegramCall<{ file_path?: string }>("getFile", {
-      file_id: thumbnailFileId,
-    });
-    if (!file.file_path) return null;
-
-    const token = requiredEnv("TELEGRAM_BOT_TOKEN");
-    const response = await fetch(
-      `https://api.telegram.org/file/bot${token}/${file.file_path}`,
-    );
-    if (!response.ok) return null;
-
-    const bytes = await response.arrayBuffer();
-    if (bytes.byteLength <= 0 || bytes.byteLength > 2_097_152) return null;
-
-    const path = `${userId}/${evidenceId}.jpg`;
-    const { error } = await supabaseAdmin.storage
-      .from(THUMBNAIL_BUCKET)
-      .upload(path, bytes, {
-        contentType: response.headers.get("content-type") || "image/jpeg",
-        upsert: false,
-      });
-
-    if (error) {
-      console.error("Telegram thumbnail upload failed", error.message);
-      return null;
-    }
-    return path;
-  } catch (error) {
-    console.error("Telegram thumbnail capture failed", error);
-    return null;
-  }
-}
-
 async function downloadTelegramFile(
   fileId: string,
   maxBytes: number,
@@ -339,7 +299,7 @@ async function detectOrderNumber(media: TelegramMedia): Promise<string | null> {
   const sourceId = isImage ? media.fileId : media.thumbnailFileId;
   if (!sourceId) return null;
   try {
-    const file = await downloadTelegramFile(sourceId, 8_000_000);
+    const file = await downloadTelegramFile(sourceId, ORDER_NUMBER_DETECTION_MAX_BYTES);
     if (!file) return null;
     let mime = mimeFromPath(file.filePath);
     if (!mime.startsWith("image/") || mime === "image/heic") mime = "image/jpeg";
@@ -350,51 +310,10 @@ async function detectOrderNumber(media: TelegramMedia): Promise<string | null> {
   }
 }
 
-/** Telegram bots can download files up to 20 MB, so evidence videos can be that large. */
-export const EVIDENCE_MEDIA_LIMIT_BYTES = 20 * 1024 * 1024;
-
-/**
- * Stores an evidence file in the private bucket. The bucket was created with a
- * 2 MB cap meant for thumbnails, which rejects most videos; when that happens,
- * raise the cap to the Telegram limit once and retry.
- */
-export async function uploadEvidenceObject(
-  path: string,
-  bytes: ArrayBuffer | Uint8Array,
-  contentType: string,
-): Promise<string | null> {
-  const upload = () =>
-    supabaseAdmin.storage.from(THUMBNAIL_BUCKET).upload(path, bytes, { contentType, upsert: true });
-  let { error } = await upload();
-  if (error && /size|exceed|too large|413/i.test(error.message)) {
-    const { error: bucketError } = await supabaseAdmin.storage.updateBucket(THUMBNAIL_BUCKET, {
-      public: false,
-      fileSizeLimit: EVIDENCE_MEDIA_LIMIT_BYTES,
-    });
-    if (bucketError) console.error("Evidence bucket limit update failed", bucketError.message);
-    else ({ error } = await upload());
-  }
-  return error ? error.message : null;
-}
-
-async function archiveOriginalMedia(
-  userId: string,
-  evidenceId: string,
-  media: TelegramMedia,
-): Promise<void> {
-  try {
-    const file = await downloadTelegramFile(media.fileId, 20_000_000);
-    if (!file) return;
-    const ext = file.filePath.split(".").pop()?.toLowerCase() || "bin";
-    const error = await uploadEvidenceObject(
-      `${userId}/media/${evidenceId}.${ext}`,
-      file.bytes,
-      mimeFromPath(file.filePath),
-    );
-    if (error) console.error("Evidence media archive failed", error);
-  } catch (error) {
-    console.error("Evidence media archive failed", error);
-  }
+/** Telegram will not let the bot fetch files over 20 MB, so Tadqeeq cannot preview them later. */
+export function oversizedEvidenceWarning(fileSizeBytes: number | null | undefined): string {
+  if (!fileSizeBytes || fileSizeBytes <= TELEGRAM_GET_FILE_LIMIT_BYTES) return "";
+  return "\n\n⚠️ حجم الملف أكبر من 20 ميجابايت، لذلك لن يمكن معاينته أو تنزيله من تدقيق. أرسل نسخة أقصر أو صورة واضحة للفاتورة إن أمكن.";
 }
 
 async function storeEvidence(
@@ -500,25 +419,17 @@ async function storeEvidence(
     });
 
   if (insertError) throw new Error(insertError.message);
+  logEvent("telegram_evidence_metadata_saved", {
+    evidence_id: evidenceId,
+    workspace_id: connection.workspace_id,
+    branch_id: connection.branch_id,
+    media_type: storedMediaType,
+    file_size_bytes: media.fileSizeBytes,
+    detected_by_ai: detectedByAi,
+  });
 
-  const thumbnailPath = await uploadThumbnail(
-    connection.user_id,
-    evidenceId,
-    media.thumbnailFileId,
-  );
-
-  await archiveOriginalMedia(connection.user_id, evidenceId, media);
-
-  if (thumbnailPath) {
-    const { error: thumbnailUpdateError } = await supabaseAdmin
-      .from("telegram_order_evidence")
-      .update({ thumbnail_storage_path: thumbnailPath })
-      .eq("id", evidenceId)
-      .eq("user_id", connection.user_id);
-    if (thumbnailUpdateError) {
-      console.error("Failed to persist thumbnail path", thumbnailUpdateError.message);
-    }
-  }
+  // Media stays in Telegram: only the reference above is stored, and the file is
+  // fetched on demand when an authorised user previews or downloads it.
 
   const now = new Date().toISOString();
   const { error: activityError } = await supabaseAdmin
@@ -532,7 +443,7 @@ async function storeEvidence(
 
   await sendMessage(
     incomingMessage.chat.id,
-    `✅ تم حفظ الدليل\nرقم الطلب: ${orderNumber}${detectedByAi ? " (قرأه Tadqeeq AI)" : ""}\nالفرع: ${connection.branch_name}\n\nإذا كان الرقم خاطئاً، رد على الدليل بالرقم الصحيح.`,
+    `✅ تم حفظ الدليل\nرقم الطلب: ${orderNumber}${detectedByAi ? " (قرأه Tadqeeq AI)" : ""}\nالفرع: ${connection.branch_name}\n\nإذا كان الرقم خاطئاً، رد على الدليل بالرقم الصحيح.${oversizedEvidenceWarning(media.fileSizeBytes)}`,
     incomingMessage.message_id,
   );
 }
@@ -616,6 +527,7 @@ export async function handleTelegramWebhook(request: Request): Promise<Response>
   const actualSecret = request.headers.get("x-telegram-bot-api-secret-token");
 
   if (!secretsMatch(actualSecret, expectedSecret)) {
+    logEvent("permission_denied", { source: "telegram_webhook", reason: "bad_secret" }, "warn");
     return new Response("Unauthorized", { status: 401 });
   }
 
@@ -626,14 +538,18 @@ export async function handleTelegramWebhook(request: Request): Promise<Response>
     return Response.json({ ok: true });
   }
 
+  logEvent("telegram_webhook_received", {
+    update_id: update.update_id,
+    chat_id: update.message?.chat.id,
+    message_id: update.message?.message_id,
+    has_media: Boolean(mediaFrom(update.message)),
+  });
+
   try {
     if (update.message) await handleMessage(update.message);
     return Response.json({ ok: true });
   } catch (error) {
-    console.error("Telegram webhook processing failed", {
-      updateId: update.update_id,
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logEvent("telegram_webhook_failed", { update_id: update.update_id, error }, "error");
     return Response.json({ ok: false }, { status: 500 });
   }
 }

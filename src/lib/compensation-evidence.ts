@@ -119,3 +119,14 @@ export function buildCompensationDisputeDraft(
     en: enLines.join("\n"),
   };
 }
+
+/** Database duplicate guards (migration 0032) surface as a clear message, not a raw constraint error. */
+export function caseWriteErrorMessage(error: { code?: string; message: string }): string {
+  if (error.code === "23505") {
+    if (error.message.includes("evidence")) {
+      return "هذا الدليل مرتبط بحالة تعويض أخرى. افتح الحالة الموجودة من صفحة الحالات.";
+    }
+    return "يوجد حالة تعويض لهذا الطلب على نفس المنصة. افتحها من صفحة الحالات بدلاً من إنشاء حالة مكررة.";
+  }
+  return error.message;
+}

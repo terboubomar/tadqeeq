@@ -1,4 +1,7 @@
-const DEFAULT_HOURLY_LIMIT = 30;
+import { DEFAULT_AI_REQUESTS_PER_HOUR } from "../limits";
+import { logEvent } from "../observability";
+
+const DEFAULT_HOURLY_LIMIT = DEFAULT_AI_REQUESTS_PER_HOUR;
 
 export type AiUsageFeature =
   | "exception_explainer"
@@ -136,13 +139,22 @@ export async function runWithAiUsageReservation<T extends ReservedAiResult>(
   context: AiUsageContext,
   operation: () => Promise<T>,
 ): Promise<T> {
-  const usageId = await reserveAiUsage(context);
+  const fields = { feature: context.feature, user_id: context.userId };
+  logEvent("ai_request_started", fields);
+  let usageId: string;
+  try {
+    usageId = await reserveAiUsage(context);
+  } catch (error) {
+    logEvent("ai_request_failed", { ...fields, stage: "reserve", error }, "warn");
+    throw error;
+  }
 
   try {
     const result = await operation();
     await finalizeAiUsage(context, usageId, "succeeded", result.model);
     return result;
   } catch (error) {
+    logEvent("ai_request_failed", { ...fields, stage: "request", error }, "error");
     await finalizeAiUsage(context, usageId, "failed");
     throw error;
   }

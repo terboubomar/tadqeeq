@@ -51,6 +51,7 @@ import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/as
 import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
 import { Route as OpsClientsWorkspaceIdRouteImport } from './routes/ops/clients_.$workspaceId'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
+import { Route as ApiCompensationEvidenceEvidenceIdMediaRouteImport } from './routes/api/compensation/evidence/$evidenceId/media'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -263,6 +264,12 @@ const ApiPublicTelegramWebhookRoute =
     path: '/api/public/telegram-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiCompensationEvidenceEvidenceIdMediaRoute =
+  ApiCompensationEvidenceEvidenceIdMediaRouteImport.update({
+    id: '/api/compensation/evidence/$evidenceId/media',
+    path: '/api/compensation/evidence/$evidenceId/media',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -306,6 +313,7 @@ export interface FileRoutesByFullPath {
   '/ops/': typeof OpsIndexRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
+  '/api/compensation/evidence/$evidenceId/media': typeof ApiCompensationEvidenceEvidenceIdMediaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -347,6 +355,7 @@ export interface FileRoutesByTo {
   '/ops': typeof OpsIndexRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
+  '/api/compensation/evidence/$evidenceId/media': typeof ApiCompensationEvidenceEvidenceIdMediaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -392,6 +401,7 @@ export interface FileRoutesById {
   '/ops/': typeof OpsIndexRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients_/$workspaceId': typeof OpsClientsWorkspaceIdRoute
+  '/api/compensation/evidence/$evidenceId/media': typeof ApiCompensationEvidenceEvidenceIdMediaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -437,6 +447,7 @@ export interface FileRouteTypes {
     | '/ops/'
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
+    | '/api/compensation/evidence/$evidenceId/media'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -478,6 +489,7 @@ export interface FileRouteTypes {
     | '/ops'
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
+    | '/api/compensation/evidence/$evidenceId/media'
   id:
     | '__root__'
     | '/'
@@ -522,6 +534,7 @@ export interface FileRouteTypes {
     | '/ops/'
     | '/api/public/telegram-webhook'
     | '/ops/clients_/$workspaceId'
+    | '/api/compensation/evidence/$evidenceId/media'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -535,6 +548,7 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
+  ApiCompensationEvidenceEvidenceIdMediaRoute: typeof ApiCompensationEvidenceEvidenceIdMediaRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -833,6 +847,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/compensation/evidence/$evidenceId/media': {
+      id: '/api/compensation/evidence/$evidenceId/media'
+      path: '/api/compensation/evidence/$evidenceId/media'
+      fullPath: '/api/compensation/evidence/$evidenceId/media'
+      preLoaderRoute: typeof ApiCompensationEvidenceEvidenceIdMediaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -938,6 +959,8 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
+  ApiCompensationEvidenceEvidenceIdMediaRoute:
+    ApiCompensationEvidenceEvidenceIdMediaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
