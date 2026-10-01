@@ -4,6 +4,7 @@ import type { Json } from "@/integrations/supabase/types";
 import type { JahezCompensationTransaction } from "./analysis/types";
 import {
   buildCompensationDisputeDraft,
+  caseWriteErrorMessage,
   normalizeOrderLookupKey,
   telegramMessageUrl,
   type CompensationPlatform,
@@ -839,7 +840,7 @@ export async function saveCompensationCaseOnServer(
       .eq("workspace_id", workspaceId)
       .select("*")
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(caseWriteErrorMessage(error));
     if (!data) throw new Error("تعذّر العثور على حالة التعويض.");
     return mapCase(data);
   }
@@ -849,9 +850,10 @@ export async function saveCompensationCaseOnServer(
     .insert(payload)
     .select("*")
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(caseWriteErrorMessage(error));
   return mapCase(data);
 }
+
 
 export async function deleteCompensationCaseOnServer(id: string): Promise<void> {
   const { client, workspaceId } = await requireWorkspacePermission("compensation.manage");

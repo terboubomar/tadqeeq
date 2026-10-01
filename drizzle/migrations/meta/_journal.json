@@ -225,6 +225,13 @@
       "when": 1790302839960,
       "tag": "0031_fix_contract_audit_trigger",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790302939960,
+      "tag": "0032_compensation_case_uniqueness",
+      "breakpoints": true
     }
   ]
 }
