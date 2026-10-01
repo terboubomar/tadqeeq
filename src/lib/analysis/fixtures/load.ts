@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import * as XLSX from "xlsx";
 
 import { analyzeHungerStation } from "../hungerstation";
@@ -19,7 +21,7 @@ export async function analyzeFixture(platform: FixturePlatform): Promise<Analysi
   const base = FIXTURE_DIRS[platform];
 
   if (platform === "hungerstation") {
-    const source = (await Bun.file(base + "/source.json").json()) as {
+    const source = JSON.parse(readFileSync(base + "/source.json", "utf8")) as {
       sheetName: string;
       rows: Array<Record<string, unknown>>;
     };
@@ -29,7 +31,7 @@ export async function analyzeFixture(platform: FixturePlatform): Promise<Analysi
   }
 
   if (platform === "keeta") {
-    const source = (await Bun.file(base + "/source.json").json()) as {
+    const source = JSON.parse(readFileSync(base + "/source.json", "utf8")) as {
       sheetName: string;
       headers: string[];
       rows: unknown[][];
@@ -48,6 +50,6 @@ export async function analyzeFixture(platform: FixturePlatform): Promise<Analysi
     return analyzeKeeta(XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer);
   }
 
-  const text = await Bun.file(base + "/source.csv").text();
+  const text = readFileSync(base + "/source.csv", "utf8");
   return analyzeJahez(new TextEncoder().encode(text).buffer as ArrayBuffer);
 }
