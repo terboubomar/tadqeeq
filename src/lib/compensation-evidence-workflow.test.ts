@@ -1,15 +1,30 @@
 import { describe, expect, test } from "bun:test";
 
 describe("Telegram compensation evidence workflow", () => {
-  test("keeps Telegram webhook secret-protected and stores thumbnails instead of full videos", async () => {
+  test("keeps the webhook secret-protected and stores only Telegram references, never media", async () => {
     const source = await Bun.file("src/lib/telegram-webhook.server.ts").text();
 
     expect(source).toContain("x-telegram-bot-api-secret-token");
     expect(source).toContain("telegram_file_id");
-    expect(source).toContain("thumbnail_storage_path");
-    expect(source).toContain("thumbnailFileId");
-    expect(source).toContain("telegram-evidence-thumbnails");
-    expect(source).not.toContain(".upload(path, media.fileId");
+    expect(source).toContain("telegram_file_unique_id");
+    expect(source).toContain("thumbnail_file_id: media.thumbnailFileId");
+    // No copy of a photo, video or thumbnail is written to Supabase Storage.
+    expect(source).not.toMatch(/\.storage\s*\.from\(/);
+    expect(source).not.toContain(".upload(");
+    expect(source).not.toContain("updateBucket");
+    expect(source).not.toContain("thumbnail_storage_path");
+  });
+
+  test("evidence search and media proxy never read or write Supabase Storage", async () => {
+    for (const file of [
+      "src/lib/compensation-evidence.server.ts",
+      "src/lib/telegram-evidence-media.server.ts",
+    ]) {
+      const source = await Bun.file(file).text();
+      expect({ file, storage: /\.storage\s*\.from\(/.test(source) }).toEqual({ file, storage: false });
+      expect(source).not.toContain("createSignedUrl");
+      expect(source).not.toContain(".upload(");
+    }
   });
 
   test("migration keeps evidence write access server-only", async () => {

@@ -6,7 +6,6 @@ import {
 } from "./compensation-evidence";
 import { detectOrderNumberFromImage } from "./ai/order-number-vision.server";
 
-const THUMBNAIL_BUCKET = "telegram-evidence-thumbnails";
 // Generated database types are refreshed after the workspace migration.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const adminDb = () => supabaseAdmin as any;
@@ -266,47 +265,6 @@ async function connectBranch(message: TelegramMessage, code: string): Promise<vo
   );
 }
 
-async function uploadThumbnail(
-  userId: string,
-  evidenceId: string,
-  thumbnailFileId: string | null,
-): Promise<string | null> {
-  if (!thumbnailFileId) return null;
-
-  try {
-    const file = await telegramCall<{ file_path?: string }>("getFile", {
-      file_id: thumbnailFileId,
-    });
-    if (!file.file_path) return null;
-
-    const token = requiredEnv("TELEGRAM_BOT_TOKEN");
-    const response = await fetch(
-      `https://api.telegram.org/file/bot${token}/${file.file_path}`,
-    );
-    if (!response.ok) return null;
-
-    const bytes = await response.arrayBuffer();
-    if (bytes.byteLength <= 0 || bytes.byteLength > 2_097_152) return null;
-
-    const path = `${userId}/${evidenceId}.jpg`;
-    const { error } = await supabaseAdmin.storage
-      .from(THUMBNAIL_BUCKET)
-      .upload(path, bytes, {
-        contentType: response.headers.get("content-type") || "image/jpeg",
-        upsert: false,
-      });
-
-    if (error) {
-      console.error("Telegram thumbnail upload failed", error.message);
-      return null;
-    }
-    return path;
-  } catch (error) {
-    console.error("Telegram thumbnail capture failed", error);
-    return null;
-  }
-}
-
 async function downloadTelegramFile(
   fileId: string,
   maxBytes: number,
@@ -347,53 +305,6 @@ async function detectOrderNumber(media: TelegramMedia): Promise<string | null> {
   } catch (error) {
     console.error("AI order number detection failed", error);
     return null;
-  }
-}
-
-/** Telegram bots can download files up to 20 MB, so evidence videos can be that large. */
-export const EVIDENCE_MEDIA_LIMIT_BYTES = 20 * 1024 * 1024;
-
-/**
- * Stores an evidence file in the private bucket. The bucket was created with a
- * 2 MB cap meant for thumbnails, which rejects most videos; when that happens,
- * raise the cap to the Telegram limit once and retry.
- */
-export async function uploadEvidenceObject(
-  path: string,
-  bytes: ArrayBuffer | Uint8Array,
-  contentType: string,
-): Promise<string | null> {
-  const upload = () =>
-    supabaseAdmin.storage.from(THUMBNAIL_BUCKET).upload(path, bytes, { contentType, upsert: true });
-  let { error } = await upload();
-  if (error && /size|exceed|too large|413/i.test(error.message)) {
-    const { error: bucketError } = await supabaseAdmin.storage.updateBucket(THUMBNAIL_BUCKET, {
-      public: false,
-      fileSizeLimit: EVIDENCE_MEDIA_LIMIT_BYTES,
-    });
-    if (bucketError) console.error("Evidence bucket limit update failed", bucketError.message);
-    else ({ error } = await upload());
-  }
-  return error ? error.message : null;
-}
-
-async function archiveOriginalMedia(
-  userId: string,
-  evidenceId: string,
-  media: TelegramMedia,
-): Promise<void> {
-  try {
-    const file = await downloadTelegramFile(media.fileId, 20_000_000);
-    if (!file) return;
-    const ext = file.filePath.split(".").pop()?.toLowerCase() || "bin";
-    const error = await uploadEvidenceObject(
-      `${userId}/media/${evidenceId}.${ext}`,
-      file.bytes,
-      mimeFromPath(file.filePath),
-    );
-    if (error) console.error("Evidence media archive failed", error);
-  } catch (error) {
-    console.error("Evidence media archive failed", error);
   }
 }
 
@@ -501,24 +412,8 @@ async function storeEvidence(
 
   if (insertError) throw new Error(insertError.message);
 
-  const thumbnailPath = await uploadThumbnail(
-    connection.user_id,
-    evidenceId,
-    media.thumbnailFileId,
-  );
-
-  await archiveOriginalMedia(connection.user_id, evidenceId, media);
-
-  if (thumbnailPath) {
-    const { error: thumbnailUpdateError } = await supabaseAdmin
-      .from("telegram_order_evidence")
-      .update({ thumbnail_storage_path: thumbnailPath })
-      .eq("id", evidenceId)
-      .eq("user_id", connection.user_id);
-    if (thumbnailUpdateError) {
-      console.error("Failed to persist thumbnail path", thumbnailUpdateError.message);
-    }
-  }
+  // Media stays in Telegram: only the reference above is stored, and the file is
+  // fetched on demand when an authorised user previews or downloads it.
 
   const now = new Date().toISOString();
   const { error: activityError } = await supabaseAdmin

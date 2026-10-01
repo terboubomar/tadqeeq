@@ -6,7 +6,6 @@ import {
   createBranchWithTelegramConnectionOnServer,
   createTelegramBranchConnectionOnServer,
   listBranchNameOptionsOnServer,
-  getEvidenceMediaOnServer,
   getTelegramIntegrationStatusOnServer,
   deleteCompensationCaseOnServer,
   listCompensationCasesOnServer,
@@ -129,11 +128,4 @@ export const getCompensationCases = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireWorkspacePermission("compensation.read");
     return listCompensationCasesOnServer(data.limit);
-  });
-
-export const getEvidenceMedia = createServerFn({ method: "POST" })
-  .validator(z.object({ id: z.string().uuid() }))
-  .handler(async ({ data }) => {
-    await requireWorkspacePermission("telegram.read");
-    return getEvidenceMediaOnServer(data.id);
   });
