@@ -27,6 +27,18 @@ describe("Telegram compensation evidence workflow", () => {
     }
   });
 
+  test("previewing or downloading evidence never deletes it from the Telegram group", async () => {
+    for (const file of [
+      "src/lib/telegram-webhook.server.ts",
+      "src/lib/telegram-evidence-media.server.ts",
+      "src/lib/compensation-evidence.server.ts",
+      "src/components/compensation/evidence-media.ts",
+    ]) {
+      const source = await Bun.file(file).text();
+      expect({ file, deletes: /deleteMessages?\b/.test(source) }).toEqual({ file, deletes: false });
+    }
+  });
+
   test("migration keeps evidence write access server-only", async () => {
     const sql = await Bun.file(
       "drizzle/migrations/0021_telegram_compensation_evidence.sql",

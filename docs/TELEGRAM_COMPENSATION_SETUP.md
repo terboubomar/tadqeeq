@@ -67,7 +67,7 @@ The Telegram file URL contains the bot token, so it is never returned to the bro
 
 - The standard Telegram Bot API lets a bot download files up to **20 MB**. Larger files show a message asking staff to open them in the branch group.
 - If the message was deleted in Telegram, or Telegram can no longer return the file, the evidence row stays visible with its order number, branch and capture time, and the media shows as unavailable. Tadqeeq does not fall back to an old copy.
-- Retention and deletion of the media are controlled by the Telegram group itself.
+- Previewing or downloading never deletes anything: the original photo or video always stays in the branch's Telegram group. Retention and deletion are controlled by the group itself.
 
 ### Earlier versions
 
