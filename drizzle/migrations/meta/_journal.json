@@ -218,6 +218,13 @@
       "when": 1790302739960,
       "tag": "0030_evidence_media_size_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790302839960,
+      "tag": "0031_fix_contract_audit_trigger",
+      "breakpoints": true
     }
   ]
 }
