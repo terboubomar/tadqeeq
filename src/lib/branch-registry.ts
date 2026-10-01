@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { branchSaveErrorMessage } from "./branch-registry-errors";
 import { getMyWorkspaceContext } from "./workspace-access.functions";
 
 export interface RegistryBranch {
@@ -42,17 +43,9 @@ export async function saveRegistryBranch(input: BranchInput): Promise<void> {
   const { error } = input.id
     ? await table().update(row).eq("id", input.id)
     : await table().insert(row);
-  if (error) {
-    if (error.code === "23505") {
-      const msg = `${error.message ?? ""} ${error.details ?? ""}`;
-      if (msg.includes("keeta")) throw new Error(`معرّف كيتا ${row.keeta_id} مستخدم مسبقاً لفرع آخر.`);
-      if (msg.includes("_hs_")) throw new Error(`معرّف هنقرستيشن ${row.hungerstation_id} مستخدم مسبقاً لفرع آخر.`);
-      if (msg.includes("jahez")) throw new Error(`معرّف جاهز ${row.jahez_id} مستخدم مسبقاً لفرع آخر.`);
-      throw new Error("يوجد فرع بنفس الاسم.");
-    }
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(branchSaveErrorMessage(error, row));
 }
+
 
 export async function deleteRegistryBranch(id: string): Promise<void> {
   const workspace = await getMyWorkspaceContext({ data: {} });
