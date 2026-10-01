@@ -1,4 +1,3 @@
-import { getRequestHeader } from "@tanstack/react-start/server";
 
 import type { Json } from "@/integrations/supabase/types";
 
@@ -16,6 +15,7 @@ import {
   readCaseWorkflow,
 } from "./compensation-overview";
 import type { StoredPeriod } from "./periods";
+import { getPublicOrigin, requirePublicOrigin } from "./public-origin.server";
 import { assertBranchAccess, requireWorkspacePermission, type ServerUserClient } from "./server-auth.server";
 
 const CONNECTION_CODE_TTL_MINUTES = 30;
@@ -147,22 +147,12 @@ function requiredTelegramEnv(name: "TELEGRAM_BOT_TOKEN" | "TELEGRAM_WEBHOOK_SECR
   return value;
 }
 
-const STABLE_PUBLIC_ORIGIN =
-  "https://project--c8c8cb97-1c44-4eef-aea1-bca4bc93f7a1-dev.lovable.app";
-
+/** Status screens show "not configured" instead of failing when the origin is missing or invalid. */
 function optionalPublicOrigin(): string | null {
-  const configured = process.env["TADQEEQ_PUBLIC_URL"]?.trim();
-  const origin = configured || getRequestHeader("origin")?.trim() || "";
-
   try {
-    const parsed = new URL(origin);
-    // Telegram requires a public HTTPS URL; editor preview hosts are auth-gated.
-    if (parsed.protocol !== "https:" || parsed.hostname.startsWith("id-preview--")) {
-      return STABLE_PUBLIC_ORIGIN;
-    }
-    return parsed.origin;
+    return getPublicOrigin();
   } catch {
-    return STABLE_PUBLIC_ORIGIN;
+    return null;
   }
 }
 
@@ -467,10 +457,7 @@ export async function getTelegramIntegrationStatusOnServer(): Promise<TelegramIn
 export async function configureTelegramWebhookOnServer(): Promise<TelegramIntegrationStatus> {
   await requireWorkspacePermission("telegram.manage");
   const secret = requiredTelegramEnv("TELEGRAM_WEBHOOK_SECRET");
-  const origin = optionalPublicOrigin();
-  if (!origin) {
-    throw new Error("تعذّر تحديد رابط Tadqeeq العام. اضبط TADQEEQ_PUBLIC_URL.");
-  }
+  const origin = requirePublicOrigin();
 
   const webhookUrl = origin + "/api/public/telegram-webhook";
   await telegramApi<boolean>("setWebhook", {
