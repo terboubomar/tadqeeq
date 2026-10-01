@@ -1,0 +1,172 @@
+{
+  "branches": [
+    {
+      "approvedRefunds": 0,
+      "bankFeeRefunded": 0,
+      "bankFeeSuccess": 0,
+      "branch": "Branch A",
+      "branchId": "100",
+      "ccRejected": 0,
+      "ccSuccess": 120,
+      "commission": 15,
+      "commissionPct": 0.15,
+      "compensation": 0,
+      "creditSales": 100,
+      "freeDeliveryOrders": 0,
+      "fulfillmentMods": 0,
+      "grossSales": 115,
+      "hsFoodDiscount": 0,
+      "jokerFees": 0,
+      "netBankCards": 120,
+      "netMarketingDiscount": 0,
+      "netSales": 100,
+      "orders": 1,
+      "partialRefund": 0,
+      "rdfCampaigns": 0,
+      "restaurantFoodDiscount": 0,
+      "rewardsDiscount": 0,
+      "riderWallet": 5,
+      "totalCharges": 15,
+      "totalCollections": 135,
+      "totalFoodDiscount": 0,
+      "waitingTimeFees": 0,
+      "walletAmount": 10,
+      "walletFee": 0
+    }
+  ],
+  "checks": [
+    {
+      "category": "commission",
+      "code": "HS_SALES_COMMISSION",
+      "computed": 15,
+      "coveredByBranches": false,
+      "evidence": "data",
+      "hint": "مجموع عمود العمولة للطلبات الناجحة والفاشلة بعد الاستلام والمرفوضة.",
+      "label": "عمولة المبيعات"
+    },
+    {
+      "category": "payment_fee",
+      "code": "HS_CARD_PAYMENT_FEES",
+      "computed": 0,
+      "coveredByBranches": false,
+      "evidence": "data",
+      "hint": "تم استنتاج نسبة البطاقات بعد استبعاد Wallet Payments Fee الوارد في الفاتورة؛ النتيجة تشخيصية وليست تحققاً مستقلاً.",
+      "label": "رسوم الدفع الإلكتروني القابلة للتحقق (البطاقات)",
+      "tolerance": 0.1
+    },
+    {
+      "category": "other_fee",
+      "code": "HS_OTHER_COMMISSION_DATA",
+      "computed": 0,
+      "coveredByBranches": false,
+      "evidence": "data",
+      "hint": "RDF + تعويضات العملاء + رسوم العروض + وقت الانتظار (بدون ضريبة)، بعد استبعاد البنود الموجودة في الفاتورة فقط.",
+      "label": "عمولات أخرى القابلة للتحقق من البيانات"
+    },
+    {
+      "category": "invoice_total",
+      "code": "HS_INVOICE_TOTAL_EX_VAT",
+      "computed": 15,
+      "controlOnly": true,
+      "evidence": "data",
+      "label": "إجمالي الفاتورة (بدون ضريبة)"
+    }
+  ],
+  "daily": [
+    {
+      "ccSuccess": 120,
+      "commission": 15,
+      "date": "2026-08-01",
+      "grossSales": 115,
+      "netSales": 100,
+      "orders": 1
+    }
+  ],
+  "exceptions": [
+    {
+      "category": "data_missing",
+      "computed": 15,
+      "id": "ex_1e7i5od",
+      "label": "بيانات فاتورة مفقودة · عمولة المبيعات",
+      "potentialRecovery": 0,
+      "reviewAmount": 0,
+      "severity": "low",
+      "tolerance": 0.05
+    },
+    {
+      "category": "data_missing",
+      "computed": 0,
+      "id": "ex_do2wmo",
+      "label": "بيانات فاتورة مفقودة · رسوم الدفع الإلكتروني القابلة للتحقق (البطاقات)",
+      "potentialRecovery": 0,
+      "reviewAmount": 0,
+      "severity": "low",
+      "tolerance": 0.1
+    },
+    {
+      "category": "data_missing",
+      "computed": 0,
+      "id": "ex_1wvgmaa",
+      "label": "بيانات فاتورة مفقودة · عمولات أخرى القابلة للتحقق من البيانات",
+      "potentialRecovery": 0,
+      "reviewAmount": 0,
+      "severity": "low",
+      "tolerance": 0.05
+    }
+  ],
+  "formatIds": [
+    "hungerstation-orders-v1"
+  ],
+  "invoice": {
+    "lines": []
+  },
+  "label": "هنقرستيشن · 2026-08-01 — 2026-08-01",
+  "platform": "hungerstation",
+  "summary": {
+    "approvedRefunds": 0,
+    "bankFeeRefunded": 0,
+    "bankFeeSuccess": 0,
+    "bankRate": 0,
+    "bankRateSource": "none",
+    "branchCount": 1,
+    "ccRejected": 0,
+    "ccSuccess": 120,
+    "commission": 15,
+    "commissionPct": 0.15,
+    "compensation": 0,
+    "fulfillmentMods": 0,
+    "grossSales": 115,
+    "hsFoodDiscount": 0,
+    "invoiceImpliedBankRate": 0,
+    "invoiceOnlyExtras": 0,
+    "jokerFees": 0,
+    "netBankCards": 120,
+    "netMarketingDiscount": 0,
+    "netSales": 100,
+    "orders": 1,
+    "partialRefund": 0,
+    "periodEnd": "2026-08-01",
+    "periodStart": "2026-08-01",
+    "platform": "hungerstation",
+    "rdfCampaigns": 0,
+    "rejectedOrders": 0,
+    "rejectedSales": 0,
+    "restaurantFoodDiscount": 0,
+    "rewardsDiscount": 0,
+    "riderWallet": 5,
+    "statusCounts": {
+      "Successful": 1
+    },
+    "totalCharges": 15,
+    "totalCollections": 135,
+    "totalFoodDiscount": 0,
+    "waitingTimeFees": 0,
+    "walletAmount": 10,
+    "walletFee": 0,
+    "walletFeeBase": 0
+  },
+  "totals": {
+    "potentialRecovery": 0,
+    "reviewAmount": 0
+  }
+}
