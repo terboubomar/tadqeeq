@@ -11,6 +11,7 @@ import {
 } from "./workspace-access";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
+import { logEvent } from "./observability";
 import { isPlanFeature, isTrialStatus, resolvePlanAccess, TRIAL_UPLOAD_EVENT, type PlanFeature } from "./plans";
 
 export type ServerUserClient = ReturnType<typeof createServerUserClient>;
@@ -300,6 +301,12 @@ export async function requireWorkspacePermission(
 ): Promise<ServerUserAuth> {
   const context = await requireServerUser();
   if (!context.permissions.includes(permission)) {
+    logEvent("permission_denied", {
+      permission,
+      role: context.role,
+      workspace_id: context.workspaceId,
+      actor_user_id: context.actorUserId,
+    }, "warn");
     throw new Error("ليس لديك صلاحية لتنفيذ هذا الإجراء.");
   }
   return context;
@@ -311,6 +318,7 @@ export function assertBranchAccess(
 ): void {
   if (context.globalBranchAccess) return;
   if (!branchId || !context.allowedBranchIds.includes(branchId)) {
+    logEvent("permission_denied", { reason: "branch", branch_id: branchId ?? null }, "warn");
     throw new Error("ليس لديك صلاحية الوصول إلى هذا الفرع.");
   }
 }

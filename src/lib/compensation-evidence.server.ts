@@ -17,6 +17,7 @@ import {
 } from "./compensation-overview";
 import type { StoredPeriod } from "./periods";
 import { TELEGRAM_CONNECTION_CODE_TTL_MINUTES } from "./limits";
+import { logEvent } from "./observability";
 import { getPublicOrigin, requirePublicOrigin } from "./public-origin.server";
 import { assertBranchAccess, requireWorkspacePermission, type ServerUserClient } from "./server-auth.server";
 
@@ -843,7 +844,9 @@ export async function saveCompensationCaseOnServer(
       .maybeSingle();
     if (error) throw new Error(caseWriteErrorMessage(error));
     if (!data) throw new Error("تعذّر العثور على حالة التعويض.");
-    return mapCase(data);
+    const saved = mapCase(data);
+    logCaseStatus(saved, existing?.status ?? null, workflow.recoveredAmount, context.actorUserId);
+    return saved;
   }
 
   const { data, error } = await db
@@ -852,7 +855,35 @@ export async function saveCompensationCaseOnServer(
     .select("*")
     .single();
   if (error) throw new Error(caseWriteErrorMessage(error));
-  return mapCase(data);
+  const created = mapCase(data);
+  logEvent("compensation_case_created", {
+    case_id: created.id,
+    workspace_id: workspaceId,
+    platform: created.platform,
+    status: created.status,
+    amount: created.compensationAmount,
+    has_evidence: Boolean(created.evidenceId),
+    actor_user_id: context.actorUserId,
+  });
+  return created;
+}
+
+function logCaseStatus(
+  saved: CompensationCaseRecord,
+  previousStatus: string | null,
+  recoveredAmount: number | null,
+  actorUserId: string,
+): void {
+  if (previousStatus === saved.status) return;
+  const fields = { case_id: saved.id, from: previousStatus, to: saved.status, actor_user_id: actorUserId };
+  logEvent("compensation_status_changed", fields);
+  if (saved.status === "recovered") {
+    logEvent("compensation_recovered", {
+      ...fields,
+      claimed: saved.compensationAmount,
+      recovered: recoveredAmount ?? saved.compensationAmount,
+    });
+  }
 }
 
 

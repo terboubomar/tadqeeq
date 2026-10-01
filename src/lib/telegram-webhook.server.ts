@@ -6,6 +6,7 @@ import {
 } from "./compensation-evidence";
 import { detectOrderNumberFromImage } from "./ai/order-number-vision.server";
 import { ORDER_NUMBER_DETECTION_MAX_BYTES, TELEGRAM_GET_FILE_LIMIT_BYTES } from "./limits";
+import { logEvent } from "./observability";
 
 // Generated database types are refreshed after the workspace migration.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -418,6 +419,14 @@ async function storeEvidence(
     });
 
   if (insertError) throw new Error(insertError.message);
+  logEvent("telegram_evidence_metadata_saved", {
+    evidence_id: evidenceId,
+    workspace_id: connection.workspace_id,
+    branch_id: connection.branch_id,
+    media_type: storedMediaType,
+    file_size_bytes: media.fileSizeBytes,
+    detected_by_ai: detectedByAi,
+  });
 
   // Media stays in Telegram: only the reference above is stored, and the file is
   // fetched on demand when an authorised user previews or downloads it.
@@ -518,6 +527,7 @@ export async function handleTelegramWebhook(request: Request): Promise<Response>
   const actualSecret = request.headers.get("x-telegram-bot-api-secret-token");
 
   if (!secretsMatch(actualSecret, expectedSecret)) {
+    logEvent("permission_denied", { source: "telegram_webhook", reason: "bad_secret" }, "warn");
     return new Response("Unauthorized", { status: 401 });
   }
 
@@ -528,14 +538,18 @@ export async function handleTelegramWebhook(request: Request): Promise<Response>
     return Response.json({ ok: true });
   }
 
+  logEvent("telegram_webhook_received", {
+    update_id: update.update_id,
+    chat_id: update.message?.chat.id,
+    message_id: update.message?.message_id,
+    has_media: Boolean(mediaFrom(update.message)),
+  });
+
   try {
     if (update.message) await handleMessage(update.message);
     return Response.json({ ok: true });
   } catch (error) {
-    console.error("Telegram webhook processing failed", {
-      updateId: update.update_id,
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logEvent("telegram_webhook_failed", { update_id: update.update_id, error }, "error");
     return Response.json({ ok: false }, { status: 500 });
   }
 }

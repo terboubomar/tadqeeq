@@ -1,4 +1,5 @@
 import { TELEGRAM_GET_FILE_LIMIT_BYTES } from "./limits";
+import { logEvent } from "./observability";
 import { assertBranchAccess, requireWorkspacePermission } from "./server-auth.server";
 
 /**
@@ -146,6 +147,7 @@ export async function handleEvidenceMediaRequest(
   try {
     context = await (deps.authorize ?? (() => requireWorkspacePermission("telegram.read")))();
   } catch (error) {
+    logEvent("permission_denied", { source: "evidence_media", evidence_id: evidenceId, error }, "warn");
     return evidenceErrorResponse(401, error instanceof Error ? error.message : "غير مصرح.");
   }
 
@@ -167,11 +169,27 @@ export async function handleEvidenceMediaRequest(
     .eq("workspace_id", context.workspaceId)
     .maybeSingle();
   if (error) return evidenceErrorResponse(500, "تعذّر قراءة بيانات الدليل.");
-  if (!data) return evidenceErrorResponse(404, "الدليل غير موجود.");
+  if (!data) {
+    // Either it does not exist or it belongs to another workspace (hidden by row access rules).
+    logEvent("workspace_isolation_violation_attempt", {
+      source: "evidence_media",
+      evidence_id: evidenceId,
+      workspace_id: context.workspaceId,
+      actor_user_id: context.actorUserId,
+    }, "warn");
+    return evidenceErrorResponse(404, "الدليل غير موجود.");
+  }
 
   try {
     assertBranchAccess(context, data.branch_id);
   } catch (accessError) {
+    logEvent("permission_denied", {
+      source: "evidence_media",
+      reason: "branch",
+      evidence_id: evidenceId,
+      branch_id: data.branch_id,
+      actor_user_id: context.actorUserId,
+    }, "warn");
     return evidenceErrorResponse(403, accessError instanceof Error ? accessError.message : "غير مصرح.");
   }
 
@@ -179,11 +197,34 @@ export async function handleEvidenceMediaRequest(
   if (!token) return evidenceErrorResponse(503, "إعدادات Telegram غير مكتملة على الخادم.");
 
   const url = new URL(request.url);
-  return streamTelegramFile({
+  const variant = url.searchParams.get("variant") === "thumb" ? "thumb" : "full";
+  const fields = { evidence_id: evidenceId, workspace_id: context.workspaceId, actor_user_id: context.actorUserId, variant };
+  logEvent("telegram_evidence_stream_started", fields);
+  const response = await streamTelegramFile({
     row: data,
-    variant: url.searchParams.get("variant") === "thumb" ? "thumb" : "full",
+    variant,
     download: url.searchParams.get("download") === "1",
     token,
     fetchImpl: deps.fetchImpl,
   });
+  if (!response.ok || !response.body) {
+    logEvent("telegram_evidence_stream_failed", { ...fields, status: response.status }, "warn");
+    return response;
+  }
+  return withCompletionLog(response, fields);
+}
+
+/** Passes the bytes through unchanged and logs once the browser has received the whole file. */
+function withCompletionLog(response: Response, fields: Record<string, unknown>): Response {
+  let bytes = 0;
+  const counter = new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      bytes += chunk.byteLength;
+      controller.enqueue(chunk);
+    },
+    flush() {
+      logEvent("telegram_evidence_stream_completed", { ...fields, bytes });
+    },
+  });
+  return new Response(response.body!.pipeThrough(counter), { status: response.status, headers: response.headers });
 }

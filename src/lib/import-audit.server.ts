@@ -27,6 +27,7 @@ import { normalizePeriodLabel, type StoredPeriod } from "./periods";
 import { TRIAL_UPLOAD_EVENT } from "./plans";
 import { requireServerUser, type ServerUserClient } from "./server-auth.server";
 import { safeStorageFileName, sha256Hex } from "./source-file-utils";
+import { logEvent } from "./observability";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL } from "./upload-validation";
 
 const SOURCE_BUCKET = "source-files";
@@ -593,10 +594,33 @@ async function recordTrialUpload(workspaceId: string, actorUserId: string, perio
   if (error) console.error("Failed to record trial upload", error.message);
 }
 
-export async function importAuditOnServer(
+/** Logs the start, outcome or failure of every upload analysis (ids only, never file contents). */
+export async function importAuditOnServer(form: FormData): Promise<ImportAuditResult> {
+  const log: { workspace_id?: string; actor_user_id?: string; platform?: string } = {};
+  const startedAt = Date.now();
+  try {
+    const result = await runImportAudit(form, log);
+    logEvent("analysis_completed", {
+      ...log,
+      status: result.status,
+      period_id: result.status === "saved" ? result.periodId : undefined,
+      branch_count: result.status === "saved" ? result.branchCount : undefined,
+      duration_ms: Date.now() - startedAt,
+    });
+    return result;
+  } catch (error) {
+    logEvent("analysis_failed", { ...log, duration_ms: Date.now() - startedAt, error }, "error");
+    throw error;
+  }
+}
+
+async function runImportAudit(
   form: FormData,
+  log: { workspace_id?: string; actor_user_id?: string; platform?: string },
 ): Promise<ImportAuditResult> {
   const { client, userId, uploadLimit, uploadsThisMonth, permissions, trial, workspaceId, actorUserId } = await requireServerUser();
+  log.workspace_id = workspaceId;
+  log.actor_user_id = actorUserId;
   if (!permissions.includes("imports.create")) {
     throw new Error("ليس لديك صلاحية لرفع البيانات.");
   }
@@ -608,6 +632,8 @@ export async function importAuditOnServer(
     );
   }
   const platform = parsePlatform(formString(form, "platform"));
+  log.platform = platform;
+  logEvent("analysis_started", { ...log });
   const approvedMappings =
     platform === "hungerstation" ? parseApprovedMappings(form) : {};
 
