@@ -1,3 +1,4 @@
+import { TELEGRAM_GET_FILE_LIMIT_BYTES } from "./limits";
 import { assertBranchAccess, requireWorkspacePermission } from "./server-auth.server";
 
 /**
@@ -7,8 +8,7 @@ import { assertBranchAccess, requireWorkspacePermission } from "./server-auth.se
  * disk or a cache, and the bot-token URL never leaves the server.
  */
 
-/** Largest file the standard Telegram Bot API lets a bot download with getFile. */
-export const TELEGRAM_GET_FILE_LIMIT_BYTES = 20 * 1024 * 1024;
+export { TELEGRAM_GET_FILE_LIMIT_BYTES };
 
 export type EvidenceMediaVariant = "full" | "thumb";
 

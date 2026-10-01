@@ -1,4 +1,6 @@
-const DEFAULT_HOURLY_LIMIT = 30;
+import { DEFAULT_AI_REQUESTS_PER_HOUR } from "../limits";
+
+const DEFAULT_HOURLY_LIMIT = DEFAULT_AI_REQUESTS_PER_HOUR;
 
 export type AiUsageFeature =
   | "exception_explainer"

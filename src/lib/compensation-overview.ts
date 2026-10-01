@@ -1,3 +1,5 @@
+import { COMPENSATION_FOLLOW_UP_DAYS } from "./limits";
+
 // Pure KPI math for the compensation center overview. Kept free of server
 // imports so it can be unit-tested and reused on the client.
 
@@ -177,7 +179,7 @@ function recoveredAt(item: OverviewCase): string {
 }
 
 /** Days after which a case needs a nudge: ready but not sent, or sent with no platform answer. */
-export const FOLLOW_UP_DAYS = { ready: 3, submitted: 7, accepted: 7 } as const;
+export const FOLLOW_UP_DAYS = COMPENSATION_FOLLOW_UP_DAYS;
 
 export interface CaseFollowUp {
   kind: "not_sent" | "awaiting_platform" | "awaiting_payment";

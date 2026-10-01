@@ -5,6 +5,7 @@ import {
   normalizeOrderLookupKey,
 } from "./compensation-evidence";
 import { detectOrderNumberFromImage } from "./ai/order-number-vision.server";
+import { ORDER_NUMBER_DETECTION_MAX_BYTES, TELEGRAM_GET_FILE_LIMIT_BYTES } from "./limits";
 
 // Generated database types are refreshed after the workspace migration.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -297,7 +298,7 @@ async function detectOrderNumber(media: TelegramMedia): Promise<string | null> {
   const sourceId = isImage ? media.fileId : media.thumbnailFileId;
   if (!sourceId) return null;
   try {
-    const file = await downloadTelegramFile(sourceId, 8_000_000);
+    const file = await downloadTelegramFile(sourceId, ORDER_NUMBER_DETECTION_MAX_BYTES);
     if (!file) return null;
     let mime = mimeFromPath(file.filePath);
     if (!mime.startsWith("image/") || mime === "image/heic") mime = "image/jpeg";
@@ -306,6 +307,12 @@ async function detectOrderNumber(media: TelegramMedia): Promise<string | null> {
     console.error("AI order number detection failed", error);
     return null;
   }
+}
+
+/** Telegram will not let the bot fetch files over 20 MB, so Tadqeeq cannot preview them later. */
+export function oversizedEvidenceWarning(fileSizeBytes: number | null | undefined): string {
+  if (!fileSizeBytes || fileSizeBytes <= TELEGRAM_GET_FILE_LIMIT_BYTES) return "";
+  return "\n\n⚠️ حجم الملف أكبر من 20 ميجابايت، لذلك لن يمكن معاينته أو تنزيله من تدقيق. أرسل نسخة أقصر أو صورة واضحة للفاتورة إن أمكن.";
 }
 
 async function storeEvidence(
@@ -427,7 +434,7 @@ async function storeEvidence(
 
   await sendMessage(
     incomingMessage.chat.id,
-    `✅ تم حفظ الدليل\nرقم الطلب: ${orderNumber}${detectedByAi ? " (قرأه Tadqeeq AI)" : ""}\nالفرع: ${connection.branch_name}\n\nإذا كان الرقم خاطئاً، رد على الدليل بالرقم الصحيح.`,
+    `✅ تم حفظ الدليل\nرقم الطلب: ${orderNumber}${detectedByAi ? " (قرأه Tadqeeq AI)" : ""}\nالفرع: ${connection.branch_name}\n\nإذا كان الرقم خاطئاً، رد على الدليل بالرقم الصحيح.${oversizedEvidenceWarning(media.fileSizeBytes)}`,
     incomingMessage.message_id,
   );
 }

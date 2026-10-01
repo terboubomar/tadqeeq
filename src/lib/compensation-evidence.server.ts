@@ -16,10 +16,11 @@ import {
   readCaseWorkflow,
 } from "./compensation-overview";
 import type { StoredPeriod } from "./periods";
+import { TELEGRAM_CONNECTION_CODE_TTL_MINUTES } from "./limits";
 import { getPublicOrigin, requirePublicOrigin } from "./public-origin.server";
 import { assertBranchAccess, requireWorkspacePermission, type ServerUserClient } from "./server-auth.server";
 
-const CONNECTION_CODE_TTL_MINUTES = 30;
+const CONNECTION_CODE_TTL_MINUTES = TELEGRAM_CONNECTION_CODE_TTL_MINUTES;
 const CONNECTION_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 // Workspace columns are introduced by migration 0026 before generated Supabase
 // types are refreshed. Keep the temporary escape hatch isolated here.

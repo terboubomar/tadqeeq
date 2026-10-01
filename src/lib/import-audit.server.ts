@@ -27,7 +27,7 @@ import { normalizePeriodLabel, type StoredPeriod } from "./periods";
 import { TRIAL_UPLOAD_EVENT } from "./plans";
 import { requireServerUser, type ServerUserClient } from "./server-auth.server";
 import { safeStorageFileName, sha256Hex } from "./source-file-utils";
-import { MAX_UPLOAD_SIZE_BYTES } from "./upload-validation";
+import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL } from "./upload-validation";
 
 const SOURCE_BUCKET = "source-files";
 
@@ -97,7 +97,7 @@ function validateFile(
 
   if (!Number.isFinite(file.size) || file.size < 0 || file.size > MAX_UPLOAD_SIZE_BYTES) {
     throw new Error(
-      "حجم ملف " + label + " يتجاوز الحد المسموح وهو 25 MB.",
+      "حجم ملف " + label + " يتجاوز الحد المسموح وهو " + MAX_UPLOAD_SIZE_LABEL + ".",
     );
   }
 

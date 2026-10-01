@@ -1,5 +1,6 @@
-export const MAX_UPLOAD_SIZE_BYTES = 25 * 1024 * 1024;
-export const MAX_UPLOAD_SIZE_LABEL = "25 MB";
+import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL } from "./limits";
+
+export { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL };
 
 export function uploadSizeError(sizeBytes: number): string | null {
   if (!Number.isFinite(sizeBytes) || sizeBytes < 0) {
