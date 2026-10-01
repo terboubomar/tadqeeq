@@ -8,7 +8,7 @@ Configure these server-only environment variables:
 
 - `TELEGRAM_BOT_TOKEN` — token issued by BotFather.
 - `TELEGRAM_WEBHOOK_SECRET` — a random secret used by Telegram's `X-Telegram-Bot-Api-Secret-Token` header.
-- `TADQEEQ_PUBLIC_URL` — optional production origin override, for example `https://your-domain.example`. If omitted, the Compensation Center uses the authenticated browser request origin when activating the webhook.
+- `TADQEEQ_PUBLIC_URL` — the public HTTPS origin Telegram calls, for example `https://tadqeeq.app`. Required in production.
 
 Never expose the bot token or webhook secret to browser code.
 
@@ -32,18 +32,46 @@ One Telegram group can be connected to only one Tadqeeq branch mapping.
 
 ## Cashier workflow
 
-Preferred:
-
-1. Record the order evidence video.
+1. Take a photo or video of the order and its receipt.
 2. Send it to the branch group.
-3. Put the order number in the video caption.
+3. Tadqeeq reads the order number from the caption, or from the receipt in the photo (Tadqeeq AI).
+4. If no number can be read, reply to that exact message with the order number only.
+5. To correct a wrong number, reply to the original evidence with the right number.
 
-Fallback:
+## Where the evidence lives
 
-1. Send the video without a caption.
-2. Reply to that exact video with the order number only.
+> Tadqeeq does not copy Telegram photos or videos into Supabase Storage, or anywhere else. It stores the Telegram evidence reference and retrieves the media from Telegram only when an authorised user previews or downloads it.
 
-The webhook stores the Telegram `file_id`, `file_unique_id`, message identity, sender, branch, timestamp, and a private thumbnail. It does **not** copy the full video into Supabase Storage.
+What Tadqeeq stores per evidence (metadata only, in `telegram_order_evidence`):
+
+- workspace, branch and branch group;
+- order number (as detected or corrected) and its lookup key;
+- Telegram `chat_id` and `message_id` (the message reference);
+- Telegram `file_id` (used to fetch the file) and `file_unique_id`;
+- the Telegram `file_id` of the small preview, when Telegram provides one;
+- media type, duration, file size, sender, caption and capture time.
+
+It never stores image or video bytes, base64 media, a copied thumbnail, a Telegram download URL or the bot token.
+
+### Preview and download
+
+1. The browser calls `GET /api/compensation/evidence/:evidenceId/media` with the user's session.
+2. The server checks the session, the `telegram.read` permission, the workspace and the user's branch access.
+3. The server calls Telegram `getFile` with the stored `file_id` and streams the bytes straight back.
+4. Responses carry `Cache-Control: no-store, private, max-age=0`, `Pragma: no-cache` and `X-Content-Type-Options: nosniff`.
+5. The preview is held only in that browser tab's memory and released when it closes. **تنزيل** saves the file on the user's computer; nothing remains in Tadqeeq.
+
+The Telegram file URL contains the bot token, so it is never returned to the browser.
+
+### Limits and failures
+
+- The standard Telegram Bot API lets a bot download files up to **20 MB**. Larger files show a message asking staff to open them in the branch group.
+- If the message was deleted in Telegram, or Telegram can no longer return the file, the evidence row stays visible with its order number, branch and capture time, and the media shows as unavailable. Tadqeeq does not fall back to an old copy.
+- Retention and deletion of the media are controlled by the Telegram group itself.
+
+### Earlier versions
+
+Before October 2026, Tadqeeq also saved thumbnails (and, briefly, full files) in the `telegram-evidence-thumbnails` bucket. New evidence no longer writes there and the app no longer reads from it. Existing objects are left untouched until their retention is decided; removing them and the bucket is a separate, explicitly approved step.
 
 ## Compensation employee workflow
 
