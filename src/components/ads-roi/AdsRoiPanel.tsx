@@ -10,7 +10,6 @@ import {
   brandKey,
   type AdsRoiResult,
   type BrandSettings,
-  type BudgetShift,
   type CampaignAction,
   type CampaignResult,
   type CampaignStatus,
@@ -32,6 +31,7 @@ import {
   type ParsedAdsReport,
   type ParsedOrdersReport,
 } from "@/lib/ads-roi/reports";
+import { buildAdsRoiActions, type AdsRoiAction } from "@/lib/ads-roi/actions";
 import { downloadAdsRoiWorkbook, type AdsRoiExportScope } from "@/lib/ads-roi/export";
 import { count, money } from "@/lib/format";
 import { uploadSizeError } from "@/lib/upload-validation";
@@ -480,6 +480,7 @@ function AdsRoiResults(props: ResultsProps) {
   const [filter, setFilter] = useState<CampaignFilter>("attention");
   const [sort, setSort] = useState<BranchSort>("profit");
   const [query, setQuery] = useState("");
+  const [tab, setTab] = useState<"campaigns" | "branches" | "settings" | "notes">("campaigns");
   const { totals, verdict, notes } = result;
 
   const needle = query.trim().toLowerCase();
@@ -494,16 +495,15 @@ function AdsRoiResults(props: ResultsProps) {
     if (sort === "roas") return (a.roas ?? 0) - (b.roas ?? 0);
     return a.profit - b.profit;
   });
-  const best = [...result.campaigns].sort((a, b) => b.profit - a.profit)[0];
   const profitLabel = notes.ordersIncluded ? "بعد الخصومات والرسوم" : "قبل خصوماتك ورسوم الدفع والتوصيل";
   const foodNote = notes.missingFoodCostBrands.length > 0 ? " · بعض العلامات بلا تكلفة طعام" : "";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="sticky top-0 z-20 -mx-1 flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-border bg-background/95 px-3 py-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="flex min-w-0 items-center gap-2 text-[13px]">
-          <span className="font-bold">نتيجة التحليل</span>
-          <span className="num text-muted-foreground">{dateRange(result.dateFrom, result.dateTo)}</span>
+          <span className="hidden font-bold sm:inline">نتيجة التحليل</span>
+          <span className="num whitespace-nowrap text-muted-foreground">{dateRange(result.dateFrom, result.dateTo)}</span>
           {loaded.savedId ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[11.5px] font-semibold text-success">
               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -512,6 +512,9 @@ function AdsRoiResults(props: ResultsProps) {
           ) : (
             <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[11.5px] font-semibold text-warning">غير محفوظ</span>
           )}
+          <span className="hidden text-muted-foreground sm:inline">
+            · <span className="num">{count(result.branches.length)}</span> فرعاً · <span className="num">{count(result.campaigns.length)}</span> حملة
+          </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="outline" size="sm" disabled={props.reading} onClick={props.onPickFiles}>
@@ -531,49 +534,24 @@ function AdsRoiResults(props: ResultsProps) {
         </div>
       </div>
 
-      <section
-        aria-label="الملفات"
-        className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[12px] border border-border bg-card px-4 py-3 text-[12.5px] text-muted-foreground"
-      >
-        <span className="flex items-center gap-2 font-semibold text-foreground">
-          <CheckCircle2 className="h-4 w-4 text-success" aria-hidden="true" />
-          تقرير الإعلانات
-        </span>
-        <span>
-          {result.days === 1 ? "اليوم" : result.days === 2 ? "يومان" : result.days <= 10 ? `${result.days} أيام` : `${result.days} يوماً`} <span className="num">{dateRange(result.dateFrom, result.dateTo)}</span>
-        </span>
-        <span>
-          <span className="num">{count(result.branches.length)}</span> فرعاً · <span className="num">{count(result.campaigns.length)}</span> حملة
-        </span>
-        {loaded.orders ? (
-          <span className="flex items-center gap-2 font-semibold text-foreground">
-            <CheckCircle2 className="h-4 w-4 text-success" aria-hidden="true" />
-            تقرير الطلبات · الخصومات والرسوم محسوبة
-          </span>
-        ) : (
-          <span className="ms-auto rounded-lg border border-warning/30 bg-warning/10 px-3 py-1.5 text-warning">
-            بدون تقرير الطلبات: خصوماتك والرسوم غير محسوبة.{" "}
-            <button type="button" className="font-semibold underline" onClick={props.onPickFiles}>
-              أضفه
-            </button>
-          </span>
-        )}
-      </section>
+      {!loaded.orders ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-[10px] border border-warning/30 bg-warning/10 px-3 py-2 text-[12.5px] text-warning">
+          <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+          بدون تقرير الطلبات: خصوماتك والرسوم غير محسوبة.
+          <button type="button" className="font-semibold underline" onClick={props.onPickFiles}>
+            أضفه
+          </button>
+        </div>
+      ) : null}
 
       <section
         aria-label="المؤشرات الرئيسية"
-        className="audit-kpi-strip grid sm:grid-cols-3 xl:grid-cols-6 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0"
+        className="audit-kpi-strip grid grid-cols-2 lg:grid-cols-4 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0"
       >
-        <Kpi label="الإنفاق الإعلاني" value={money(totals.spent)} hint={<>تكلفة النقرة <span className="num">{ratioText(totals.cpc)}</span></>} />
+        <Kpi label="الإنفاق الإعلاني" value={money(totals.spent)} hint={<><span className="num">{count(totals.orders)}</span> طلب · <span className="num">{ratioText(totals.costPerOrder)}</span> للطلب</>} />
         <Kpi label="مبيعات من الإعلانات" value={money(totals.gmv)} hint="شاملة الضريبة" />
         <Kpi
-          label="طلبات من الإعلانات"
-          value={count(totals.orders)}
-          hint={<>من <span className="num">{count(totals.clicks)}</span> نقرة · <span className="num">{((totals.clickToOrder ?? 0) * 100).toFixed(1)}%</span></>}
-        />
-        <Kpi label="تكلفة الطلب الواحد" value={ratioText(totals.costPerOrder)} hint="ر.س إعلان لكل طلب" />
-        <Kpi
-          label="ROAS (محسوب)"
+          label="ROAS"
           value={ratioText(totals.roas)}
           hint={
             result.brands.length === 1 && result.brands[0]?.breakEvenRoas != null ? (
@@ -592,41 +570,37 @@ function AdsRoiResults(props: ResultsProps) {
         </div>
       </section>
 
-      <section aria-label="الحكم" className="grid gap-4 md:grid-cols-3">
-        <VerdictCard tone="loss" title="تخسر" count={verdict.loss.campaigns}>
-          {verdict.loss.campaigns === 0 ? (
-            "لا توجد حملات خاسرة."
-          ) : (
-            <>
-              خسارة <span className="num font-semibold text-destructive">{money(Math.abs(verdict.loss.profit))}</span> ر.س من إنفاق{" "}
-              <span className="num">{money(verdict.loss.spent)}</span>
-            </>
-          )}
-        </VerdictCard>
-        <VerdictCard tone="thin" title="قريبة من التعادل" count={verdict.thin.campaigns}>
-          ربحها ضعيف، وأي زيادة في التكلفة تقلبها خسارة.
-        </VerdictCard>
-        <VerdictCard tone="profit" title="رابحة" count={verdict.profit.campaigns}>
-          {best && best.profit > 0 ? (
-            <>
-              الأفضل: <span className="font-semibold text-foreground">{best.branchName}</span>{" "}
-              <span className="num text-success">+{money(best.profit)}</span>
-            </>
-          ) : (
-            "لا توجد حملات رابحة بوضوح."
-          )}
-        </VerdictCard>
-      </section>
+      <ActionsPanel result={result} onOpenSettings={() => setTab("settings")} />
 
-      <BreakEvenSection {...props} />
-
-      <section className="panel space-y-3 p-5">
+      <section className="panel p-4">
+        <div role="tablist" aria-label="التفاصيل" className="mb-4 flex flex-wrap gap-1 border-b border-border">
+          {(
+            [
+              ["campaigns", `الحملات (${result.campaigns.length})`],
+              ["branches", `الفروع (${result.branches.length})`],
+              ["settings", "الحساب والافتراضات"],
+              ["notes", "ملاحظات"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => setTab(key)}
+              className={cn(
+                "-mb-px border-b-2 px-3 py-2 text-[13px]",
+                tab === key ? "border-primary font-bold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {tab === "campaigns" ? (
+      <div className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <SectionTitle
-            index="02 · الحملات"
-            title="حملات تحتاج قراراً"
-            body="الخط في عمود ROAS = خط التعادل."
-          />
+          <p className="text-xs text-muted-foreground">الخط في عمود ROAS = خط التعادل.</p>
           <div className="flex flex-wrap items-center gap-2">
           <label className="relative">
             <span className="sr-only">بحث في الحملات</span>
@@ -667,9 +641,9 @@ function AdsRoiResults(props: ResultsProps) {
           </Button>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="max-h-[520px] overflow-auto rounded-lg border border-border/70">
           <table className="w-full min-w-[920px] border-collapse text-[12.5px]">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-card">
               <tr className="text-muted-foreground">
                 {["الفرع · الحملة", "نقرات", "طلبات", "الإنفاق", "تكلفة النقرة", "المبيعات", "ROAS", "الربح بعد الإعلان", "التوصية"].map((header) => (
                   <th key={header} scope="col" className="border-b border-border px-1.5 py-2 text-start font-medium">
@@ -691,13 +665,11 @@ function AdsRoiResults(props: ResultsProps) {
             </tbody>
           </table>
         </div>
-      </section>
-
-      {result.shifts.length > 0 ? <BudgetShifts shifts={result.shifts} /> : null}
-
-      <section className="panel space-y-3 p-5">
+      </div>
+        ) : tab === "branches" ? (
+      <div className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <SectionTitle index="04 · الفروع" title="الإعلانات حسب الفرع" />
+          <span />
           <div className="flex flex-wrap items-center gap-2">
           <label className="flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs text-muted-foreground">
             ترتيب
@@ -718,9 +690,9 @@ function AdsRoiResults(props: ResultsProps) {
           </Button>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="max-h-[520px] overflow-auto rounded-lg border border-border/70">
           <table className="w-full min-w-[900px] border-collapse text-[12.5px]">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-card">
               <tr className="text-muted-foreground">
                 {["الفرع", "حملات", "الإنفاق", "المبيعات", "طلبات", "تكلفة الطلب", "ROAS", "التعادل", "يبقى من كل ريال", "الربح بعد الإعلان"].map((header) => (
                   <th key={header} scope="col" className="border-b border-border px-1.5 py-2 text-start font-medium">
@@ -759,11 +731,12 @@ function AdsRoiResults(props: ResultsProps) {
             </tbody>
           </table>
         </div>
-      </section>
-
-      <details className="panel group p-5">
-        <summary className="cursor-pointer text-[13px] font-semibold">كيف حسبنا الأرقام؟ وملاحظات على الملف</summary>
-        <div className="mt-4 grid gap-6 md:grid-cols-2">
+      </div>
+        ) : tab === "settings" ? (
+          <BreakEvenSection {...props} />
+        ) : (
+      <div>
+        <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2.5">
           <p className="text-[11px] font-semibold text-primary-text">ملاحظات على الملف</p>
           <ul className="list-disc space-y-2 ps-5 text-[12.5px]">
@@ -817,7 +790,9 @@ function AdsRoiResults(props: ResultsProps) {
           </div>
         </div>
         </div>
-      </details>
+      </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -854,7 +829,7 @@ function BreakEvenSection(props: ResultsProps) {
   };
 
   return (
-    <section className="panel grid gap-7 p-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+    <section className="grid gap-7 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
       <div className="space-y-3.5">
         <SectionTitle
           index="01 · خط التعادل"
@@ -895,7 +870,7 @@ function BreakEvenSection(props: ResultsProps) {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[12.5px]">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-card">
               <tr className="text-muted-foreground">
                 {["العلامة", "العمولة %", "تكلفة الطعام %", "التعادل"].map((header) => (
                   <th key={header} scope="col" className="border-b border-border py-1.5 text-start font-medium">
@@ -1033,23 +1008,6 @@ function SectionTitle({ index, title, body }: { index: string; title: string; bo
       <p className="text-[11px] font-semibold text-primary-text">{index}</p>
       <h2 className="mt-0.5 text-base font-bold">{title}</h2>
       {body ? <p className="mt-0.5 text-xs text-muted-foreground">{body}</p> : null}
-    </div>
-  );
-}
-
-function VerdictCard({ tone, title, count: total, children }: { tone: CampaignStatus; title: string; count: number; children: ReactNode }) {
-  const dot = tone === "loss" ? "bg-destructive" : tone === "thin" ? "bg-warning" : "bg-success";
-  const text = tone === "loss" ? "text-destructive" : tone === "thin" ? "text-warning" : "text-success";
-  return (
-    <div className="panel space-y-1.5 p-5">
-      <p className={cn("flex items-center gap-2 text-xs font-semibold", text)}>
-        <span className={cn("h-2 w-2 rounded-full", dot)} />
-        {title}
-      </p>
-      <p className="text-[28px] font-bold">
-        <span className="num">{total}</span> <span className="text-[15px] font-semibold">{total === 1 ? "حملة" : "حملات"}</span>
-      </p>
-      <p className="text-[13px] text-muted-foreground">{children}</p>
     </div>
   );
 }
@@ -1218,49 +1176,82 @@ function DialogStat({ label, value, tone }: { label: string; value: string; tone
   );
 }
 
-function BudgetShifts({ shifts }: { shifts: BudgetShift[] }) {
+
+function ActionsPanel({ result, onOpenSettings }: { result: AdsRoiResult; onOpenSettings: () => void }) {
   const [expanded, setExpanded] = useState(false);
-  const shown = expanded ? shifts : shifts.slice(0, 4);
+  const actions = buildAdsRoiActions(result);
+  const shown = expanded ? actions : actions.slice(0, 5);
+  const { verdict, notes } = result;
   return (
-    <section className="panel space-y-3 p-5">
-      <SectionTitle index="03 · نقل الميزانية" title="انقل الميزانية إلى الحملة الأقوى" body="في هذه الفروع الحملة الأضعف تصرف أكثر." />
-      <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-x-4 border-b border-border pb-2 text-[11.5px] text-muted-foreground sm:grid">
-        <span>الفرع</span>
-        <span>الأضعف · ROAS والإنفاق</span>
-        <span />
-        <span>الأقوى · ROAS والإنفاق</span>
+    <section className="panel p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-[15px] font-bold">ماذا تفعل الآن</h2>
+        <div className="flex flex-wrap gap-1.5 text-[11.5px] font-semibold">
+          <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-destructive">
+            <span className="num">{verdict.loss.campaigns}</span> تخسر
+          </span>
+          <span className="rounded-full bg-warning/10 px-2 py-0.5 text-warning">
+            <span className="num">{verdict.thin.campaigns}</span> ضعيفة
+          </span>
+          <span className="rounded-full bg-success/10 px-2 py-0.5 text-success">
+            <span className="num">{verdict.profit.campaigns}</span> رابحة
+          </span>
+        </div>
       </div>
-      <ul className="divide-y divide-border/70">
-        {shown.map((shift) => (
-          <li
-            key={shift.restaurantId}
-            className="flex flex-col gap-2 py-3 sm:grid sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_1.5rem_minmax(0,1fr)] sm:items-center sm:gap-x-4"
-          >
-            <span className="text-[13.5px] font-bold">{shift.branchName}</span>
-            <div className="flex items-center gap-4 sm:contents">
-              <ShiftRoas tone="weak" campaign={shift.weak} />
-              <ArrowLeft className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="إلى" />
-              <ShiftRoas tone="strong" campaign={shift.strong} />
-            </div>
-          </li>
-        ))}
-      </ul>
-      {shifts.length > 4 ? (
-        <button type="button" onClick={() => setExpanded(!expanded)} className="text-[12.5px] font-semibold text-primary-text underline">
-          {expanded ? "عرض أقل" : `عرض الكل (${shifts.length})`}
+      {notes.missingFoodCostBrands.length > 0 ? (
+        <p className="mt-2 text-[12.5px] text-muted-foreground">
+          أدخل تكلفة الطعام لـ {notes.missingFoodCostBrands.join("، ")} ليكون الربح حقيقياً.{" "}
+          <button type="button" className="font-semibold text-primary-text underline" onClick={onOpenSettings}>
+            إدخالها
+          </button>
+        </p>
+      ) : null}
+      {actions.length === 0 ? (
+        <p className="mt-3 text-[13px] text-success">كل الحملات رابحة. لا يوجد إجراء عاجل.</p>
+      ) : (
+        <ol className="mt-2 divide-y divide-border/70">
+          {shown.map((action) => (
+            <ActionRow key={action.key} action={action} />
+          ))}
+        </ol>
+      )}
+      {actions.length > 5 ? (
+        <button type="button" onClick={() => setExpanded(!expanded)} className="mt-1 text-[12.5px] font-semibold text-primary-text underline">
+          {expanded ? "عرض أقل" : `عرض كل الإجراءات (${actions.length})`}
         </button>
       ) : null}
     </section>
   );
 }
 
-function ShiftRoas({ tone, campaign }: { tone: "weak" | "strong"; campaign: CampaignResult }) {
+function ActionRow({ action }: { action: AdsRoiAction }) {
+  const badge =
+    action.kind === "stop"
+      ? { label: "أوقف", className: "bg-destructive text-white" }
+      : action.kind === "shift"
+        ? { label: "انقل الميزانية", className: "bg-foreground text-background" }
+        : { label: "خفّض المزايدة", className: "bg-warning text-white" };
+  const branch = action.kind === "shift" ? action.shift.branchName : action.campaign.branchName;
   return (
-    <span className="flex items-baseline gap-2" title={`الحملة …${campaign.campaignId.slice(-6)}`}>
-      <span className={cn("num text-[17px] font-bold", tone === "weak" ? "text-destructive" : "text-success")}>
-        {ratioText(campaign.roas)}
-      </span>
-      <span className="num text-[12px] text-muted-foreground">{money(campaign.spent)}</span>
-    </span>
+    <li className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1 py-2.5 text-[13px] sm:flex">
+      <span className={cn("w-[96px] shrink-0 rounded-md px-2 py-1 text-center text-[11.5px] font-bold", badge.className)}>{badge.label}</span>
+      <span className="min-w-0 flex-1 truncate font-semibold">{branch}</span>
+      {action.kind === "stop" ? (
+        <span className="col-start-2 text-muted-foreground" title={`الحملة …${action.campaign.campaignId.slice(-6)}`}>
+          تخسر <span className="num font-semibold text-destructive">{money(Math.abs(action.campaign.profit))}</span> · ROAS{" "}
+          <span className="num">{ratioText(action.campaign.roas)}</span>
+        </span>
+      ) : action.kind === "shift" ? (
+        <span className="col-start-2 text-muted-foreground">
+          من ROAS <span className="num font-semibold text-destructive">{ratioText(action.shift.weak.roas)}</span> إلى{" "}
+          <span className="num font-semibold text-success">{ratioText(action.shift.strong.roas)}</span>
+        </span>
+      ) : (
+        <span className="col-start-2 text-muted-foreground" title={`الحملة …${action.campaign.campaignId.slice(-6)}`}>
+          النقرة <span className="num font-semibold text-warning">{ratioText(action.campaign.cpc)}</span> ر.س · ROAS{" "}
+          <span className="num">{ratioText(action.campaign.roas)}</span>
+        </span>
+      )}
+    </li>
   );
 }
