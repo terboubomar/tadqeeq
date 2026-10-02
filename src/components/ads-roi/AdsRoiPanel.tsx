@@ -1178,80 +1178,117 @@ function DialogStat({ label, value, tone }: { label: string; value: string; tone
 
 
 function ActionsPanel({ result, onOpenSettings }: { result: AdsRoiResult; onOpenSettings: () => void }) {
-  const [expanded, setExpanded] = useState(false);
   const actions = buildAdsRoiActions(result);
-  const shown = expanded ? actions : actions.slice(0, 5);
-  const { verdict, notes } = result;
+  const stops = actions.filter((action): action is Extract<AdsRoiAction, { kind: "stop" }> => action.kind === "stop");
+  const shifts = actions.filter((action): action is Extract<AdsRoiAction, { kind: "shift" }> => action.kind === "shift");
+  const bids = actions.filter((action): action is Extract<AdsRoiAction, { kind: "lower_bid" }> => action.kind === "lower_bid");
+  const saving = stops.reduce((sum, action) => sum + Math.abs(action.campaign.profit), 0);
+  const { notes } = result;
   return (
-    <section className="panel p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <section className="panel space-y-4 p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-[15px] font-bold">ماذا تفعل الآن</h2>
-        <div className="flex flex-wrap gap-1.5 text-[11.5px] font-semibold">
-          <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-destructive">
-            <span className="num">{verdict.loss.campaigns}</span> تخسر
-          </span>
-          <span className="rounded-full bg-warning/10 px-2 py-0.5 text-warning">
-            <span className="num">{verdict.thin.campaigns}</span> ضعيفة
-          </span>
-          <span className="rounded-full bg-success/10 px-2 py-0.5 text-success">
-            <span className="num">{verdict.profit.campaigns}</span> رابحة
-          </span>
-        </div>
+        {actions.length > 0 ? (
+          <p className="text-[12.5px] text-muted-foreground">
+            <span className="num">{actions.length}</span> إجراءات
+            {saving > 0 ? (
+              <>
+                {" "}· الإيقاف يوفر <span className="num font-semibold text-destructive">{money(saving)}</span> ر.س
+              </>
+            ) : null}
+          </p>
+        ) : null}
       </div>
       {notes.missingFoodCostBrands.length > 0 ? (
-        <p className="mt-2 text-[12.5px] text-muted-foreground">
-          أدخل تكلفة الطعام لـ {notes.missingFoodCostBrands.join("، ")} ليكون الربح حقيقياً.{" "}
-          <button type="button" className="font-semibold text-primary-text underline" onClick={onOpenSettings}>
-            إدخالها
+        <p className="rounded-lg bg-warning/10 px-3 py-2 text-[12.5px] text-warning">
+          الأرقام قبل تكلفة الطعام لـ {notes.missingFoodCostBrands.join("، ")}.{" "}
+          <button type="button" className="font-semibold underline" onClick={onOpenSettings}>
+            أدخل تكلفة الطعام
           </button>
         </p>
       ) : null}
       {actions.length === 0 ? (
-        <p className="mt-3 text-[13px] text-success">كل الحملات رابحة. لا يوجد إجراء عاجل.</p>
-      ) : (
-        <ol className="mt-2 divide-y divide-border/70">
-          {shown.map((action) => (
-            <ActionRow key={action.key} action={action} />
+        <p className="text-[13px] text-success">كل الحملات رابحة. لا يوجد إجراء عاجل.</p>
+      ) : null}
+      {stops.length > 0 ? (
+        <ActionGroup tone="stop" title="أوقف هذه الحملات" why="تخسر بعد احتساب كل التكاليف.">
+          {stops.map(({ key, campaign }) => (
+            <li key={key}>
+              <strong>{campaign.branchName}</strong> <CampaignId campaign={campaign} />:{" "}
+              <strong className="text-destructive">
+                خسرت <span className="num">{money(Math.abs(campaign.profit))}</span> ر.س
+              </strong>{" "}
+              من إنفاق <span className="num">{money(campaign.spent)}</span>. <ReturnText campaign={campaign} />
+            </li>
           ))}
-        </ol>
-      )}
-      {actions.length > 5 ? (
-        <button type="button" onClick={() => setExpanded(!expanded)} className="mt-1 text-[12.5px] font-semibold text-primary-text underline">
-          {expanded ? "عرض أقل" : `عرض كل الإجراءات (${actions.length})`}
-        </button>
+        </ActionGroup>
+      ) : null}
+      {shifts.length > 0 ? (
+        <ActionGroup tone="shift" title="حوّل الميزانية داخل الفرع" why="الحملة الأضعف تأخذ معظم ميزانية الفرع.">
+          {shifts.map(({ key, shift }) => (
+            <li key={key}>
+              <strong>{shift.branchName}</strong>: حملة <CampaignId campaign={shift.weak} /> ترجع{" "}
+              <span className="num font-semibold text-destructive">{ratioText(shift.weak.roas)}</span> لكل ريال، وحملة{" "}
+              <CampaignId campaign={shift.strong} /> ترجع <span className="num font-semibold text-success">{ratioText(shift.strong.roas)}</span>.
+              انقل الميزانية إلى الثانية.
+            </li>
+          ))}
+        </ActionGroup>
+      ) : null}
+      {bids.length > 0 ? (
+        <ActionGroup tone="bid" title="خفّض المزايدة" why="النقرة غالية والربح ضعيف.">
+          {bids.map(({ key, campaign }) => (
+            <li key={key}>
+              <strong>{campaign.branchName}</strong> <CampaignId campaign={campaign} />: النقرة تكلفك{" "}
+              <span className="num font-semibold text-warning">{ratioText(campaign.cpc)}</span> ر.س، ومتوسطك{" "}
+              <span className="num">{ratioText(result.totals.cpc)}</span> ر.س.
+            </li>
+          ))}
+        </ActionGroup>
       ) : null}
     </section>
   );
 }
 
-function ActionRow({ action }: { action: AdsRoiAction }) {
-  const badge =
-    action.kind === "stop"
-      ? { label: "أوقف", className: "bg-destructive text-white" }
-      : action.kind === "shift"
-        ? { label: "انقل الميزانية", className: "bg-foreground text-background" }
-        : { label: "خفّض المزايدة", className: "bg-warning text-white" };
-  const branch = action.kind === "shift" ? action.shift.branchName : action.campaign.branchName;
+function ActionGroup({ tone, title, why, children }: { tone: "stop" | "shift" | "bid"; title: string; why: string; children: ReactNode[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const items = expanded ? children : children.slice(0, 3);
+  const accent = tone === "stop" ? "border-destructive" : tone === "shift" ? "border-foreground" : "border-warning";
+  const number = tone === "stop" ? "1" : tone === "shift" ? "2" : "3";
   return (
-    <li className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1 py-2.5 text-[13px] sm:flex">
-      <span className={cn("w-[96px] shrink-0 rounded-md px-2 py-1 text-center text-[11.5px] font-bold", badge.className)}>{badge.label}</span>
-      <span className="min-w-0 flex-1 truncate font-semibold">{branch}</span>
-      {action.kind === "stop" ? (
-        <span className="col-start-2 text-muted-foreground" title={`الحملة …${action.campaign.campaignId.slice(-6)}`}>
-          تخسر <span className="num font-semibold text-destructive">{money(Math.abs(action.campaign.profit))}</span> · ROAS{" "}
-          <span className="num">{ratioText(action.campaign.roas)}</span>
-        </span>
-      ) : action.kind === "shift" ? (
-        <span className="col-start-2 text-muted-foreground">
-          من ROAS <span className="num font-semibold text-destructive">{ratioText(action.shift.weak.roas)}</span> إلى{" "}
-          <span className="num font-semibold text-success">{ratioText(action.shift.strong.roas)}</span>
-        </span>
-      ) : (
-        <span className="col-start-2 text-muted-foreground" title={`الحملة …${action.campaign.campaignId.slice(-6)}`}>
-          النقرة <span className="num font-semibold text-warning">{ratioText(action.campaign.cpc)}</span> ر.س · ROAS{" "}
-          <span className="num">{ratioText(action.campaign.roas)}</span>
-        </span>
-      )}
-    </li>
+    <div className={cn("border-s-4 ps-3", accent)}>
+      <p className="text-[13.5px] font-bold">
+        <span className="num">{number}.</span> {title} <span className="font-normal text-muted-foreground">({children.length})</span>
+      </p>
+      <p className="text-[12px] text-muted-foreground">{why}</p>
+      <ul className="mt-1.5 space-y-1.5 text-[13px] leading-6">{items}</ul>
+      {children.length > 3 ? (
+        <button type="button" onClick={() => setExpanded(!expanded)} className="mt-1 text-[12px] font-semibold text-primary-text underline">
+          {expanded ? "عرض أقل" : `+ ${children.length - 3} أخرى`}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function CampaignId({ campaign }: { campaign: CampaignResult }) {
+  return (
+    <span className="num rounded bg-muted px-1 text-[11.5px] text-muted-foreground" title={campaign.campaignId}>
+      …{campaign.campaignId.slice(-6)}
+    </span>
+  );
+}
+
+function ReturnText({ campaign }: { campaign: CampaignResult }) {
+  return (
+    <span className="text-muted-foreground">
+      ترجع <span className="num">{ratioText(campaign.roas)}</span> لكل ريال
+      {campaign.breakEvenRoas != null ? (
+        <>
+          {" "}وتحتاج <span className="num">{campaign.breakEvenRoas.toFixed(2)}</span>
+        </>
+      ) : null}
+      .
+    </span>
   );
 }
