@@ -1178,24 +1178,18 @@ function DialogStat({ label, value, tone }: { label: string; value: string; tone
 
 
 function ActionsPanel({ result, onOpenSettings }: { result: AdsRoiResult; onOpenSettings: () => void }) {
+  const [expanded, setExpanded] = useState(false);
   const actions = buildAdsRoiActions(result);
-  const stops = actions.filter((action): action is Extract<AdsRoiAction, { kind: "stop" }> => action.kind === "stop");
-  const shifts = actions.filter((action): action is Extract<AdsRoiAction, { kind: "shift" }> => action.kind === "shift");
-  const bids = actions.filter((action): action is Extract<AdsRoiAction, { kind: "lower_bid" }> => action.kind === "lower_bid");
-  const saving = stops.reduce((sum, action) => sum + Math.abs(action.campaign.profit), 0);
+  const shown = expanded ? actions : actions.slice(0, 8);
+  const saving = actions.reduce((sum, action) => sum + (action.kind === "stop" ? Math.abs(action.campaign.profit) : 0), 0);
   const { notes } = result;
   return (
-    <section className="panel space-y-4 p-4">
+    <section className="panel space-y-3 p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-[15px] font-bold">ماذا تفعل الآن</h2>
-        {actions.length > 0 ? (
+        {saving > 0 ? (
           <p className="text-[12.5px] text-muted-foreground">
-            <span className="num">{actions.length}</span> إجراءات
-            {saving > 0 ? (
-              <>
-                {" "}· الإيقاف يوفر <span className="num font-semibold text-destructive">{money(saving)}</span> ر.س
-              </>
-            ) : null}
+            إيقاف الحملات الخاسرة يوفر <span className="num font-semibold text-destructive">{money(saving)}</span> ر.س
           </p>
         ) : null}
       </div>
@@ -1209,86 +1203,144 @@ function ActionsPanel({ result, onOpenSettings }: { result: AdsRoiResult; onOpen
       ) : null}
       {actions.length === 0 ? (
         <p className="text-[13px] text-success">كل الحملات رابحة. لا يوجد إجراء عاجل.</p>
-      ) : null}
-      {stops.length > 0 ? (
-        <ActionGroup tone="stop" title="أوقف هذه الحملات" why="تخسر بعد احتساب كل التكاليف.">
-          {stops.map(({ key, campaign }) => (
-            <li key={key}>
-              <strong>{campaign.branchName}</strong> <CampaignId campaign={campaign} />:{" "}
-              <strong className="text-destructive">
-                خسرت <span className="num">{money(Math.abs(campaign.profit))}</span> ر.س
-              </strong>{" "}
-              من إنفاق <span className="num">{money(campaign.spent)}</span>. <ReturnText campaign={campaign} />
-            </li>
+      ) : (
+        <>
+        <ul className="divide-y divide-border/70 rounded-lg border border-border/70 sm:hidden">
+          {shown.map((action) => (
+            <ActionCard key={action.key} action={action} />
           ))}
-        </ActionGroup>
-      ) : null}
-      {shifts.length > 0 ? (
-        <ActionGroup tone="shift" title="حوّل الميزانية داخل الفرع" why="الحملة الأضعف تأخذ معظم ميزانية الفرع.">
-          {shifts.map(({ key, shift }) => (
-            <li key={key}>
-              <strong>{shift.branchName}</strong>: حملة <CampaignId campaign={shift.weak} /> ترجع{" "}
-              <span className="num font-semibold text-destructive">{ratioText(shift.weak.roas)}</span> لكل ريال، وحملة{" "}
-              <CampaignId campaign={shift.strong} /> ترجع <span className="num font-semibold text-success">{ratioText(shift.strong.roas)}</span>.
-              انقل الميزانية إلى الثانية.
-            </li>
-          ))}
-        </ActionGroup>
-      ) : null}
-      {bids.length > 0 ? (
-        <ActionGroup tone="bid" title="خفّض المزايدة" why="النقرة غالية والربح ضعيف.">
-          {bids.map(({ key, campaign }) => (
-            <li key={key}>
-              <strong>{campaign.branchName}</strong> <CampaignId campaign={campaign} />: النقرة تكلفك{" "}
-              <span className="num font-semibold text-warning">{ratioText(campaign.cpc)}</span> ر.س، ومتوسطك{" "}
-              <span className="num">{ratioText(result.totals.cpc)}</span> ر.س.
-            </li>
-          ))}
-        </ActionGroup>
+        </ul>
+        <div className="hidden overflow-x-auto rounded-lg border border-border/70 sm:block">
+          <table className="w-full min-w-[760px] border-collapse text-[13px]">
+            <thead className="bg-muted/50 text-[12px] text-muted-foreground">
+              <tr>
+                {["الإجراء", "الفرع", "الحملة", "الإنفاق", "يرجع لكل ريال", "النتيجة"].map((header) => (
+                  <th key={header} scope="col" className="px-3 py-2 text-start font-medium">
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((action) => (
+                <ActionRow key={action.key} action={action} averageCpc={result.totals.cpc} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+        </>
+      )}
+      {actions.length > 8 ? (
+        <button type="button" onClick={() => setExpanded(!expanded)} className="text-[12.5px] font-semibold text-primary-text underline">
+          {expanded ? "عرض أقل" : `عرض الكل (${actions.length})`}
+        </button>
       ) : null}
     </section>
   );
 }
 
-function ActionGroup({ tone, title, why, children }: { tone: "stop" | "shift" | "bid"; title: string; why: string; children: ReactNode[] }) {
-  const [expanded, setExpanded] = useState(false);
-  const items = expanded ? children : children.slice(0, 3);
-  const accent = tone === "stop" ? "border-destructive" : tone === "shift" ? "border-foreground" : "border-warning";
-  const number = tone === "stop" ? "1" : tone === "shift" ? "2" : "3";
+const ACTION_BADGE: Record<AdsRoiAction["kind"], { label: string; className: string }> = {
+  stop: { label: "أوقفها", className: "bg-destructive/10 text-destructive" },
+  shift: { label: "حوّل الميزانية", className: "bg-foreground/10 text-foreground" },
+  lower_bid: { label: "خفّض المزايدة", className: "bg-warning/10 text-warning" },
+};
+
+function ActionRow({ action, averageCpc }: { action: AdsRoiAction; averageCpc: number | null }) {
+  const badge = ACTION_BADGE[action.kind];
+  const td = "border-t border-border/60 px-3 py-2.5 align-middle";
+  const campaign = action.kind === "shift" ? action.shift.weak : action.campaign;
   return (
-    <div className={cn("border-s-4 ps-3", accent)}>
-      <p className="text-[13.5px] font-bold">
-        <span className="num">{number}.</span> {title} <span className="font-normal text-muted-foreground">({children.length})</span>
-      </p>
-      <p className="text-[12px] text-muted-foreground">{why}</p>
-      <ul className="mt-1.5 space-y-1.5 text-[13px] leading-6">{items}</ul>
-      {children.length > 3 ? (
-        <button type="button" onClick={() => setExpanded(!expanded)} className="mt-1 text-[12px] font-semibold text-primary-text underline">
-          {expanded ? "عرض أقل" : `+ ${children.length - 3} أخرى`}
-        </button>
-      ) : null}
-    </div>
+    <tr>
+      <td className={td}>
+        <span className={cn("inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-[12px] font-bold", badge.className)}>{badge.label}</span>
+      </td>
+      <td className={cn(td, "font-semibold")}>{action.kind === "shift" ? action.shift.branchName : action.campaign.branchName}</td>
+      <td className={td}>
+        <CampaignId campaign={campaign} />
+      </td>
+      <td className={td}>
+        <span className="num">{money(campaign.spent)}</span>
+      </td>
+      <td className={td}>
+        {action.kind === "shift" ? (
+          <ShiftReturn action={action} />
+        ) : (
+          <span className="whitespace-nowrap">
+            <span className={cn("num font-semibold", action.kind === "stop" ? "text-destructive" : "text-warning")}>
+              {ratioText(action.campaign.roas)}
+            </span>
+            {action.campaign.breakEvenRoas != null ? (
+              <span className="text-[11.5px] text-muted-foreground">
+                {" "}
+                / تحتاج <span className="num">{action.campaign.breakEvenRoas.toFixed(2)}</span>
+              </span>
+            ) : null}
+          </span>
+        )}
+      </td>
+      <td className={td}>
+        {action.kind === "stop" ? (
+          <span className="font-semibold text-destructive">
+            خسارة <span className="num">{money(Math.abs(action.campaign.profit))}</span> ر.س
+          </span>
+        ) : action.kind === "shift" ? (
+          <span className="text-muted-foreground">
+            انقلها إلى <CampaignId campaign={action.shift.strong} />
+          </span>
+        ) : (
+          <span className="text-muted-foreground">
+            النقرة <span className="num font-semibold text-warning">{ratioText(action.campaign.cpc)}</span> ر.س (المتوسط{" "}
+            <span className="num">{ratioText(averageCpc)}</span>)
+          </span>
+        )}
+      </td>
+    </tr>
   );
 }
 
 function CampaignId({ campaign }: { campaign: CampaignResult }) {
   return (
-    <span className="num rounded bg-muted px-1 text-[11.5px] text-muted-foreground" title={campaign.campaignId}>
+    <span className="num rounded bg-muted px-1.5 py-0.5 text-[11.5px] text-muted-foreground" title={campaign.campaignId}>
       …{campaign.campaignId.slice(-6)}
     </span>
   );
 }
 
-function ReturnText({ campaign }: { campaign: CampaignResult }) {
+function ShiftReturn({ action }: { action: Extract<AdsRoiAction, { kind: "shift" }> }) {
   return (
-    <span className="text-muted-foreground">
-      ترجع <span className="num">{ratioText(campaign.roas)}</span> لكل ريال
-      {campaign.breakEvenRoas != null ? (
-        <>
-          {" "}وتحتاج <span className="num">{campaign.breakEvenRoas.toFixed(2)}</span>
-        </>
-      ) : null}
-      .
+    <span className="whitespace-nowrap">
+      <span className="num font-semibold text-destructive">{ratioText(action.shift.weak.roas)}</span>
+      <span className="text-muted-foreground"> ← </span>
+      <span className="num font-semibold text-success">{ratioText(action.shift.strong.roas)}</span>
     </span>
+  );
+}
+
+function ActionCard({ action }: { action: AdsRoiAction }) {
+  const badge = ACTION_BADGE[action.kind];
+  const campaign = action.kind === "shift" ? action.shift.weak : action.campaign;
+  return (
+    <li className="space-y-1 px-3 py-2.5 text-[13px]">
+      <div className="flex items-center gap-2">
+        <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-[12px] font-bold", badge.className)}>{badge.label}</span>
+        <span className="min-w-0 truncate font-semibold">{action.kind === "shift" ? action.shift.branchName : action.campaign.branchName}</span>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-muted-foreground">
+        <CampaignId campaign={campaign} />
+        {action.kind === "stop" ? (
+          <span className="font-semibold text-destructive">
+            خسارة <span className="num">{money(Math.abs(action.campaign.profit))}</span> ر.س
+          </span>
+        ) : action.kind === "shift" ? (
+          <span>
+            يرجع <ShiftReturn action={action} /> لكل ريال
+          </span>
+        ) : (
+          <span>
+            النقرة <span className="num font-semibold text-warning">{ratioText(action.campaign.cpc)}</span> ر.س
+          </span>
+        )}
+      </div>
+    </li>
   );
 }
