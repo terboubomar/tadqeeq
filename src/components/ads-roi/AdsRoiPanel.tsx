@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, FileSpreadsheet, Trash2, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Loader2, Search, Trash2, Upload } from "lucide-react";
 import { useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import {
   analyzeAdsRoi,
   brandKey,
@@ -30,7 +31,7 @@ import {
   type ParsedAdsReport,
   type ParsedOrdersReport,
 } from "@/lib/ads-roi/reports";
-import { exportXlsx } from "@/lib/export";
+import { downloadAdsRoiWorkbook, type AdsRoiExportScope } from "@/lib/ads-roi/export";
 import { count, money } from "@/lib/format";
 import { uploadSizeError } from "@/lib/upload-validation";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,16 @@ interface LoadedAnalysis {
   sourceFileName: string | null;
   ordersFileName: string | null;
   savedId: string | null;
+}
+
+type UploadDialogState =
+  | { kind: "busy"; files: string[] }
+  | { kind: "ready"; replacesSaved: boolean }
+  | { kind: "error"; message: string };
+
+/** Let the browser paint the loading popup before reading a large file blocks the page. */
+function nextPaint(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 60));
 }
 
 function displayDate(iso: string): string {
@@ -106,7 +117,10 @@ export function AdsRoiPanel() {
   const queryClient = useQueryClient();
   const [loaded, setLoaded] = useState<LoadedAnalysis | null>(null);
   const [draft, setDraft] = useState<Record<string, { commission: string; foodCost: string }>>({});
-  const [reading, setReading] = useState(false);
+  const [dialog, setDialog] = useState<UploadDialogState | null>(null);
+  const reading = dialog?.kind === "busy";
+  const fileInput = useRef<HTMLInputElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   const settingsQuery = useQuery({
     queryKey: ["ads-roi-settings"],
@@ -207,7 +221,8 @@ export function AdsRoiPanel() {
   const handleFiles = async (files: FileList | File[] | null) => {
     const list = Array.from(files ?? []);
     if (list.length === 0) return;
-    setReading(true);
+    setDialog({ kind: "busy", files: list.map((file) => file.name) });
+    await nextPaint();
     try {
       // Read everything first so an ads report dropped together with its orders report is handled first.
       const tables = [];
@@ -256,14 +271,26 @@ export function AdsRoiPanel() {
         }
       }
       setLoaded(next);
-      if (next) {
-        const existing = historyQuery.data?.find((item) => item.dateFrom === next!.report.dateFrom && item.dateTo === next!.report.dateTo);
-        if (existing) toast.info(`يوجد تحليل محفوظ لـ ${dateRange(existing.dateFrom, existing.dateTo)}. الحفظ سيستبدله.`);
-      }
+      const replacesSaved = Boolean(
+        next && historyQuery.data?.some((item) => item.dateFrom === next!.report.dateFrom && item.dateTo === next!.report.dateTo),
+      );
+      setDialog({ kind: "ready", replacesSaved });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "تعذّر قراءة الملف.");
-    } finally {
-      setReading(false);
+      setDialog({ kind: "error", message: error instanceof Error ? error.message : "تعذّر قراءة الملف." });
+    }
+  };
+
+  const pickFiles = () => fileInput.current?.click();
+  const showResults = () => {
+    setDialog(null);
+    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+  };
+  const download = (scope: AdsRoiExportScope) => {
+    if (!result || !loaded) return;
+    try {
+      downloadAdsRoiWorkbook(result, { sourceFileName: loaded.sourceFileName, ordersFileName: loaded.ordersFileName }, scope);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذّر إنشاء ملف Excel.");
     }
   };
 
@@ -272,23 +299,50 @@ export function AdsRoiPanel() {
 
   return (
     <div className="space-y-5">
+      <input
+        ref={fileInput}
+        type="file"
+        multiple
+        accept=".csv,.xlsx,.xls"
+        className="sr-only"
+        aria-label="رفع تقرير"
+        tabIndex={-1}
+        onChange={(event) => {
+          void handleFiles(event.target.files);
+          event.target.value = "";
+        }}
+      />
+      <UploadDialog
+        state={dialog}
+        result={result}
+        loaded={loaded}
+        saving={saveMutation.isPending}
+        onClose={() => setDialog(null)}
+        onShow={showResults}
+        onAddFiles={pickFiles}
+        onDownload={() => download("full")}
+        onSave={() => loaded && saveMutation.mutate(loaded)}
+      />
       {result && loaded ? (
-        <AdsRoiResults
-          result={result}
-          loaded={loaded}
-          settings={settings}
-          draft={draft}
-          setDraft={setDraft}
-          reading={reading}
-          onFiles={handleFiles}
-          onSave={() => saveMutation.mutate(loaded)}
-          saving={saveMutation.isPending}
-          onSaveSettings={() => settingsMutation.mutate()}
-          savingSettings={settingsMutation.isPending}
-          onClose={() => setLoaded(null)}
-        />
+        <div ref={resultsRef} className="scroll-mt-4">
+          <AdsRoiResults
+            result={result}
+            loaded={loaded}
+            settings={settings}
+            draft={draft}
+            setDraft={setDraft}
+            reading={reading}
+            onPickFiles={pickFiles}
+            onDownload={download}
+            onSave={() => saveMutation.mutate(loaded)}
+            saving={saveMutation.isPending}
+            onSaveSettings={() => settingsMutation.mutate()}
+            savingSettings={settingsMutation.isPending}
+            onClose={() => setLoaded(null)}
+          />
+        </div>
       ) : (
-        <UploadArea reading={reading} onFiles={handleFiles} />
+        <UploadArea reading={reading} onFiles={(files) => void handleFiles(files)} />
       )}
 
       <section className="panel space-y-3 p-5">
@@ -358,8 +412,8 @@ function UploadArea({ reading, onFiles }: { reading: boolean; onFiles: (files: F
         )}
       >
         <Upload className="h-8 w-8 text-primary" aria-hidden="true" />
-        <span className="text-base font-bold">{reading ? "جارٍ قراءة الملف…" : "اسحب تقرير الإعلانات هنا"}</span>
-        <span className="text-[12.5px] text-muted-foreground">CSV أو Excel · يوم واحد أو عدة أيام · يمكنك رفع تقرير الطلبات معه</span>
+        <span className="text-base font-bold">{reading ? "جارٍ قراءة الملف…" : "اسحب تقرير الإعلانات هنا، أو الملفين معاً"}</span>
+        <span className="text-[12.5px] text-muted-foreground">CSV أو Excel · يوم واحد أو شهر كامل · حتى 25 ميجابايت للملف</span>
         <span className="mt-1 inline-flex h-9 items-center rounded-lg bg-foreground px-4 text-[13px] font-semibold text-background">
           اختيار ملف
         </span>
@@ -376,6 +430,23 @@ function UploadArea({ reading, onFiles }: { reading: boolean; onFiles: (files: F
           }}
         />
       </label>
+      <ol className="grid gap-3 text-[12.5px] sm:grid-cols-3">
+        {[
+          ["صدّر تقرير الإعلانات", "من بوابة هنقرستيشن لليوم أو الشهر الذي تريده."],
+          ["أضف تقرير الطلبات", "لنفس الأيام، ليُحسب خصمك ورسوم الدفع وعرض التوصيل."],
+          ["راجع وقرّر", "أوقف الحملات الخاسرة، ونزّل التقرير Excel لفريقك."],
+        ].map(([title, body], index) => (
+          <li key={title} className="flex items-start gap-2.5 rounded-[12px] bg-muted/50 p-3">
+            <span className="num grid h-6 w-6 shrink-0 place-items-center rounded-full bg-foreground text-[12px] font-semibold text-background">
+              {index + 1}
+            </span>
+            <span>
+              <span className="block font-bold">{title}</span>
+              <span className="text-muted-foreground">{body}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
       <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-1.5 rounded-[12px] border border-border p-4">
           <div className="flex items-center justify-between">
@@ -410,7 +481,8 @@ interface ResultsProps {
   draft: Record<string, { commission: string; foodCost: string }>;
   setDraft: (next: Record<string, { commission: string; foodCost: string }>) => void;
   reading: boolean;
-  onFiles: (files: FileList | File[] | null) => void;
+  onPickFiles: () => void;
+  onDownload: (scope: AdsRoiExportScope) => void;
   onSave: () => void;
   saving: boolean;
   onSaveSettings: () => void;
@@ -422,11 +494,14 @@ function AdsRoiResults(props: ResultsProps) {
   const { result, loaded } = props;
   const [filter, setFilter] = useState<CampaignFilter>("attention");
   const [sort, setSort] = useState<BranchSort>("profit");
-  const fileInput = useRef<HTMLInputElement>(null);
+  const [query, setQuery] = useState("");
   const { totals, verdict, notes } = result;
 
-  const shownCampaigns = result.campaigns.filter((campaign) =>
-    filter === "all" ? true : filter === "profit" ? campaign.status === "profit" : campaign.status !== "profit",
+  const needle = query.trim().toLowerCase();
+  const shownCampaigns = result.campaigns.filter(
+    (campaign) =>
+      (filter === "all" ? true : filter === "profit" ? campaign.status === "profit" : campaign.status !== "profit") &&
+      (!needle || campaign.branchName.toLowerCase().includes(needle) || campaign.campaignId.toLowerCase().includes(needle)),
   );
   const sortedBranches = [...result.branches].sort((a, b) => {
     if (sort === "spent") return b.spent - a.spent;
@@ -438,100 +513,37 @@ function AdsRoiResults(props: ResultsProps) {
   const profitLabel = notes.ordersIncluded ? "بعد الخصومات والرسوم" : "قبل خصوماتك ورسوم الدفع والتوصيل";
   const foodNote = notes.missingFoodCostBrands.length > 0 ? " · بعض العلامات بلا تكلفة طعام" : "";
 
-  const exportAll = () => {
-    const campaignRows = result.campaigns.map((c) => ({
-      branch: c.branchName,
-      campaign: c.campaignId,
-      clicks: c.clicks,
-      orders: c.orders ?? "",
-      spent: c.spent,
-      cpc: c.cpc ?? "",
-      gmv: c.gmv,
-      roas: c.roas ?? "",
-      breakEven: c.breakEvenRoas ?? "",
-      profit: c.profit,
-      status: STATUS_LABEL[c.status],
-      action: ACTION_LABEL[c.action],
-    }));
-    const branchRows = result.branches.map((b) => ({
-      branch: b.branchName,
-      campaigns: b.campaigns,
-      spent: b.spent,
-      gmv: b.gmv,
-      orders: b.orders,
-      costPerOrder: b.costPerOrder ?? "",
-      roas: b.roas ?? "",
-      breakEven: b.breakEvenRoas ?? "",
-      profit: b.profit,
-    }));
-    exportXlsx(
-      [
-        {
-          name: "الحملات",
-          rows: campaignRows as Array<Record<string, unknown>>,
-          columns: [
-            { key: "branch", header: "الفرع" },
-            { key: "campaign", header: "الحملة" },
-            { key: "clicks", header: "النقرات", type: "number" },
-            { key: "orders", header: "الطلبات", type: "number" },
-            { key: "spent", header: "الإنفاق", type: "money" },
-            { key: "cpc", header: "تكلفة النقرة", type: "money" },
-            { key: "gmv", header: "المبيعات", type: "money" },
-            { key: "roas", header: "ROAS", type: "number" },
-            { key: "breakEven", header: "خط التعادل", type: "number" },
-            { key: "profit", header: "الربح بعد الإعلان", type: "money" },
-            { key: "status", header: "الحالة" },
-            { key: "action", header: "التوصية" },
-          ],
-        },
-        {
-          name: "الفروع",
-          rows: branchRows as Array<Record<string, unknown>>,
-          columns: [
-            { key: "branch", header: "الفرع" },
-            { key: "campaigns", header: "الحملات", type: "number" },
-            { key: "spent", header: "الإنفاق", type: "money" },
-            { key: "gmv", header: "المبيعات", type: "money" },
-            { key: "orders", header: "الطلبات", type: "number" },
-            { key: "costPerOrder", header: "تكلفة الطلب", type: "money" },
-            { key: "roas", header: "ROAS", type: "number" },
-            { key: "breakEven", header: "خط التعادل", type: "number" },
-            { key: "profit", header: "الربح بعد الإعلان", type: "money" },
-          ],
-        },
-      ],
-      `tadqeeq-ads-roi-${result.dateFrom}`,
-    );
-  };
-
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <input
-          ref={fileInput}
-          type="file"
-          multiple
-          accept=".csv,.xlsx,.xls"
-          className="sr-only"
-          aria-label="رفع تقرير"
-          onChange={(event) => {
-            props.onFiles(event.target.files);
-            event.target.value = "";
-          }}
-        />
-        <Button type="button" variant="outline" disabled={props.reading} onClick={() => fileInput.current?.click()}>
-          {loaded.orders ? "رفع تقرير آخر" : "إضافة تقرير الطلبات أو تقرير آخر"}
-        </Button>
-        <Button type="button" variant="outline" onClick={exportAll}>
-          <FileSpreadsheet className="h-4 w-4" />
-          تصدير Excel
-        </Button>
-        <Button type="button" variant="outline" onClick={props.onClose}>
-          إغلاق
-        </Button>
-        <Button type="button" onClick={props.onSave} disabled={props.saving || Boolean(loaded.savedId)}>
-          {loaded.savedId ? "محفوظ" : props.saving ? "جارٍ الحفظ…" : "حفظ التحليل"}
-        </Button>
+      <div className="sticky top-0 z-20 -mx-1 flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-border bg-background/95 px-3 py-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="flex min-w-0 items-center gap-2 text-[13px]">
+          <span className="font-bold">نتيجة التحليل</span>
+          <span className="num text-muted-foreground">{dateRange(result.dateFrom, result.dateTo)}</span>
+          {loaded.savedId ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[11.5px] font-semibold text-success">
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+              محفوظ
+            </span>
+          ) : (
+            <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[11.5px] font-semibold text-warning">غير محفوظ</span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" size="sm" disabled={props.reading} onClick={props.onPickFiles}>
+            <Upload className="h-4 w-4" />
+            {loaded.orders ? "رفع تقرير آخر" : "إضافة تقرير الطلبات"}
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => props.onDownload("full")}>
+            <FileSpreadsheet className="h-4 w-4" />
+            تنزيل التقرير Excel
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={props.onClose}>
+            إغلاق
+          </Button>
+          <Button type="button" size="sm" onClick={props.onSave} disabled={props.saving || Boolean(loaded.savedId)}>
+            {loaded.savedId ? "محفوظ" : props.saving ? "جارٍ الحفظ…" : "حفظ التحليل"}
+          </Button>
+        </div>
       </div>
 
       <section
@@ -556,7 +568,7 @@ function AdsRoiResults(props: ResultsProps) {
         ) : (
           <span className="ms-auto rounded-lg border border-warning/30 bg-warning/10 px-3 py-1.5 text-warning">
             تقرير الطلبات غير مرفوع: الأرقام لا تشمل خصوماتك ورسوم الدفع وعرض التوصيل.{" "}
-            <button type="button" className="font-semibold underline" onClick={() => fileInput.current?.click()}>
+            <button type="button" className="font-semibold underline" onClick={props.onPickFiles}>
               أضفه
             </button>
           </span>
@@ -631,6 +643,18 @@ function AdsRoiResults(props: ResultsProps) {
             title="حملات تحتاج قراراً"
             body="مرتبة من الأكثر خسارة. الخط الرأسي في عمود ROAS هو خط التعادل."
           />
+          <div className="flex flex-wrap items-center gap-2">
+          <label className="relative">
+            <span className="sr-only">بحث في الحملات</span>
+            <Search className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="فرع أو رقم حملة"
+              className="h-9 w-44 rounded-lg border border-border bg-card ps-8 pe-2 text-[12.5px]"
+            />
+          </label>
           <div role="group" aria-label="تصفية الحملات" className="flex rounded-lg bg-muted p-0.5">
             {(
               [
@@ -653,6 +677,11 @@ function AdsRoiResults(props: ResultsProps) {
               </button>
             ))}
           </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => props.onDownload("campaigns")}>
+            <Download className="h-4 w-4" />
+            Excel
+          </Button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[920px] border-collapse text-[12.5px]">
@@ -669,7 +698,7 @@ function AdsRoiResults(props: ResultsProps) {
               {shownCampaigns.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-6 text-center text-muted-foreground">
-                    لا توجد حملات في هذا التصنيف.
+                    {needle ? "لا توجد حملة تطابق البحث." : "لا توجد حملات في هذا التصنيف."}
                   </td>
                 </tr>
               ) : (
@@ -702,6 +731,7 @@ function AdsRoiResults(props: ResultsProps) {
       <section className="panel space-y-3 p-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <SectionTitle index="04 · الفروع" title="الإعلانات حسب الفرع" body="كل حملات الفرع مجمعة." />
+          <div className="flex flex-wrap items-center gap-2">
           <label className="flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs text-muted-foreground">
             ترتيب
             <select
@@ -715,12 +745,17 @@ function AdsRoiResults(props: ResultsProps) {
               <option value="roas">ROAS</option>
             </select>
           </label>
+          <Button type="button" variant="outline" size="sm" onClick={() => props.onDownload("branches")}>
+            <Download className="h-4 w-4" />
+            Excel
+          </Button>
+          </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] border-collapse text-[12.5px]">
+          <table className="w-full min-w-[900px] border-collapse text-[12.5px]">
             <thead>
               <tr className="text-muted-foreground">
-                {["الفرع", "حملات", "الإنفاق", "المبيعات", "طلبات", "تكلفة الطلب", "ROAS", "التعادل", "الربح بعد الإعلان"].map((header) => (
+                {["الفرع", "حملات", "الإنفاق", "المبيعات", "طلبات", "تكلفة الطلب", "ROAS", "التعادل", "يبقى من كل ريال", "الربح بعد الإعلان"].map((header) => (
                   <th key={header} scope="col" className="border-b border-border px-1.5 py-2 text-start font-medium">
                     {header}
                   </th>
@@ -738,6 +773,7 @@ function AdsRoiResults(props: ResultsProps) {
                   <Cell>{branch.costPerOrder == null ? "—" : money(branch.costPerOrder)}</Cell>
                   <Cell>{ratioText(branch.roas)}</Cell>
                   <Cell>{branch.breakEvenRoas == null ? "لا يربح" : branch.breakEvenRoas.toFixed(2)}</Cell>
+                  <Cell className={branch.costs.kept <= 0 ? "text-destructive" : undefined}>{(branch.costs.kept * 100).toFixed(1)}%</Cell>
                   <Cell className={cn("font-semibold", branch.profit < 0 ? "text-destructive" : "text-success")}>{signed(branch.profit)}</Cell>
                 </tr>
               ))}
@@ -749,6 +785,7 @@ function AdsRoiResults(props: ResultsProps) {
                 <Cell plain>{count(totals.orders)}</Cell>
                 <Cell plain>{ratioText(totals.costPerOrder)}</Cell>
                 <Cell plain>{ratioText(totals.roas)}</Cell>
+                <Cell plain>—</Cell>
                 <Cell plain>—</Cell>
                 <Cell plain className={totals.profit < 0 ? "text-destructive" : "text-success"}>{signed(totals.profit)}</Cell>
               </tr>
@@ -980,7 +1017,11 @@ function CampaignRow({ campaign }: { campaign: CampaignResult }) {
       <td className="w-[190px] border-b border-border/60 px-1.5 py-2.5">
         <div className="flex items-center gap-2">
           <span className="num w-10 font-semibold">{ratioText(campaign.roas)}</span>
-          <div className="relative h-2 flex-1 rounded bg-muted" aria-hidden="true">
+          <div
+            className="relative h-2 flex-1 rounded bg-muted"
+            aria-hidden="true"
+            title={campaign.breakEvenRoas == null ? "لا يصل للتعادل بهذه التكاليف" : `خط التعادل ${campaign.breakEvenRoas.toFixed(2)}`}
+          >
             <div className={cn("absolute inset-y-0 start-0 rounded", BAR_CLASS[campaign.status])} style={{ width: `${width}%` }} />
             {tick != null ? <div className="absolute -inset-y-1 w-0.5 bg-foreground" style={{ insetInlineStart: `${tick}%` }} /> : null}
           </div>
@@ -1052,6 +1093,170 @@ function VerdictCard({ tone, title, count: total, children }: { tone: CampaignSt
         <span className="num">{total}</span> <span className="text-[15px] font-semibold">{total === 1 ? "حملة" : "حملات"}</span>
       </p>
       <p className="text-[13px] text-muted-foreground">{children}</p>
+    </div>
+  );
+}
+
+function UploadDialog({
+  state,
+  result,
+  loaded,
+  saving,
+  onClose,
+  onShow,
+  onAddFiles,
+  onDownload,
+  onSave,
+}: {
+  state: UploadDialogState | null;
+  result: AdsRoiResult | null;
+  loaded: LoadedAnalysis | null;
+  saving: boolean;
+  onClose: () => void;
+  onShow: () => void;
+  onAddFiles: () => void;
+  onDownload: () => void;
+  onSave: () => void;
+}) {
+  const busy = state?.kind === "busy";
+  const ordersCount = loaded?.orders?.stores.reduce((sum, store) => sum + store.orders, 0) ?? 0;
+  return (
+    <Dialog open={state !== null} onOpenChange={(next) => !next && !busy && onClose()}>
+      <DialogContent
+        dir="rtl"
+        className={cn("max-w-lg text-right [&>button]:left-4 [&>button]:right-auto", busy && "[&>button]:hidden")}
+        onEscapeKeyDown={(event) => busy && event.preventDefault()}
+        onInteractOutside={(event) => busy && event.preventDefault()}
+      >
+        {state?.kind === "busy" ? (
+          <div role="status" aria-live="polite" className="flex flex-col items-center gap-3 py-3 text-center">
+            <Loader2 className="size-10 animate-spin text-primary-text" aria-hidden="true" />
+            <DialogTitle className="text-base">جارٍ قراءة التقرير وتحليله</DialogTitle>
+            <DialogDescription className="text-[13px] leading-6">
+              يُقرأ الملف على جهازك، ولا تُرسل إلى الخادم إلا الأرقام المستخرجة عند الحفظ. تقرير طلبات شهر كامل يأخذ ثوانيَ قليلة.
+            </DialogDescription>
+            <ul className="w-full space-y-1 text-[12.5px] text-muted-foreground">
+              {state.files.map((name) => (
+                <li key={name} className="truncate">
+                  <FileSpreadsheet className="me-1.5 inline h-3.5 w-3.5" aria-hidden="true" />
+                  {name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : state?.kind === "error" ? (
+          <>
+            <div className="flex items-start gap-3 pt-2">
+              <AlertTriangle className="mt-0.5 size-6 shrink-0 text-destructive" aria-hidden="true" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <DialogTitle className="text-base text-destructive">تعذّر استخدام الملف</DialogTitle>
+                <DialogDescription className="text-sm leading-6 text-foreground/85">{state.message}</DialogDescription>
+                <p className="text-[12.5px] leading-6 text-muted-foreground">
+                  المطلوب: تقرير الإعلانات من بوابة هنقرستيشن (فيه Campaign ID و Spent Budget)، ومعه اختيارياً تقرير الطلبات لنفس الأيام.
+                </p>
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:justify-start">
+              <Button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onAddFiles();
+                }}
+              >
+                <Upload className="size-4" />
+                اختيار ملف آخر
+              </Button>
+              <Button type="button" variant="outline" onClick={onClose}>
+                إغلاق
+              </Button>
+            </DialogFooter>
+          </>
+        ) : state?.kind === "ready" && result && loaded ? (
+          <>
+            <div className="flex items-start gap-3 pt-2">
+              <CheckCircle2 className="mt-0.5 size-6 shrink-0 text-success" aria-hidden="true" />
+              <div className="min-w-0 flex-1 space-y-1">
+                <DialogTitle className="text-base">التحليل جاهز</DialogTitle>
+                <DialogDescription className="text-[13px] leading-6">
+                  <span className="num">{dateRange(result.dateFrom, result.dateTo)}</span> · <span className="num">{count(result.branches.length)}</span>{" "}
+                  فرعاً · <span className="num">{count(result.campaigns.length)}</span> حملة
+                </DialogDescription>
+              </div>
+            </div>
+
+            <ul className="space-y-1.5 rounded-[10px] border border-border bg-card p-3 text-[12.5px]">
+              <li className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+                <span className="font-semibold">تقرير الإعلانات</span>
+                <span className="truncate text-muted-foreground">{loaded.sourceFileName}</span>
+              </li>
+              {loaded.orders ? (
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+                  <span className="font-semibold">تقرير الطلبات</span>
+                  <span className="text-muted-foreground">
+                    <span className="num">{count(ordersCount)}</span> طلباً مكتملاً · الخصومات والرسوم محسوبة
+                  </span>
+                </li>
+              ) : (
+                <li className="flex flex-wrap items-center gap-2 text-warning">
+                  <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span>تقرير الطلبات غير مرفوع: خصوماتك ورسوم الدفع والتوصيل غير محسوبة.</span>
+                  <button type="button" className="font-semibold underline" onClick={onAddFiles}>
+                    إضافته الآن
+                  </button>
+                </li>
+              )}
+            </ul>
+
+            <div className="grid grid-cols-3 gap-2">
+              <DialogStat label="الإنفاق" value={money(result.totals.spent)} />
+              <DialogStat
+                label="الربح بعد الإعلان"
+                value={signed(result.totals.profit)}
+                tone={result.totals.profit < 0 ? "text-destructive" : "text-success"}
+              />
+              <DialogStat
+                label="حملات تخسر"
+                value={count(result.verdict.loss.campaigns)}
+                tone={result.verdict.loss.campaigns > 0 ? "text-destructive" : undefined}
+              />
+            </div>
+
+            {result.notes.missingFoodCostBrands.length > 0 || state.replacesSaved ? (
+              <ul className="space-y-1 text-[12px] leading-5 text-muted-foreground">
+                {result.notes.missingFoodCostBrands.length > 0 ? (
+                  <li>أدخل تكلفة الطعام لـ {result.notes.missingFoodCostBrands.join("، ")} في «افتراضات الحساب» ليظهر الربح الحقيقي.</li>
+                ) : null}
+                {state.replacesSaved ? <li>يوجد تحليل محفوظ لنفس الأيام؛ الحفظ سيستبدله.</li> : null}
+              </ul>
+            ) : null}
+
+            <DialogFooter className="flex-wrap gap-2 sm:justify-start">
+              <Button type="button" onClick={onShow}>
+                عرض التحليل
+              </Button>
+              <Button type="button" variant="outline" onClick={onDownload}>
+                <FileSpreadsheet className="size-4" />
+                تنزيل Excel
+              </Button>
+              <Button type="button" variant="outline" onClick={onSave} disabled={saving || Boolean(loaded.savedId)}>
+                {loaded.savedId ? "محفوظ" : saving ? "جارٍ الحفظ…" : "حفظ التحليل"}
+              </Button>
+            </DialogFooter>
+          </>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DialogStat({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  return (
+    <div className="rounded-[10px] border border-border bg-card px-3 py-2.5">
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className={cn("num mt-1 text-[15px] font-semibold", tone)}>{value}</p>
     </div>
   );
 }
