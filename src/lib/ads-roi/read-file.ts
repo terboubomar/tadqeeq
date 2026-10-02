@@ -25,10 +25,80 @@ function tableFromSheet(sheet: XLSX.WorkSheet | undefined): ReportTable {
   return { headers, rows };
 }
 
+/**
+ * Splits CSV text into records (RFC 4180: quoted fields may hold commas, quotes as "" and line
+ * breaks). Much faster than going through a workbook for large exports such as a month of orders.
+ */
+export function parseCsv(text: string): string[][] {
+  const records: string[][] = [];
+  let record: string[] = [];
+  let field = "";
+  let quoted = false;
+  let i = text.charCodeAt(0) === 0xfeff ? 1 : 0;
+  const length = text.length;
+  while (i < length) {
+    const char = text[i];
+    if (quoted) {
+      if (char === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i += 2;
+          continue;
+        }
+        quoted = false;
+        i += 1;
+        continue;
+      }
+      // Copy the run of ordinary characters in one step.
+      const next = text.indexOf('"', i);
+      const end = next === -1 ? length : next;
+      field += text.slice(i, end);
+      i = end;
+      continue;
+    }
+    if (char === '"') {
+      quoted = true;
+      i += 1;
+    } else if (char === ",") {
+      record.push(field);
+      field = "";
+      i += 1;
+    } else if (char === "\n" || char === "\r") {
+      record.push(field);
+      field = "";
+      records.push(record);
+      record = [];
+      i += char === "\r" && text[i + 1] === "\n" ? 2 : 1;
+    } else {
+      let end = i + 1;
+      while (end < length) {
+        const c = text[end];
+        if (c === "," || c === "\n" || c === "\r" || c === '"') break;
+        end += 1;
+      }
+      field += text.slice(i, end);
+      i = end;
+    }
+  }
+  if (field !== "" || record.length > 0) {
+    record.push(field);
+    records.push(record);
+  }
+  return records.filter((row) => row.length > 1 || (row[0] ?? "").trim() !== "");
+}
+
 /** CSV text → rows of text values. Every cell stays a string, so IDs and "38;57" survive as written. */
 export function readCsvText(text: string): ReportTable {
-  const workbook = XLSX.read(text.replace(/^\uFEFF/, ""), { type: "string", raw: true });
-  return tableFromSheet(workbook.Sheets[workbook.SheetNames[0] ?? ""]);
+  const [headerRow = [], ...body] = parseCsv(text);
+  const headers = headerRow.map((value) => value.replace(/^\uFEFF/, "").trim());
+  const rows = body.map((values) => {
+    const row: ReportRow = {};
+    headers.forEach((header, index) => {
+      row[header] = values[index] ?? "";
+    });
+    return row;
+  });
+  return { headers, rows };
 }
 
 /** Excel workbook → rows of the first sheet, values as displayed text. */

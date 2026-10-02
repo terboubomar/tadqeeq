@@ -383,7 +383,7 @@ function UploadArea({ reading, onFiles }: { reading: boolean; onFiles: (files: F
             <span className="rounded-full bg-foreground px-2 py-0.5 text-[11px] font-semibold text-background">مطلوب</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            الإنفاق والنقرات والطلبات والمبيعات لكل حملة. يكفي وحده لحساب ROAS والربح قبل تكلفة عرض التوصيل.
+            الإنفاق والنقرات والطلبات والمبيعات لكل حملة. يكفي وحده لحساب ROAS والربح بعد الضريبة والعمولة وتكلفة الطعام.
           </p>
           <p className="text-[11.5px] text-muted-foreground">Campaign ID · Clicks · Total Orders · Total GMV · Spent Budget</p>
         </div>
@@ -393,7 +393,7 @@ function UploadArea({ reading, onFiles }: { reading: boolean; onFiles: (files: F
             <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">اختياري</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            لنفس الأيام. يضيف تكلفة عرض التوصيل (Operational Charges) والعمولة الفعلية لكل فرع، فيصبح الربح دقيقاً.
+            لنفس الأيام. يضيف خصوماتك (Discount Funded by you) ورسوم الدفع وعرض التوصيل (Operational Charges) والعمولة الفعلية لكل فرع، فيصبح الربح دقيقاً.
           </p>
           <p className="text-[11.5px] text-muted-foreground">Order ID · Subtotal · Commission · Operational Charges</p>
         </div>
@@ -435,7 +435,7 @@ function AdsRoiResults(props: ResultsProps) {
     return a.profit - b.profit;
   });
   const best = [...result.campaigns].sort((a, b) => b.profit - a.profit)[0];
-  const profitLabel = notes.deliveryOfferIncluded ? "بعد عرض التوصيل" : "قبل تكلفة عرض التوصيل";
+  const profitLabel = notes.ordersIncluded ? "بعد الخصومات والرسوم" : "قبل خصوماتك ورسوم الدفع والتوصيل";
   const foodNote = notes.missingFoodCostBrands.length > 0 ? " · بعض العلامات بلا تكلفة طعام" : "";
 
   const exportAll = () => {
@@ -543,7 +543,7 @@ function AdsRoiResults(props: ResultsProps) {
           تقرير الإعلانات
         </span>
         <span>
-          {result.days === 1 ? "اليوم" : `${result.days} أيام`} <span className="num">{dateRange(result.dateFrom, result.dateTo)}</span>
+          {result.days === 1 ? "اليوم" : result.days === 2 ? "يومان" : result.days <= 10 ? `${result.days} أيام` : `${result.days} يوماً`} <span className="num">{dateRange(result.dateFrom, result.dateTo)}</span>
         </span>
         <span>
           <span className="num">{count(result.branches.length)}</span> فرعاً · <span className="num">{count(result.campaigns.length)}</span> حملة
@@ -551,11 +551,11 @@ function AdsRoiResults(props: ResultsProps) {
         {loaded.orders ? (
           <span className="flex items-center gap-2 font-semibold text-foreground">
             <CheckCircle2 className="h-4 w-4 text-success" aria-hidden="true" />
-            تقرير الطلبات · عرض التوصيل محسوب
+            تقرير الطلبات · الخصومات والرسوم محسوبة
           </span>
         ) : (
           <span className="ms-auto rounded-lg border border-warning/30 bg-warning/10 px-3 py-1.5 text-warning">
-            تقرير الطلبات غير مرفوع: الأرقام قبل تكلفة عرض التوصيل.{" "}
+            تقرير الطلبات غير مرفوع: الأرقام لا تشمل خصوماتك ورسوم الدفع وعرض التوصيل.{" "}
             <button type="button" className="font-semibold underline" onClick={() => fileInput.current?.click()}>
               أضفه
             </button>
@@ -608,7 +608,7 @@ function AdsRoiResults(props: ResultsProps) {
           )}
         </VerdictCard>
         <VerdictCard tone="thin" title="قريبة من التعادل" count={verdict.thin.campaigns}>
-          ROAS أقل من ضعف خط التعادل. تربح قليلاً الآن، وأي ارتفاع في تكلفة النقرة أو عرض التوصيل يقلبها خسارة.
+          ROAS أقل من ضعف خط التعادل. تربح قليلاً الآن، وأي ارتفاع في تكلفة النقرة أو الخصومات يقلبها خسارة.
         </VerdictCard>
         <VerdictCard tone="profit" title="رابحة" count={verdict.profit.campaigns}>
           {best && best.profit > 0 ? (
@@ -769,7 +769,7 @@ function AdsRoiResults(props: ResultsProps) {
             ) : null}
             {notes.ordersNotSplit.length > 0 ? (
               <li>
-                عدد الطلبات غير مفصول لكل حملة في: {notes.ordersNotSplit.join("، ")}. وُزّعت الطلبات على الحملات حسب مبيعاتها.
+                عدد الطلبات غير مفصول لكل حملة في بعض أيام: {notes.ordersNotSplit.join("، ")}. وُزّعت طلبات تلك الأيام على الحملات حسب مبيعاتها (≈).
               </li>
             ) : null}
             {notes.ordersMissing.length > 0 ? (
@@ -777,7 +777,7 @@ function AdsRoiResults(props: ResultsProps) {
             ) : null}
             {notes.packedRows > 0 ? (
               <li>
-                <span className="num">{notes.packedRows}</span> فروع لها أكثر من حملة في سطر واحد بقيم مفصولة بـ «;» وتم فصلها.
+                <span className="num">{notes.packedRows}</span> سطراً في الملف فيها أكثر من حملة بقيم مفصولة بـ «;» وتم فصلها.
               </li>
             ) : null}
             {notes.defaultCommissionBrands.length > 0 ? (
@@ -786,17 +786,28 @@ function AdsRoiResults(props: ResultsProps) {
             {notes.missingFoodCostBrands.length > 0 ? (
               <li>لا توجد تكلفة طعام لـ {notes.missingFoodCostBrands.join("، ")}؛ ربحها محسوب قبل تكلفة الطعام.</li>
             ) : null}
-            {!notes.deliveryOfferIncluded ? <li>تكلفة عرض التوصيل غير محسوبة. ارفع تقرير الطلبات لنفس الأيام لإضافتها.</li> : null}
+            {!notes.ordersIncluded ? (
+              <li>خصوماتك ورسوم الدفع وعرض التوصيل غير محسوبة. ارفع تقرير الطلبات لنفس الأيام لإضافتها.</li>
+            ) : null}
+            {notes.ordersPeriodDiffers ? (
+              <li>تقرير الطلبات يغطي أياماً مختلفة عن تقرير الإعلانات؛ النسب محسوبة من كل أيامه.</li>
+            ) : null}
+            {notes.branchesWithoutOrders.length > 0 ? (
+              <li>
+                لا توجد طلبات في تقرير الطلبات لـ: {notes.branchesWithoutOrders.join("، ")}. استُخدم متوسط العلامة أو افتراضات الحساب.
+              </li>
+            ) : null}
           </ul>
         </div>
         <div className="panel space-y-2.5 p-5">
           <p className="text-[11px] font-semibold text-primary-text">الصيغ المستخدمة</p>
           <div className="space-y-1.5 text-[12.5px]">
             <p>ROAS = المبيعات من الإعلان ÷ الإنفاق</p>
-            <p>ما يبقى من كل ريال = 1 ÷ 1.15 − العمولة − تكلفة الطعام ÷ 1.15</p>
-            <p>خط التعادل = 1 ÷ (ما يبقى من كل ريال − عرض التوصيل للطلب ÷ متوسط الطلب)</p>
-            <p>الربح بعد الإعلان = المبيعات × ما يبقى من كل ريال − عرض التوصيل × الطلبات − الإنفاق</p>
-            <p className="text-muted-foreground">المبالغ في تقارير هنقرستيشن شاملة الضريبة. المبيعات من الإعلان ليست كلها إضافية؛ بعض العملاء كانوا سيطلبون بدونه.</p>
+            <p>ما يبقى من كل ريال = 1 − خصمك − الضريبة على المدفوع − العمولة − رسوم الدفع − عرض التوصيل − رسوم أخرى − تكلفة الطعام ÷ 1.15</p>
+            <p>كل نسبة = مجموعها في تقرير الطلبات ÷ مجموع Subtotal للفرع</p>
+            <p>خط التعادل = 1 ÷ ما يبقى من كل ريال</p>
+            <p>الربح بعد الإعلان = المبيعات × ما يبقى من كل ريال − الإنفاق</p>
+            <p className="text-muted-foreground">المبالغ في تقارير هنقرستيشن شاملة الضريبة، ومبيعات الإعلان (Total GMV) بسعر القائمة قبل خصمك مثل Subtotal. المبيعات من الإعلان ليست كلها إضافية؛ بعض العملاء كانوا سيطلبون بدونه.</p>
           </div>
         </div>
       </section>
@@ -807,18 +818,23 @@ function AdsRoiResults(props: ResultsProps) {
 function BreakEvenSection(props: ResultsProps) {
   const { result, settings, draft, setDraft } = props;
   const reference = result.brands.length > 0 ? [...result.brands].sort((a, b) => (a.breakEvenRoas ?? 99) - (b.breakEvenRoas ?? 99))[0]! : null;
-  const commissionPct = reference ? reference.commissionRate * 100 : 0;
-  const foodPct = reference?.foodCostRate != null ? (reference.foodCostRate * 100) / 1.15 : 0;
-  const vatPct = 100 - 100 / 1.15;
-  const keptPct = Math.max(0, 100 - vatPct - commissionPct - foodPct);
-  const segments = [
-    { label: "ضريبة القيمة المضافة 15%", value: vatPct, className: "bg-[#D9CFBD] text-foreground" },
-    { label: `عمولة المنصة ${(commissionPct).toFixed(0)}%`, value: commissionPct, className: "bg-[#A9B5B8] text-foreground" },
-    ...(reference?.foodCostRate != null
-      ? [{ label: `تكلفة الطعام ${(reference.foodCostRate * 100).toFixed(0)}%`, value: foodPct, className: "bg-[#6E7F84] text-white" }]
-      : []),
-    { label: "يبقى لتغطية الإعلان", value: keptPct, className: "bg-foreground text-primary" },
-  ];
+  const costs = reference?.costs;
+  const pct = (value: number | undefined) => Math.max(0, (value ?? 0) * 100);
+  const otherPlatform = costs ? costs.paymentFee + costs.deliveryOffer + costs.otherFees : 0;
+  const segments = costs
+    ? [
+        ...(costs.discount > 0 ? [{ label: `خصمك ${pct(costs.discount).toFixed(1)}%`, value: pct(costs.discount), className: "bg-[#EBD3A8] text-foreground" }] : []),
+        { label: "ضريبة القيمة المضافة", value: pct(costs.vat), className: "bg-[#D9CFBD] text-foreground" },
+        { label: `عمولة المنصة ${pct(costs.commission).toFixed(1)}%`, value: pct(costs.commission), className: "bg-[#A9B5B8] text-foreground" },
+        ...(otherPlatform > 0
+          ? [{ label: "رسوم الدفع وعرض التوصيل ورسوم أخرى", value: pct(otherPlatform), className: "bg-[#8C9A9E] text-white" }]
+          : []),
+        ...(reference?.foodCostRate != null
+          ? [{ label: `تكلفة الطعام ${(reference.foodCostRate * 100).toFixed(0)}%`, value: pct(costs.foodCost), className: "bg-[#6E7F84] text-white" }]
+          : []),
+        { label: "يبقى لتغطية الإعلان", value: pct(costs.kept), className: "bg-foreground text-primary" },
+      ]
+    : [];
   const dirty = Object.keys(draft).length > 0;
 
   const valueFor = (key: string, field: "commission" | "foodCost") =>
@@ -838,7 +854,7 @@ function BreakEvenSection(props: ResultsProps) {
           title="من كل 100 ر.س مبيعات من الإعلان، كم يبقى لك؟"
           body={
             reference && reference.breakEvenRoas != null
-              ? `ما يبقى هو ما يغطي تكلفة الإعلان. لذلك يحتاج إعلان ${reference.brand} ROAS أعلى من ${reference.breakEvenRoas.toFixed(2)} حتى لا يخسر${result.notes.deliveryOfferIncluded ? "، قبل احتساب عرض التوصيل الذي يختلف لكل فرع." : "."}`
+              ? `ما يبقى هو ما يغطي تكلفة الإعلان. لذلك يحتاج إعلان ${reference.brand} ROAS أعلى من ${reference.breakEvenRoas.toFixed(2)} حتى لا يخسر${result.notes.ordersIncluded ? "، والنسب تختلف قليلاً من فرع لآخر." : "."}`
               : "لا يبقى شيء لتغطية الإعلان بهذه الافتراضات."
           }
         />
@@ -857,9 +873,9 @@ function BreakEvenSection(props: ResultsProps) {
             </span>
           ))}
         </div>
-        {!result.notes.deliveryOfferIncluded ? (
+        {!result.notes.ordersIncluded ? (
           <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-xs text-warning">
-            عرض التوصيل غير محسوب بعد. هو أكبر تكلفة لكل طلب، وسيرفع خط التعادل كثيراً. ارفع تقرير الطلبات لنفس الأيام ليُضاف تلقائياً.
+            خصوماتك ورسوم الدفع وعرض التوصيل غير محسوبة بعد، وهي ترفع خط التعادل. ارفع تقرير الطلبات لنفس الأيام لتُضاف تلقائياً.
           </p>
         ) : null}
       </div>
@@ -888,7 +904,7 @@ function BreakEvenSection(props: ResultsProps) {
                   <tr key={key}>
                     <td className="border-b border-border/60 py-2 font-semibold">{brand.brand}</td>
                     <td className="border-b border-border/60 py-2">
-                      {brand.commissionSource === "orders" ? (
+                      {brand.costSource === "orders" || brand.costSource === "brand_orders" ? (
                         <span>
                           <span className="num">{(brand.commissionRate * 100).toFixed(1)}</span>{" "}
                           <span className="text-[11px] text-success">من تقرير الطلبات</span>
@@ -957,7 +973,7 @@ function CampaignRow({ campaign }: { campaign: CampaignResult }) {
         <div className="num text-[11px] text-muted-foreground">…{campaign.campaignId.slice(-6)}</div>
       </td>
       <Cell>{count(campaign.clicks)}</Cell>
-      <Cell>{campaign.orders == null ? "—" : count(campaign.orders)}</Cell>
+      <Cell>{campaign.orders == null ? "—" : (campaign.ordersEstimated ? "≈" : "") + count(campaign.orders)}</Cell>
       <Cell>{money(campaign.spent)}</Cell>
       <Cell className={campaign.expensiveClicks ? "font-semibold text-destructive" : undefined}>{ratioText(campaign.cpc)}</Cell>
       <Cell>{money(campaign.gmv)}</Cell>
