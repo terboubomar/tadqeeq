@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Loader2, Search, Trash2, Upload } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Loader2, Search, Trash2, Upload } from "lucide-react";
 import { useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -10,6 +10,7 @@ import {
   brandKey,
   type AdsRoiResult,
   type BrandSettings,
+  type BudgetShift,
   type CampaignAction,
   type CampaignResult,
   type CampaignStatus,
@@ -432,44 +433,28 @@ function UploadArea({ reading, onFiles }: { reading: boolean; onFiles: (files: F
       </label>
       <ol className="grid gap-3 text-[12.5px] sm:grid-cols-3">
         {[
-          ["صدّر تقرير الإعلانات", "من بوابة هنقرستيشن لليوم أو الشهر الذي تريده."],
-          ["أضف تقرير الطلبات", "لنفس الأيام، ليُحسب خصمك ورسوم الدفع وعرض التوصيل."],
-          ["راجع وقرّر", "أوقف الحملات الخاسرة، ونزّل التقرير Excel لفريقك."],
-        ].map(([title, body], index) => (
+          ["تقرير الإعلانات", "من بوابة هنقرستيشن.", "مطلوب"],
+          ["تقرير الطلبات", "لنفس الأيام، لحساب خصمك والرسوم.", "اختياري"],
+          ["راجع وقرّر", "أوقف الخاسر، ونزّل التقرير Excel.", ""],
+        ].map(([title, body, badge], index) => (
           <li key={title} className="flex items-start gap-2.5 rounded-[12px] bg-muted/50 p-3">
             <span className="num grid h-6 w-6 shrink-0 place-items-center rounded-full bg-foreground text-[12px] font-semibold text-background">
               {index + 1}
             </span>
             <span>
-              <span className="block font-bold">{title}</span>
+              <span className="flex items-center gap-2 font-bold">
+                {title}
+                {badge ? (
+                  <span className={cn("rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold", badge === "مطلوب" ? "bg-foreground text-background" : "bg-card text-muted-foreground")}>
+                    {badge}
+                  </span>
+                ) : null}
+              </span>
               <span className="text-muted-foreground">{body}</span>
             </span>
           </li>
         ))}
       </ol>
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-1.5 rounded-[12px] border border-border p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-[13.5px] font-bold">تقرير الإعلانات</span>
-            <span className="rounded-full bg-foreground px-2 py-0.5 text-[11px] font-semibold text-background">مطلوب</span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            الإنفاق والنقرات والطلبات والمبيعات لكل حملة. يكفي وحده لحساب ROAS والربح بعد الضريبة والعمولة وتكلفة الطعام.
-          </p>
-          <p className="text-[11.5px] text-muted-foreground">Campaign ID · Clicks · Total Orders · Total GMV · Spent Budget</p>
-        </div>
-        <div className="space-y-1.5 rounded-[12px] border border-border p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-[13.5px] font-bold">تقرير الطلبات</span>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">اختياري</span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            لنفس الأيام. يضيف خصوماتك (Discount Funded by you) ورسوم الدفع وعرض التوصيل (Operational Charges) والعمولة الفعلية لكل فرع، فيصبح الربح دقيقاً.
-          </p>
-          <p className="text-[11.5px] text-muted-foreground">Order ID · Subtotal · Commission · Operational Charges</p>
-        </div>
-      </div>
-      <p className="text-xs text-muted-foreground">يُحفظ التحليل والأرقام المستخرجة فقط عند الضغط على «حفظ التحليل»، ويمكن حذفه في أي وقت.</p>
     </section>
   );
 }
@@ -567,7 +552,7 @@ function AdsRoiResults(props: ResultsProps) {
           </span>
         ) : (
           <span className="ms-auto rounded-lg border border-warning/30 bg-warning/10 px-3 py-1.5 text-warning">
-            تقرير الطلبات غير مرفوع: الأرقام لا تشمل خصوماتك ورسوم الدفع وعرض التوصيل.{" "}
+            بدون تقرير الطلبات: خصوماتك والرسوم غير محسوبة.{" "}
             <button type="button" className="font-semibold underline" onClick={props.onPickFiles}>
               أضفه
             </button>
@@ -610,26 +595,25 @@ function AdsRoiResults(props: ResultsProps) {
       <section aria-label="الحكم" className="grid gap-4 md:grid-cols-3">
         <VerdictCard tone="loss" title="تخسر" count={verdict.loss.campaigns}>
           {verdict.loss.campaigns === 0 ? (
-            "لا توجد حملة تخسر بعد احتساب التكاليف."
+            "لا توجد حملات خاسرة."
           ) : (
             <>
-              صرفت <span className="num">{money(verdict.loss.spent)}</span> ر.س وخسرت{" "}
-              <span className="num font-semibold text-destructive">{money(Math.abs(verdict.loss.profit))}</span> ر.س بعد احتساب التكاليف.
-              إيقافها يوفر هذا المبلغ عن كل فترة مماثلة.
+              خسارة <span className="num font-semibold text-destructive">{money(Math.abs(verdict.loss.profit))}</span> ر.س من إنفاق{" "}
+              <span className="num">{money(verdict.loss.spent)}</span>
             </>
           )}
         </VerdictCard>
         <VerdictCard tone="thin" title="قريبة من التعادل" count={verdict.thin.campaigns}>
-          ROAS أقل من ضعف خط التعادل. تربح قليلاً الآن، وأي ارتفاع في تكلفة النقرة أو الخصومات يقلبها خسارة.
+          ربحها ضعيف، وأي زيادة في التكلفة تقلبها خسارة.
         </VerdictCard>
         <VerdictCard tone="profit" title="رابحة" count={verdict.profit.campaigns}>
           {best && best.profit > 0 ? (
             <>
-              أفضلها <span className="font-semibold text-foreground">{best.branchName}</span> بربح{" "}
-              <span className="num">{money(best.profit)}</span> ر.س من إنفاق <span className="num">{money(best.spent)}</span>.
+              الأفضل: <span className="font-semibold text-foreground">{best.branchName}</span>{" "}
+              <span className="num text-success">+{money(best.profit)}</span>
             </>
           ) : (
-            "لا توجد حملة رابحة بوضوح."
+            "لا توجد حملات رابحة بوضوح."
           )}
         </VerdictCard>
       </section>
@@ -641,7 +625,7 @@ function AdsRoiResults(props: ResultsProps) {
           <SectionTitle
             index="02 · الحملات"
             title="حملات تحتاج قراراً"
-            body="مرتبة من الأكثر خسارة. الخط الرأسي في عمود ROAS هو خط التعادل."
+            body="الخط في عمود ROAS = خط التعادل."
           />
           <div className="flex flex-wrap items-center gap-2">
           <label className="relative">
@@ -709,28 +693,11 @@ function AdsRoiResults(props: ResultsProps) {
         </div>
       </section>
 
-      {result.shifts.length > 0 ? (
-        <section className="panel space-y-3 p-5">
-          <SectionTitle
-            index="03 · نقل الميزانية"
-            title="في نفس الفرع، الحملة التي تصرف أكثر هي الأضعف"
-            body="جرّب نقل جزء من ميزانية الحملة الضعيفة إلى القوية، وراقب النتيجة أسبوعاً قبل تعميمها."
-          />
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {result.shifts.map((shift) => (
-              <div key={shift.restaurantId} className="space-y-2.5 rounded-[12px] border border-border p-3.5">
-                <div className="text-[13.5px] font-bold">{shift.branchName}</div>
-                <ShiftLine label="ضعيفة" tone="text-destructive" campaign={shift.weak} />
-                <ShiftLine label="قوية" tone="text-success" campaign={shift.strong} />
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      {result.shifts.length > 0 ? <BudgetShifts shifts={result.shifts} /> : null}
 
       <section className="panel space-y-3 p-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <SectionTitle index="04 · الفروع" title="الإعلانات حسب الفرع" body="كل حملات الفرع مجمعة." />
+          <SectionTitle index="04 · الفروع" title="الإعلانات حسب الفرع" />
           <div className="flex flex-wrap items-center gap-2">
           <label className="flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs text-muted-foreground">
             ترتيب
@@ -794,9 +761,11 @@ function AdsRoiResults(props: ResultsProps) {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
-        <div className="panel space-y-2.5 p-5">
-          <p className="text-[11px] font-semibold text-primary-text">05 · ملاحظات على الملف</p>
+      <details className="panel group p-5">
+        <summary className="cursor-pointer text-[13px] font-semibold">كيف حسبنا الأرقام؟ وملاحظات على الملف</summary>
+        <div className="mt-4 grid gap-6 md:grid-cols-2">
+        <div className="space-y-2.5">
+          <p className="text-[11px] font-semibold text-primary-text">ملاحظات على الملف</p>
           <ul className="list-disc space-y-2 ps-5 text-[12.5px]">
             {notes.platformRoasMismatches > 0 ? (
               <li>
@@ -836,7 +805,7 @@ function AdsRoiResults(props: ResultsProps) {
             ) : null}
           </ul>
         </div>
-        <div className="panel space-y-2.5 p-5">
+        <div className="space-y-2.5">
           <p className="text-[11px] font-semibold text-primary-text">الصيغ المستخدمة</p>
           <div className="space-y-1.5 text-[12.5px]">
             <p>ROAS = المبيعات من الإعلان ÷ الإنفاق</p>
@@ -847,7 +816,8 @@ function AdsRoiResults(props: ResultsProps) {
             <p className="text-muted-foreground">المبالغ في تقارير هنقرستيشن شاملة الضريبة، ومبيعات الإعلان (Total GMV) بسعر القائمة قبل خصمك مثل Subtotal. المبيعات من الإعلان ليست كلها إضافية؛ بعض العملاء كانوا سيطلبون بدونه.</p>
           </div>
         </div>
-      </section>
+        </div>
+      </details>
     </div>
   );
 }
@@ -891,7 +861,7 @@ function BreakEvenSection(props: ResultsProps) {
           title="من كل 100 ر.س مبيعات من الإعلان، كم يبقى لك؟"
           body={
             reference && reference.breakEvenRoas != null
-              ? `ما يبقى هو ما يغطي تكلفة الإعلان. لذلك يحتاج إعلان ${reference.brand} ROAS أعلى من ${reference.breakEvenRoas.toFixed(2)} حتى لا يخسر${result.notes.ordersIncluded ? "، والنسب تختلف قليلاً من فرع لآخر." : "."}`
+              ? `أي حملة ROAS أقل من ${reference.breakEvenRoas.toFixed(2)} تخسر.`
               : "لا يبقى شيء لتغطية الإعلان بهذه الافتراضات."
           }
         />
@@ -912,7 +882,7 @@ function BreakEvenSection(props: ResultsProps) {
         </div>
         {!result.notes.ordersIncluded ? (
           <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-xs text-warning">
-            خصوماتك ورسوم الدفع وعرض التوصيل غير محسوبة بعد، وهي ترفع خط التعادل. ارفع تقرير الطلبات لنفس الأيام لتُضاف تلقائياً.
+            خصوماتك والرسوم غير محسوبة بعد. ارفع تقرير الطلبات لإضافتها.
           </p>
         ) : null}
       </div>
@@ -973,7 +943,7 @@ function BreakEvenSection(props: ResultsProps) {
           </table>
         </div>
         <p className="text-[11.5px] text-muted-foreground">
-          العمولة من تقرير الطلبات إن رُفع، وإلا من هذا الجدول (15% إن تُرك فارغاً). تكلفة الطعام نسبة من السعر قبل الضريبة، وتُحفظ لكل علامة.
+          تكلفة الطعام % من السعر قبل الضريبة.
         </p>
       </div>
     </section>
@@ -1039,19 +1009,6 @@ function CampaignRow({ campaign }: { campaign: CampaignResult }) {
   );
 }
 
-function ShiftLine({ label, tone, campaign }: { label: string; tone: string; campaign: CampaignResult }) {
-  return (
-    <div className="flex items-baseline justify-between gap-2 text-xs">
-      <span className={tone}>
-        {label} <span className="num">…{campaign.campaignId.slice(-6)}</span>
-      </span>
-      <span>
-        <span className="num">{money(campaign.spent)}</span> ر.س · ROAS <span className="num font-semibold">{ratioText(campaign.roas)}</span>
-      </span>
-    </div>
-  );
-}
-
 function Cell({ children, className, plain }: { children: ReactNode; className?: string; plain?: boolean }) {
   return (
     <td className={cn("px-1.5 py-2.5", !plain && "border-b border-border/60", className)}>
@@ -1070,12 +1027,12 @@ function Kpi({ label, value, hint }: { label: string; value: string; hint: React
   );
 }
 
-function SectionTitle({ index, title, body }: { index: string; title: string; body: string }) {
+function SectionTitle({ index, title, body }: { index: string; title: string; body?: string }) {
   return (
     <div>
       <p className="text-[11px] font-semibold text-primary-text">{index}</p>
       <h2 className="mt-0.5 text-base font-bold">{title}</h2>
-      <p className="mt-0.5 text-xs text-muted-foreground">{body}</p>
+      {body ? <p className="mt-0.5 text-xs text-muted-foreground">{body}</p> : null}
     </div>
   );
 }
@@ -1133,7 +1090,7 @@ function UploadDialog({
             <Loader2 className="size-10 animate-spin text-primary-text" aria-hidden="true" />
             <DialogTitle className="text-base">جارٍ قراءة التقرير وتحليله</DialogTitle>
             <DialogDescription className="text-[13px] leading-6">
-              يُقرأ الملف على جهازك، ولا تُرسل إلى الخادم إلا الأرقام المستخرجة عند الحفظ. تقرير طلبات شهر كامل يأخذ ثوانيَ قليلة.
+              يأخذ ثوانيَ قليلة.
             </DialogDescription>
             <ul className="w-full space-y-1 text-[12.5px] text-muted-foreground">
               {state.files.map((name) => (
@@ -1152,7 +1109,7 @@ function UploadDialog({
                 <DialogTitle className="text-base text-destructive">تعذّر استخدام الملف</DialogTitle>
                 <DialogDescription className="text-sm leading-6 text-foreground/85">{state.message}</DialogDescription>
                 <p className="text-[12.5px] leading-6 text-muted-foreground">
-                  المطلوب: تقرير الإعلانات من بوابة هنقرستيشن (فيه Campaign ID و Spent Budget)، ومعه اختيارياً تقرير الطلبات لنفس الأيام.
+                  المطلوب: تقرير الإعلانات من بوابة هنقرستيشن.
                 </p>
               </div>
             </div>
@@ -1202,7 +1159,7 @@ function UploadDialog({
               ) : (
                 <li className="flex flex-wrap items-center gap-2 text-warning">
                   <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  <span>تقرير الطلبات غير مرفوع: خصوماتك ورسوم الدفع والتوصيل غير محسوبة.</span>
+                  <span>بدون تقرير الطلبات: خصوماتك والرسوم غير محسوبة.</span>
                   <button type="button" className="font-semibold underline" onClick={onAddFiles}>
                     إضافته الآن
                   </button>
@@ -1227,7 +1184,7 @@ function UploadDialog({
             {result.notes.missingFoodCostBrands.length > 0 || state.replacesSaved ? (
               <ul className="space-y-1 text-[12px] leading-5 text-muted-foreground">
                 {result.notes.missingFoodCostBrands.length > 0 ? (
-                  <li>أدخل تكلفة الطعام لـ {result.notes.missingFoodCostBrands.join("، ")} في «افتراضات الحساب» ليظهر الربح الحقيقي.</li>
+                  <li>أدخل تكلفة الطعام لـ {result.notes.missingFoodCostBrands.join("، ")} ليظهر الربح الحقيقي.</li>
                 ) : null}
                 {state.replacesSaved ? <li>يوجد تحليل محفوظ لنفس الأيام؛ الحفظ سيستبدله.</li> : null}
               </ul>
@@ -1258,5 +1215,52 @@ function DialogStat({ label, value, tone }: { label: string; value: string; tone
       <p className="text-[11px] text-muted-foreground">{label}</p>
       <p className={cn("num mt-1 text-[15px] font-semibold", tone)}>{value}</p>
     </div>
+  );
+}
+
+function BudgetShifts({ shifts }: { shifts: BudgetShift[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? shifts : shifts.slice(0, 4);
+  return (
+    <section className="panel space-y-3 p-5">
+      <SectionTitle index="03 · نقل الميزانية" title="انقل الميزانية إلى الحملة الأقوى" body="في هذه الفروع الحملة الأضعف تصرف أكثر." />
+      <div className="hidden grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_1.5rem_minmax(0,1fr)] gap-x-4 border-b border-border pb-2 text-[11.5px] text-muted-foreground sm:grid">
+        <span>الفرع</span>
+        <span>الأضعف · ROAS والإنفاق</span>
+        <span />
+        <span>الأقوى · ROAS والإنفاق</span>
+      </div>
+      <ul className="divide-y divide-border/70">
+        {shown.map((shift) => (
+          <li
+            key={shift.restaurantId}
+            className="flex flex-col gap-2 py-3 sm:grid sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_1.5rem_minmax(0,1fr)] sm:items-center sm:gap-x-4"
+          >
+            <span className="text-[13.5px] font-bold">{shift.branchName}</span>
+            <div className="flex items-center gap-4 sm:contents">
+              <ShiftRoas tone="weak" campaign={shift.weak} />
+              <ArrowLeft className="h-4 w-4 shrink-0 text-muted-foreground" aria-label="إلى" />
+              <ShiftRoas tone="strong" campaign={shift.strong} />
+            </div>
+          </li>
+        ))}
+      </ul>
+      {shifts.length > 4 ? (
+        <button type="button" onClick={() => setExpanded(!expanded)} className="text-[12.5px] font-semibold text-primary-text underline">
+          {expanded ? "عرض أقل" : `عرض الكل (${shifts.length})`}
+        </button>
+      ) : null}
+    </section>
+  );
+}
+
+function ShiftRoas({ tone, campaign }: { tone: "weak" | "strong"; campaign: CampaignResult }) {
+  return (
+    <span className="flex items-baseline gap-2" title={`الحملة …${campaign.campaignId.slice(-6)}`}>
+      <span className={cn("num text-[17px] font-bold", tone === "weak" ? "text-destructive" : "text-success")}>
+        {ratioText(campaign.roas)}
+      </span>
+      <span className="num text-[12px] text-muted-foreground">{money(campaign.spent)}</span>
+    </span>
   );
 }
