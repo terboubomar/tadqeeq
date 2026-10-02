@@ -18,6 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/AppShell";
+import { AdsRoiPanel } from "@/components/ads-roi/AdsRoiPanel";
 import { StatCard } from "@/components/StatCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,16 +43,42 @@ import { useSelectedPeriod } from "@/lib/use-period";
 export const Route = createFileRoute("/_authenticated/promotions")({
   head: () => ({
     meta: [
-      { title: "تحليل العروض و True ROI · تدقيق" },
+      { title: "عائد الإعلانات الحقيقي · تدقيق" },
       {
         name: "description",
         content:
-          "قياس الأثر المالي الحقيقي للعروض والإعلانات مع فصل تمويل المطعم والمنصة.",
+          "ارفع تقرير إعلانات هنقرستيشن لمعرفة الربح الحقيقي لكل حملة وفرع بعد الضريبة والعمولة وتكلفة الطعام وعرض التوصيل.",
       },
     ],
   }),
-  component: PromotionAuditPage,
+  component: PromotionsPage,
 });
+
+function PromotionsPage() {
+  return (
+    <div className="space-y-6">
+      <header>
+        <p className="text-xs font-semibold text-primary-text">تحليل الإعلانات · هنقرستيشن</p>
+        <h1 className="audit-heading">عائد الإعلانات الحقيقي</h1>
+        <p className="audit-subtitle">
+          ارفع تقرير الإعلانات من بوابة هنقرستيشن: كم صرفت، كم جاب الإعلان، وكم بقي لك بعد الضريبة والعمولة وتكلفة الطعام وعرض التوصيل.
+        </p>
+      </header>
+
+      <AdsRoiPanel />
+
+      <details className="group rounded-[14px] border border-border bg-card px-5 py-4">
+        <summary className="cursor-pointer text-[13.5px] font-bold">إدخال يدوي لحملة خارج هنقرستيشن</summary>
+        <p className="mt-1 text-xs text-muted-foreground">
+          لحملات كيتا وجاهز أو أي عرض لا يوجد له تقرير. مرتبط بفترة التدقيق المختارة.
+        </p>
+        <div className="mt-5">
+          <PromotionAuditPage />
+        </div>
+      </details>
+    </div>
+  );
+}
 
 interface PromotionFormState {
   id?: string;
@@ -266,7 +293,7 @@ function PromotionAuditPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="audit-heading">تحليل العروض و True ROI</h1>
+        <h2 className="text-base font-bold">تحليل العروض و True ROI</h2>
         <p className="audit-subtitle">
           {selected.label} · قياس الزيادة الحقيقية والمساهمة بعد الخصومات
           والإعلانات ورسوم المنصة و COGS.
