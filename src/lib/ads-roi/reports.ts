@@ -180,6 +180,10 @@ export interface StoreOrderStats {
   commission: number;
   operationalCharges: number;
   restaurantDiscounts: number;
+  /** Online payment fees. Optional: analyses saved before this field existed lack it. */
+  paymentFees?: number;
+  /** Wait-time, ads, marketing and avoidable-cancellation fees, and vendor refunds. */
+  otherFees?: number;
 }
 
 export interface ParsedOrdersReport {
@@ -220,6 +224,8 @@ export function parseHsOrdersReport(rows: ReportRow[]): ParsedOrdersReport {
       commission: 0,
       operationalCharges: 0,
       restaurantDiscounts: 0,
+      paymentFees: 0,
+      otherFees: 0,
     };
     current.orders += 1;
     current.subtotal = roundMoney(current.subtotal + money("Subtotal"));
@@ -227,6 +233,15 @@ export function parseHsOrdersReport(rows: ReportRow[]): ParsedOrdersReport {
     current.operationalCharges = roundMoney(current.operationalCharges + money("Operational Charges"));
     current.restaurantDiscounts = roundMoney(
       current.restaurantDiscounts + money("Discount Funded by you") + money("Voucher Funded by you"),
+    );
+    current.paymentFees = roundMoney((current.paymentFees ?? 0) + money("Online Payment Fee"));
+    current.otherFees = roundMoney(
+      (current.otherFees ?? 0) +
+        money("Wait time fee") +
+        money("Ads Fee") +
+        money("Marketing Fees Total") +
+        money("Avoidable cancellation fee") +
+        money("Vendor Refunds"),
     );
     stores.set(storeId, current);
   });
