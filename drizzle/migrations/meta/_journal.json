@@ -232,6 +232,13 @@
       "when": 1790302939960,
       "tag": "0032_compensation_case_uniqueness",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790303039960,
+      "tag": "0033_ads_roi",
+      "breakpoints": true
     }
   ]
 }
