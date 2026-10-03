@@ -1,5 +1,6 @@
 import { normalizeFormatHeader } from "../analysis/formats/types";
 import type { Platform } from "../analysis/types";
+import type { SheetSource } from "../analysis/xlsx-stream";
 import { FINGERPRINTS, isDate, isMoney, nameScore, readSourceTable } from "./match";
 
 /**
@@ -54,10 +55,10 @@ function amount(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export function profileColumns(platform: Platform, file: ArrayBuffer): SourceProfile[] {
+export function profileColumns(platform: Platform, file: ArrayBuffer, sheets?: SheetSource): SourceProfile[] {
   const profiles: SourceProfile[] = [];
   for (const fingerprint of FINGERPRINTS[platform]) {
-    const table = readSourceTable(platform, fingerprint.source, file, MAX_ROWS);
+    const table = readSourceTable(platform, fingerprint.source, file, MAX_ROWS, sheets);
     if (!table) continue;
     const columns = table.headers
       .map((name, index): ColumnProfile | null => {
