@@ -62,5 +62,6 @@ describe("ops client delete", () => {
     before("telegram_order_evidence", "telegram_branch_chats");
     before("compensation_cases", "branch_registry");
     before("telegram_branch_chats", "branch_registry");
+    before("smart_watch_acceptances", "periods");
   });
 });
