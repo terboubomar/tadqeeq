@@ -5,7 +5,10 @@ import { listBranchRegistry, resolveBranchName } from "@/lib/branch-registry";
 
 import { EmptyState } from "@/components/AppShell";
 import { ReportTable, type Column } from "@/components/ReportTable";
-import type { BranchRow } from "@/lib/analysis/types";
+import type { BranchRow as AnalysisBranchRow } from "@/lib/analysis/types";
+
+/** Display-only: Keeta "other" expenses without the POS installment, which they include. */
+type BranchRow = AnalysisBranchRow & { keetaOtherExclPosExVat?: number };
 import { useSelectedPeriod } from "@/lib/use-period";
 
 export const Route = createFileRoute("/_authenticated/branches")({
@@ -66,8 +69,9 @@ const KEETA_COLUMNS: Column<BranchRow>[] = [
   { key: "keetaDeliveryCampaignExVat", header: "دعم توصيل كيتا" },
   { key: "keetaProductCampaignExVat", header: "حملات الأصناف" },
   { key: "keetaMerchantAdExVat", header: "إعلانات التاجر" },
-  { key: "keetaPosFeesExVat", header: "رسوم POS" },
-  { key: "keetaOtherExpensesExVat", header: "مصروفات أخرى" },
+  { key: "keetaPosFeesExVat", header: "أقساط POS" },
+  // Keeta's "other" columns include the POS installment, so it is shown here without it.
+  { key: "keetaOtherExclPosExVat", header: "مصروفات أخرى (غير POS)" },
   { key: "keetaCommissionInvoiceInclVat", header: "فاتورة العمولة المحتسبة" },
   { key: "keetaExcelInvoiceAmount", header: "Invoice amount حسب Excel" },
   { key: "keetaExcelInvoiceVariance", header: "فرق Invoice amount" },
@@ -131,6 +135,8 @@ function BranchesPage() {
   const rows = selected.branches.map((b) => ({
     ...b,
     branch: resolveBranchName(registry, selected.platform, b.branchId, b.branch) ?? b.branch,
+    keetaOtherExclPosExVat:
+      b.keetaOtherExpensesExVat === undefined ? undefined : b.keetaOtherExpensesExVat - (b.keetaPosFeesExVat ?? 0),
   }));
 
   return (

@@ -78,7 +78,9 @@ function BreakdownPage() {
               ]
             : [{ label: "الإعلانات", amount: s.keetaAdvertisingExVat ?? 0 }]),
           { label: "تعويضات / خصومات المنصة", amount: s.keetaCompensationExVat ?? 0 },
-          { label: "مصروفات أخرى", amount: s.keetaOtherExpensesExVat ?? 0 },
+          // Keeta's "other" columns include the POS installment; show it as its own line.
+          { label: "أقساط POS", amount: s.keetaPosFeesExVat ?? 0 },
+          { label: "مصروفات أخرى", amount: (s.keetaOtherExpensesExVat ?? 0) - (s.keetaPosFeesExVat ?? 0) },
         ]
   ).filter((line) => Math.abs(line.amount) > 0.005);
 
