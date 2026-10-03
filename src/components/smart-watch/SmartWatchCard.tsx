@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, CircleCheck, Radar } from "lucide-react";
+import { Check, CircleCheck, Columns3, Radar } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -88,6 +88,7 @@ export function SmartWatchCard({ selected, periods }: { selected: StoredPeriod; 
     }
   }
 
+  const columnChanges = selected.invoice?.columnChanges ?? [];
   const alerts = showAll ? report.alerts : report.alerts.slice(0, VISIBLE);
   const total = report.alerts.reduce((sum, alert) => sum + alert.impact, 0);
   const basis = report.historyPeriods > 0 ? `مقارنة بآخر ${count(report.historyPeriods)} فترات` : "مقارنة بالفروع الأخرى";
@@ -105,14 +106,53 @@ export function SmartWatchCard({ selected, periods }: { selected: StoredPeriod; 
             {basis}
           </span>
         </div>
-        {report.alerts.length > 0 ? (
+        {report.alerts.length > 0 || columnChanges.length > 0 ? (
           <span className="rounded-full bg-destructive-soft px-2.5 py-0.5 text-[12px] font-semibold text-destructive">
-            {count(report.alerts.length)} غير معتاد · <Extra value={total} />
+            {report.alerts.length > 0 ? (
+              <>
+                {count(report.alerts.length)} غير معتاد · <Extra value={total} />
+              </>
+            ) : (
+              `${count(columnChanges.length)} تغيير في الملف`
+            )}
           </span>
         ) : null}
       </header>
 
-      {report.alerts.length === 0 ? (
+      {columnChanges.length > 0 ? (
+        <ul className="divide-y divide-border/70 border-b border-border bg-warning/5">
+          {columnChanges.map((change) => (
+            <li key={change.kind + change.source + change.column} className="flex items-start gap-3 px-5 py-2.5">
+              <Columns3 className="mt-0.5 size-4 shrink-0 text-warning" />
+              <span className="min-w-0 flex-1 text-[12.5px] leading-6">
+                {change.kind === "added" ? "عمود مبالغ جديد: " : "عمود مبالغ اختفى: "}
+                <span className="font-semibold" dir="ltr">
+                  {change.column}
+                </span>
+                {change.replaces ? (
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · بدل <span dir="ltr">{change.replaces}</span>
+                  </span>
+                ) : null}
+                <span className="block text-[11.5px] text-muted-foreground">
+                  {change.kind === "added" ? "تأكد أنه محسوب في التدقيق." : "كان فيه مبالغ في ملفاتك السابقة."}
+                </span>
+              </span>
+              {change.kind === "added" && change.total ? (
+                <span className="shrink-0 whitespace-nowrap text-[12.5px] font-semibold">
+                  <span className="num" dir="ltr">
+                    {count(Math.round(change.total))}
+                  </span>{" "}
+                  ر.س
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {report.alerts.length === 0 && columnChanges.length > 0 ? null : report.alerts.length === 0 ? (
         <p className="flex items-center gap-2 px-5 py-4 text-[13px] text-muted-foreground">
           <CircleCheck className="size-4 text-success" />
           {report.checkedBranches === 0 ? "لا توجد فروع بمبيعات كافية للمقارنة." : "لا شيء غير معتاد في هذه الفترة."}

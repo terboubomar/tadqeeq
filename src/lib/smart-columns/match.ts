@@ -53,7 +53,7 @@ export interface ColumnReview {
   fields: ColumnReviewField[];
 }
 
-const FINGERPRINTS: Record<Platform, FormatFingerprint[]> = {
+export const FINGERPRINTS: Record<Platform, FormatFingerprint[]> = {
   hungerstation: [HUNGERSTATION_ORDER_FORMAT],
   keeta: [KEETA_ORDER_FORMAT],
   jahez: [JAHEZ_SUMMARY_FORMAT, JAHEZ_DETAIL_FORMAT],
@@ -128,7 +128,7 @@ function trigrams(value: string): Set<string> {
   return grams;
 }
 
-function nameScore(a: string, b: string): number {
+export function nameScore(a: string, b: string): number {
   const wa = informative(a);
   const wb = informative(b);
   if (wa.size === 0 || wb.size === 0) return 0;
@@ -149,13 +149,13 @@ export function headerSimilarity(observed: string, expected: string[]): number {
 
 // ---------------------------------------------------------------- value profile
 
-function isMoney(value: unknown): boolean {
+export function isMoney(value: unknown): boolean {
   if (typeof value === "number") return Number.isFinite(value);
   const text = String(value).trim().replace(/[,\s]/g, "").replace(/^\((.*)\)$/, "-$1").replace(/(SAR|ر\.س)$/i, "");
   return /^[-+]?\d+(\.\d+)?$/.test(text);
 }
 
-function isDate(value: unknown): boolean {
+export function isDate(value: unknown): boolean {
   if (value instanceof Date) return Number.isFinite(value.getTime());
   if (typeof value === "number") return value > 30000 && value < 80000;
   const text = String(value).trim();
@@ -231,20 +231,25 @@ function jahezTable(matrix: string[][], source: string): { headerIndex: number }
 }
 
 /** The table a fingerprint source reads, with a sample of its rows. Null when the sheet itself is missing. */
-export function readSourceTable(platform: Platform, source: string, file: ArrayBuffer): SourceTable | null {
+export function readSourceTable(
+  platform: Platform,
+  source: string,
+  file: ArrayBuffer,
+  maxRows: number = SAMPLE_ROWS,
+): SourceTable | null {
   if (platform === "jahez") {
     const matrix = parseJahezCsv(new TextDecoder("utf-8").decode(file).replace(/^\uFEFF/, ""));
     const table = jahezTable(matrix, source);
     if (!table) return null;
     const headers = (matrix[table.headerIndex] ?? []).map((value) => value.trim());
-    const end = source === JAHEZ_SUMMARY_FORMAT.source ? table.headerIndex + 2 : table.headerIndex + 1 + SAMPLE_ROWS;
+    const end = source === JAHEZ_SUMMARY_FORMAT.source ? table.headerIndex + 2 : table.headerIndex + 1 + maxRows;
     return { source, headers, rows: matrix.slice(table.headerIndex + 1, end).filter((row) => row.some((v) => v.trim() !== "")) };
   }
   const matrix = sheetMatrix(XLSX.read(file, { type: "array" }), platform, source);
   if (!matrix || matrix.length === 0) return null;
   const index = platform === "hungerstation" ? 0 : headerRowIndex(matrix);
   const headers = (matrix[index] ?? []).map((value) => String(value ?? "").trim());
-  return { source, headers, rows: matrix.slice(index + 1, index + 1 + SAMPLE_ROWS) };
+  return { source, headers, rows: matrix.slice(index + 1, index + 1 + maxRows) };
 }
 
 // ---------------------------------------------------------------- suggestions

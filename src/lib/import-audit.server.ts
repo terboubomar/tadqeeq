@@ -29,7 +29,19 @@ import { requireServerUser, type ServerUserClient } from "./server-auth.server";
 import { safeStorageFileName, sha256Hex } from "./source-file-utils";
 import { logEvent } from "./observability";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL } from "./upload-validation";
-import { loadColumnAliases, saveColumnAliases } from "./smart-columns/aliases.server";
+import {
+  loadColumnAliases,
+  loadColumnSnapshots,
+  saveColumnAliases,
+  saveColumnSnapshots,
+} from "./smart-columns/aliases.server";
+import {
+  diffColumns,
+  mergeSnapshots,
+  profileColumns,
+  type ColumnChange,
+  type ColumnSnapshot,
+} from "./smart-columns/changes";
 import {
   applyColumnAliases,
   buildColumnReview,
@@ -48,6 +60,8 @@ export type ImportAuditResult =
       dailyCount: number;
       /** Columns renamed by confirmed smart-column matches before analysis. */
       columnAliasesApplied?: number;
+      /** Money columns new or gone since the workspace's earlier files of this platform. */
+      columnChanges?: ColumnChange[];
     }
   | {
       status: "duplicate";
@@ -300,6 +314,8 @@ export async function buildAnalysis(
   /** Matches the user confirmed with this upload (to remember once the analysis succeeds). */
   confirmedAliases: ColumnAlias[];
   appliedAliases: ColumnAlias[];
+  /** The data file as the engine read it (after confirmed column matches). */
+  analysedFile: ArrayBuffer;
 }> {
   const dataFile = formFile(form, "dataFile");
   const invoiceFile = formFile(form, "invoiceFile");
@@ -407,6 +423,7 @@ export async function buildAnalysis(
   return {
     confirmedAliases,
     appliedAliases,
+    analysedFile: dataBuffer,
     result,
     sources: [
       {
@@ -478,6 +495,7 @@ async function insertPeriod(
   client: ServerUserClient,
   userId: string,
   result: AnalysisResult,
+  columnChanges: ColumnChange[] = [],
 ): Promise<string> {
   const { data, error } = await client
     .from("periods")
@@ -495,6 +513,7 @@ async function insertPeriod(
       invoice: {
         ...result.invoice,
         checks: result.checks,
+        ...(columnChanges.length ? { columnChanges } : {}),
       } as unknown as Json,
     })
     .select("id")
@@ -721,8 +740,9 @@ async function runImportAudit(
   let sources: SourceFile[];
   let confirmedAliases: ColumnAlias[];
   let appliedAliases: ColumnAlias[];
+  let analysedFile: ArrayBuffer;
   try {
-    ({ result, sources, confirmedAliases, appliedAliases } = await buildAnalysis(
+    ({ result, sources, confirmedAliases, appliedAliases, analysedFile } = await buildAnalysis(
       form,
       platform,
       client,
@@ -770,6 +790,20 @@ async function runImportAudit(
 
   await saveColumnAliases(client, { workspaceId, ownerUserId: userId, actorUserId, platform, aliases: confirmedAliases });
 
+  // Compare the file's money columns with the workspace's earlier files; never blocks the upload.
+  let columnChanges: ColumnChange[] = [];
+  let nextSnapshots: ColumnSnapshot[] | null = null;
+  try {
+    const snapshots = await loadColumnSnapshots(client, userId, platform);
+    if (snapshots) {
+      const profiles = profileColumns(platform, analysedFile);
+      columnChanges = diffColumns(snapshots, profiles);
+      nextSnapshots = mergeSnapshots(snapshots, profiles);
+    }
+  } catch (cause) {
+    console.error("Failed to compare platform columns", cause);
+  }
+
   const duplicate = await findDuplicate(client, userId, result);
   if (duplicate) {
     return { status: "duplicate", existingPeriodId: duplicate };
@@ -790,7 +824,7 @@ async function runImportAudit(
 
   let periodId: string;
   try {
-    periodId = await insertPeriod(client, userId, result);
+    periodId = await insertPeriod(client, userId, result, columnChanges);
   } catch (cause) {
     if (
       cause &&
@@ -830,6 +864,9 @@ async function runImportAudit(
   }
 
   if (trial) await recordTrialUpload(workspaceId, actorUserId, periodId, platform);
+  if (nextSnapshots) {
+    await saveColumnSnapshots(client, { workspaceId, ownerUserId: userId, platform, snapshots: nextSnapshots });
+  }
 
   return {
     status: "saved",
@@ -837,5 +874,6 @@ async function runImportAudit(
     branchCount: result.branches.length,
     dailyCount: result.daily.length,
     ...(appliedAliases.length ? { columnAliasesApplied: appliedAliases.length } : {}),
+    ...(columnChanges.length ? { columnChanges } : {}),
   };
 }

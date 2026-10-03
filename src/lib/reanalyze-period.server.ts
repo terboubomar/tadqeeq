@@ -151,6 +151,8 @@ async function createVersion(
     ...result.invoice,
     checks: result.checks,
     exceptionWorkflow: oldPeriod.invoice?.exceptionWorkflow ?? {},
+    // Column changes describe the uploaded file, which a re-analysis reuses unchanged.
+    ...(oldPeriod.invoice?.columnChanges?.length ? { columnChanges: oldPeriod.invoice.columnChanges } : {}),
   };
 
   const { data, error } = await client.rpc("create_period_reanalysis", {

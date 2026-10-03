@@ -1210,6 +1210,48 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_column_snapshots: {
+        Row: {
+          columns: Json
+          platform: string
+          source: string
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          columns?: Json
+          platform: string
+          source: string
+          updated_at?: string
+          user_id: string
+          workspace_id?: string
+        }
+        Update: {
+          columns?: Json
+          platform?: string
+          source?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_column_snapshots_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_column_snapshots_workspace_owner_fkey"
+            columns: ["workspace_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_user_id"]
+          },
+        ]
+      }
       platform_contracts: {
         Row: {
           archived_at: string | null
