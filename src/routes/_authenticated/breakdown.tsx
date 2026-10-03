@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { exportXlsx, type ExportColumn } from "@/lib/export";
 import { count, money, percent, sar } from "@/lib/format";
 import { useSelectedPeriod } from "@/lib/use-period";
-import { keetaCostHint } from "@/lib/keeta-cost";
+import { keetaCostSplit, keetaOutsideInvoice } from "@/lib/keeta-cost";
 
 export const Route = createFileRoute("/_authenticated/breakdown")({
   head: () => ({
@@ -116,6 +116,8 @@ function BreakdownPage() {
   ).filter((line) => Math.abs(line.amount) > 0.005);
 
   const total = charges.reduce((sum, line) => sum + line.amount, 0);
+  const keetaSplit = selected.platform === "keeta" ? keetaCostSplit(s) : null;
+  const keetaOutside = selected.platform === "keeta" ? keetaOutsideInvoice(s) : null;
   const columns: ExportColumn<Line>[] = [
     { key: "label", header: "البند", type: "text" },
     { key: "amount", header: "المبلغ", type: "money" },
@@ -158,14 +160,32 @@ function BreakdownPage() {
       <StatTiles
         cols={4}
         items={[
-          {
-            label: isHunger ? "إجمالي خصومات المنصة" : selected.platform === "keeta" ? "كل ما خصمته كيتا (بدون الضريبة)" : "إجمالي تكلفة المنصة (بدون الضريبة)",
-            value: sar(total),
-            hint: selected.platform === "keeta" ? (keetaCostHint(s) ?? undefined) : undefined,
-            icon: Receipt,
-            tone: "negative",
-          },
-          { label: "من المبيعات الإجمالية", value: percent(s.grossSales ? total / s.grossSales : 0), icon: Percent },
+          ...(keetaSplit && keetaOutside
+            ? [
+                {
+                  label: "فاتورة كيتا الضريبية (بدون الضريبة)",
+                  value: sar(keetaSplit.taxInvoice),
+                  hint: `الإجمالي مع المصاريف الأخرى ${money(total)} · ${percent(s.grossSales ? total / s.grossSales : 0)} من المبيعات`,
+                  icon: Receipt,
+                  tone: "negative" as const,
+                },
+                {
+                  label: "مصاريف أخرى خارج الفاتورة",
+                  value: sar(keetaOutside.total),
+                  hint: keetaOutside.hint || undefined,
+                  icon: Receipt,
+                  tone: "negative" as const,
+                },
+              ]
+            : [
+                {
+                  label: isHunger ? "إجمالي خصومات المنصة" : "إجمالي تكلفة المنصة (بدون الضريبة)",
+                  value: sar(total),
+                  icon: Receipt,
+                  tone: "negative" as const,
+                },
+                { label: "من المبيعات الإجمالية", value: percent(s.grossSales ? total / s.grossSales : 0), icon: Percent },
+              ]),
           { label: "أكبر بند", value: largest ? sar(largest.amount) : "—", hint: largest?.label, icon: Layers3, tone: "gold" },
           { label: "عدد البنود", value: count(charges.length), hint: statusTotal ? `${count(statusTotal)} طلب في الفترة` : undefined, icon: ListOrdered },
         ]}

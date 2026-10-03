@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 
 import type { Summary } from "./analysis/types";
-import { keetaCostHint, keetaCostSplit } from "./keeta-cost";
+import { keetaCostSplit, keetaOutsideInvoice } from "./keeta-cost";
 
 // September 2026 PAST figures (excluding VAT).
 const summary = {
@@ -19,7 +19,7 @@ test("splits Keeta's deductions into the tax invoice and what is deducted outsid
   expect(split.outside.map((part) => part.label)).toEqual(["خصومات أصناف", "أقساط POS"]);
   // The shown parts add up to the shown total (587,849.58) to the halala.
   expect(Math.round((split.taxInvoice + split.outside.reduce((sum, part) => sum + part.amount, 0)) * 100)).toBe(58_784_958);
-  expect(keetaCostHint(summary)).toBe("الفاتورة الضريبية 583,108.02 + خصومات أصناف 1,698.08 + أقساط POS 3,043.48");
+  expect(keetaOutsideInvoice(summary)).toEqual({ total: 4_741.56, hint: "خصومات أصناف 1,698.08 · أقساط POS 3,043.48" });
 });
 
 test("anything not itemised is shown as other, so the parts always add up", () => {
