@@ -3,12 +3,28 @@
 Everything is synthesized here (no samples), so the audio is fully owned.
 Writes soundtrack.wav (44.1 kHz stereo).
 """
+import json
+import os
 import wave
 
 import numpy as np
 
 SR = 44_100
-DUR = 46.0
+# Optional time warp so effects follow a voice-over: anchors map real time <-> film time.
+_W = json.load(open(os.environ["WARP"])) if os.environ.get("WARP") else None
+DUR = _W["duration"] if _W else 46.0
+_REAL = np.array([a[0] for a in _W["real"]]) if _W else None
+_FILM = np.array([a[1] for a in _W["real"]]) if _W else None
+
+
+def W(film_t):
+    """Film time -> real time."""
+    if _W is None:
+        return film_t
+    if film_t >= _FILM[-1]:
+        return _REAL[-1] + (film_t - _FILM[-1])
+    return float(np.interp(film_t, _FILM, _REAL))
+
 N = int(SR * DUR)
 rng = np.random.default_rng(7)
 t_all = np.arange(N) / SR
@@ -52,8 +68,8 @@ left = np.zeros(N)
 right = np.zeros(N)
 
 
-def add(sig, start, pan=0.0, gain=1.0):
-    i = int(start * SR)
+def add(sig, start, pan=0.0, gain=1.0, real=False):
+    i = int((start if real else W(start)) * SR)
     if i >= N:
         return
     sig = sig[: N - i] * gain
@@ -105,8 +121,8 @@ while pos < DUR:
     bar += 1
 pad = lowpass_fast(pad, 1100)
 # Darker during the opening logo, open up after.
-pad *= np.interp(t_all, [0, 3.5, 41.5, 44, 46], [0.55, 0.85, 0.85, 0.7, 0.0])
-add(pad, 0, gain=0.34)
+pad *= np.interp(t_all, [0, W(3.5), W(41.5), W(44), DUR], [0.55, 0.85, 0.85, 0.7, 0.0])
+add(pad, 0, gain=0.34, real=True)
 right_shift = np.roll(pad, int(0.012 * SR)) * 0.22
 right[: len(right_shift)] += right_shift * 0.3
 
@@ -118,11 +134,11 @@ def bass_hit(freq):
     return np.sin(2 * np.pi * freq * t) * np.exp(-t * 9) + 0.3 * np.sin(4 * np.pi * freq * t) * np.exp(-t * 14)
 
 
-b = 3.6
+b = W(3.6)
 k = 0
-while b < 41.4:
+while b < W(41.4):
     root = chords[int(b / BAR) % 4][0] - 12
-    add(bass_hit(note_hz(root)), b, gain=0.22 if k % 2 == 0 else 0.12)
+    add(bass_hit(note_hz(root)), b, gain=0.22 if k % 2 == 0 else 0.12, real=True)
     b += BEAT
     k += 1
 
@@ -135,9 +151,9 @@ def hat():
     return noise * np.exp(-np.arange(n) / SR * 70)
 
 
-b = 3.6 + BEAT / 2
-while b < 23.5:
-    add(hat(), b, pan=0.3, gain=0.05)
+b = W(3.6) + BEAT / 2
+while b < W(23.5):
+    add(hat(), b, pan=0.3, gain=0.05, real=True)
     b += BEAT
 
 
@@ -264,7 +280,7 @@ left = reverb(left)
 right = reverb(right, delays=(0.029, 0.043, 0.067, 0.089))
 
 # ---- Master: fades, normalise, soft limit.
-fade = np.interp(t_all, [0, 0.05, 44.2, 46.0], [0, 1, 1, 0])
+fade = np.interp(t_all, [0, 0.05, DUR - 1.8, DUR], [0, 1, 1, 0])
 mix = np.stack([left, right], axis=1) * fade[:, None]
 mix /= np.max(np.abs(mix)) + 1e-9
 mix = np.tanh(mix * 1.4) / np.tanh(1.4) * 0.89
