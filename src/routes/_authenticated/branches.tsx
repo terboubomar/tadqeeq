@@ -83,9 +83,9 @@ const KEETA_COLUMNS: Column<BranchRow>[] = [
   { key: "keetaPdfNetDueVariance", header: "فرق صافي المستحق" },
   { key: "keetaSourcePayable", header: "Payable حسب Excel" },
   { key: "keetaSettlementVariance", header: "فرق Payable" },
-  { key: "keetaTotalCostExVat", header: "إجمالي تكلفة المنصة بدون الضريبة" },
+  { key: "keetaTotalCostExVat", header: "كل ما خصمته كيتا بدون الضريبة" },
   { key: "keetaInputVat", header: "ضريبة المدخلات" },
-  { key: "keetaTotalCostInclVat", header: "تكلفة المنصة شامل الضريبة" },
+  { key: "keetaTotalCostInclVat", header: "كل ما خصمته كيتا شامل الضريبة" },
   { key: "keetaPlatformCostPct", header: "تكلفة المنصة %", type: "percent" },
   { key: "keetaAvgOrderValueInclVat", header: "متوسط الطلب شامل الضريبة" },
 ];
