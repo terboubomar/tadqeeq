@@ -14,6 +14,117 @@ export type Database = {
   }
   public: {
     Tables: {
+      ads_roi_analyses: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date_from: string
+          date_to: string
+          gmv: number
+          id: string
+          orders: Json | null
+          orders_file_name: string | null
+          platform: string
+          report: Json
+          source_file_name: string | null
+          spent: number
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date_from: string
+          date_to: string
+          gmv?: number
+          id?: string
+          orders?: Json | null
+          orders_file_name?: string | null
+          platform?: string
+          report: Json
+          source_file_name?: string | null
+          spent?: number
+          updated_at?: string
+          user_id: string
+          workspace_id?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date_from?: string
+          date_to?: string
+          gmv?: number
+          id?: string
+          orders?: Json | null
+          orders_file_name?: string | null
+          platform?: string
+          report?: Json
+          source_file_name?: string | null
+          spent?: number
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ads_roi_analyses_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ads_roi_analyses_workspace_owner_fkey"
+            columns: ["workspace_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_user_id"]
+          },
+        ]
+      }
+      ads_roi_brand_settings: {
+        Row: {
+          brand_key: string
+          commission_rate: number | null
+          food_cost_rate: number | null
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          brand_key: string
+          commission_rate?: number | null
+          food_cost_rate?: number | null
+          updated_at?: string
+          user_id: string
+          workspace_id?: string
+        }
+        Update: {
+          brand_key?: string
+          commission_rate?: number | null
+          food_cost_rate?: number | null
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ads_roi_brand_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ads_roi_brand_settings_workspace_owner_fkey"
+            columns: ["workspace_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_user_id"]
+          },
+        ]
+      }
       ai_usage: {
         Row: {
           actor_user_id: string | null
