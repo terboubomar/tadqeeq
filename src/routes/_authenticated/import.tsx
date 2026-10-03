@@ -31,6 +31,7 @@ import {
   parsePercentRateInput,
 } from "@/lib/analysis/rates";
 import type { Platform } from "@/lib/analysis/types";
+import { isPlatformKey } from "@/lib/platforms";
 import type { HungerStationMappingReview } from "@/lib/hungerstation-branch-review";
 import { importAuditPeriod } from "@/lib/import-audit.functions";
 import { acquireImportRun, finishImportRun } from "@/lib/import-run-guard";
@@ -53,6 +54,9 @@ export const Route = createFileRoute("/_authenticated/import")({
       { property: "og:description", content: "ارفع ملف الطلبات وفاتورة المنصة لبدء التدقيق." },
     ],
   }),
+  // ?platform=keeta opens the upload with that platform already chosen (from the top bar).
+  validateSearch: (search: Record<string, unknown>): { platform?: Platform } =>
+    isPlatformKey(search["platform"]) ? { platform: search["platform"] } : {},
   component: ImportPage,
 });
 
@@ -165,7 +169,8 @@ function ImportPage() {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
   const [maxStepReached, setMaxStepReached] = useState(0);
-  const [platform, setPlatform] = useState<Platform>("hungerstation");
+  const search = Route.useSearch();
+  const [platform, setPlatform] = useState<Platform>(search.platform ?? "hungerstation");
   const [dataFile, setDataFile] = useState<File | null>(null);
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [cpcFile, setCpcFile] = useState<File | null>(null);
@@ -215,6 +220,12 @@ function ImportPage() {
         error instanceof Error ? error.message : "نسبة رسوم الدفع غير صالحة.";
     }
   }
+
+  // Choosing another platform from the top bar while already on this page switches the upload to it.
+  useEffect(() => {
+    if (search.platform && !busy) choosePlatform(search.platform);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.platform]);
 
   function choosePlatform(next: Platform) {
     if (next === platform) return;

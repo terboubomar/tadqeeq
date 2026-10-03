@@ -20,11 +20,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { AI_UI_ENABLED } from "@/lib/ai/config";
 import { buildPeriodExceptions, summarizeExceptions } from "@/lib/exceptions";
 import { arabicDate, count, sar } from "@/lib/format";
-import { useSelectedPeriod } from "@/lib/use-period";
+import { latestPeriod, useSelectedPeriod } from "@/lib/use-period";
+import { PLATFORM_BRANDS, PLATFORM_KEYS, type PlatformKey } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
 import { WORKSPACE_ROLE_LABELS, type WorkspacePermission } from "@/lib/workspace-access";
 import { LogoWordmark } from "@/components/brand/Logo";
-import { PlatformName } from "@/components/brand/PlatformLogo";
+import { PlatformIcon } from "@/components/brand/PlatformLogo";
 import { NotificationBell, UserMenu, type AppNotice } from "@/components/dash/TopBarMenus";
 
 type NavItem = { to: string; label: string; permission: WorkspacePermission; adminOnly?: boolean };
@@ -102,6 +103,25 @@ export function AppShell({ children }: { children: ReactNode }) {
     context.trial && context.uploadLimit !== null && context.uploadsThisMonth >= context.uploadLimit;
   const { periods, selected, select } = useSelectedPeriod(can("periods.read") && !locked);
   const [sidebarHidden, setSidebarHidden] = useState(false);
+  // A platform picked in the top bar that has no saved period yet (otherwise the selected period decides).
+  const [emptyPlatform, setEmptyPlatform] = useState<PlatformKey | null>(null);
+  const activePlatform: PlatformKey = emptyPlatform ?? selected?.platform ?? "hungerstation";
+  const platformPeriods = periods.filter((period) => period.platform === activePlatform);
+  const showPeriod = selected && !emptyPlatform ? selected : null;
+
+  useEffect(() => {
+    setEmptyPlatform(null);
+  }, [selected?.id]);
+
+  function choosePlatform(next: PlatformKey) {
+    const latest = latestPeriod(periods.filter((period) => period.platform === next));
+    if (latest) {
+      setEmptyPlatform(null);
+      select(latest.id);
+    } else {
+      setEmptyPlatform(next);
+    }
+  }
 
   useEffect(() => {
     setSidebarHidden(window.localStorage.getItem("tadqeeq-sidebar-hidden") === "1");
@@ -336,48 +356,81 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               {sidebarHidden ? <PanelRightOpen className="size-4" /> : <PanelRightClose className="size-4" />}
             </button>
-            {selected ? (
+            {can("periods.read") && !locked ? (
               <>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground max-md:hidden">
-                  <span>المنصة</span>
-                  <span className="rounded-[7px] border border-input bg-card px-2.5 py-1.5 text-[13px] text-foreground">
-                    <PlatformName platform={selected.platform} iconClassName="size-4 rounded" />
-                  </span>
-                </div>
-
-                <label className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-                  <span className="max-sm:hidden">الفترة</span>
-                  <Select value={selected.id} onValueChange={select}>
-                    <SelectTrigger className="h-8 min-w-[140px] max-w-[260px] bg-card text-[13px] sm:min-w-[170px]">
-                      <SelectValue placeholder="اختر الفترة" />
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="max-md:hidden">المنصة</span>
+                  <Select value={activePlatform} onValueChange={(value) => choosePlatform(value as PlatformKey)}>
+                    <SelectTrigger aria-label="المنصة" className="h-8 w-auto gap-1.5 bg-card px-2.5 text-[13px] sm:min-w-[132px]">
+                      <div className="flex items-center gap-1.5 whitespace-nowrap">
+                        <PlatformIcon platform={activePlatform} className="size-4 rounded" />
+                        <span className="max-sm:hidden">{PLATFORM_BRANDS[activePlatform].name}</span>
+                      </div>
                     </SelectTrigger>
                     <SelectContent>
-                      {periods.map((period) => (
-                        <SelectItem key={period.id} value={period.id}>
-                          {period.label}
-                        </SelectItem>
-                      ))}
+                      {PLATFORM_KEYS.map((key) => {
+                        const saved = periods.filter((period) => period.platform === key).length;
+                        return (
+                          <SelectItem key={key} value={key}>
+                            <span className="inline-flex items-center gap-2">
+                              <PlatformIcon platform={key} className="size-4 rounded" />
+                              {PLATFORM_BRANDS[key].name}
+                              <span className="num text-[11px] text-muted-foreground">
+                                {saved ? `${count(saved)} فترة` : "لا توجد فترات"}
+                              </span>
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </label>
 
-                <span className="num rounded-[7px] border border-input bg-card px-2.5 py-1.5 text-[12px] text-foreground/80 max-lg:hidden">
-                  {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)}
-                </span>
+                {showPeriod ? (
+                  <>
+                    <label className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                      <span className="max-sm:hidden">الفترة</span>
+                      <Select value={showPeriod.id} onValueChange={select}>
+                        <SelectTrigger className="h-8 min-w-[120px] max-w-[260px] bg-card text-[13px] sm:min-w-[170px]">
+                          <SelectValue placeholder="اختر الفترة" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {platformPeriods.map((period) => (
+                            <SelectItem key={period.id} value={period.id}>
+                              {period.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </label>
+
+                    <span className="num rounded-[7px] border border-input bg-card px-2.5 py-1.5 text-[12px] text-foreground/80 max-lg:hidden">
+                      {arabicDate(showPeriod.period_start)} — {arabicDate(showPeriod.period_end)}
+                    </span>
+                  </>
+                ) : can("imports.create") ? (
+                  <Link
+                    to="/import"
+                    search={{ platform: activePlatform }}
+                    className="min-w-0 truncate rounded-[7px] border border-dashed border-primary/60 bg-card px-2.5 py-1.5 text-[12.5px] font-medium text-primary-text hover:bg-secondary/60"
+                  >
+                    <span className="max-sm:hidden">لا توجد فترات لـ{PLATFORM_BRANDS[activePlatform].name} · </span>ارفع أول فترة
+                  </Link>
+                ) : (
+                  <span className="min-w-0 truncate text-[12.5px] text-muted-foreground">
+                    لا توجد فترات لـ{PLATFORM_BRANDS[activePlatform].name}
+                  </span>
+                )}
               </>
-            ) : (
-              <p className="min-w-0 truncate text-sm text-muted-foreground">
-                لا توجد بيانات بعد — ابدأ من صفحة رفع البيانات.
-              </p>
-            )}
+            ) : null}
 
             <span className="flex-1" />
 
             {can("imports.create") ? (
               <Button asChild size="sm">
-                <Link to="/import">
+                <Link to="/import" search={{ platform: activePlatform }} title={"رفع بيانات " + PLATFORM_BRANDS[activePlatform].name}>
                   <Upload className="size-3.5" />
-                  <span className="max-sm:hidden">رفع بيانات</span>
+                  <span className="max-sm:hidden">رفع {PLATFORM_BRANDS[activePlatform].name}</span>
                 </Link>
               </Button>
             ) : null}
