@@ -7,7 +7,8 @@ const out = process.argv[3];
 const fps = 30;
 import { readFileSync } from "node:fs";
 const W = process.env.WARP ? JSON.parse(readFileSync(process.env.WARP, "utf8")) : null;
-const duration = W ? W.duration : 46;
+const ROUTE = process.env.ROUTE ?? "film";
+const duration = W ? W.duration : Number(process.env.DURATION ?? 46);
 /** Real (voice-over) time -> film time, piecewise linear through the anchors. */
 const filmTime = (real) => {
   if (!W) return real;
@@ -25,7 +26,7 @@ const ff = spawn(FFMPEG, ["-y", "-f", "image2pipe", "-framerate", String(fps), "
   "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "slow", "-crf", "20", "-movflags", "+faststart", out], { stdio: ["pipe", "ignore", "inherit"] });
 const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
 const p = await b.newPage({ viewport: size });
-await p.goto(`http://127.0.0.1:5175/film?t=0&format=${fmt}`, { waitUntil: "networkidle", timeout: 180000 });
+await p.goto(`http://127.0.0.1:5175/${ROUTE}?t=0&format=${fmt}`, { waitUntil: "networkidle", timeout: 180000 });
 await p.evaluate(() => document.fonts.ready);
 await p.waitForTimeout(800);
 for (let i = 0; i < fps * duration; i++) {

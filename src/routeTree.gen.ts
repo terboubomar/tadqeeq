@@ -14,6 +14,7 @@ import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as OpsRouteImport } from './routes/ops'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as FilmRouteImport } from './routes/film'
+import { Route as ExplainerRouteImport } from './routes/explainer'
 import { Route as CompensationRouteImport } from './routes/compensation'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
@@ -77,6 +78,11 @@ const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
 const FilmRoute = FilmRouteImport.update({
   id: '/film',
   path: '/film',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExplainerRoute = ExplainerRouteImport.update({
+  id: '/explainer',
+  path: '/explainer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompensationRoute = CompensationRouteImport.update({
@@ -282,6 +288,7 @@ export interface FileRoutesByFullPath {
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
   '/compensation': typeof CompensationRouteWithChildren
+  '/explainer': typeof ExplainerRoute
   '/film': typeof FilmRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/ops': typeof OpsRouteWithChildren
@@ -326,6 +333,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
+  '/explainer': typeof ExplainerRoute
   '/film': typeof FilmRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -372,6 +380,7 @@ export interface FileRoutesById {
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
   '/compensation': typeof CompensationRouteWithChildren
+  '/explainer': typeof ExplainerRoute
   '/film': typeof FilmRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/ops': typeof OpsRouteWithChildren
@@ -419,6 +428,7 @@ export interface FileRouteTypes {
     | '/accept-invite'
     | '/auth'
     | '/compensation'
+    | '/explainer'
     | '/film'
     | '/llms.txt'
     | '/ops'
@@ -463,6 +473,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accept-invite'
     | '/auth'
+    | '/explainer'
     | '/film'
     | '/llms.txt'
     | '/robots.txt'
@@ -508,6 +519,7 @@ export interface FileRouteTypes {
     | '/accept-invite'
     | '/auth'
     | '/compensation'
+    | '/explainer'
     | '/film'
     | '/llms.txt'
     | '/ops'
@@ -555,6 +567,7 @@ export interface RootRouteChildren {
   AcceptInviteRoute: typeof AcceptInviteRoute
   AuthRoute: typeof AuthRoute
   CompensationRoute: typeof CompensationRouteWithChildren
+  ExplainerRoute: typeof ExplainerRoute
   FilmRoute: typeof FilmRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
   OpsRoute: typeof OpsRouteWithChildren
@@ -599,6 +612,13 @@ declare module '@tanstack/react-router' {
       path: '/film'
       fullPath: '/film'
       preLoaderRoute: typeof FilmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/explainer': {
+      id: '/explainer'
+      path: '/explainer'
+      fullPath: '/explainer'
+      preLoaderRoute: typeof ExplainerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/compensation': {
@@ -974,6 +994,7 @@ const rootRouteChildren: RootRouteChildren = {
   AcceptInviteRoute: AcceptInviteRoute,
   AuthRoute: AuthRoute,
   CompensationRoute: CompensationRouteWithChildren,
+  ExplainerRoute: ExplainerRoute,
   FilmRoute: FilmRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
   OpsRoute: OpsRouteWithChildren,

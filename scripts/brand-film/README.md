@@ -10,3 +10,12 @@
    (ffmpeg `sidechaincompress`), loudness -14 LUFS; see the session notes for the exact filter.
 
 `voiceover-ar.srt` is the timed Arabic script.
+
+# Explainer (about 2.5 minutes)
+
+Drawn by `src/components/film/ExplainerFilm.tsx` (route `/explainer?t=<seconds>&format=wide|tall`), same pipeline:
+
+- Video: `ROUTE=explainer DURATION=154 FFMPEG=<ffmpeg> node render.mjs wide out-wide.mp4` (add `WARP=` once a voice-over exists).
+- Music: `python explainer_soundtrack.py` → `explainer-soundtrack.wav`.
+- `explainer-voiceover-ar.srt` is the script to record, timed to the scenes; the same lines are burned in as captions.
+- The compensation result scene uses illustrative figures and is labelled «مثال توضيحي» on screen.
