@@ -441,8 +441,18 @@ function parseKeetaBranch(detailPage: string, creditPage: string): KeetaInvoiceB
   };
 }
 
-function parseKeetaBranches(pages: string[]): KeetaInvoiceBranch[] {
+/**
+ * Keeta branch pages print empty lines as a bare "0" (e.g. "Photography service fees 0").
+ * The amount pattern needs decimals, so a bare 0 was skipped and the label picked up the next
+ * line's amount. Writing it as 0.00 keeps every label paired with its own value.
+ */
+function normalizeKeetaZeroAmounts(page: string): string {
+  return page.replace(/(^|\s)0(?=\s|$)/g, "$10.00");
+}
+
+function parseKeetaBranches(rawPages: string[]): KeetaInvoiceBranch[] {
   const branches: KeetaInvoiceBranch[] = [];
+  const pages = rawPages.map(normalizeKeetaZeroAmounts);
 
   for (let index = 0; index < pages.length; index += 1) {
     const detailPage = pages[index]!;
