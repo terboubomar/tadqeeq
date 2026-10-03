@@ -41,6 +41,7 @@ import { reanalyzeAuditPeriod } from "@/lib/reanalyze-period.functions";
 import { setSelectedPeriodId, useSelectedPeriod } from "@/lib/use-period";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 import { SmartWatchCard } from "@/components/smart-watch/SmartWatchCard";
+import { keetaCostHint } from "@/lib/keeta-cost";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -305,13 +306,13 @@ function Dashboard() {
                 tone: "negative",
               },
               {
-                label: isHunger ? "إجمالي ما خصمته المنصة" : isJahez ? "فاتورة جاهز المحتسبة (بدون الضريبة)" : "تكلفة المنصة (بدون الضريبة)",
+                label: isHunger ? "إجمالي ما خصمته المنصة" : isJahez ? "فاتورة جاهز المحتسبة (بدون الضريبة)" : "كل ما خصمته كيتا (بدون الضريبة)",
                 value: sar(s.totalCharges),
                 hint: isHunger
                   ? "عمولة + رسوم دفع + حملات + تعويضات"
                   : isJahez
                     ? "عمولة + رسوم مدفوعات + عروض توصيل"
-                    : `تكلفة فعلية ${percent(s.keetaPlatformCostPct ?? 0)} من المبيعات بدون الضريبة`,
+                    : (keetaCostHint(s) ?? `تكلفة فعلية ${percent(s.keetaPlatformCostPct ?? 0)} من المبيعات بدون الضريبة`),
                 icon: Receipt,
                 tone: "negative",
               },

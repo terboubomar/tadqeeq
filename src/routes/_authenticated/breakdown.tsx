@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { exportXlsx, type ExportColumn } from "@/lib/export";
 import { count, money, percent, sar } from "@/lib/format";
 import { useSelectedPeriod } from "@/lib/use-period";
+import { keetaCostHint } from "@/lib/keeta-cost";
 
 export const Route = createFileRoute("/_authenticated/breakdown")({
   head: () => ({
@@ -69,7 +70,13 @@ function BreakdownPage() {
           { label: "عمولة الطلبات", amount: s.keetaCommissionExVat ?? 0 },
           { label: "رسوم البنك", amount: s.keetaBankFeesExVat ?? 0 },
           { label: "التوصيل / الحملات", amount: s.keetaDeliveryCampaignExVat ?? 0 },
-          { label: "الإعلانات", amount: s.keetaAdvertisingExVat ?? 0 },
+          // Advertising = Keeta ads (promotion service fee, invoiced) + item discounts you fund (not invoiced).
+          ...(s.keetaMerchantAdExVat !== undefined || s.keetaProductCampaignExVat !== undefined
+            ? [
+                { label: "الإعلانات (Promotion service fee)", amount: s.keetaMerchantAdExVat ?? 0 },
+                { label: "خصومات أصناف ممولة منك", amount: s.keetaProductCampaignExVat ?? 0 },
+              ]
+            : [{ label: "الإعلانات", amount: s.keetaAdvertisingExVat ?? 0 }]),
           { label: "تعويضات / خصومات المنصة", amount: s.keetaCompensationExVat ?? 0 },
           { label: "مصروفات أخرى", amount: s.keetaOtherExpensesExVat ?? 0 },
         ]
@@ -151,7 +158,13 @@ function BreakdownPage() {
       <StatTiles
         cols={4}
         items={[
-          { label: isHunger ? "إجمالي خصومات المنصة" : "إجمالي تكلفة المنصة (بدون الضريبة)", value: sar(total), icon: Receipt, tone: "negative" },
+          {
+            label: isHunger ? "إجمالي خصومات المنصة" : selected.platform === "keeta" ? "كل ما خصمته كيتا (بدون الضريبة)" : "إجمالي تكلفة المنصة (بدون الضريبة)",
+            value: sar(total),
+            hint: selected.platform === "keeta" ? (keetaCostHint(s) ?? undefined) : undefined,
+            icon: Receipt,
+            tone: "negative",
+          },
           { label: "من المبيعات الإجمالية", value: percent(s.grossSales ? total / s.grossSales : 0), icon: Percent },
           { label: "أكبر بند", value: largest ? sar(largest.amount) : "—", hint: largest?.label, icon: Layers3, tone: "gold" },
           { label: "عدد البنود", value: count(charges.length), hint: statusTotal ? `${count(statusTotal)} طلب في الفترة` : undefined, icon: ListOrdered },
