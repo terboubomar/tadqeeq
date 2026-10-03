@@ -1,3 +1,4 @@
+import { FileCheck2, Link2, Send } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 
 import { LogoLockup, LogoWordmark } from "@/components/brand/Logo";
@@ -9,7 +10,7 @@ import { PlatformIcon } from "@/components/brand/PlatformLogo";
  * August 2026 HungerStation exports, shown without brand or branch names.
  */
 
-export const FILM_DURATION = 30;
+export const FILM_DURATION = 46;
 export type FilmFormat = "wide" | "tall";
 export const FILM_SIZE: Record<FilmFormat, { width: number; height: number }> = {
   wide: { width: 1920, height: 1080 },
@@ -29,6 +30,8 @@ const DATA = {
   platformRoas: 7.15,
   adProfit: 155_131,
   budgetShifts: 7,
+  cancelledOrders: 154,
+  cancelledByRestaurant: 25,
 };
 
 const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
@@ -83,15 +86,18 @@ export function BrandFilm({ t, format = "wide" }: { t: number; format?: FilmForm
   const big = tall ? 150 : 170;
 
   // Background: ink for the opening and closing, cream in between.
-  const creamIn = span(t, 3.2, 0.6) * (1 - span(t, 26.3, 0.6));
+  const creamIn = span(t, 3.2, 0.6) * (1 - span(t, 41.2, 0.6));
 
   const s1 = scene(t, -1, 3.6);
   const s2 = scene(t, 3.6, 8.2);
   const s3 = scene(t, 8.2, 12.8);
   const s4 = scene(t, 12.8, 17.8);
   const s5 = scene(t, 17.8, 23.6);
-  const s6 = scene(t, 23.6, 26.6);
-  const s7 = scene(t, 26.6, 31);
+  const sComp = scene(t, 23.6, 28.6);
+  const sAi = scene(t, 28.6, 34);
+  const s6 = scene(t, 34, 37);
+  const sTools = scene(t, 37, 41.5);
+  const s7 = scene(t, 41.5, 47);
 
   const layer = (opacity: number): CSSProperties => ({
     position: "absolute",
@@ -276,17 +282,109 @@ export function BrandFilm({ t, format = "wide" }: { t: number; format?: FilmForm
         </div>
       </div>
 
+      {/* Compensation center */}
+      <div style={layer(sComp)}>
+        <Rise t={t} at={23.7}>
+          <Eyebrow color={C.goldText}>مركز التعويضات</Eyebrow>
+          <p style={{ fontSize: headline * (tall ? 0.78 : 0.68), fontWeight: 800, fontFamily: '"Noto Kufi Arabic", sans-serif', lineHeight: 1.35 }}>
+            تعويض لم تتسبب فيه؟ اعترض عليه بالدليل.
+          </p>
+        </Rise>
+        <div style={{ display: "flex", flexDirection: tall ? "column" : "row", alignItems: tall ? "stretch" : "center", gap: 22 }}>
+          {[
+            { at: 24.5, icon: Send, title: "قروب الفرع على Telegram", body: "الكاشير يرسل فيديو تجهيز الطلب" },
+            { at: 25.3, icon: Link2, title: "ربط تلقائي", body: "نربط الفيديو برقم الطلب" },
+            { at: 26.1, icon: FileCheck2, title: "ملف اعتراض جاهز", body: "بالعربي والإنجليزي، مع الدليل" },
+          ].map((step, index) => {
+            const p = span(t, step.at, 0.6);
+            return (
+              <div key={step.title} style={{ display: "contents" }}>
+                {index > 0 ? (
+                  <span style={{ color: C.gold, fontSize: 48, fontWeight: 800, opacity: p, textAlign: "center" }}>{tall ? "↓" : "←"}</span>
+                ) : null}
+                <div
+                  style={{
+                    flex: 1,
+                    background: index === 2 ? C.ink : C.card,
+                    color: index === 2 ? C.cream : C.ink,
+                    border: `2px solid ${index === 2 ? C.ink : C.border}`,
+                    borderRadius: 28,
+                    padding: "30px 34px",
+                    opacity: p,
+                    transform: `translateY(${(1 - p) * 30}px)`,
+                  }}
+                >
+                  <step.icon style={{ width: 48, height: 48, color: index === 2 ? C.gold : C.goldText, marginBottom: 10 }} />
+                  <p style={{ fontSize: 34, fontWeight: 800 }}>{step.title}</p>
+                  <p style={{ fontSize: 27, opacity: 0.75 }}>{step.body}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <Rise t={t} at={26.9} distance={20}>
+          <p style={{ fontSize: 32, fontWeight: 600 }}>
+            هذا الشهر: <bdi dir="ltr">{DATA.cancelledOrders}</bdi> طلباً ملغى، منها <bdi dir="ltr" style={{ color: C.red, fontWeight: 800 }}>{DATA.cancelledByRestaurant}</bdi> سُجّلت على المطعم
+          </p>
+        </Rise>
+      </div>
+
+      {/* Tadqeeq AI */}
+      <div style={layer(sAi)}>
+        <Rise t={t} at={28.7}>
+          <Eyebrow color={C.goldText}>Tadqeeq AI</Eyebrow>
+          <p style={{ fontSize: headline * (tall ? 0.78 : 0.68), fontWeight: 800, fontFamily: '"Noto Kufi Arabic", sans-serif', lineHeight: 1.35 }}>
+            اسأل عن أرقامك، بلغة بسيطة.
+          </p>
+        </Rise>
+        <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+          <Rise t={t} at={29.3} distance={20}>
+            <div style={{ display: "flex", justifyContent: "flex-start" }}>
+              <span style={{ background: C.ink, color: C.cream, borderRadius: "32px 32px 32px 8px", padding: "22px 36px", fontSize: 36, fontWeight: 600 }}>
+                كم أخذت المنصة هذا الشهر، ومن أين؟
+              </span>
+            </div>
+          </Rise>
+          {(() => {
+            const answer = `${nf(DATA.commission)} ر.س عمولة (${DATA.commissionPct}% من المبيعات)، و${nf(DATA.discounts)} ر.س خصومات مموّلة منك. أعلى نسبة عمولة في طلبات الاستلام: ${DATA.pickupCommission}% مقابل ${DATA.deliveryCommission}% للتوصيل.`;
+            const shown = Math.round(answer.length * clamp((t - 30.1) / 2.2));
+            return (
+              <div style={{ display: "flex", justifyContent: "flex-end", opacity: t > 29.9 ? 1 : 0 }}>
+                <span
+                  style={{
+                    background: C.card,
+                    border: `2px solid ${C.border}`,
+                    borderRadius: "32px 32px 8px 32px",
+                    padding: "24px 36px",
+                    fontSize: 34,
+                    lineHeight: 1.7,
+                    maxWidth: tall ? "100%" : "78%",
+                    minHeight: 120,
+                  }}
+                >
+                  {answer.slice(0, shown)}
+                  {shown < answer.length ? <span style={{ color: C.gold }}>▍</span> : null}
+                </span>
+              </div>
+            );
+          })()}
+          <Rise t={t} at={32.6} distance={16}>
+            <p style={{ fontSize: 28, color: C.green, fontWeight: 700 }}>✓ الأرقام من المحرك المحاسبي، والذكاء الاصطناعي يشرحها ولا يغيّرها</p>
+          </Rise>
+        </div>
+      </div>
+
       {/* 6 — Smart columns */}
       <div style={{ ...layer(s6), alignItems: "center", textAlign: "center" }}>
-        <Rise t={t} at={23.7}>
+        <Rise t={t} at={34.1}>
           <Eyebrow color={C.goldText}>جديد · قراءة ذكية للملفات</Eyebrow>
           <p style={{ fontSize: headline * (tall ? 0.78 : 0.68), fontWeight: 800, fontFamily: '"Noto Kufi Arabic", sans-serif', lineHeight: 1.35 }}>
             المنصة غيّرت اسم عمود؟ نطابقه بدل أن نتوقف.
           </p>
         </Rise>
         {(() => {
-          const swap = span(t, 24.6, 0.6);
-          const done = span(t, 25.4, 0.4);
+          const swap = span(t, 35.0, 0.6);
+          const done = span(t, 35.8, 0.4);
           return (
             <div dir="ltr" style={{ display: "flex", alignItems: "center", gap: 28, fontSize: 44, fontWeight: 700, fontFamily: '"IBM Plex Mono", monospace' }}>
               <span style={{ border: `3px solid ${C.border}`, borderRadius: 18, padding: "14px 28px", textDecoration: swap > 0.5 ? "line-through" : undefined, color: swap > 0.5 ? C.creamMuted : C.ink }}>
@@ -302,17 +400,50 @@ export function BrandFilm({ t, format = "wide" }: { t: number; format?: FilmForm
         })()}
       </div>
 
+      {/* All tools */}
+      <div style={{ ...layer(sTools), alignItems: "center", textAlign: "center" }}>
+        <Rise t={t} at={37.1}>
+          <p style={{ fontSize: headline * (tall ? 0.78 : 0.68), fontWeight: 800, fontFamily: '"Noto Kufi Arabic", sans-serif', lineHeight: 1.35 }}>
+            كل ما تحتاجه لإغلاق الشهر، في مكان واحد.
+          </p>
+        </Rise>
+        <div style={{ display: "grid", gridTemplateColumns: tall ? "1fr 1fr" : "repeat(4, 1fr)", gap: 20, width: "100%" }}>
+          {["مطابقة الفاتورة", "خريطة الرسوم", "مركز الاستثناءات", "مركز التعويضات", "عائد الإعلانات", "المراقب الذكي", "قراءة ذكية للملفات", "Tadqeeq AI"].map((name, index) => {
+            const p = span(t, 37.6 + index * 0.18, 0.5);
+            const highlight = index >= 4;
+            return (
+              <div
+                key={name}
+                style={{
+                  background: highlight ? C.ink : C.card,
+                  color: highlight ? C.cream : C.ink,
+                  border: `2px solid ${highlight ? C.ink : C.border}`,
+                  borderRadius: 24,
+                  padding: "28px 20px",
+                  fontSize: 32,
+                  fontWeight: 700,
+                  opacity: p,
+                  transform: `scale(${0.85 + 0.15 * p})`,
+                }}
+              >
+                {name}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* 7 — Close */}
       <div style={{ ...layer(s7), alignItems: "center", textAlign: "center", color: C.cream }}>
-        <Rise t={t} at={26.7}>
+        <Rise t={t} at={41.6}>
           <LogoWordmark className="h-[170px] w-auto" title="تدقيق" />
         </Rise>
-        <Rise t={t} at={27.3}>
+        <Rise t={t} at={42.2}>
           <p style={{ fontSize: headline * 0.75, fontWeight: 800, fontFamily: '"Noto Kufi Arabic", sans-serif', lineHeight: 1.4 }}>
             لا تدفع فاتورة المنصة قبل ما تتأكد منها.
           </p>
         </Rise>
-        <Rise t={t} at={27.9}>
+        <Rise t={t} at={42.8}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 28 }}>
             <span style={{ background: C.gold, color: C.ink, borderRadius: 999, padding: "18px 48px", fontSize: 40, fontWeight: 800 }}>ابدأ مجاناً</span>
             <span style={{ display: "flex", gap: 14 }}>
@@ -331,7 +462,7 @@ export function BrandFilm({ t, format = "wide" }: { t: number; format?: FilmForm
           bottom: 30,
           insetInlineEnd: tall ? 90 : 150,
           fontSize: 20,
-          opacity: s2 + s3 + s4 + s5 > 0 ? 0.6 : 0,
+          opacity: s2 + s3 + s4 + s5 + sComp + sAi > 0 ? 0.6 : 0,
           color: C.ink,
         }}
       >
