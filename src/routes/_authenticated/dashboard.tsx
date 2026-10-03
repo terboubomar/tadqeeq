@@ -41,7 +41,7 @@ import { reanalyzeAuditPeriod } from "@/lib/reanalyze-period.functions";
 import { setSelectedPeriodId, useSelectedPeriod } from "@/lib/use-period";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 import { SmartWatchCard } from "@/components/smart-watch/SmartWatchCard";
-import { keetaCostHint } from "@/lib/keeta-cost";
+import { keetaCostSplit, keetaOutsideInvoice } from "@/lib/keeta-cost";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -91,6 +91,8 @@ function Dashboard() {
   const isHunger = selected.platform === "hungerstation";
   const isKeeta = selected.platform === "keeta";
   const isJahez = selected.platform === "jahez";
+  const keetaSplit = isKeeta ? keetaCostSplit(s) : null;
+  const keetaOutside = isKeeta ? keetaOutsideInvoice(s) : null;
   const costLabel = isHunger ? "عمولة" : isJahez ? "تكلفة الفاتورة" : "تكلفة المنصة";
   async function reanalyzeCurrentPeriod() {
     if (!selected) return;
@@ -305,19 +307,44 @@ function Dashboard() {
                 icon: Percent,
                 tone: "negative",
               },
-              {
-                label: isHunger ? "إجمالي ما خصمته المنصة" : isJahez ? "فاتورة جاهز المحتسبة (بدون الضريبة)" : "كل ما خصمته كيتا (بدون الضريبة)",
-                value: sar(s.totalCharges),
-                hint: isHunger
-                  ? "عمولة + رسوم دفع + حملات + تعويضات"
-                  : isJahez
-                    ? "عمولة + رسوم مدفوعات + عروض توصيل"
-                    : (keetaCostHint(s) ?? `تكلفة فعلية ${percent(s.keetaPlatformCostPct ?? 0)} من المبيعات بدون الضريبة`),
-                icon: Receipt,
-                tone: "negative",
-              },
-              { label: "الطلبات", value: count(s.orders), icon: ShoppingCart },
-              { label: "متوسط قيمة الطلب", value: sar(s.orders ? s.grossSales / s.orders : 0), icon: Store },
+              ...(keetaSplit && keetaOutside
+                ? [
+                    {
+                      label: "فاتورة كيتا الضريبية (بدون الضريبة)",
+                      value: sar(keetaSplit.taxInvoice),
+                      hint: "عمولة الطلبات + رسوم الإعلانات",
+                      icon: Receipt,
+                      tone: "negative" as const,
+                    },
+                    {
+                      label: "مصاريف أخرى خارج الفاتورة",
+                      value: sar(keetaOutside.total),
+                      hint: keetaOutside.hint || undefined,
+                      icon: Receipt,
+                      tone: "negative" as const,
+                    },
+                    {
+                      label: "الطلبات",
+                      value: count(s.orders),
+                      hint: `متوسط الطلب ${sar(s.orders ? s.grossSales / s.orders : 0)}`,
+                      icon: ShoppingCart,
+                    },
+                  ]
+                : [
+                    {
+                      label: isHunger ? "إجمالي ما خصمته المنصة" : isJahez ? "فاتورة جاهز المحتسبة (بدون الضريبة)" : "إجمالي تكلفة كيتا (بدون الضريبة)",
+                      value: sar(s.totalCharges),
+                      hint: isHunger
+                        ? "عمولة + رسوم دفع + حملات + تعويضات"
+                        : isJahez
+                          ? "عمولة + رسوم مدفوعات + عروض توصيل"
+                          : `تكلفة فعلية ${percent(s.keetaPlatformCostPct ?? 0)} من المبيعات بدون الضريبة`,
+                      icon: Receipt,
+                      tone: "negative" as const,
+                    },
+                    { label: "الطلبات", value: count(s.orders), icon: ShoppingCart },
+                    { label: "متوسط قيمة الطلب", value: sar(s.orders ? s.grossSales / s.orders : 0), icon: Store },
+                  ]),
             ]}
           />
           <div className="grid gap-5 md:grid-cols-2">

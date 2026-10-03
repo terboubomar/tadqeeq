@@ -28,9 +28,12 @@ export function keetaCostSplit(s: Summary): KeetaCostSplit | null {
   return { taxInvoice, outside: parts.filter((part) => Math.abs(part.amount) >= 0.01) };
 }
 
-/** "الفاتورة الضريبية 583,108.02 + خصومات أصناف 1,698.08 + أقساط POS 3,043.48" */
-export function keetaCostHint(s: Summary): string | null {
+/** Total deducted outside the tax invoice, and its parts: "خصومات أصناف 1,698.08 · أقساط POS 3,043.48". */
+export function keetaOutsideInvoice(s: Summary): { total: number; hint: string } | null {
   const split = keetaCostSplit(s);
   if (!split) return null;
-  return [`الفاتورة الضريبية ${money(split.taxInvoice)}`, ...split.outside.map((part) => `${part.label} ${money(part.amount)}`)].join(" + ");
+  return {
+    total: roundMoney(split.outside.reduce((sum, part) => sum + part.amount, 0)),
+    hint: split.outside.map((part) => `${part.label} ${money(part.amount)}`).join(" · "),
+  };
 }
