@@ -41,6 +41,8 @@ import {
 } from "@/lib/upload-validation";
 import { cn } from "@/lib/utils";
 import { PlatformName } from "@/components/brand/PlatformLogo";
+import { ColumnReviewDialog } from "@/components/smart-columns/ColumnReviewDialog";
+import type { ColumnAlias, ColumnReview } from "@/lib/smart-columns/match";
 
 export const Route = createFileRoute("/_authenticated/import")({
   head: () => ({
@@ -195,6 +197,9 @@ function ImportPage() {
   const [mappingSelections, setMappingSelections] = useState<
     Record<string, string>
   >({});
+  const [columnReview, setColumnReview] = useState<ColumnReview | null>(null);
+  // Column matches confirmed for the current data file, resent with every later run of it.
+  const [confirmedColumns, setConfirmedColumns] = useState<ColumnAlias[]>([]);
   const runLock = useRef(false);
 
   let bankRateInterpretation = "";
@@ -216,6 +221,7 @@ function ImportPage() {
 
     setPlatform(next);
     setDataFile(null);
+    setConfirmedColumns([]);
     setInvoiceFile(null);
     setCpcFile(null);
     setCompensationFile(null);
@@ -251,6 +257,7 @@ function ImportPage() {
     options: {
       approvedMappings?: Record<string, string>;
       skipMappingReview?: boolean;
+      columnAliases?: ColumnAlias[];
     } = {},
   ) {
     if (!dataFile) {
@@ -286,8 +293,17 @@ function ImportPage() {
       if (options.skipMappingReview) {
         form.set("skipMappingReview", "true");
       }
+      const columnAliases = options.columnAliases ?? confirmedColumns;
+      if (columnAliases.length) {
+        form.set("columnAliases", JSON.stringify(columnAliases));
+      }
 
       const response = await importAuditPeriod({ data: form });
+
+      if (response.status === "column_review") {
+        setColumnReview(response.review);
+        return;
+      }
 
       if (response.status === "mapping_review") {
         const suggestedSelections = Object.fromEntries(
@@ -316,6 +332,9 @@ function ImportPage() {
       await queryClient.invalidateQueries({ queryKey: ["workspace-context"] });
       toast.success(
         `تم تحليل ${response.branchCount} فرع و${response.dailyCount} يوم على الخادم.`,
+        response.columnAliasesApplied
+          ? { description: "استُخدمت مطابقة الأعمدة المؤكدة لأن المنصة غيّرت أسماء بعض الأعمدة." }
+          : undefined,
       );
       navigate({ to: "/dashboard" });
     } catch (error) {
@@ -372,6 +391,7 @@ function ImportPage() {
               dataFile={dataFile}
               onChange={(file) => {
                 setDataFile(file);
+                setConfirmedColumns([]);
                 setMappingReview(null);
                 setMappingSelections({});
               }}
@@ -432,6 +452,16 @@ function ImportPage() {
             )
           ) : null}
         </div>
+
+        <ColumnReviewDialog
+          review={columnReview}
+          onCancel={() => setColumnReview(null)}
+          onConfirm={(aliases) => {
+            setColumnReview(null);
+            setConfirmedColumns(aliases);
+            void run({ columnAliases: aliases });
+          }}
+        />
 
         <RunDialog
           busy={busy}

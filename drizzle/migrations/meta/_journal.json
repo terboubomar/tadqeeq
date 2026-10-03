@@ -246,6 +246,13 @@
       "when": 1790303139960,
       "tag": "0034_smart_watch",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790303239960,
+      "tag": "0035_format_column_aliases",
+      "breakpoints": true
     }
   ]
 }

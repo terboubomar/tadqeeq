@@ -29,6 +29,14 @@ import { requireServerUser, type ServerUserClient } from "./server-auth.server";
 import { safeStorageFileName, sha256Hex } from "./source-file-utils";
 import { logEvent } from "./observability";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL } from "./upload-validation";
+import { loadColumnAliases, saveColumnAliases } from "./smart-columns/aliases.server";
+import {
+  applyColumnAliases,
+  buildColumnReview,
+  validateAliases,
+  type ColumnAlias,
+  type ColumnReview,
+} from "./smart-columns/match";
 
 const SOURCE_BUCKET = "source-files";
 
@@ -38,6 +46,8 @@ export type ImportAuditResult =
       periodId: string;
       branchCount: number;
       dailyCount: number;
+      /** Columns renamed by confirmed smart-column matches before analysis. */
+      columnAliasesApplied?: number;
     }
   | {
       status: "duplicate";
@@ -46,7 +56,48 @@ export type ImportAuditResult =
   | {
       status: "mapping_review";
       review: HungerStationMappingReview;
+    }
+  | {
+      status: "column_review";
+      review: ColumnReview;
     };
+
+/** A platform changed required columns and the file offers likely matches for the user to confirm. */
+export class ColumnReviewRequired extends UnsupportedFormatError {
+  readonly review: ColumnReview;
+
+  constructor(cause: UnsupportedFormatError, review: ColumnReview) {
+    super({
+      platform: cause.platform,
+      source: cause.source,
+      formatId: cause.formatId,
+      missing: cause.missing,
+      observed: cause.observed,
+    });
+    this.name = "ColumnReviewRequired";
+    this.review = review;
+  }
+}
+
+function parseColumnAliases(form: FormData): ColumnAlias[] {
+  const raw = formString(form, "columnAliases");
+  if (!raw) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("مطابقة الأعمدة غير صالحة.");
+  }
+  if (!Array.isArray(parsed) || parsed.length > 40) throw new Error("مطابقة الأعمدة غير صالحة.");
+  return parsed.map((item) => {
+    const entry = item as Partial<ColumnAlias> | null;
+    const ok = (value: unknown, max: number) => typeof value === "string" && value.trim().length > 0 && value.length <= max;
+    if (!entry || !ok(entry.source, 120) || !ok(entry.canonical, 200) || !ok(entry.observed, 200)) {
+      throw new Error("مطابقة الأعمدة غير صالحة.");
+    }
+    return { source: entry.source!, canonical: entry.canonical!, observed: entry.observed! };
+  });
+}
 
 export interface SourceFile {
   kind: "data" | "invoice" | "cpc_invoice" | "compensation";
@@ -243,7 +294,13 @@ export async function buildAnalysis(
   userId: string,
   approvedMappings: Record<string, string>,
   excludeHistoricalPeriodId?: string,
-): Promise<{ result: AnalysisResult; sources: SourceFile[] }> {
+): Promise<{
+  result: AnalysisResult;
+  sources: SourceFile[];
+  /** Matches the user confirmed with this upload (to remember once the analysis succeeds). */
+  confirmedAliases: ColumnAlias[];
+  appliedAliases: ColumnAlias[];
+}> {
   const dataFile = formFile(form, "dataFile");
   const invoiceFile = formFile(form, "invoiceFile");
   const cpcFile = formFile(form, "cpcFile");
@@ -268,7 +325,15 @@ export async function buildAnalysis(
   if (!dataFile) throw new Error("ملف البيانات مطلوب.");
 
   const label = formString(form, "label");
-  const dataBuffer = await dataFile.arrayBuffer();
+  const originalBuffer = await dataFile.arrayBuffer();
+
+  // Confirmed column matches rename changed headers back to the names the engine expects.
+  const confirmedAliases = validateAliases(platform, originalBuffer, parseColumnAliases(form));
+  const storedAliases = await loadColumnAliases(client, userId, platform);
+  const { file: dataBuffer, applied: appliedAliases } = applyColumnAliases(platform, originalBuffer, [
+    ...confirmedAliases,
+    ...storedAliases,
+  ]);
 
   let invoice;
   if (invoiceFile) {
@@ -292,41 +357,56 @@ export async function buildAnalysis(
   }
 
   let result: AnalysisResult;
-  if (platform === "hungerstation") {
-    const persistedMappings = await loadHungerStationMappings(client, userId);
-    const bankRate = parsePercentRateInput(formString(form, "bankRate"));
+  try {
+    if (platform === "hungerstation") {
+      const persistedMappings = await loadHungerStationMappings(client, userId);
+      const bankRate = parsePercentRateInput(formString(form, "bankRate"));
 
-    result = analyzeHungerStation(dataBuffer, {
-      ...(invoice ? { invoice } : {}),
-      ...(cpcInvoice ? { cpcInvoice } : {}),
-      ...(bankRate ? { manualBankRate: bankRate.fraction } : {}),
-      branchMappings: {
-        ...persistedMappings,
-        ...approvedMappings,
-      },
-      ...(label ? { label } : {}),
-    });
-  } else if (platform === "keeta") {
-    result = analyzeKeeta(dataBuffer, {
-      ...(invoice ? { invoice } : {}),
-      ...(label ? { label } : {}),
-    });
-  } else {
-    result = analyzeJahez(dataBuffer, {
-      ...(invoice ? { invoice } : {}),
-      ...(compensationFile
-        ? { compensationFile: await compensationFile.arrayBuffer() }
-        : {}),
-      historicalOrders: await historicalJahezOrders(
-        client,
-        userId,
-        excludeHistoricalPeriodId,
-      ),
-      ...(label ? { label } : {}),
-    });
+      result = analyzeHungerStation(dataBuffer, {
+        ...(invoice ? { invoice } : {}),
+        ...(cpcInvoice ? { cpcInvoice } : {}),
+        ...(bankRate ? { manualBankRate: bankRate.fraction } : {}),
+        branchMappings: {
+          ...persistedMappings,
+          ...approvedMappings,
+        },
+        ...(label ? { label } : {}),
+      });
+    } else if (platform === "keeta") {
+      result = analyzeKeeta(dataBuffer, {
+        ...(invoice ? { invoice } : {}),
+        ...(label ? { label } : {}),
+      });
+    } else {
+      result = analyzeJahez(dataBuffer, {
+        ...(invoice ? { invoice } : {}),
+        ...(compensationFile
+          ? { compensationFile: await compensationFile.arrayBuffer() }
+          : {}),
+        historicalOrders: await historicalJahezOrders(
+          client,
+          userId,
+          excludeHistoricalPeriodId,
+        ),
+        ...(label ? { label } : {}),
+      });
+    }
+  } catch (cause) {
+    if (cause instanceof UnsupportedFormatError && !(cause instanceof ColumnReviewRequired)) {
+      let review: ColumnReview | null = null;
+      try {
+        review = buildColumnReview(platform, dataBuffer);
+      } catch (reviewError) {
+        console.error("Failed to build column review", reviewError);
+      }
+      if (review) throw new ColumnReviewRequired(cause, review);
+    }
+    throw cause;
   }
 
   return {
+    confirmedAliases,
+    appliedAliases,
     result,
     sources: [
       {
@@ -639,8 +719,10 @@ async function runImportAudit(
 
   let result: AnalysisResult;
   let sources: SourceFile[];
+  let confirmedAliases: ColumnAlias[];
+  let appliedAliases: ColumnAlias[];
   try {
-    ({ result, sources } = await buildAnalysis(
+    ({ result, sources, confirmedAliases, appliedAliases } = await buildAnalysis(
       form,
       platform,
       client,
@@ -666,6 +748,10 @@ async function runImportAudit(
         }
       }
 
+      if (cause instanceof ColumnReviewRequired) {
+        return { status: "column_review", review: cause.review };
+      }
+
       throw new Error(
         cause.message +
           (alertId
@@ -681,6 +767,8 @@ async function runImportAudit(
   if (platform === "hungerstation") {
     assertApprovedMappingsBelongToAnalysis(result, approvedMappings);
   }
+
+  await saveColumnAliases(client, { workspaceId, ownerUserId: userId, actorUserId, platform, aliases: confirmedAliases });
 
   const duplicate = await findDuplicate(client, userId, result);
   if (duplicate) {
@@ -748,5 +836,6 @@ async function runImportAudit(
     periodId,
     branchCount: result.branches.length,
     dailyCount: result.daily.length,
+    ...(appliedAliases.length ? { columnAliasesApplied: appliedAliases.length } : {}),
   };
 }
