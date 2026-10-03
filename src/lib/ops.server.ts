@@ -353,6 +353,9 @@ const OWNED_TABLES_DELETE_ORDER = [
   "format_change_alerts",
   "audit_source_files",
   "promotion_audits",
+  "ads_roi_analyses",
+  "ads_roi_brand_settings",
+  "smart_watch_acceptances",
   "ai_usage",
   "hungerstation_branch_mappings",
   "contract_rule_events",
@@ -424,6 +427,8 @@ export async function deleteOpsClientOnServer(input: { workspaceId: string; conf
 
   for (const table of OWNED_TABLES_DELETE_ORDER) {
     const { error } = await db().from(table).delete().eq("workspace_id", input.workspaceId);
+    // A table whose migration has not been applied yet holds no rows to delete.
+    if (error && (error.code === "42P01" || error.code === "PGRST205")) continue;
     if (error) throw new Error(`تعذّر حذف بيانات ${table}: ${error.message}`);
   }
   const { error: deleteError } = await db().from("workspaces").delete().eq("id", input.workspaceId);

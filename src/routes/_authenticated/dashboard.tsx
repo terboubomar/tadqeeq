@@ -40,6 +40,7 @@ import { arabicDate, count, money, percent, sar, short } from "@/lib/format";
 import { reanalyzeAuditPeriod } from "@/lib/reanalyze-period.functions";
 import { setSelectedPeriodId, useSelectedPeriod } from "@/lib/use-period";
 import { PlatformName } from "@/components/brand/PlatformLogo";
+import { SmartWatchCard } from "@/components/smart-watch/SmartWatchCard";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -283,6 +284,8 @@ function Dashboard() {
           ) : null}
         </div>
       </header>
+
+      <SmartWatchCard selected={selected} periods={periods} />
 
       <div className="grid gap-5 xl:grid-cols-12">
         <div className="space-y-5 xl:col-span-7">

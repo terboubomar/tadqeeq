@@ -239,6 +239,13 @@
       "when": 1790303039960,
       "tag": "0033_ads_roi",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790303139960,
+      "tag": "0034_smart_watch",
+      "breakpoints": true
     }
   ]
 }

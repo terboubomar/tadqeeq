@@ -1550,6 +1550,70 @@ export type Database = {
           },
         ]
       }
+      smart_watch_acceptances: {
+        Row: {
+          accepted_rate: number
+          branch_key: string
+          branch_name: string | null
+          created_at: string
+          created_by: string | null
+          metric: string
+          period_id: string | null
+          platform: string
+          typical_rate: number | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          accepted_rate: number
+          branch_key: string
+          branch_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          metric: string
+          period_id?: string | null
+          platform: string
+          typical_rate?: number | null
+          user_id: string
+          workspace_id?: string
+        }
+        Update: {
+          accepted_rate?: number
+          branch_key?: string
+          branch_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          metric?: string
+          period_id?: string | null
+          platform?: string
+          typical_rate?: number | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "smart_watch_acceptances_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "smart_watch_acceptances_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "smart_watch_acceptances_workspace_owner_fkey"
+            columns: ["workspace_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_user_id"]
+          },
+        ]
+      }
       subscription_plans: {
         Row: {
           active: boolean
