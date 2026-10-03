@@ -1,5 +1,6 @@
 import type { Platform } from "../analysis/types";
 import type { ServerUserClient } from "../server-auth.server";
+import type { ColumnSnapshot } from "./changes";
 import type { ColumnAlias } from "./match";
 
 /**
@@ -49,4 +50,46 @@ export async function saveColumnAliases(
   );
   // The analysis itself succeeded; failing to remember the match only means asking again next time.
   if (error && !isTableMissing(error)) console.error("Failed to save column aliases", error.message);
+}
+
+const SNAPSHOTS = "platform_column_snapshots";
+
+function isSnapshotTableMissing(error: { code?: string; message: string }): boolean {
+  return error.code === "42P01" || error.code === "PGRST205" || (/platform_column_snapshots/.test(error.message) && /does not exist|schema cache/i.test(error.message));
+}
+
+/** Remembered columns for a platform; null when migration 0036 is not applied (no reports then). */
+export async function loadColumnSnapshots(client: ServerUserClient, ownerUserId: string, platform: Platform): Promise<ColumnSnapshot[] | null> {
+  const { data, error } = await (client as unknown as LooseClient)
+    .from(SNAPSHOTS)
+    .select("source,columns")
+    .eq("user_id", ownerUserId)
+    .eq("platform", platform);
+  if (error) {
+    if (isSnapshotTableMissing(error)) return null;
+    throw new Error(error.message);
+  }
+  return ((data ?? []) as Array<{ source: string; columns: ColumnSnapshot["columns"] }>).map((row) => ({
+    source: row.source,
+    columns: Array.isArray(row.columns) ? row.columns : [],
+  }));
+}
+
+export async function saveColumnSnapshots(
+  client: ServerUserClient,
+  input: { workspaceId: string; ownerUserId: string; platform: Platform; snapshots: ColumnSnapshot[] },
+): Promise<void> {
+  if (input.snapshots.length === 0) return;
+  const { error } = await (client as unknown as LooseClient).from(SNAPSHOTS).upsert(
+    input.snapshots.map((snapshot) => ({
+      workspace_id: input.workspaceId,
+      user_id: input.ownerUserId,
+      platform: input.platform,
+      source: snapshot.source,
+      columns: snapshot.columns,
+      updated_at: new Date().toISOString(),
+    })),
+    { onConflict: "workspace_id,platform,source" },
+  );
+  if (error && !isSnapshotTableMissing(error)) console.error("Failed to save column snapshots", error.message);
 }

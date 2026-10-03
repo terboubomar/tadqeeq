@@ -253,6 +253,13 @@
       "when": 1790303239960,
       "tag": "0035_format_column_aliases",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790303339960,
+      "tag": "0036_platform_column_snapshots",
+      "breakpoints": true
     }
   ]
 }

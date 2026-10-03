@@ -352,6 +352,7 @@ const OWNED_TABLES_DELETE_ORDER = [
   "exception_events",
   "format_change_alerts",
   "format_column_aliases",
+  "platform_column_snapshots",
   "audit_source_files",
   "promotion_audits",
   "ads_roi_analyses",

@@ -336,6 +336,12 @@ function ImportPage() {
           ? { description: "استُخدمت مطابقة الأعمدة المؤكدة لأن المنصة غيّرت أسماء بعض الأعمدة." }
           : undefined,
       );
+      if (response.columnChanges?.length) {
+        toast.warning(`في الملف ${response.columnChanges.length} تغيير في أعمدة المبالغ مقارنة بملفاتك السابقة.`, {
+          description: "راجعها في المراقب الذكي على اللوحة.",
+          duration: 10_000,
+        });
+      }
       navigate({ to: "/dashboard" });
     } catch (error) {
       console.error(error);

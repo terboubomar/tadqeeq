@@ -3,6 +3,7 @@ import type { Json } from "@/integrations/supabase/types";
 
 import type { AnalysisResult, BranchRow, DailyRow, InvoiceFigures, Summary } from "./analysis/types";
 import type { ExceptionWorkflowEntry } from "./exceptions";
+import type { ColumnChange } from "./smart-columns/changes";
 
 export interface StoredPeriod {
   id: string;
@@ -23,6 +24,8 @@ export interface StoredPeriod {
   invoice: InvoiceFigures & {
     checks?: AnalysisResult["checks"];
     exceptionWorkflow?: Record<string, ExceptionWorkflowEntry>;
+    /** Money columns new or gone since the workspace's earlier files (recorded at upload). */
+    columnChanges?: ColumnChange[];
   };
 }
 
