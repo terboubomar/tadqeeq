@@ -4,7 +4,8 @@ import type { Json } from "@/integrations/supabase/types";
 import { UnsupportedFormatError } from "./analysis/formats/types";
 import { analyzeHungerStation } from "./analysis/hungerstation";
 import { analyzeJahez } from "./analysis/jahez";
-import { analyzeKeeta } from "./analysis/keeta";
+import { analyzeKeeta, analyzeKeetaSheets } from "./analysis/keeta";
+import { readXlsxSheets, type SheetSource } from "./analysis/xlsx-stream";
 import {
   parseCpcInvoice,
   parseHungerInvoice,
@@ -43,6 +44,7 @@ import {
   type ColumnSnapshot,
 } from "./smart-columns/changes";
 import {
+  applyAliasesToSheets,
   applyColumnAliases,
   buildColumnReview,
   validateAliases,
@@ -316,6 +318,8 @@ export async function buildAnalysis(
   appliedAliases: ColumnAlias[];
   /** The data file as the engine read it (after confirmed column matches). */
   analysedFile: ArrayBuffer;
+  /** Keeta: the sheets read by the low-memory reader (already renamed by confirmed matches). */
+  analysedSheets: SheetSource | null;
 }> {
   const dataFile = formFile(form, "dataFile");
   const invoiceFile = formFile(form, "invoiceFile");
@@ -342,14 +346,16 @@ export async function buildAnalysis(
 
   const label = formString(form, "label");
   const originalBuffer = await dataFile.arrayBuffer();
+  // Large Keeta exports do not fit in a Worker when opened with SheetJS; read them as a stream.
+  const sheets = platform === "keeta" ? await readXlsxSheets(originalBuffer) : null;
 
   // Confirmed column matches rename changed headers back to the names the engine expects.
-  const confirmedAliases = validateAliases(platform, originalBuffer, parseColumnAliases(form));
+  const confirmedAliases = validateAliases(platform, originalBuffer, parseColumnAliases(form), sheets ?? undefined);
   const storedAliases = await loadColumnAliases(client, userId, platform);
-  const { file: dataBuffer, applied: appliedAliases } = applyColumnAliases(platform, originalBuffer, [
-    ...confirmedAliases,
-    ...storedAliases,
-  ]);
+  const aliases = [...confirmedAliases, ...storedAliases];
+  const { file: dataBuffer, applied: appliedAliases } = sheets
+    ? { file: originalBuffer, applied: applyAliasesToSheets(platform, sheets, aliases) }
+    : applyColumnAliases(platform, originalBuffer, aliases);
 
   let invoice;
   if (invoiceFile) {
@@ -389,10 +395,11 @@ export async function buildAnalysis(
         ...(label ? { label } : {}),
       });
     } else if (platform === "keeta") {
-      result = analyzeKeeta(dataBuffer, {
+      const keetaOptions = {
         ...(invoice ? { invoice } : {}),
         ...(label ? { label } : {}),
-      });
+      };
+      result = sheets ? analyzeKeetaSheets(sheets, keetaOptions) : analyzeKeeta(dataBuffer, keetaOptions);
     } else {
       result = analyzeJahez(dataBuffer, {
         ...(invoice ? { invoice } : {}),
@@ -411,7 +418,7 @@ export async function buildAnalysis(
     if (cause instanceof UnsupportedFormatError && !(cause instanceof ColumnReviewRequired)) {
       let review: ColumnReview | null = null;
       try {
-        review = buildColumnReview(platform, dataBuffer);
+        review = buildColumnReview(platform, dataBuffer, sheets ?? undefined);
       } catch (reviewError) {
         console.error("Failed to build column review", reviewError);
       }
@@ -424,6 +431,7 @@ export async function buildAnalysis(
     confirmedAliases,
     appliedAliases,
     analysedFile: dataBuffer,
+    analysedSheets: sheets,
     result,
     sources: [
       {
@@ -741,8 +749,9 @@ async function runImportAudit(
   let confirmedAliases: ColumnAlias[];
   let appliedAliases: ColumnAlias[];
   let analysedFile: ArrayBuffer;
+  let analysedSheets: SheetSource | null;
   try {
-    ({ result, sources, confirmedAliases, appliedAliases, analysedFile } = await buildAnalysis(
+    ({ result, sources, confirmedAliases, appliedAliases, analysedFile, analysedSheets } = await buildAnalysis(
       form,
       platform,
       client,
@@ -796,7 +805,7 @@ async function runImportAudit(
   try {
     const snapshots = await loadColumnSnapshots(client, userId, platform);
     if (snapshots) {
-      const profiles = profileColumns(platform, analysedFile);
+      const profiles = profileColumns(platform, analysedFile, analysedSheets ?? undefined);
       columnChanges = diffColumns(snapshots, profiles);
       nextSnapshots = mergeSnapshots(snapshots, profiles);
     }

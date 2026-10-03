@@ -4,6 +4,7 @@ import { parseCsv as parseJahezCsv } from "../analysis/jahez";
 import { HUNGERSTATION_ORDER_FORMAT, JAHEZ_DETAIL_FORMAT, JAHEZ_SUMMARY_FORMAT, KEETA_ORDER_FORMAT } from "../analysis/formats";
 import { normalizeFormatHeader, type FormatFingerprint } from "../analysis/formats/types";
 import { resolveSheetName } from "../analysis/sheets";
+import type { SheetSource } from "../analysis/xlsx-stream";
 import type { Platform } from "../analysis/types";
 
 /**
@@ -213,6 +214,11 @@ function sheetMatrix(wb: XLSX.WorkBook, platform: Platform, source: string): unk
   return XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null, raw: true });
 }
 
+function sourceMatrix(sheets: SheetSource, platform: Platform, source: string): unknown[][] | null {
+  const name = resolveSheetName(sheets.names, source, { platform });
+  return (name ? sheets.matrix(name) : undefined) ?? null;
+}
+
 function jahezTable(matrix: string[][], source: string): { headerIndex: number } | null {
   if (source === JAHEZ_SUMMARY_FORMAT.source) return matrix.length ? { headerIndex: 0 } : null;
   const index = matrix.findIndex((row, i) => i > 0 && row[0]?.trim() === "#");
@@ -236,6 +242,8 @@ export function readSourceTable(
   source: string,
   file: ArrayBuffer,
   maxRows: number = SAMPLE_ROWS,
+  /** Sheets already read (low-memory reader); avoids opening an Excel file again. */
+  sheets?: SheetSource,
 ): SourceTable | null {
   if (platform === "jahez") {
     const matrix = parseJahezCsv(new TextDecoder("utf-8").decode(file).replace(/^\uFEFF/, ""));
@@ -245,7 +253,7 @@ export function readSourceTable(
     const end = source === JAHEZ_SUMMARY_FORMAT.source ? table.headerIndex + 2 : table.headerIndex + 1 + maxRows;
     return { source, headers, rows: matrix.slice(table.headerIndex + 1, end).filter((row) => row.some((v) => v.trim() !== "")) };
   }
-  const matrix = sheetMatrix(XLSX.read(file, { type: "array" }), platform, source);
+  const matrix = sheets ? sourceMatrix(sheets, platform, source) : sheetMatrix(XLSX.read(file, { type: "array" }), platform, source);
   if (!matrix || matrix.length === 0) return null;
   const index = platform === "hungerstation" ? 0 : headerRowIndex(matrix);
   const headers = (matrix[index] ?? []).map((value) => String(value ?? "").trim());
@@ -320,10 +328,10 @@ export function suggestColumns(fingerprint: FormatFingerprint, table: SourceTabl
  * A review for a file whose required columns are missing; null when nothing can be matched
  * (e.g. a whole sheet is missing, or no column comes close).
  */
-export function buildColumnReview(platform: Platform, file: ArrayBuffer): ColumnReview | null {
+export function buildColumnReview(platform: Platform, file: ArrayBuffer, sheets?: SheetSource): ColumnReview | null {
   const fields: ColumnReviewField[] = [];
   for (const fingerprint of FINGERPRINTS[platform]) {
-    const table = readSourceTable(platform, fingerprint.source, file);
+    const table = readSourceTable(platform, fingerprint.source, file, SAMPLE_ROWS, sheets);
     if (!table) return null;
     fields.push(...suggestColumns(fingerprint, table));
   }
@@ -332,14 +340,14 @@ export function buildColumnReview(platform: Platform, file: ArrayBuffer): Column
 }
 
 /** Checks that confirmed aliases only fill missing required columns with columns that exist in the file. */
-export function validateAliases(platform: Platform, file: ArrayBuffer, aliases: ColumnAlias[]): ColumnAlias[] {
+export function validateAliases(platform: Platform, file: ArrayBuffer, aliases: ColumnAlias[], sheets?: SheetSource): ColumnAlias[] {
   const valid: ColumnAlias[] = [];
   for (const alias of aliases) {
     const fingerprint = FINGERPRINTS[platform].find((candidate) => candidate.source === alias.source);
     if (!fingerprint) throw new Error("مطابقة أعمدة غير صالحة: " + alias.source);
     const known = fingerprint.requiredHeaderGroups.some((group) => group.includes(alias.canonical));
     if (!known) throw new Error("مطابقة أعمدة غير صالحة: " + alias.canonical);
-    const table = readSourceTable(platform, alias.source, file);
+    const table = readSourceTable(platform, alias.source, file, SAMPLE_ROWS, sheets);
     const headers = new Set((table?.headers ?? []).map(normalizeFormatHeader));
     if (!headers.has(normalizeFormatHeader(alias.observed))) {
       throw new Error("العمود غير موجود في الملف: " + alias.observed);
@@ -419,4 +427,27 @@ export function applyColumnAliases(
   }
   if (applied.length === 0) return { file, applied };
   return { file: XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer, applied };
+}
+
+/**
+ * applyColumnAliases for sheets already read by the low-memory reader: renames the header cells
+ * in place, with the same rules (only when the expected name is missing).
+ */
+export function applyAliasesToSheets(platform: Platform, sheets: SheetSource, aliases: ColumnAlias[]): ColumnAlias[] {
+  if (aliases.length === 0 || platform === "jahez") return [];
+  const applied: ColumnAlias[] = [];
+  for (const fingerprint of FINGERPRINTS[platform]) {
+    const matrix = sourceMatrix(sheets, platform, fingerprint.source);
+    if (!matrix || matrix.length === 0) continue;
+    const index = platform === "hungerstation" ? 0 : headerRowIndex(matrix);
+    const row = matrix[index] ?? [];
+    const headers = row.map((value) => String(value ?? "").trim());
+    const result = renameRow(headers, aliases.filter((alias) => alias.source === fingerprint.source));
+    for (const alias of result.applied) {
+      const column = headers.findIndex((header) => normalizeFormatHeader(header) === normalizeFormatHeader(alias.observed));
+      row[column] = alias.canonical;
+    }
+    applied.push(...result.applied);
+  }
+  return applied;
 }

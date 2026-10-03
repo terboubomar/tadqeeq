@@ -1,4 +1,25 @@
+import * as XLSX from "xlsx";
+
 import { ParseError, type ParseContext } from "./parse";
+import type { SheetMatrix, SheetSource } from "./xlsx-stream";
+
+/** A SheetJS workbook as a SheetSource; each sheet is converted once, on first use. */
+export function workbookSheetSource(wb: XLSX.WorkBook): SheetSource {
+  const cache = new Map<string, SheetMatrix>();
+  return {
+    names: wb.SheetNames,
+    matrix(name) {
+      const sheet = wb.Sheets[name];
+      if (!sheet) return undefined;
+      let matrix = cache.get(name);
+      if (!matrix) {
+        matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null, raw: true });
+        cache.set(name, matrix);
+      }
+      return matrix;
+    },
+  };
+}
 
 function normalizeSheetName(value: string): string {
   return value.trim().toLowerCase();

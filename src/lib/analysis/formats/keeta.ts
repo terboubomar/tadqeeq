@@ -1,6 +1,7 @@
-import * as XLSX from "xlsx";
+import type * as XLSX from "xlsx";
 
-import { resolveSheetName } from "../sheets";
+import { resolveSheetName, workbookSheetSource } from "../sheets";
+import type { SheetSource } from "../xlsx-stream";
 import {
   UnsupportedFormatError,
   assertSupportedHeaders,
@@ -25,11 +26,13 @@ export const KEETA_ORDER_FORMAT: FormatFingerprint = {
   optionalSources: ["Invoice Details", "Billing data summary"],
 };
 
-export function detectKeetaFormat(wb: XLSX.WorkBook): string {
-  const sheetName = resolveSheetName(wb.SheetNames, "Order Summary", {
+export function detectKeetaFormat(input: XLSX.WorkBook | SheetSource): string {
+  const source = "matrix" in input ? input : workbookSheetSource(input);
+  const sheetName = resolveSheetName(source.names, "Order Summary", {
     platform: "keeta",
   });
-  if (!sheetName || !wb.Sheets[sheetName]) {
+  const sheetMatrix = sheetName ? source.matrix(sheetName) : undefined;
+  if (!sheetName || !sheetMatrix) {
     throw new UnsupportedFormatError({
       platform: "keeta",
       source: KEETA_ORDER_FORMAT.source,
@@ -38,11 +41,7 @@ export function detectKeetaFormat(wb: XLSX.WorkBook): string {
     });
   }
 
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[sheetName]!, {
-    header: 1,
-    defval: null,
-    raw: true,
-  });
+  const matrix = sheetMatrix;
 
   const headerRow = matrix.find(
     (row) =>

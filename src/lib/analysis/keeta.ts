@@ -10,7 +10,8 @@ import type {
 } from "./types";
 import { detectKeetaFormat } from "./formats";
 import { ParseError, parseAmount, parseDate } from "./parse";
-import { resolveSheetName } from "./sheets";
+import { resolveSheetName, workbookSheetSource } from "./sheets";
+import type { SheetMatrix, SheetSource } from "./xlsx-stream";
 import { KEETA_TOLERANCES } from "./tolerances";
 
 const VAT_RATE = 0.15;
@@ -55,41 +56,57 @@ function normalizeHeader(value: unknown): string {
 }
 
 
-function findSheet(wb: XLSX.WorkBook, name: string): string | undefined {
-  return resolveSheetName(wb.SheetNames, name, {
+function findSheet(source: SheetSource, name: string): string | undefined {
+  return resolveSheetName(source.names, name, {
     platform: "keeta",
   });
 }
 
 function rowsFromSheet(
-  sheet: XLSX.WorkSheet,
+  matrix: SheetMatrix,
   headerMatcher: (headers: string[]) => boolean,
 ): Record<string, unknown>[] {
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-    header: 1,
-    defval: null,
-    raw: true,
-  });
-
   const headerIndex = matrix.findIndex((row) => headerMatcher(row.map(normalizeHeader)));
   if (headerIndex < 0) return [];
 
   const headers = matrix[headerIndex]!.map((value) => text(value));
-  const rows: Record<string, unknown>[] = [];
+  // Column positions with the key order and duplicate rule of a plain row object
+  // ({ [header]: value } in column order: same key order, the last duplicate wins).
+  const columns: Record<string, number> = {};
+  headers.forEach((header, index) => {
+    if (header) columns[header] = index;
+  });
+  const keys = Object.keys(columns);
 
-  for (const raw of matrix.slice(headerIndex + 1)) {
-    if (!raw.some((value) => value !== null && value !== "")) continue;
-    const row: Record<string, unknown> = {};
-    headers.forEach((header, index) => {
-      if (header) row[header] = raw[index] ?? null;
+  // Rows are views over the sheet's own row arrays rather than copies: a large export would
+  // otherwise be held twice (over a Worker's memory limit). Reading row[header] is unchanged.
+  const proto: Record<PropertyKey, unknown> = {};
+  for (const key of keys) {
+    const index = columns[key]!;
+    Object.defineProperty(proto, key, {
+      enumerable: true,
+      get(this: { [ROW_VALUES]: unknown[] }) {
+        return this[ROW_VALUES][index] ?? null;
+      },
     });
-    rows.push(row);
+  }
+  // Every row of the sheet has the same columns, so they share one column-lookup cache.
+  const context: RowContext = { keys, lookups: new Map() };
+  Object.defineProperty(proto, COLUMN_LOOKUPS, { value: context });
+
+  const rows: Record<string, unknown>[] = [];
+  for (let r = headerIndex + 1; r < matrix.length; r++) {
+    const raw = matrix[r]!;
+    if (!raw.some((value) => value !== null && value !== "")) continue;
+    const row = Object.create(proto) as Record<PropertyKey, unknown>;
+    row[ROW_VALUES] = raw;
+    rows.push(row as Record<string, unknown>);
   }
 
   return rows;
 }
 
-function orderRows(sheet: XLSX.WorkSheet): Record<string, unknown>[] {
+function orderRows(sheet: SheetMatrix): Record<string, unknown>[] {
   const rows = rowsFromSheet(sheet, (headers) =>
     headers.includes("brand name") &&
     (headers.includes("store name") || headers.includes("restaurant name")) &&
@@ -102,8 +119,26 @@ function orderRows(sheet: XLSX.WorkSheet): Record<string, unknown>[] {
   return rows;
 }
 
+const ROW_VALUES = Symbol("rowValues");
+/** Shared per-sheet context on rows built by rowsFromSheet (all rows of a sheet have the same keys). */
+const COLUMN_LOOKUPS = Symbol("columnLookups");
+
+interface RowContext {
+  keys: string[];
+  lookups: Map<string, string | undefined>;
+}
+
 function findKey(row: Record<string, unknown>, ...candidates: string[]): string | undefined {
-  const keys = Object.keys(row);
+  const context = (row as { [COLUMN_LOOKUPS]?: RowContext })[COLUMN_LOOKUPS];
+  if (!context) return resolveKey(Object.keys(row), candidates);
+  const id = candidates.join("\u0000");
+  if (context.lookups.has(id)) return context.lookups.get(id);
+  const key = resolveKey(context.keys, candidates);
+  context.lookups.set(id, key);
+  return key;
+}
+
+function resolveKey(keys: string[], candidates: string[]): string | undefined {
   const normalized = new Map(keys.map((key) => [normalizeHeader(key), key]));
 
   for (const candidate of candidates) {
@@ -197,7 +232,7 @@ interface KeetaExcelControls {
   billingRows: number;
 }
 
-function parseExcelControls(wb: XLSX.WorkBook): KeetaExcelControls {
+function parseExcelControls(wb: SheetSource): KeetaExcelControls {
   const controls: KeetaExcelControls = {
     branches: new Map(),
     invoiceDetailRows: 0,
@@ -205,8 +240,9 @@ function parseExcelControls(wb: XLSX.WorkBook): KeetaExcelControls {
   };
 
   const invoiceSheetName = findSheet(wb, "Invoice Details");
-  if (invoiceSheetName && wb.Sheets[invoiceSheetName]) {
-    const rows = rowsFromSheet(wb.Sheets[invoiceSheetName]!, (headers) =>
+  const invoiceMatrix = invoiceSheetName ? wb.matrix(invoiceSheetName) : undefined;
+  if (invoiceSheetName && invoiceMatrix) {
+    const rows = rowsFromSheet(invoiceMatrix, (headers) =>
       headers.includes("restaurant id") &&
       headers.includes("transaction date") &&
       headers.includes("invoice amount") &&
@@ -242,8 +278,9 @@ function parseExcelControls(wb: XLSX.WorkBook): KeetaExcelControls {
   }
 
   const billingSheetName = findSheet(wb, "Billing data summary");
-  if (billingSheetName && wb.Sheets[billingSheetName]) {
-    const rows = rowsFromSheet(wb.Sheets[billingSheetName]!, (headers) =>
+  const billingMatrix = billingSheetName ? wb.matrix(billingSheetName) : undefined;
+  if (billingSheetName && billingMatrix) {
+    const rows = rowsFromSheet(billingMatrix, (headers) =>
       headers.includes("transaction date") &&
       headers.includes("total payable to restaurant") &&
       headers.includes("total commission(vat included)"),
@@ -381,15 +418,23 @@ function auditState(
 }
 
 export function analyzeKeeta(file: ArrayBuffer, options: KeetaOptions = {}): AnalysisResult {
-  const wb = XLSX.read(file, { type: "array" });
+  return analyzeKeetaSheets(workbookSheetSource(XLSX.read(file, { type: "array" })), options);
+}
+
+/**
+ * The Keeta engine on already-read sheets. The server passes sheets read by the low-memory
+ * reader (xlsx-stream); analyzeKeeta passes the same sheets read by SheetJS.
+ */
+export function analyzeKeetaSheets(wb: SheetSource, options: KeetaOptions = {}): AnalysisResult {
   const formatId = detectKeetaFormat(wb);
   const sheetName = findSheet(wb, "Order Summary");
+  const orderMatrix = sheetName ? wb.matrix(sheetName) : undefined;
 
-  if (!sheetName || !wb.Sheets[sheetName]) {
+  if (!sheetName || !orderMatrix) {
     throw new Error("لم يتم العثور على ورقة Order Summary في ملف كيتا.");
   }
 
-  const rows = orderRows(wb.Sheets[sheetName]!);
+  const rows = orderRows(orderMatrix);
   assertRequiredOrderColumns(rows[0]!);
   const excelControls = parseExcelControls(wb);
   const branches = new Map<string, RawKeetaBranch>();
