@@ -389,6 +389,47 @@ describe("Keeta PDF parser", () => {
     expect(invoice.keetaBranches?.[0]?.netDue).toBeCloseTo(115.86, 2);
   });
 
+  test("reads a branch line printed as a bare 0 as zero, not as the next line's amount", () => {
+    // Layout of Keeta's September 2026 branch pages: empty lines are printed as "0", not "0.00".
+    const invoice = parseKeetaInvoice(
+      "Invoice Details For Branch Restaurant ID:2002 Order commission 1654.32 Bank commission 323.50 " +
+        "Other commission Delivery promotion subsidy (Keeta delivery) covered by store 1627.00 " +
+        "Photography service fees 0 Subscription fee 0 Commission adjustment 0 " +
+        "Total commission (not including VAT) 3134.62 SAR VAT 470.20 SAR Total invoice (including VAT) 3604.82 SAR" +
+        "\n" +
+        "Credit Sales Restaurant ID:2002 Original item price (including partial and full refunds) 12245.10 " +
+        "Top-up to minimum 0 Compensation to merchant 42.32 Store delivery fee 0 " +
+        "Merchant payment increase (not included in invoice) 0 Merchant subsidy on items (including partial and full refunds) -999.09 " +
+        "Platform deductions from merchant (merchant liability) 0 Advertising costs -590.83 VAT withholding 0 " +
+        "Merchant payment reduction (not included in invoice) 0 POS machine fees 0 " +
+        "Total credit sales 10697.50 SAR Net due invoice (total credit sales- total invoice including VAT) 7092.68 SAR",
+    );
+    const branch = invoice.keetaBranches?.[0];
+    expect(branch).toMatchObject({
+      restaurantId: "2002",
+      orderCommissionInclVat: 1654.32,
+      bankCommissionInclVat: 323.5,
+      deliveryCommissionInclVat: 1627,
+      photographyInclVat: 0,
+      subscriptionInclVat: 0,
+      commissionAdjustmentInclVat: 0,
+      commissionTotalExVat: 3134.62,
+      commissionTotalInclVat: 3604.82,
+      originalItemPrice: 12245.1,
+      topUpToMinimum: 0,
+      compensationToMerchant: 42.32,
+      merchantPaymentIncrease: 0,
+      merchantSubsidyItems: -999.09,
+      platformDeductions: 0,
+      advertisingCosts: -590.83,
+      vatWithholding: 0,
+      merchantPaymentReduction: 0,
+      posMachineFees: 0,
+      totalCreditSales: 10697.5,
+      netDue: 7092.68,
+    });
+  });
+
   test("nets July tax credit notes without changing the simple-invoice settlement", () => {
     const invoice = parseKeetaInvoice(
       "Tax Invoice Promotion service fee 1.00 26642.16 26642.16 15.00 3996.32 30638.48 " +
