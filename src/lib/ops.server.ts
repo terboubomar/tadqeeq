@@ -351,6 +351,7 @@ const OWNED_TABLES_DELETE_ORDER = [
   "telegram_branch_chats",
   "exception_events",
   "format_change_alerts",
+  "format_column_aliases",
   "audit_source_files",
   "promotion_audits",
   "ads_roi_analyses",

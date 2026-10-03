@@ -890,6 +890,54 @@ export type Database = {
           },
         ]
       }
+      format_column_aliases: {
+        Row: {
+          canonical: string
+          created_at: string
+          created_by: string | null
+          observed: string
+          platform: string
+          source: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          canonical: string
+          created_at?: string
+          created_by?: string | null
+          observed: string
+          platform: string
+          source: string
+          user_id: string
+          workspace_id?: string
+        }
+        Update: {
+          canonical?: string
+          created_at?: string
+          created_by?: string | null
+          observed?: string
+          platform?: string
+          source?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "format_column_aliases_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "format_column_aliases_workspace_owner_fkey"
+            columns: ["workspace_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_user_id"]
+          },
+        ]
+      }
       hungerstation_branch_mappings: {
         Row: {
           confirmed_at: string
