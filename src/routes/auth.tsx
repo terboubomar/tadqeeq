@@ -22,8 +22,10 @@ export const Route = createFileRoute("/auth")({
       { property: "og:description", content: "سجّل الدخول لمراجعة فواتير تطبيقات التوصيل." },
     ],
   }),
-  validateSearch: (search: Record<string, unknown>): { mode?: "signup" } =>
-    search["mode"] === "signup" ? { mode: "signup" } : {},
+  validateSearch: (search: Record<string, unknown>): { mode?: "signup"; next?: string } => {
+    const next = typeof search["next"] === "string" && search["next"].startsWith("/") && !search["next"].startsWith("//") ? search["next"] : undefined;
+    return { ...(search["mode"] === "signup" ? { mode: "signup" as const } : {}), ...(next ? { next } : {}) };
+  },
   component: AuthPage,
 });
 
@@ -35,10 +37,13 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const next = search.next;
+  const go = () => (next ? window.location.assign(next) : navigate({ to: "/dashboard", replace: true }));
+  const returnUrl = () => window.location.origin + (next ?? "");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/dashboard", replace: true });
+      if (data.session) go();
     });
   }, [navigate]);
 
@@ -51,17 +56,17 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: returnUrl(),
             data: { full_name: name },
           },
         });
         if (error) throw error;
-        if (data.session) navigate({ to: "/dashboard", replace: true });
+        if (data.session) go();
         else toast.success("تم إنشاء الحساب — تحقق من بريدك لتأكيد التسجيل.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: "/dashboard", replace: true });
+        go();
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذّر إتمام العملية");
@@ -72,26 +77,26 @@ function AuthPage() {
 
   async function google() {
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: returnUrl(),
     });
     if (result.error) {
       toast.error("تعذّر تسجيل الدخول عبر جوجل");
       return;
     }
     if (result.redirected) return;
-    navigate({ to: "/dashboard", replace: true });
+    go();
   }
 
   async function apple() {
     const result = await lovable.auth.signInWithOAuth("apple", {
-      redirect_uri: window.location.origin,
+      redirect_uri: returnUrl(),
     });
     if (result.error) {
       toast.error("تعذّر تسجيل الدخول عبر Apple");
       return;
     }
     if (result.redirected) return;
-    navigate({ to: "/dashboard", replace: true });
+    go();
   }
 
   return (
