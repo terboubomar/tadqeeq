@@ -18,6 +18,21 @@ export const OPS_ACCESS: Record<OpsRole, readonly OpsSection[]> = {
   support: ["clients", "usage", "logs"],
 };
 
+/**
+ * Two-step sign-in for the ops team (docs/SECURITY_BUILD_SPEC.md, M2): "verified" when the session passed an
+ * authenticator code (Supabase assurance level aal2), "required" when it has not, "off" when switched off
+ * with OPS_MFA_REQUIRED=false.
+ */
+export type OpsMfaState = "verified" | "required" | "off";
+
+export function opsMfaState(aal: unknown, required: boolean): OpsMfaState {
+  if (!required) return "off";
+  return aal === "aal2" ? "verified" : "required";
+}
+
+/** Shown when an ops action is called before the authenticator code was entered. */
+export const OPS_MFA_REQUIRED_MESSAGE = "أكمل التحقق بخطوتين (رمز تطبيق المصادقة) للدخول إلى لوحة العمليات.";
+
 export function opsCan(role: OpsRole | null | undefined, section: OpsSection): boolean {
   return !!role && OPS_ACCESS[role].includes(section);
 }

@@ -5,7 +5,18 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { dataUrlBytes, sniffFile } from "./file-sniff";
 import { buildOpsTasks, type OpsTask, type OpsTaskClient } from "./ops-tasks";
 import { isPlanAddon, PLAN_ADDONS, PLAN_REQUEST_EVENT, TRIAL_UPLOAD_EVENT, type PlanAddon, type PlanFeature } from "./plans";
-import { LIVE_SUBSCRIPTION_STATUSES, opsCan, subscriptionAccessChange, type Cycle, type OpsRole, type OpsSection, type SubscriptionStatus } from "./ops";
+import {
+  LIVE_SUBSCRIPTION_STATUSES,
+  OPS_MFA_REQUIRED_MESSAGE,
+  opsCan,
+  opsMfaState,
+  subscriptionAccessChange,
+  type Cycle,
+  type OpsMfaState,
+  type OpsRole,
+  type OpsSection,
+  type SubscriptionStatus,
+} from "./ops";
 import { loadSuspension } from "./onboarding.server";
 import { REACTIVATION_REQUEST_EVENT, type OnboardingStatus, type SuspensionInfo, type SuspensionReason } from "./onboarding";
 
@@ -19,6 +30,23 @@ export interface OpsActor {
   userId: string;
   email: string | null;
   role: OpsRole;
+  mfa: OpsMfaState;
+}
+
+/** Two-step sign-in is on unless the server secret OPS_MFA_REQUIRED is "false" (an escape hatch, not the default). */
+function opsMfaRequired(): boolean {
+  return (process.env["OPS_MFA_REQUIRED"] ?? "").trim().toLowerCase() !== "false";
+}
+
+/** The assurance level ("aal1" / "aal2") in a token that Supabase has already verified. */
+function tokenAal(token: string): string | undefined {
+  try {
+    const payload = token.split(".")[1] ?? "";
+    const json = JSON.parse(Buffer.from(payload.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")) as { aal?: unknown };
+    return typeof json.aal === "string" ? json.aal : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export function getRequestHostOnServer(): string {
@@ -31,20 +59,22 @@ async function currentUser() {
   if (!token) return null;
   const { data, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !data.user) return null;
-  return data.user;
+  return { user: data.user, aal: tokenAal(token) };
 }
 
 export async function getOpsMeOnServer(): Promise<OpsActor | null> {
-  const user = await currentUser();
-  if (!user) return null;
+  const current = await currentUser();
+  if (!current) return null;
+  const { user, aal } = current;
   const { data } = await db().from("ops_staff").select("role").eq("user_id", user.id).maybeSingle();
   if (!data) return null;
-  return { userId: user.id, email: user.email ?? null, role: data.role as OpsRole };
+  return { userId: user.id, email: user.email ?? null, role: data.role as OpsRole, mfa: opsMfaState(aal, opsMfaRequired()) };
 }
 
 async function requireOps(section: OpsSection): Promise<OpsActor> {
   const me = await getOpsMeOnServer();
   if (!me) throw new Error("لا تملك صلاحية الدخول إلى لوحة العمليات.");
+  if (me.mfa === "required") throw new Error(OPS_MFA_REQUIRED_MESSAGE);
   if (!opsCan(me.role, section)) throw new Error("دورك لا يسمح بهذا الإجراء.");
   return me;
 }
