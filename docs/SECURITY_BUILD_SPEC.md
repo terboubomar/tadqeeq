@@ -11,7 +11,7 @@ The core access model is solid. No cross-company data leak was found. The open i
 | ID | Severity | Item | Phase |
 |---|---|---|---|
 | H1 | High | ~~Open redirect after sign-in (`/auth?next=/\evil.com`)~~ ✅ fixed | 1 |
-| M1 | Medium | No browser security headers (CSP, clickjacking, HSTS) | 2 |
+| M1 | Medium | No browser security headers (CSP, clickjacking, HSTS) (✅ headers live; CSP in report-only, enforce after a clean week) | 2 |
 | M2 | Medium | Ops console: no two-step sign-in; reachable on preview hosts (✅ two-step sign-in built; host limit after `ops.tadqeeq.app` is live) | 3 |
 | M3 | Medium | ~~Payment receipts accept any file type; SVG logos allowed~~ ✅ fixed | 1 |
 | M4 | Medium | Plan limits enforced in the app server only, not the database | 4 |
@@ -79,7 +79,9 @@ Built in `src/lib/redirects.ts` (`safeNextPath`), `src/lib/file-sniff.ts` (`snif
 
 ---
 
-## Phase 2: browser security headers
+## Phase 2: browser security headers — ✅ built (CSP report-only)
+
+Built in `src/lib/security-headers.ts`, applied to every response in `src/server.ts`. Violations are posted to `/api/public/csp-report` and logged as `csp_violation`, with only the directive and the origin kept. Framing is blocked for real on the live domains and left open on Lovable preview hosts. **Next step:** after a week with no unexpected `csp_violation` logs, switch `Content-Security-Policy-Report-Only` to `Content-Security-Policy`.
 
 ### M1 · No security headers — Medium
 

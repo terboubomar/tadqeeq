@@ -20,7 +20,8 @@ export type LogEvent =
   | "permission_denied"
   | "workspace_isolation_violation_attempt"
   | "ai_request_started"
-  | "ai_request_failed";
+  | "ai_request_failed"
+  | "csp_violation";
 
 /** What kind of failure happened, so logs and support can tell them apart. */
 export type ErrorKind =
