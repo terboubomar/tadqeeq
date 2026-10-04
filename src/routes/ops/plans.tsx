@@ -26,20 +26,20 @@ function Plans() {
   for (const s of subs.data ?? []) if (s.planId && (s.status === "active" || s.status === "overdue" || s.status === "trial")) subscribers.set(s.planId, (subscribers.get(s.planId) ?? 0) + 1);
   return (
     <div>
-      <OpsHeader title="الباقات" sub="السعر حسب الميزات وعدد مرات الرفع شهرياً — تظهر للعملاء في صفحة الاشتراك" />
+      <OpsHeader title="الباقات" sub="السعر حسب عدد الطلبات شهرياً، والفروع والمنصات والمستخدمون بلا حدود — تظهر للعملاء في الموقع وصفحة الاشتراك" />
       {plans.isLoading ? <Loader2 className="size-5 animate-spin" /> : <PlansEditor plans={plans.data ?? []} canEdit={role === "owner" || role === "finance"} subscribers={subscribers} />}
     </div>
   );
 }
 
-type PlanRow = { id: string; name: string; price: number; cycle: Cycle; active: boolean; features: PlanFeature[]; uploadLimit: number | null; description: string; highlighted: boolean; sortOrder: number };
-const blankPlan = (): Omit<PlanRow, "id"> & { id?: string } => ({ name: "", price: 0, cycle: "monthly", active: true, features: [], uploadLimit: 10, description: "", highlighted: false, sortOrder: 0 });
+type PlanRow = { id: string; name: string; price: number; cycle: Cycle; active: boolean; features: PlanFeature[]; uploadLimit: number | null; description: string; highlighted: boolean; sortOrder: number; code: string | null; orderLimit: number | null; priceYearly: number | null; customPrice: boolean };
+const blankPlan = (): Omit<PlanRow, "id" | "code"> & { id?: string; code?: string | null } => ({ name: "", price: 0, cycle: "monthly", active: true, features: ["invoice_audit", "exceptions", "contracts"], uploadLimit: null, description: "", highlighted: false, sortOrder: 0, orderLimit: 10_000, priceYearly: null, customPrice: false });
 
 function PlansEditor({ plans, canEdit, subscribers }: { plans: PlanRow[]; canEdit: boolean; subscribers: Map<string, number> }) {
   const qc = useQueryClient();
   const [edit, setEdit] = useState<ReturnType<typeof blankPlan> | null>(null);
   const save = useMutation({
-    mutationFn: (p: ReturnType<typeof blankPlan>) => savePlan({ data: p }),
+    mutationFn: ({ code: _code, ...p }: ReturnType<typeof blankPlan>) => savePlan({ data: p }),
     onSuccess: () => { toast.success("تم حفظ الباقة"); setEdit(null); void qc.invalidateQueries({ queryKey: ["ops-plans"] }); },
     onError: (e) => toast.error((e as Error).message),
   });
@@ -56,7 +56,13 @@ function PlansEditor({ plans, canEdit, subscribers }: { plans: PlanRow[]; canEdi
               <span className="font-semibold">{p.name}{p.highlighted ? " ★" : ""}</span>
               {canEdit ? <Button size="sm" variant="ghost" onClick={() => setEdit({ ...p })}>تعديل</Button> : null}
             </div>
-            <p className="num">{sarFmt(p.price)} / {CYCLE_LABELS[p.cycle]} · {p.uploadLimit === null ? "رفع بلا حدود" : `${p.uploadLimit} رفعة/شهر`}</p>
+            <p className="num">
+              {p.customPrice ? "بالاتفاق" : `${sarFmt(p.price)} / ${CYCLE_LABELS[p.cycle]}${p.priceYearly !== null ? ` · ${sarFmt(p.priceYearly)} سنوياً` : ""}`}
+            </p>
+            <p className="num text-xs">
+              {p.orderLimit !== null ? `حتى ${p.orderLimit.toLocaleString("en-US")} طلب/شهر` : p.code ? "طلبات بلا حد" : ""}
+              {p.uploadLimit !== null ? ` · ${p.uploadLimit} رفعة/شهر` : ""}
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">{PLAN_FEATURES.filter((f) => p.features.includes(f.key)).map((f) => f.label).join("، ") || "الأساسيات فقط"}</p>
             <p className="num mt-2 text-xs">{subscribers.get(p.id) ?? 0} مشترك حالياً{p.active ? "" : " · مخفية"}</p>
           </div>
@@ -66,7 +72,14 @@ function PlansEditor({ plans, canEdit, subscribers }: { plans: PlanRow[]; canEdi
       {edit ? (
         <div className="mt-4 grid gap-3 rounded-md border border-border p-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1"><Label>اسم الباقة</Label><Input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></div>
-          <div className="space-y-1"><Label>السعر (ر.س)</Label><Input type="number" value={edit.price || ""} onChange={(e) => setEdit({ ...edit, price: Number(e.target.value) })} /></div>
+          <div className="space-y-1"><Label>السعر (ر.س)</Label><Input type="number" disabled={edit.customPrice} value={edit.price || ""} onChange={(e) => setEdit({ ...edit, price: Number(e.target.value) })} /></div>
+          <div className="space-y-1"><Label>السعر السنوي (ر.س)</Label><Input type="number" disabled={edit.customPrice} value={edit.priceYearly ?? ""} placeholder="اختياري" onChange={(e) => setEdit({ ...edit, priceYearly: e.target.value === "" ? null : Number(e.target.value) })} /></div>
+          <div className="space-y-1"><Label>الطلبات شهرياً</Label>
+            <div className="flex gap-2">
+              <Input type="number" min={0} disabled={edit.orderLimit === null} value={edit.orderLimit ?? ""} onChange={(e) => setEdit({ ...edit, orderLimit: Math.max(0, Number(e.target.value)) })} />
+              <label className="flex items-center gap-1 whitespace-nowrap text-xs"><input type="checkbox" checked={edit.orderLimit === null} onChange={(e) => setEdit({ ...edit, orderLimit: e.target.checked ? null : 10_000 })} />بلا حد</label>
+            </div>
+            <p className="text-[11px] text-muted-foreground">حد مرن: لا يوقف الرفع، ويظهر للفريق عند تجاوزه.</p></div>
           <div className="space-y-1"><Label>الدورة</Label><select className={sel} value={edit.cycle} onChange={(e) => setEdit({ ...edit, cycle: e.target.value as Cycle })}><option value="monthly">شهري</option><option value="yearly">سنوي</option></select></div>
           <div className="space-y-1"><Label>رفعات الملفات شهرياً</Label>
             <div className="flex gap-2">
@@ -76,6 +89,7 @@ function PlansEditor({ plans, canEdit, subscribers }: { plans: PlanRow[]; canEdi
           <div className="space-y-1 sm:col-span-2"><Label>وصف قصير</Label><Input value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} /></div>
           <div className="space-y-1"><Label>الترتيب</Label><Input type="number" value={edit.sortOrder} onChange={(e) => setEdit({ ...edit, sortOrder: Number(e.target.value) })} /></div>
           <div className="flex flex-col justify-end gap-1 text-sm">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={edit.customPrice} onChange={(e) => setEdit({ ...edit, customPrice: e.target.checked })} />السعر بالاتفاق</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={edit.highlighted} onChange={(e) => setEdit({ ...edit, highlighted: e.target.checked })} />الأكثر طلباً</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked })} />ظاهرة ومتاحة</label>
           </div>

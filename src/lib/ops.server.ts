@@ -3,7 +3,7 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 import { buildOpsTasks, type OpsTask, type OpsTaskClient } from "./ops-tasks";
-import { TRIAL_UPLOAD_EVENT, type PlanFeature } from "./plans";
+import { isPlanAddon, PLAN_REQUEST_EVENT, TRIAL_UPLOAD_EVENT, type PlanAddon, type PlanFeature } from "./plans";
 import { opsCan, type Cycle, type OpsRole, type OpsSection, type SubscriptionStatus } from "./ops";
 import { loadSuspension } from "./onboarding.server";
 import { REACTIVATION_REQUEST_EVENT, type OnboardingStatus, type SuspensionInfo, type SuspensionReason } from "./onboarding";
@@ -547,16 +547,24 @@ export async function listPlansOnServer() {
     description: (r["description"] as string | null) ?? "",
     highlighted: r["highlighted"] === true,
     sortOrder: Number(r["sort_order"] ?? 0),
+    code: typeof r["code"] === "string" ? (r["code"] as string) : null,
+    orderLimit: typeof r["order_limit"] === "number" ? (r["order_limit"] as number) : null,
+    priceYearly: r["price_yearly"] === null || r["price_yearly"] === undefined ? null : Number(r["price_yearly"]),
+    customPrice: r["custom_price"] === true,
   }));
 }
 
-export async function savePlanOnServer(input: { id?: string; name: string; price: number; cycle: Cycle; active: boolean; features: PlanFeature[]; uploadLimit: number | null; description?: string; highlighted?: boolean; sortOrder?: number }) {
+export async function savePlanOnServer(input: { id?: string; name: string; price: number; cycle: Cycle; active: boolean; features: PlanFeature[]; uploadLimit: number | null; description?: string; highlighted?: boolean; sortOrder?: number; orderLimit?: number | null; priceYearly?: number | null; customPrice?: boolean }) {
   const actor = await requireOps("subscriptions");
   if (actor.role === "sales" || actor.role === "support") throw new Error("المالية أو المالك فقط يعدّل الباقات.");
   const row = {
     name: input.name.trim(), pricing: "fixed", price: input.price, cycle: input.cycle, active: input.active,
     features: input.features, upload_limit: input.uploadLimit, description: input.description?.trim() || null,
     highlighted: input.highlighted ?? false, sort_order: input.sortOrder ?? 0,
+    // Order-based fields (migration 0037); only sent when the form has them.
+    ...(input.orderLimit !== undefined ? { order_limit: input.orderLimit } : {}),
+    ...(input.priceYearly !== undefined ? { price_yearly: input.priceYearly } : {}),
+    ...(input.customPrice !== undefined ? { custom_price: input.customPrice } : {}),
   };
   const { error } = input.id ? await db().from("subscription_plans").update(row).eq("id", input.id) : await db().from("subscription_plans").insert(row);
   if (error) throw new Error(error.message);
@@ -582,17 +590,67 @@ export async function listSubscriptionsOnServer() {
     startsOn: String(r["starts_on"]),
     endsOn: (r["ends_on"] as string) ?? null,
     notes: (r["notes"] as string) ?? null,
+    addons: (Array.isArray(r["addons"]) ? r["addons"] : []).filter(isPlanAddon),
   }));
 }
 
+/** Orders in each workspace's uploads this month and last month (Riyadh), for plan-limit follow-up. */
+export async function workspaceOrderUsageOnServer() {
+  await requireOps("subscriptions");
+  const riyadh = new Date(Date.now() + 3 * 3600_000);
+  const monthStart = (offset: number) => new Date(Date.UTC(riyadh.getUTCFullYear(), riyadh.getUTCMonth() + offset, 1) - 3 * 3600_000).toISOString();
+  const { data } = await db()
+    .from("periods")
+    .select("workspace_id,created_at,orders:summary->orders")
+    .gte("created_at", monthStart(-1));
+  const usage = new Map<string, { thisMonth: number; lastMonth: number }>();
+  const thisStart = Date.parse(monthStart(0));
+  for (const r of (data ?? []) as Row[]) {
+    const id = String(r["workspace_id"]);
+    const orders = typeof r["orders"] === "number" ? (r["orders"] as number) : 0;
+    const entry = usage.get(id) ?? { thisMonth: 0, lastMonth: 0 };
+    if (Date.parse(String(r["created_at"])) >= thisStart) entry.thisMonth += orders;
+    else entry.lastMonth += orders;
+    usage.set(id, entry);
+  }
+  return [...usage.entries()].map(([workspaceId, value]) => ({ workspaceId, ...value }));
+}
+
+/** Each client's latest plan request from the app (plan, cycle, add-ons), newest first. */
+export async function listPlanRequestsOnServer() {
+  await requireOps("subscriptions");
+  const { data } = await db()
+    .from("workspace_audit_events")
+    .select("workspace_id,metadata,created_at")
+    .eq("event_type", PLAN_REQUEST_EVENT)
+    .order("created_at", { ascending: false })
+    .limit(500);
+  const latest = new Map<string, { workspaceId: string; planId: string | null; cycle: Cycle; addons: PlanAddon[]; requestedAt: string }>();
+  for (const r of (data ?? []) as Row[]) {
+    const workspaceId = String(r["workspace_id"]);
+    if (latest.has(workspaceId)) continue;
+    const m = (r["metadata"] ?? {}) as Row;
+    latest.set(workspaceId, {
+      workspaceId,
+      planId: typeof m["planId"] === "string" ? (m["planId"] as string) : null,
+      cycle: m["cycle"] === "yearly" ? "yearly" : "monthly",
+      addons: (Array.isArray(m["addons"]) ? m["addons"] : []).filter(isPlanAddon),
+      requestedAt: String(r["created_at"]),
+    });
+  }
+  return [...latest.values()];
+}
+
 export async function saveSubscriptionOnServer(input: {
-  id?: string; workspaceId: string; planId: string | null; price: number; branchCount: number; cycle: Cycle; status: SubscriptionStatus; startsOn: string; endsOn: string | null; notes?: string;
+  id?: string; workspaceId: string; planId: string | null; price: number; branchCount: number; cycle: Cycle; status: SubscriptionStatus; startsOn: string; endsOn: string | null; notes?: string; addons?: string[];
 }) {
   const actor = await requireOps("subscriptions");
   if (actor.role === "support") throw new Error("لا تملك صلاحية تعديل الاشتراكات.");
   const row = {
     workspace_id: input.workspaceId, plan_id: input.planId, price: input.price, branch_count: input.branchCount, cycle: input.cycle,
     status: input.status, starts_on: input.startsOn, ends_on: input.endsOn || null, notes: input.notes?.trim() || null, updated_at: new Date().toISOString(),
+    // Add-ons (migration 0037); only sent when the form has them.
+    ...(input.addons !== undefined ? { addons: input.addons.filter(isPlanAddon) } : {}),
   };
   const { error } = input.id ? await db().from("subscriptions").update(row).eq("id", input.id) : await db().from("subscriptions").insert(row);
   if (error) throw new Error(error.message);

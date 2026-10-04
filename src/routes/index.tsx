@@ -36,7 +36,15 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { isOpsHost } from "@/lib/ops";
 import { getRequestHost } from "@/lib/ops.functions";
-import { CORE_FEATURE_LABELS, PLAN_FEATURES, type PublicPlan } from "@/lib/plans";
+import {
+  CORE_FEATURE_LABELS,
+  PLAN_ADDONS,
+  PLAN_FEATURES,
+  PRICING_TERMS,
+  orderBasedPlans,
+  recommendPlan,
+  type PublicPlan,
+} from "@/lib/plans";
 import { cn } from "@/lib/utils";
 import { listPublicPlans } from "@/lib/plans.functions";
 import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
@@ -227,6 +235,12 @@ const AUDIENCES: TourItem[] = [
 
 
 
+/** Plans with a published price, order-based ones when they exist (structured-data offers). */
+function publicPrices(plans: PublicPlan[]): PublicPlan[] {
+  const ordered = orderBasedPlans(plans);
+  return (ordered.length ? ordered : plans).filter((plan) => !plan.customPrice);
+}
+
 function homeSchema(plans: PublicPlan[]) {
   return {
   "@context": "https://schema.org",
@@ -259,9 +273,9 @@ function homeSchema(plans: PublicPlan[]) {
       description: HOME_DESCRIPTION,
       featureList: FEATURES.map((feature) => `${feature.name} (${feature.nameEn})`),
       screenshot: `${SITE_URL}${EXPLAINER_VIDEO.poster}`,
-      ...(plans.length
+      ...(publicPrices(plans).length
         ? {
-            offers: plans.map((plan) => ({
+            offers: publicPrices(plans).map((plan) => ({
               "@type": "Offer",
               name: plan.name,
               price: plan.price,
@@ -2638,7 +2652,165 @@ function CompensationStepVisual({ step, active }: { step: number; active: boolea
   );
 }
 
+/** What every order-based plan includes. */
+const PRICING_INCLUDED = [
+  "فروع ومنصات ومستخدمون بلا حدود",
+  "رفع ملفات بلا حدود",
+  "مطابقة الفاتورة وخريطة الرسوم",
+  "مركز الاستثناءات والعقود",
+  "عائد الإعلانات الحقيقي",
+  "المراقب الذكي والقراءة الذكية للملفات",
+];
+const ORDER_PRESETS = [1500, 6000, 20000, 50000];
+
 function Pricing({ plans }: { plans: PublicPlan[] }) {
+  const ordered = orderBasedPlans(plans);
+  return ordered.length ? <OrderPricing plans={ordered} /> : <LegacyPricing plans={plans} />;
+}
+
+/** Plans priced by orders checked per month, with a calculator that points to the right one. */
+function OrderPricing({ plans }: { plans: PublicPlan[] }) {
+  const [cycle, setCycle] = useState<PublicPlan["cycle"]>("monthly");
+  const [orders, setOrders] = useState<number | null>(null);
+  const recommended = orders !== null ? recommendPlan(plans, orders) : null;
+  const yearly = cycle === "yearly";
+  const largestLimit = Math.max(0, ...plans.map((plan) => plan.orderLimit ?? 0));
+
+  return (
+    <section id="pricing" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <SectionIntro eyebrow="الخطط والأسعار" title="ادفع حسب طلباتك، لا حسب فروعك.">
+          فروع ومنصات ومستخدمون بلا حدود في كل الباقات. ابدأ بتجربة مجانية بدون بطاقة، ثم اختر الباقة على قدّ طلباتك الشهرية.
+        </SectionIntro>
+        <div role="group" aria-label="دورة الفوترة" className="flex rounded-full bg-muted p-1 text-sm">
+          {(["monthly", "yearly"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={cycle === value}
+              onClick={() => setCycle(value)}
+              className={cn("rounded-full px-5 py-2.5", cycle === value ? "bg-card font-semibold shadow-sm" : "text-muted-foreground")}
+            >
+              {value === "monthly" ? "شهري" : "سنوي · شهران مجاناً"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div data-reveal className="mt-10 flex flex-col gap-4 rounded-[22px] border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
+        <label htmlFor="pricing-orders" className="text-[15px] font-semibold">
+          كم طلب يصلك شهرياً من كل تطبيقات التوصيل؟
+        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            id="pricing-orders"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            dir="ltr"
+            placeholder="مثلاً 8000"
+            value={orders ?? ""}
+            onChange={(event) => setOrders(event.target.value === "" ? null : Math.max(0, Number(event.target.value)))}
+            className="num h-11 w-36 rounded-full border border-border bg-background px-4 text-center"
+          />
+          {ORDER_PRESETS.map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setOrders(value)}
+              className={cn("num rounded-full border px-3 py-2 text-sm", orders === value ? "border-primary bg-secondary" : "border-border")}
+            >
+              {value.toLocaleString("en-US")}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-6 grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {plans.map((plan) => {
+          const fit = recommended?.id === plan.id;
+          const dark = fit || (recommended === null && plan.highlighted);
+          const price = yearly && plan.priceYearly !== null ? plan.priceYearly : plan.price;
+          return (
+            <article
+              key={plan.id}
+              className={cn(
+                "relative flex flex-col gap-4 rounded-[22px] p-6 transition-colors",
+                dark ? "bg-ink text-ink-foreground shadow-[0_30px_60px_-30px_rgb(19_35_43/0.5)]" : "border border-border bg-card",
+              )}
+            >
+              {fit || (recommended === null && plan.highlighted) ? (
+                <span className="absolute -top-3 start-6 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">
+                  {fit ? "الأنسب لطلباتك" : "الأكثر اختياراً"}
+                </span>
+              ) : null}
+              <div>
+                <h3 className="font-display text-xl font-extrabold">{plan.name}</h3>
+                <p className={cn("num mt-1 text-sm", dark ? "text-ink-muted" : "text-muted-foreground")}>
+                  {plan.orderLimit !== null ? `حتى ${plan.orderLimit.toLocaleString("en-US")} طلب شهرياً` : `أكثر من ${largestLimit.toLocaleString("en-US")} طلب شهرياً`}
+                </p>
+              </div>
+              {plan.customPrice ? (
+                <p className="font-display text-2xl font-extrabold">بالاتفاق</p>
+              ) : (
+                <p className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="num text-[2.2rem] font-semibold leading-none">{price.toLocaleString("en-US")}</span>
+                  <span className={cn("text-sm", dark ? "text-ink-muted" : "text-muted-foreground")}>
+                    ر.س / {yearly && plan.priceYearly !== null ? "سنوياً" : "شهرياً"}
+                  </span>
+                </p>
+              )}
+              <Link
+                to="/auth"
+                search={{ mode: "signup" }}
+                className={cn(
+                  "mt-auto inline-flex h-11 items-center justify-center rounded-full text-sm font-bold",
+                  dark ? "bg-primary text-primary-foreground" : "bg-ink text-ink-foreground",
+                )}
+              >
+                {plan.customPrice ? "تواصل معنا" : "ابدأ تجربتك المجانية"}
+              </Link>
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+        <div data-reveal className="rounded-[22px] border border-border bg-card p-6">
+          <p className="text-sm font-bold">مشمول في كل الباقات</p>
+          <ul className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+            {PRICING_INCLUDED.map((label) => (
+              <li key={label} className="flex gap-2.5">
+                <Check className="size-4 shrink-0 text-success" />
+                {label}
+              </li>
+            ))}
+          </ul>
+        </div>
+        {PLAN_ADDONS.map((addon) => (
+          <div key={addon.key} data-reveal className="rounded-[22px] bg-secondary p-6">
+            <p className="text-xs font-semibold text-primary-text">إضافة اختيارية</p>
+            <p className="mt-2 font-display text-lg font-extrabold leading-8">{addon.label}</p>
+            <p className="mt-2 text-sm leading-7 text-foreground/80">
+              اعترض على التعويضات بفيديو من قروب الفرع، واسأل عن أرقامك بلغة بسيطة.
+            </p>
+            <p className="mt-3 font-semibold">
+              <span className="num">{addon.price.toLocaleString("en-US")}</span> ر.س كل {addon.months} أشهر
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
+        {PRICING_TERMS.map((term) => (
+          <li key={term}>· {term}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function LegacyPricing({ plans }: { plans: PublicPlan[] }) {
   const cycles = [...new Set(plans.map((plan) => plan.cycle))];
   const [cycle, setCycle] = useState<PublicPlan["cycle"]>(cycles.includes("monthly") ? "monthly" : "yearly");
   const visible = cycles.length > 1 ? plans.filter((plan) => plan.cycle === cycle) : plans;

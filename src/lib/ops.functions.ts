@@ -77,15 +77,19 @@ export const addClientNote = createServerFn({ method: "POST" })
 
 export const listPlans = createServerFn({ method: "POST" }).validator(empty).handler(() => S.listPlansOnServer());
 export const savePlan = createServerFn({ method: "POST" })
-  .validator(z.object({ id: z.string().uuid().optional(), name: z.string().trim().min(1).max(120), price: z.number().min(0).max(10_000_000), cycle, active: z.boolean(), features: z.array(z.enum(["invoice_audit", "exceptions", "compensation", "contracts", "ai"])), uploadLimit: z.number().int().min(0).max(100_000).nullable(), description: z.string().trim().max(300).optional(), highlighted: z.boolean().optional(), sortOrder: z.number().int().min(0).max(1000).optional() }))
+  .validator(z.object({ id: z.string().uuid().optional(), name: z.string().trim().min(1).max(120), price: z.number().min(0).max(10_000_000), cycle, active: z.boolean(), features: z.array(z.enum(["invoice_audit", "exceptions", "compensation", "contracts", "ai"])), uploadLimit: z.number().int().min(0).max(100_000).nullable(), description: z.string().trim().max(300).optional(), highlighted: z.boolean().optional(), sortOrder: z.number().int().min(0).max(1000).optional(), orderLimit: z.number().int().min(0).max(100_000_000).nullable().optional(), priceYearly: z.number().min(0).max(100_000_000).nullable().optional(), customPrice: z.boolean().optional() }))
   .handler(({ data }) => S.savePlanOnServer(data));
 export const listSubscriptions = createServerFn({ method: "POST" }).validator(empty).handler(() => S.listSubscriptionsOnServer());
 export const saveSubscription = createServerFn({ method: "POST" })
   .validator(z.object({
     id: z.string().uuid().optional(), workspaceId: z.string().uuid(), planId: z.string().uuid().nullable(), price: z.number().min(0).max(100_000_000),
     branchCount: z.number().int().min(1).max(5000), cycle, status: subStatus, startsOn: date, endsOn: date.nullable(), notes: z.string().max(2000).optional(),
+    addons: z.array(z.enum(["compensation_ai"])).optional(),
   }))
   .handler(({ data }) => S.saveSubscriptionOnServer(data));
+
+export const workspaceOrderUsage = createServerFn({ method: "POST" }).validator(empty).handler(() => S.workspaceOrderUsageOnServer());
+export const listPlanRequests = createServerFn({ method: "POST" }).validator(empty).handler(() => S.listPlanRequestsOnServer());
 
 export const listPayments = createServerFn({ method: "POST" }).validator(empty).handler(() => S.listPaymentsOnServer());
 export const recordPayment = createServerFn({ method: "POST" })
