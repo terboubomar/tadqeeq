@@ -4,6 +4,7 @@ import { TRIAL_UPLOAD_LIMIT } from "./plans";
 
 export type OpsTaskKind =
   | "reactivation_request"
+  | "plan_request"
   | "trial_used"
   | "new_signup"
   | "meeting_missed"
@@ -12,12 +13,14 @@ export type OpsTaskKind =
   | "ready_to_activate"
   | "overdue"
   | "renewal_due"
+  | "over_limit"
   | "no_subscription"
   | "inactive";
 
 /** Task groups in the order they are shown; `finance` groups are only built for roles that see subscriptions. */
 export const OPS_TASK_GROUPS: { kind: OpsTaskKind; title: string; hint: string; finance?: boolean }[] = [
   { kind: "reactivation_request", title: "طلبات إعادة التفعيل", hint: "عملاء موقوفون طلبوا إعادة التفعيل — تأكد من السداد ثم فعّل الحساب." },
+  { kind: "plan_request", title: "طلبات باقات", hint: "اختار العميل باقة من داخل حسابه — أرسل الفاتورة، وبعد التحويل أنشئ الاشتراك أو حدّثه.", finance: true },
   { kind: "trial_used", title: "جرّبوا المنصة ولم يشتركوا", hint: "رفعوا ملف التجربة — أفضل وقت للتواصل وعرض الاشتراك." },
   { kind: "new_signup", title: "تسجيلات جديدة", hint: "لم يكملوا بيانات الشركة بعد." },
   { kind: "meeting_missed", title: "اجتماعات مضت ولم تُحدَّث", hint: "حدّث الحالة بعد الاجتماع: بانتظار التحويل أو إيقاف." },
@@ -26,6 +29,7 @@ export const OPS_TASK_GROUPS: { kind: OpsTaskKind; title: string; hint: string; 
   { kind: "ready_to_activate", title: "جاهزون للتفعيل", hint: "تم الدفع — أكمل التهيئة وفعّل الحساب." },
   { kind: "overdue", title: "اشتراكات متأخرة", hint: "انتهت أو متأخرة السداد.", finance: true },
   { kind: "renewal_due", title: "تجديدات خلال 14 يوماً", hint: "ذكّر العميل قبل انتهاء الاشتراك.", finance: true },
+  { kind: "over_limit", title: "تجاوزوا حد الباقة شهرين", hint: "طلباتهم أعلى من حد باقتهم في آخر شهرين — رقِّ الباقة من الاشتراكات.", finance: true },
   { kind: "no_subscription", title: "مفعّلون بلا اشتراك", hint: "حساب مفعّل بدون اشتراك مسجّل.", finance: true },
   { kind: "inactive", title: "عملاء غير نشطين", hint: "مفعّلون ولم يدخل أحد منهم منذ 14 يوماً." },
 ];
@@ -45,6 +49,10 @@ export interface OpsTaskClient {
   /** Sent by a suspended client after the latest status change. */
   reactivationRequestedAt: string | null;
   subscription: { status: SubscriptionStatus; endsOn: string | null } | null;
+  /** A plan the client requested from the app that no subscription change has answered yet. */
+  planRequestedAt?: string | null;
+  /** Monthly orders above the plan's limit in the latest two months of data. */
+  overLimit?: boolean;
 }
 
 export interface OpsTask {
@@ -72,6 +80,8 @@ export function buildOpsTasks(clients: OpsTaskClient[], now: Date, opts: { finan
     const add = (kind: OpsTaskKind, date: string | null) =>
       tasks.push({ kind, workspaceId: c.workspaceId, name: c.name, contactMobile: c.contactMobile, contactEmail: c.contactEmail, date });
 
+    if (opts.finance && c.planRequestedAt) add("plan_request", c.planRequestedAt);
+
     switch (c.status) {
       case "pending_details":
         add(c.trialUploads >= TRIAL_UPLOAD_LIMIT ? "trial_used" : "new_signup", c.createdAt);
@@ -92,6 +102,7 @@ export function buildOpsTasks(clients: OpsTaskClient[], now: Date, opts: { finan
           if (!sub) add("no_subscription", c.createdAt);
           else if (sub.status === "overdue" || (sub.status === "active" && sub.endsOn && sub.endsOn < today)) add("overdue", sub.endsOn);
           else if (sub.status === "active" && sub.endsOn && sub.endsOn <= renewalLimit) add("renewal_due", sub.endsOn);
+          if (sub && c.overLimit) add("over_limit", null);
         }
         const seen = c.lastLogin ?? c.createdAt;
         if (seen < inactiveBefore) add("inactive", c.lastLogin);

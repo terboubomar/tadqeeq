@@ -1,4 +1,5 @@
 import { ONBOARDING_STATUS_LABELS, type OnboardingStatus } from "./onboarding";
+import { isTrialStatus } from "./plans";
 
 export type OpsRole = "owner" | "finance" | "sales" | "support";
 export type OpsSection = "overview" | "clients" | "subscriptions" | "payments" | "usage" | "logs" | "staff";
@@ -29,6 +30,30 @@ export const SUBSCRIPTION_STATUS_LABELS: Record<SubscriptionStatus, string> = {
   cancelled: "ملغى",
   suspended: "موقوف",
 };
+
+/** Subscription statuses that keep a client's account open. */
+export const LIVE_SUBSCRIPTION_STATUSES: readonly SubscriptionStatus[] = ["trial", "active", "overdue"];
+
+/**
+ * What saving a subscription does to the client's account:
+ * - suspended/cancelled locks it, unless another live subscription (the new plan after an upgrade) keeps it open;
+ * - active opens a suspended account and ends the free trial of a client not activated yet.
+ * Archived clients are left alone (they are restored from the archive).
+ */
+export function subscriptionAccessChange(input: {
+  status: SubscriptionStatus;
+  onboardingStatus: OnboardingStatus | null;
+  otherLiveSubscription: boolean;
+  archived: boolean;
+}): "suspend" | "activate" | null {
+  const { status, onboardingStatus } = input;
+  if (!onboardingStatus || input.archived) return null;
+  if (status === "suspended" || status === "cancelled") {
+    return input.otherLiveSubscription || onboardingStatus === "suspended" ? null : "suspend";
+  }
+  if (status === "active" && (onboardingStatus === "suspended" || isTrialStatus(onboardingStatus))) return "activate";
+  return null;
+}
 
 export type Cycle = "monthly" | "yearly";
 export const CYCLE_LABELS: Record<Cycle, string> = { monthly: "شهري", yearly: "سنوي" };
@@ -64,6 +89,8 @@ export const OPS_ACTION_LABELS: Record<string, string> = {
   "staff.add": "إضافة عضو للفريق",
   "staff.remove": "إزالة عضو من الفريق",
   "trial.upload": "رفع ملف التجربة",
+  "plan.request": "طلب باقة من التطبيق",
+  "reactivation.request": "طلب إعادة تفعيل",
   user_invited: "دعوة مستخدم",
   user_access_changed: "تغيير صلاحيات مستخدم",
   user_suspended: "إيقاف مستخدم",

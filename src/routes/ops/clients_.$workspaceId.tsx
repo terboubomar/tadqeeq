@@ -20,6 +20,7 @@ import {
 import { CYCLE_LABELS, opsActionLabel, opsCan, opsEventSummary, sarFmt, SUBSCRIPTION_STATUS_LABELS } from "@/lib/ops";
 import { addClientNote, getOpsClientProfile, getReceiptUrl, listClientNotes, setOpsClientArchived, setOpsClientStatus } from "@/lib/ops.functions";
 import type { OpsClientProfile } from "@/lib/ops.server";
+import { PLAN_ADDONS } from "@/lib/plans";
 import { WORKSPACE_ROLE_LABELS, type WorkspaceRole } from "@/lib/workspace-access";
 
 const TABS = [
@@ -477,13 +478,13 @@ function BillingTab({ p }: { p: OpsClientProfile }) {
         ) : !p.subscriptions.length ? (
           <Empty text="لا يوجد اشتراك مسجّل لهذا العميل." />
         ) : (
-          <Table head={["الباقة", "السعر", "الدورة", "الفروع", "الحالة", "البداية", "النهاية", "ملاحظات"]}>
+          <Table head={["الباقة", "السعر", "الدورة", "الإضافات", "الحالة", "البداية", "النهاية", "ملاحظات"]}>
             {p.subscriptions.map((s, i) => (
               <tr key={s.id} className={`border-t border-border ${i === 0 ? "font-medium" : "text-muted-foreground"}`}>
                 <td className="px-4 py-2.5">{s.planName ?? "مخصص"}{i === 0 ? <span className="ms-2 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] text-primary-text">الحالي</span> : null}</td>
                 <td className="px-4 py-2.5"><span className="num">{sarFmt(s.price)}</span></td>
                 <td className="px-4 py-2.5">{CYCLE_LABELS[s.cycle]}</td>
-                <td className="px-4 py-2.5"><span className="num">{s.branchCount}</span></td>
+                <td className="px-4 py-2.5 text-xs">{PLAN_ADDONS.filter((a) => s.addons.includes(a.key)).map((a) => a.label).join("، ") || "—"}</td>
                 <td className="px-4 py-2.5">{SUBSCRIPTION_STATUS_LABELS[s.status]}</td>
                 <td className="px-4 py-2.5"><span className="num">{s.startsOn}</span></td>
                 <td className="px-4 py-2.5"><span className="num">{s.endsOn ?? "—"}</span></td>
