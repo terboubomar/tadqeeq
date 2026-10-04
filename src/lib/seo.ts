@@ -33,6 +33,8 @@ export function jsonLd(data: Record<string, unknown>) {
 
 export type PublicPage = {
   path: string;
+  /** Link text in llms.txt. */
+  title: string;
   /** Last meaningful content change (YYYY-MM-DD). Update it when the page's content changes. */
   lastmod: string;
   changefreq: "daily" | "weekly" | "monthly" | "yearly";
@@ -40,7 +42,13 @@ export type PublicPage = {
 };
 
 /** Every page that should be indexed. Adding a public page here adds it to sitemap.xml and llms.txt. */
-export const PUBLIC_PAGES: PublicPage[] = [{ path: "/", lastmod: "2026-10-04", changefreq: "weekly", priority: 1 }];
+export const PUBLIC_PAGES: PublicPage[] = [
+  { path: "/", title: "Home", lastmod: "2026-10-04", changefreq: "weekly", priority: 1 },
+  { path: "/guides", title: "أدلة مراجعة فواتير تطبيقات التوصيل", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.7 },
+  { path: "/guides/keeta-invoice", title: "كيف تراجع فاتورة كيتا؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
+  { path: "/guides/hungerstation-compensation", title: "كيف تعترض على تعويضات هنقرستيشن؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
+  { path: "/guides/jahez-commission", title: "كيف تتأكد من عمولة جاهز وصافي المطعم؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
+];
 
 /** App sections whose every sub-path is private. */
 export const PRIVATE_PREFIXES = ["/api/", "/ops", "/compensation"];

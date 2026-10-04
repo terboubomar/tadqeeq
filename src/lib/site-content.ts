@@ -7,6 +7,13 @@
 /** Last meaningful change to the public content (YYYY-MM-DD). */
 export const CONTENT_UPDATED = "2026-10-04";
 
+/** "4 أكتوبر 2026" for visible last-updated lines. */
+export function formatArabicDate(date: string): string {
+  const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+  const [year, month, day] = date.split("-").map(Number);
+  return `${day} ${months[(month ?? 1) - 1]} ${year}`;
+}
+
 export const FAQS: Array<[question: string, answer: string]> = [
   [
     "ما هو تدقيق؟",

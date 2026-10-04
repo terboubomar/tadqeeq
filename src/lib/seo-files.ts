@@ -9,6 +9,7 @@ import {
   type PublicPage,
 } from "./seo";
 import { CORE_FEATURE_LABELS, PLAN_FEATURES, TRIAL_FEATURES, type PublicPlan } from "./plans";
+import { GUIDES, guideMarkdown } from "./guides";
 import { CONTENT_UPDATED, EXPLAINER_VIDEO, FAQS, FEATURES } from "./site-content";
 
 export function buildSitemap(pages: PublicPage[] = PUBLIC_PAGES) {
@@ -65,7 +66,7 @@ ${AUDIENCE}
 
 ## Pages
 
-${PUBLIC_PAGES.map((page) => `- [${page.path === "/" ? "Home" : page.path}](${SITE_URL}${page.path})`).join("\n")}
+${PUBLIC_PAGES.map((page) => `- [${page.title}](${SITE_URL}${page.path})`).join("\n")}
 - [Explainer video (Arabic, 1:55)](${SITE_URL}${EXPLAINER_VIDEO.src})
 - [Pricing](${SITE_URL}/#pricing): plans and prices as Markdown at [pricing.md](${SITE_URL}/pricing.md)
 - [FAQ](${SITE_URL}/#faq)
@@ -136,6 +137,10 @@ ${FEATURES.map((feature) => `### ${feature.nameEn} (${feature.name})\n\n${featur
 ## Explainer video
 
 Arabic, 1 minute 55 seconds: ${SITE_URL}${EXPLAINER_VIDEO.src}
+
+## Guides
+
+${GUIDES.map((guide) => guideMarkdown(guide, SITE_URL).replace(/^(#+) /gm, "#$1 ")).join("\n\n")}
 
 ## Frequently asked questions
 

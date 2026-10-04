@@ -42,7 +42,7 @@ import { listPublicPlans } from "@/lib/plans.functions";
 import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { OG_IMAGE, SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
-import { CONTENT_UPDATED, EXPLAINER_VIDEO, FAQS, FEATURES } from "@/lib/site-content";
+import { CONTENT_UPDATED, EXPLAINER_VIDEO, FAQS, FEATURES, formatArabicDate } from "@/lib/site-content";
 import { PlatformIcon, PlatformName, PlatformWordmark } from "@/components/brand/PlatformLogo";
 import { PLATFORM_KEYS } from "@/lib/platforms";
 
@@ -90,6 +90,15 @@ const FOOTER_GROUPS = [
       ["#compensation", "مركز التعويضات"],
       ["#products", "كل الأدوات"],
       ["#checks", "ما الذي نراجعه"],
+    ],
+  },
+  {
+    title: "أدلة",
+    links: [
+      ["/guides/keeta-invoice", "مراجعة فاتورة كيتا"],
+      ["/guides/hungerstation-compensation", "تعويضات هنقرستيشن"],
+      ["/guides/jahez-commission", "عمولة جاهز"],
+      ["/guides", "كل الأدلة"],
     ],
   },
   {
@@ -217,13 +226,6 @@ const AUDIENCES: TourItem[] = [
 ];
 
 
-
-/** "4 أكتوبر 2026" for the visible last-updated line. */
-function formatUpdated(date: string): string {
-  const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
-  const [year, month, day] = date.split("-").map(Number);
-  return `${day} ${months[(month ?? 1) - 1]} ${year}`;
-}
 
 function homeSchema(plans: PublicPlan[]) {
   return {
@@ -550,7 +552,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
           <SectionIntro eyebrow="أسئلة" title="قبل أن تبدأ">
             ما يسأله أصحاب المطاعم عادة.
             <span className="mt-4 block text-xs text-muted-foreground">
-              آخر تحديث: <time dateTime={CONTENT_UPDATED}>{formatUpdated(CONTENT_UPDATED)}</time>
+              آخر تحديث: <time dateTime={CONTENT_UPDATED}>{formatArabicDate(CONTENT_UPDATED)}</time>
             </span>
           </SectionIntro>
           <div data-reveal className="border-b border-border">
