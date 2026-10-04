@@ -41,5 +41,6 @@
   "0039_ensure_my_workspace": "5e8764dfedf0d2779e4fc533da469fec748268c947801f2bab0da61ac61db010",
   "0040_mcp_audit_requests": "460676ab8acf11d8364cd20ecbc3813fae9268877dc101a4aee84427ab8d70f2",
   "0041_mcp_access_with_addon": "f929c63ed559f2c0789fe640ecc6d7fb9a78e33564129ad47a19143bb0e517ad",
-  "0042_plan_limits_in_database": "2fb39e4871d090a98f8cd7b244a6facd268e0b6462c3bdd863613111c14d07e1"
+  "0042_plan_limits_in_database": "2fb39e4871d090a98f8cd7b244a6facd268e0b6462c3bdd863613111c14d07e1",
+  "0043_request_limits_and_workspace_guard": "6285e471a0820d10c16bbfe45e679089e493b2feb8a587760747c18f406bfd60"
 }

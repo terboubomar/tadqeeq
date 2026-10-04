@@ -16,11 +16,11 @@ The core access model is solid. No cross-company data leak was found. The open i
 | M3 | Medium | ~~Payment receipts accept any file type; SVG logos allowed~~ ✅ fixed | 1 |
 | M4 | Medium | ~~Plan limits enforced in the app server only, not the database~~ ✅ fixed (migration 0042) | 4 |
 | L1 | Low | ~~CSV export formula injection~~ ✅ fixed | 1 |
-| L2 | Low | No throttle on plan, reactivation and MCP audit requests | 5 |
+| L2 | Low | ~~No throttle on plan, reactivation and MCP audit requests~~ ✅ fixed (migration 0043) | 5 |
 | L3 | Low | ~~Uploaders can write `periods` rows directly through the API~~ ✅ fixed (migration 0042) | 4 |
-| L4 | Low | `ensure_my_workspace` creates workspaces for ops staff and removed members | 5 |
+| L4 | Low | ~~`ensure_my_workspace` creates workspaces for ops staff and removed members~~ ✅ fixed (migration 0043) | 5 |
 | L5 | Low | Sign-up password minimum is 6 characters (✅ code fixed; Supabase setting to verify) | 1 + verify |
-| L6 | Low | No dependency vulnerability scanning in CI | 5 |
+| L6 | Low | ~~No dependency vulnerability scanning in CI~~ ✅ fixed (`dependency-audit` CI job) | 5 |
 | V1–V5 | Verify | Dashboard settings to confirm | any time |
 
 ## What is already right (keep it)
@@ -172,7 +172,12 @@ It is their own company's data, so this is a billing and feature bypass, not a l
 
 ---
 
-## Phase 5: abuse limits and hygiene
+## Phase 5: abuse limits and hygiene — ✅ built (migration 0043)
+
+Built:
+- **L2.** Plan requests: the same choice again within 10 minutes returns the earlier request, and a different choice (to fix a mistake) is allowed up to 3 requests an hour (`planRequestThrottle` in `src/lib/plans.ts`). Reactivation requests: one an hour, even across suspensions (`requestedWithin` in `src/lib/onboarding.ts`). MCP: at most 30 upload links per company per hour, checked in `mcp_create_audit_request`.
+- **L4.** `ensure_my_workspace` skips `ops_staff`, `platform_admins` and users with a `user_removed` audit event. They see "not linked to a company" with a hint to ask for a new invite.
+- **L6.** CI job `dependency-audit` runs `scripts/dependency-audit.ts`. It runs `bun audit` and fails on high or critical advisories for versions that production dependencies install (walked through `bun.lock`); dev-only tooling is printed as warnings. `xlsx` stays pinned to the SheetJS 0.20.3 tarball, which `bun audit` cannot check, so review it on every upgrade. The lockfile now uses `js-yaml` 4.3.2 and the `nanoid` under `postcss` 3.3.19 to clear current advisories.
 
 ### L2 · No throttle on requests that notify ops — Low
 

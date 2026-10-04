@@ -204,6 +204,46 @@ export const TRIAL_UPLOAD_LIMIT = 1;
 export const TRIAL_UPLOAD_EVENT = "trial.upload";
 /** Audit event for a plan the customer requested from the app (metadata: planId, cycle, addons). */
 export const PLAN_REQUEST_EVENT = "plan.request";
+
+const MINUTE = 60_000;
+/** Each plan request notifies the team, so repeats are limited (docs/SECURITY_BUILD_SPEC.md, L2). */
+export const PLAN_REQUEST_REPEAT_MS = 10 * MINUTE;
+export const PLAN_REQUEST_HOURLY_LIMIT = 3;
+
+export interface PlanRequestChoice {
+  planId: string;
+  cycle: "monthly" | "yearly";
+  addons: string[];
+}
+
+export type PlanRequestThrottle =
+  | { kind: "allow" }
+  | { kind: "reuse"; requestedAt: string }
+  | { kind: "blocked"; retryInMinutes: number };
+
+/**
+ * `recent` holds the workspace's plan requests from the last hour, newest first.
+ * The same choice again within 10 minutes returns the earlier request; a different choice is allowed
+ * (to fix a mistake) up to 3 requests an hour.
+ */
+export function planRequestThrottle(
+  recent: (PlanRequestChoice & { requestedAt: string })[],
+  next: PlanRequestChoice,
+  now: Date,
+): PlanRequestThrottle {
+  const latest = recent[0];
+  const sameChoice = (a: PlanRequestChoice) =>
+    a.planId === next.planId && a.cycle === next.cycle && [...a.addons].sort().join() === [...next.addons].sort().join();
+  if (latest && sameChoice(latest) && now.getTime() - Date.parse(latest.requestedAt) < PLAN_REQUEST_REPEAT_MS) {
+    return { kind: "reuse", requestedAt: latest.requestedAt };
+  }
+  const inHour = recent.filter((r) => now.getTime() - Date.parse(r.requestedAt) < 60 * MINUTE);
+  if (inHour.length >= PLAN_REQUEST_HOURLY_LIMIT) {
+    const oldest = Date.parse(inHour[PLAN_REQUEST_HOURLY_LIMIT - 1]!.requestedAt);
+    return { kind: "blocked", retryInMinutes: Math.max(1, Math.ceil((oldest + 60 * MINUTE - now.getTime()) / MINUTE)) };
+  }
+  return { kind: "allow" };
+}
 /** Core permissions that are still closed during the trial. */
 export const TRIAL_BLOCKED_PERMISSIONS: WorkspacePermission[] = ["users.manage"];
 

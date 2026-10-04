@@ -81,6 +81,15 @@ export interface SuspensionInfo {
 }
 
 export const REACTIVATION_REQUEST_EVENT = "reactivation.request";
+/** At most one reactivation request an hour, even across suspensions (docs/SECURITY_BUILD_SPEC.md, L2). */
+export const REACTIVATION_REQUEST_REPEAT_MS = 60 * 60_000;
+
+/** True when the last request was made less than `windowMs` before `now`. */
+export function requestedWithin(lastRequestedAt: string | null, now: Date, windowMs: number): boolean {
+  if (!lastRequestedAt) return false;
+  const at = Date.parse(lastRequestedAt);
+  return Number.isFinite(at) && now.getTime() - at < windowMs;
+}
 
 /**
  * Why the workspace is suspended, from ops audit events newest first. Suspensions without a

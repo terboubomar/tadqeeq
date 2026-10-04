@@ -9,12 +9,14 @@ import {
   latestSuspension,
   normalizeSaudiMobile,
   REACTIVATION_REQUEST_EVENT,
+  REACTIVATION_REQUEST_REPEAT_MS,
+  requestedWithin,
   type OnboardingRecord,
   type OnboardingStatus,
   type SuspensionInfo,
 } from "./onboarding";
 import { dataUrlBytes, sniffFile } from "./file-sniff";
-import { isPlanAddon, PLAN_REQUEST_EVENT, type PlanAddon } from "./plans";
+import { isPlanAddon, PLAN_REQUEST_EVENT, PLAN_REQUEST_HOURLY_LIMIT, planRequestThrottle, type PlanAddon } from "./plans";
 import { requireServerUserAnyStatus } from "./server-auth.server";
 
 const LOGO_BUCKET = "workspace-logos";
@@ -142,6 +144,16 @@ export async function requestReactivationOnServer(input: { note?: string }): Pro
   if (onb?.status !== "suspended") throw new Error("حسابك غير موقوف.");
   const current = await loadSuspension(ctx.workspaceId, typeof onb?.updated_at === "string" ? onb.updated_at : null);
   if (current.reactivationRequestedAt) return { requestedAt: current.reactivationRequestedAt };
+  const { data: last } = await db()
+    .from("workspace_audit_events")
+    .select("created_at")
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("event_type", REACTIVATION_REQUEST_EVENT)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const lastAt = typeof last?.created_at === "string" ? last.created_at : null;
+  if (lastAt && requestedWithin(lastAt, new Date(), REACTIVATION_REQUEST_REPEAT_MS)) return { requestedAt: lastAt };
   const { data, error } = await db()
     .from("workspace_audit_events")
     .insert({
@@ -201,6 +213,29 @@ export async function requestPlanOnServer(input: { planId: string; cycle: "month
   const { data: plan } = await db().from("subscription_plans").select("id,active").eq("id", input.planId).maybeSingle();
   if (!plan || plan.active !== true) throw new Error("الباقة غير متاحة.");
   const addons = input.addons.filter(isPlanAddon);
+  const now = new Date();
+  const { data: recentRows } = await db()
+    .from("workspace_audit_events")
+    .select("metadata,created_at")
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("event_type", PLAN_REQUEST_EVENT)
+    .gte("created_at", new Date(now.getTime() - 60 * 60_000).toISOString())
+    .order("created_at", { ascending: false })
+    .limit(PLAN_REQUEST_HOURLY_LIMIT);
+  const recent = ((recentRows ?? []) as Row[]).map((r) => {
+    const m = (r["metadata"] ?? {}) as Row;
+    return {
+      planId: String(m["planId"] ?? ""),
+      cycle: m["cycle"] === "yearly" ? ("yearly" as const) : ("monthly" as const),
+      addons: (Array.isArray(m["addons"]) ? m["addons"] : []).filter(isPlanAddon),
+      requestedAt: String(r["created_at"]),
+    };
+  });
+  const throttle = planRequestThrottle(recent, { planId: input.planId, cycle: input.cycle, addons }, now);
+  if (throttle.kind === "reuse") return { planId: input.planId, cycle: input.cycle, addons, requestedAt: throttle.requestedAt };
+  if (throttle.kind === "blocked") {
+    throw new Error(`أرسلت عدة طلبات باقة خلال الساعة الأخيرة. يمكنك إرسال طلب جديد بعد ${throttle.retryInMinutes} دقيقة، أو تواصل معنا.`);
+  }
   const { data, error } = await db()
     .from("workspace_audit_events")
     .insert({

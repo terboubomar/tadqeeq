@@ -162,7 +162,7 @@ async function loadWorkspaceContext(
     }
   }
   if (!activeMemberships.length) {
-    throw new Error("لا يوجد حساب Tadqeeq نشط مرتبط بهذا المستخدم.");
+    throw new Error("هذا الحساب غير مرتبط بأي شركة على Tadqeeq. إذا أُزلت من شركتك فاطلب من مديرها دعوتك مجدداً، أو تواصل معنا.");
   }
 
   const requestedWorkspaceId =
