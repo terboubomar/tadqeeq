@@ -5,6 +5,7 @@
 //     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
 
 // Publishable (public) backend values used as a build-time fallback when the
 // build environment does not inject VITE_* variables. Safe to ship to browsers.
@@ -22,6 +23,7 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    plugins: [mcpPlugin()],
     resolve: {
       // Keep every renderer and router import on the same React/context instance.
       // This is explicit because stale Vite optimizer graphs can otherwise retain
