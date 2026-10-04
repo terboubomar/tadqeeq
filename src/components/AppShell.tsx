@@ -21,6 +21,7 @@ import { AI_UI_ENABLED } from "@/lib/ai/config";
 import { buildPeriodExceptions, summarizeExceptions } from "@/lib/exceptions";
 import { arabicDate, count, sar } from "@/lib/format";
 import { latestPeriod, useSelectedPeriod } from "@/lib/use-period";
+import { ordersMonthLabel } from "@/lib/plans";
 import { PLATFORM_BRANDS, PLATFORM_KEYS, type PlatformKey } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
 import { WORKSPACE_ROLE_LABELS, type WorkspacePermission } from "@/lib/workspace-access";
@@ -213,8 +214,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     ? `تجربة مجانية · الرفع ${Math.min(context.uploadsThisMonth, context.uploadLimit ?? 0)} / ${context.uploadLimit}`
     : context.planName
       ? context.orderLimit !== null
-        ? `باقة ${context.planName} · الطلبات هذا الشهر ${count(context.ordersThisMonth)} / ${count(context.orderLimit)}`
-        : `باقة ${context.planName} · الرفع هذا الشهر ${context.uploadsThisMonth}${context.uploadLimit !== null ? ` / ${context.uploadLimit}` : ""}`
+        ? `باقة ${context.planName} · ${ordersMonthLabel(context.ordersMonth)} ${count(context.monthlyOrders)} / ${count(context.orderLimit)}`
+        : context.uploadLimit !== null
+          ? `باقة ${context.planName} · الرفع هذا الشهر ${context.uploadsThisMonth} / ${context.uploadLimit}`
+          : `باقة ${context.planName}`
       : null;
 
   async function signOut() {

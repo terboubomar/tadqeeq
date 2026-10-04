@@ -139,4 +139,12 @@ describe("pricing.md with order-based plans", () => {
     expect(md).toContain("لا تشمل ضريبة القيمة المضافة");
     expect(md).toContain("unlimited branches, platforms, users and uploads");
   });
+
+  test("the unlimited plan shows unlimited orders and the add-on it includes", () => {
+    const unlimited = { ...plan("unlimited", "الشاملة", 799, 7990, null), features: ["invoice_audit" as const, "compensation" as const, "ai" as const] };
+    const md = buildPricingMd([plan("start", "البداية", 299, 2990, 15000), unlimited]);
+    expect(md).toContain("- Orders checked per month: unlimited");
+    expect(md).toContain("- Includes the add-on: مركز التعويضات");
+    expect(md).toContain("399 SAR every 4 months (included in الشاملة)");
+  });
 });

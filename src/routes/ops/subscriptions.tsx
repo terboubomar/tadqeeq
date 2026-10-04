@@ -116,7 +116,7 @@ function Subscriptions() {
       <section className="panel overflow-x-auto">
         {subs.isLoading ? <Loader2 className="m-4 size-5 animate-spin" /> : (
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{["العميل", "الباقة", "السعر", "الدورة", "الطلبات (هذا الشهر · السابق)", "الحالة", "البداية", "النهاية", ""].map((h) => <th key={h} className="p-3 text-start font-medium">{h}</th>)}</tr></thead>
+            <thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{["العميل", "الباقة", "السعر", "الدورة", "الطلبات (آخر شهر · قبله)", "الحالة", "البداية", "النهاية", ""].map((h) => <th key={h} className="p-3 text-start font-medium">{h}</th>)}</tr></thead>
             <tbody>
               {(subs.data ?? []).map((s) => {
                 const late = s.status === "active" && s.endsOn && s.endsOn < new Date().toISOString().slice(0, 10);
@@ -127,16 +127,16 @@ function Subscriptions() {
                     <td className="num p-3">{sarFmt(s.price)}</td>
                     <td className="p-3">{CYCLE_LABELS[s.cycle]}</td>
                     <td className="num p-3">{(() => {
-                      const u = usage.data?.find((x) => x.workspaceId === s.workspaceId) ?? { thisMonth: 0, lastMonth: 0 };
+                      const u = usage.data?.find((x) => x.workspaceId === s.workspaceId) ?? { month: null, latest: 0, previous: 0 };
                       const limit = plans.data?.find((p) => p.id === s.planId)?.orderLimit ?? null;
                       const over = (n: number) => limit !== null && n > limit;
                       return (
-                        <span title={limit !== null ? `حد الباقة ${fmt(limit)}` : undefined}>
-                          <span className={over(u.thisMonth) ? "font-semibold text-destructive" : ""}>{fmt(u.thisMonth)}</span>
+                        <span title={[u.month ? `آخر شهر بيانات: ${u.month.slice(0, 7)}` : "", limit !== null ? `حد الباقة ${fmt(limit)}` : ""].filter(Boolean).join(" · ") || undefined}>
+                          <span className={over(u.latest) ? "font-semibold text-destructive" : ""}>{fmt(u.latest)}</span>
                           {" · "}
-                          <span className={over(u.lastMonth) ? "font-semibold text-destructive" : ""}>{fmt(u.lastMonth)}</span>
+                          <span className={over(u.previous) ? "font-semibold text-destructive" : ""}>{fmt(u.previous)}</span>
                           {limit !== null ? <span className="text-xs text-muted-foreground"> / {fmt(limit)}</span> : null}
-                          {over(u.thisMonth) && over(u.lastMonth) ? <span className="block text-xs text-destructive">تجاوز شهرين: رقِّ الباقة</span> : null}
+                          {over(u.latest) && over(u.previous) ? <span className="block text-xs text-destructive">تجاوز شهرين: رقِّ الباقة</span> : null}
                         </span>
                       );
                     })()}</td>

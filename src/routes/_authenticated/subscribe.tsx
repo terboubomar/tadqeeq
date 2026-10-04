@@ -17,6 +17,8 @@ import {
   featureForPermission,
   lockedFeatureLabel,
   orderBasedPlans,
+  ordersMonthLabel,
+  planIncludesAddon,
   recommendPlan,
   type PlanAddon,
   type PublicPlan,
@@ -91,7 +93,7 @@ function SubscribePage() {
 function UsagePanel() {
   const { context } = useWorkspaceAccess();
   const limit = context.orderLimit;
-  const used = context.ordersThisMonth;
+  const used = context.monthlyOrders;
   const share = limit ? Math.min(1, used / limit) : 0;
   const over = limit !== null && used > limit;
   return (
@@ -112,7 +114,7 @@ function UsagePanel() {
       ) : null}
       <div className="mt-4">
         <p className="flex justify-between text-sm">
-          <span>الطلبات المدققة هذا الشهر</span>
+          <span>{ordersMonthLabel(context.ordersMonth)} من كل المنصات</span>
           <span className="num font-semibold">
             {count(used)}
             {limit !== null ? <span className="text-muted-foreground"> / {count(limit)}</span> : null}
@@ -125,10 +127,10 @@ function UsagePanel() {
         ) : null}
         {over ? (
           <p className="mt-2 text-xs leading-6 text-destructive">
-            تجاوزت حد باقتك هذا الشهر. لن نوقف تدقيقك، وإذا تكرر الشهر القادم ننقلك للباقة الأنسب من الشهر التالي.
+            تجاوزت حد باقتك في هذا الشهر. لن نوقف تدقيقك، وإذا تكرر في الشهر التالي ننقلك للباقة الأنسب.
           </p>
         ) : limit !== null && share >= 0.8 ? (
-          <p className="mt-2 text-xs text-muted-foreground">اقتربت من حد باقتك هذا الشهر.</p>
+          <p className="mt-2 text-xs text-muted-foreground">اقتربت من حد باقتك.</p>
         ) : null}
       </div>
       {context.addons.length ? (
@@ -145,16 +147,18 @@ function PlanPicker({ plans: allPlans }: { plans: PublicPlan[] }) {
   const queryClient = useQueryClient();
   const ordered = orderBasedPlans(allPlans);
   const plans = ordered.length ? ordered : allPlans;
-  const recommended = recommendPlan(plans, context.ordersThisMonth);
+  const recommended = recommendPlan(plans, context.monthlyOrders);
   const current = plans.find((plan) => plan.name === context.planName) ?? null;
   const [cycle, setCycle] = useState<Cycle>("monthly");
   const [selectedId, setSelectedId] = useState<string | null>(recommended?.id ?? current?.id ?? plans[0]?.id ?? null);
   const [addons, setAddons] = useState<PlanAddon[]>(context.addons.filter((a): a is PlanAddon => PLAN_ADDONS.some((x) => x.key === a)));
   const selected = plans.find((plan) => plan.id === selectedId) ?? null;
+  const included = (addon: PlanAddon) => selected !== null && planIncludesAddon(selected.features, addon);
+  const chosenAddons = addons.filter((addon) => !included(addon));
   const canRequest = context.role === "owner" || context.role === "admin";
   const request = useQuery({ queryKey: ["my-plan-request"], queryFn: () => getMyPlanRequest({ data: {} }) });
   const send = useMutation({
-    mutationFn: () => requestPlan({ data: { planId: selectedId!, cycle, addons } }),
+    mutationFn: () => requestPlan({ data: { planId: selectedId!, cycle, addons: chosenAddons } }),
     onSuccess: () => {
       toast.success("وصل طلبك. سنرسل لك الفاتورة ونفعّل الباقة بعد التحويل.");
       void queryClient.invalidateQueries({ queryKey: ["my-plan-request"] });
@@ -184,7 +188,7 @@ function PlanPicker({ plans: allPlans }: { plans: PublicPlan[] }) {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className={cn("grid gap-3 sm:grid-cols-2", plans.length <= 3 ? "lg:grid-cols-3" : plans.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-5")}>
         {plans.map((plan) => {
           const active = plan.id === selectedId;
           return (
@@ -203,9 +207,16 @@ function PlanPicker({ plans: allPlans }: { plans: PublicPlan[] }) {
                 {plan.id === recommended?.id ? <Badge tone="primary">الأنسب لطلباتك</Badge> : plan.highlighted ? <Badge tone="muted">الأكثر طلباً</Badge> : null}
               </span>
               <span className="font-bold">{plan.name}</span>
-              <span className="num text-xs text-muted-foreground">
-                {plan.orderLimit !== null ? `حتى ${count(plan.orderLimit)} طلب شهرياً` : plan.customPrice ? "طلبات أكثر وخدمة مخصصة" : plan.description}
+              <span className="text-xs text-muted-foreground">
+                {plan.orderLimit !== null ? (
+                  <>
+                    حتى <span className="num">{count(plan.orderLimit)}</span> طلب شهرياً
+                  </>
+                ) : plan.customPrice ? "طلبات أكثر وخدمة مخصصة" : plan.code ? "طلبات بلا حدود" : plan.description}
               </span>
+              {PLAN_ADDONS.some((addon) => planIncludesAddon(plan.features, addon.key)) ? (
+                <span className="text-xs font-semibold text-primary-text">يشمل Tadqeeq AI ومركز التعويضات</span>
+              ) : null}
               <span className="mt-auto pt-2">
                 {plan.customPrice ? (
                   <span className="font-semibold">بالاتفاق</span>
@@ -224,13 +235,15 @@ function PlanPicker({ plans: allPlans }: { plans: PublicPlan[] }) {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <div className="space-y-4">
           {PLAN_ADDONS.map((addon) => {
-            const on = addons.includes(addon.key);
+            const inPlan = included(addon.key);
+            const on = inPlan || addons.includes(addon.key);
             return (
-              <label key={addon.key} className={cn("panel flex cursor-pointer items-start gap-3 p-4", on && "border-primary ring-2 ring-primary/30")}>
+              <label key={addon.key} className={cn("panel flex items-start gap-3 p-4", inPlan ? "opacity-80" : "cursor-pointer", on && "border-primary ring-2 ring-primary/30")}>
                 <input
                   type="checkbox"
                   className="mt-1"
                   checked={on}
+                  disabled={inPlan}
                   onChange={(event) => setAddons(event.target.checked ? [...addons, addon.key] : addons.filter((key) => key !== addon.key))}
                 />
                 <span>
@@ -239,7 +252,13 @@ function PlanPicker({ plans: allPlans }: { plans: PublicPlan[] }) {
                     الكاشير يرسل فيديو الطلب في قروب الفرع، وتدقيق يربطه برقم الطلب ويجهّز طلب مراجعة التعويض. ومعه Tadqeeq AI للأسئلة عن أرقامك.
                   </span>
                   <span className="mt-1 block text-sm font-semibold">
-                    <span className="num">{money(addon.price)}</span> ر.س كل {addon.months} أشهر
+                    {inPlan ? (
+                      `مشمولة في باقة ${selected?.name}`
+                    ) : (
+                      <>
+                        <span className="num">{money(addon.price)}</span> ر.س كل {addon.months} أشهر
+                      </>
+                    )}
                   </span>
                 </span>
               </label>
@@ -268,7 +287,7 @@ function PlanPicker({ plans: allPlans }: { plans: PublicPlan[] }) {
                   {selected.customPrice ? "بالاتفاق" : `${money(priceOf(selected))} ر.س ${cycle === "yearly" && selected.priceYearly !== null ? "سنوياً" : "شهرياً"}`}
                 </dd>
               </div>
-              {PLAN_ADDONS.filter((a) => addons.includes(a.key)).map((addon) => (
+              {PLAN_ADDONS.filter((a) => chosenAddons.includes(a.key)).map((addon) => (
                 <div key={addon.key} className="flex justify-between gap-3">
                   <dt>{addon.label}</dt>
                   <dd className="font-semibold">

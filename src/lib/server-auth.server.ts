@@ -53,8 +53,10 @@ export interface ServerUserAuth {
   uploadsThisMonth: number;
   /** Orders the plan is sized for each month (soft: never blocks an upload); null = no limit. */
   orderLimit: number | null;
-  /** Orders in the files uploaded this month (Riyadh time). */
-  ordersThisMonth: number;
+  /** Orders in the latest month the company's current data covers, all platforms together. */
+  monthlyOrders: number;
+  /** That month (YYYY-MM-01), or null before any upload. */
+  ordersMonth: string | null;
   addons: PlanAddon[];
   /** Signed up but not activated yet: runs as a free trial limited to analysis. */
   trial: boolean;
@@ -254,7 +256,9 @@ async function loadWorkspaceContext(
     uploadLimit: access.uploadLimit,
     uploadsThisMonth: access.uploadsUsed,
     orderLimit: typeof plan["order_limit"] === "number" ? plan["order_limit"] : null,
-    ordersThisMonth: typeof plan["orders_this_month"] === "number" ? plan["orders_this_month"] : 0,
+    // monthly_orders since migration 0038; orders_this_month before it.
+    monthlyOrders: typeof plan["monthly_orders"] === "number" ? plan["monthly_orders"] : typeof plan["orders_this_month"] === "number" ? plan["orders_this_month"] : 0,
+    ordersMonth: typeof plan["orders_month"] === "string" ? plan["orders_month"] : null,
     addons,
     trial: access.trial,
     planLockedPermissions: access.planLockedPermissions,

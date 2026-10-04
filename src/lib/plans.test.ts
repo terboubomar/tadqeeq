@@ -6,6 +6,8 @@ import {
   isPlanAddon,
   isTrialStatus,
   orderBasedPlans,
+  ordersMonthLabel,
+  planIncludesAddon,
   recommendPlan,
   resolvePlanAccess,
   TRIAL_UPLOAD_LIMIT,
@@ -98,6 +100,23 @@ describe("order-based plans", () => {
     expect(recommendPlan(plans, 3001)?.code).toBe("growth");
     expect(recommendPlan(plans, 60000)?.code).toBe("groups");
     expect(recommendPlan(plans, 80000)?.code).toBe("enterprise");
+  });
+
+  test("above every limit, the unlimited plan comes before the one priced by agreement", () => {
+    const three = [plan("start", 15000), plan("growth", 45000), plan("unlimited", null), plan("enterprise", null, true)];
+    expect(recommendPlan(three, 15000)?.code).toBe("start");
+    expect(recommendPlan(three, 15001)?.code).toBe("growth");
+    expect(recommendPlan(three, 45001)?.code).toBe("unlimited");
+  });
+
+  test("a plan with compensation and AI already includes the add-on", () => {
+    expect(planIncludesAddon(["invoice_audit", "exceptions", "contracts", "compensation", "ai"], "compensation_ai")).toBe(true);
+    expect(planIncludesAddon(["invoice_audit", "compensation"], "compensation_ai")).toBe(false);
+  });
+
+  test("names the month monthly orders are counted from", () => {
+    expect(ordersMonthLabel("2026-09-01")).toBe("طلبات سبتمبر");
+    expect(ordersMonthLabel(null)).toBe("طلبات آخر شهر");
   });
 
   test("older plans without a code are left out of the order-based list", () => {
