@@ -41,7 +41,8 @@ import { cn } from "@/lib/utils";
 import { listPublicPlans } from "@/lib/plans.functions";
 import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
+import { OG_IMAGE, SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
+import { CONTENT_UPDATED, EXPLAINER_VIDEO, FAQS, FEATURES } from "@/lib/site-content";
 import { PlatformIcon, PlatformName, PlatformWordmark } from "@/components/brand/PlatformLogo";
 import { PLATFORM_KEYS } from "@/lib/platforms";
 
@@ -50,14 +51,18 @@ export const Route = createFileRoute("/")({
     const host = typeof window !== "undefined" ? window.location.host : await getRequestHost();
     if (isOpsHost(host)) throw redirect({ to: "/ops" });
   },
-  head: () => ({
+  head: ({ loaderData }) => ({
     meta: [
       { title: HOME_TITLE },
       { name: "description", content: HOME_DESCRIPTION },
       ...socialMeta({ title: HOME_TITLE, description: HOME_DESCRIPTION, path: "/" }),
     ],
-    links: [canonical("/")],
-    scripts: [jsonLd(HOME_SCHEMA)],
+    links: [
+      canonical("/"),
+      // The page's content as plain Markdown, for AI assistants and agents.
+      { rel: "alternate", type: "text/markdown", href: "/llms-full.txt", title: "Tadqeeq — full site content" },
+    ],
+    scripts: [jsonLd(homeSchema(loaderData ?? []))],
   }),
   loader: () => listPublicPlans(),
   errorComponent: () => <Landing plans={[]} />,
@@ -211,29 +216,17 @@ const AUDIENCES: TourItem[] = [
   },
 ];
 
-const FAQS = [
-  [
-    "هل يمكنني تجربة تدقيق قبل الاشتراك؟",
-    "نعم. أنشئ حساباً مجانياً وارفع ملفات منصة واحدة لفترة واحدة، وشاهد اللوحة التنفيذية ومطابقة الفاتورة وخريطة الرسوم وتقارير الفروع كاملة. للاشتراك وفتح بقية الأقسام تواصل معنا من داخل الحساب.",
-  ],
-  ["ما الملفات التي أحتاجها؟", "ملف الطلبات من بوابة التاجر وفاتورة المنصة لنفس الفترة. نقبل Excel وCSV وPDF."],
-  ["هل يغيّر الذكاء الاصطناعي أي رقم؟", "لا. الأرقام من المحرك المحاسبي، والذكاء الاصطناعي يشرح ويلخص النتائج فقط."],
-  ["ماذا لو غيّرت المنصة صيغة ملفاتها؟", "تدقيق يتعرف على الأعمدة التي تغيّر اسمها ويطلب منك تأكيداً بسيطاً، وينبهك لأي عمود مالي جديد أو مختفٍ بدلاً من احتساب نتيجة غير موثوقة."],
-  ["هل يحتاج موظف الفرع تطبيقاً لإرسال الأدلة؟", "لا. يرسل الصورة أو الفيديو في قروب الفرع على Telegram، والبوت يربطه برقم الطلب."],
-  ["هل بيانات شركتي منفصلة؟", "نعم. لكل شركة مساحة خاصة، مع صلاحيات تحدد ما يراه ويعدله كل موظف."],
-];
 
-const EXPLAINER_VIDEO = {
-  src: "/video/tadqeeq-explainer.mp4",
-  poster: "/video/tadqeeq-explainer-poster.jpg",
-  mobileSrc: "/video/tadqeeq-explainer-mobile.mp4",
-  mobilePoster: "/video/tadqeeq-explainer-mobile-poster.jpg",
-  /** 12 s silent loop (≈35 KB) that plays inside the widget. */
-  preview: "/video/tadqeeq-explainer-preview.mp4",
-  previewPoster: "/video/tadqeeq-explainer-preview.jpg",
-};
 
-const HOME_SCHEMA = {
+/** "4 أكتوبر 2026" for the visible last-updated line. */
+function formatUpdated(date: string): string {
+  const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+  const [year, month, day] = date.split("-").map(Number);
+  return `${day} ${months[(month ?? 1) - 1]} ${year}`;
+}
+
+function homeSchema(plans: PublicPlan[]) {
+  return {
   "@context": "https://schema.org",
   "@graph": [
     {
@@ -262,7 +255,38 @@ const HOME_SCHEMA = {
       operatingSystem: "Web",
       inLanguage: "ar-SA",
       description: HOME_DESCRIPTION,
+      featureList: FEATURES.map((feature) => `${feature.name} (${feature.nameEn})`),
+      screenshot: `${SITE_URL}${EXPLAINER_VIDEO.poster}`,
+      ...(plans.length
+        ? {
+            offers: plans.map((plan) => ({
+              "@type": "Offer",
+              name: plan.name,
+              price: plan.price,
+              priceCurrency: "SAR",
+              url: `${SITE_URL}/#pricing`,
+              priceSpecification: {
+                "@type": "UnitPriceSpecification",
+                price: plan.price,
+                priceCurrency: "SAR",
+                unitCode: plan.cycle === "yearly" ? "ANN" : "MON",
+              },
+            })),
+          }
+        : {}),
       publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+    {
+      "@type": "WebPage",
+      "@id": `${SITE_URL}/#webpage`,
+      url: `${SITE_URL}/`,
+      name: HOME_TITLE,
+      description: HOME_DESCRIPTION,
+      inLanguage: "ar-SA",
+      dateModified: CONTENT_UPDATED,
+      isPartOf: { "@id": `${SITE_URL}/#website` },
+      about: { "@id": `${SITE_URL}/#organization` },
+      primaryImageOfPage: OG_IMAGE,
     },
     {
       "@type": "VideoObject",
@@ -270,8 +294,8 @@ const HOME_SCHEMA = {
       description: "من رفع ملف الطلبات والفاتورة إلى استرجاع التعويض بأدلة Telegram، في أقل من دقيقتين.",
       thumbnailUrl: `${SITE_URL}${EXPLAINER_VIDEO.poster}`,
       contentUrl: `${SITE_URL}${EXPLAINER_VIDEO.src}`,
-      uploadDate: "2026-10-04",
-      duration: "PT1M55S",
+      uploadDate: EXPLAINER_VIDEO.uploadDate,
+      duration: EXPLAINER_VIDEO.durationIso,
       inLanguage: "ar-SA",
       publisher: { "@id": `${SITE_URL}/#organization` },
     },
@@ -284,7 +308,8 @@ const HOME_SCHEMA = {
       })),
     },
   ],
-};
+  };
+}
 
 const BARS = [
   [82, 74],
@@ -524,6 +549,9 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         <section id="faq" className="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.6fr)_minmax(0,1.4fr)] lg:py-24">
           <SectionIntro eyebrow="أسئلة" title="قبل أن تبدأ">
             ما يسأله أصحاب المطاعم عادة.
+            <span className="mt-4 block text-xs text-muted-foreground">
+              آخر تحديث: <time dateTime={CONTENT_UPDATED}>{formatUpdated(CONTENT_UPDATED)}</time>
+            </span>
           </SectionIntro>
           <div data-reveal className="border-b border-border">
             {FAQS.map(([q, a], index) => (

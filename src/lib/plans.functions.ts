@@ -3,7 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 
 import { isPlanFeature, type PublicPlan } from "./plans";
 
-export const listPublicPlans = createServerFn({ method: "GET" }).handler(async (): Promise<PublicPlan[]> => {
+/** Active plans as the public pricing shows them (also read by /pricing.md and /llms-full.txt). */
+export async function loadPublicPlans(): Promise<PublicPlan[]> {
   const url = process.env["SUPABASE_URL"];
   const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
   if (!url || !key) return [];
@@ -33,4 +34,6 @@ export const listPublicPlans = createServerFn({ method: "GET" }).handler(async (
     description: (r["description"] as string | null) ?? null,
     highlighted: r["highlighted"] === true,
   }));
-});
+}
+
+export const listPublicPlans = createServerFn({ method: "GET" }).handler(loadPublicPlans);

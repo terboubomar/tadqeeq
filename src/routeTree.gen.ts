@@ -15,6 +15,8 @@ import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CompensationRouteImport } from './routes/compensation'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
+import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
+import { Route as PricingDotmdRouteImport } from './routes/pricing[.]md'
 import { Route as OpsRouteImport } from './routes/ops'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -80,6 +82,16 @@ const CompensationRoute = CompensationRouteImport.update({
 const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
   id: '/llms.txt',
   path: '/llms.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LlmsFullDottxtRoute = LlmsFullDottxtRouteImport.update({
+  id: '/llms-full.txt',
+  path: '/llms-full.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingDotmdRoute = PricingDotmdRouteImport.update({
+  id: '/pricing.md',
+  path: '/pricing.md',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OpsRoute = OpsRouteImport.update({
@@ -277,6 +289,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/compensation': typeof CompensationRouteWithChildren
   '/llms.txt': typeof LlmsDottxtRoute
+  '/llms-full.txt': typeof LlmsFullDottxtRoute
+  '/pricing.md': typeof PricingDotmdRoute
   '/ops': typeof OpsRouteWithChildren
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -320,6 +334,8 @@ export interface FileRoutesByTo {
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/llms-full.txt': typeof LlmsFullDottxtRoute
+  '/pricing.md': typeof PricingDotmdRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/ai': typeof AuthenticatedAiRoute
@@ -365,6 +381,8 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/compensation': typeof CompensationRouteWithChildren
   '/llms.txt': typeof LlmsDottxtRoute
+  '/llms-full.txt': typeof LlmsFullDottxtRoute
+  '/pricing.md': typeof PricingDotmdRoute
   '/ops': typeof OpsRouteWithChildren
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -411,6 +429,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/compensation'
     | '/llms.txt'
+    | '/llms-full.txt'
+    | '/pricing.md'
     | '/ops'
     | '/robots.txt'
     | '/sitemap.xml'
@@ -454,6 +474,8 @@ export interface FileRouteTypes {
     | '/accept-invite'
     | '/auth'
     | '/llms.txt'
+    | '/llms-full.txt'
+    | '/pricing.md'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/ai'
@@ -498,6 +520,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/compensation'
     | '/llms.txt'
+    | '/llms-full.txt'
+    | '/pricing.md'
     | '/ops'
     | '/robots.txt'
     | '/sitemap.xml'
@@ -544,6 +568,8 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CompensationRoute: typeof CompensationRouteWithChildren
   LlmsDottxtRoute: typeof LlmsDottxtRoute
+  LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
+  PricingDotmdRoute: typeof PricingDotmdRoute
   OpsRoute: typeof OpsRouteWithChildren
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -593,6 +619,20 @@ declare module '@tanstack/react-router' {
       path: '/llms.txt'
       fullPath: '/llms.txt'
       preLoaderRoute: typeof LlmsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/llms-full.txt': {
+      id: '/llms-full.txt'
+      path: '/llms-full.txt'
+      fullPath: '/llms-full.txt'
+      preLoaderRoute: typeof LlmsFullDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing.md': {
+      id: '/pricing.md'
+      path: '/pricing.md'
+      fullPath: '/pricing.md'
+      preLoaderRoute: typeof PricingDotmdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ops': {
@@ -955,6 +995,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CompensationRoute: CompensationRouteWithChildren,
   LlmsDottxtRoute: LlmsDottxtRoute,
+  LlmsFullDottxtRoute: LlmsFullDottxtRoute,
+  PricingDotmdRoute: PricingDotmdRoute,
   OpsRoute: OpsRouteWithChildren,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
