@@ -13,6 +13,7 @@ import {
   type OnboardingStatus,
   type SuspensionInfo,
 } from "./onboarding";
+import { dataUrlBytes, sniffFile } from "./file-sniff";
 import { isPlanAddon, PLAN_REQUEST_EVENT, type PlanAddon } from "./plans";
 import { requireServerUserAnyStatus } from "./server-auth.server";
 
@@ -257,16 +258,15 @@ export async function submitOnboardingOnServer(input: SubmitOnboardingInput): Pr
 
   let logoPath: string | null = (current?.logo_path as string | null) ?? null;
   if (input.logoDataUrl) {
-    const match = input.logoDataUrl.match(/^data:(image\/(png|jpeg|svg\+xml|webp));base64,(.+)$/);
-    if (!match) throw new Error("صيغة الشعار غير مدعومة (PNG / JPG / SVG / WEBP).");
-    const bytes = Buffer.from(match[3] ?? "", "base64");
+    // The type comes from the file's own bytes, never from the browser; SVG is refused because it can carry scripts.
+    const bytes = dataUrlBytes(input.logoDataUrl);
+    const sniffed = bytes ? sniffFile(bytes) : null;
+    if (!bytes || !sniffed || sniffed.mime === "application/pdf") throw new Error("صيغة الشعار غير مدعومة (PNG / JPG / WEBP).");
     if (bytes.byteLength > 2 * 1024 * 1024) throw new Error("حجم الشعار يجب ألا يتجاوز 2MB.");
-    const kind = match[2] ?? "png";
-    const ext = kind === "jpeg" ? "jpg" : kind === "svg+xml" ? "svg" : kind;
-    logoPath = `${ctx.workspaceId}/logo-${Date.now()}.${ext}`;
+    logoPath = `${ctx.workspaceId}/logo-${Date.now()}.${sniffed.ext}`;
     const { error: upErr } = await supabaseAdmin.storage
       .from(LOGO_BUCKET)
-      .upload(logoPath, bytes, { contentType: match[1] ?? "image/png", upsert: true });
+      .upload(logoPath, bytes, { contentType: sniffed.mime, upsert: true });
     if (upErr) throw new Error("تعذّر رفع الشعار.");
   }
 
