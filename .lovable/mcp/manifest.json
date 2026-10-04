@@ -12,14 +12,100 @@
   "mcp": {
     "server": {
       "name": "tadqeeq",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "Tadqeeq"
     },
     "tools": [
       {
+        "name": "get_account",
+        "title": "Connected account",
+        "description": "Which Tadqeeq account is connected: email, company workspace, role and plan, and whether this assistant may use Tadqeeq (الشاملة plan). Call this first, or when other tools return nothing.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "start_audit",
+        "title": "Start an invoice audit",
+        "description": "Start auditing a delivery-platform invoice. Files cannot be sent through this tool: it returns a secure link (valid 2 hours) where the user uploads the order export and the invoice with the platform and bank fee already filled in. Give the user the link, ask them to come back when the upload says it is done, then call get_audit_result with the returned request_id. For HungerStation ask the user for their card/bank payment fee % first (e.g. 1.8).",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "platform": {
+              "type": "string",
+              "enum": [
+                "hungerstation",
+                "keeta",
+                "jahez"
+              ],
+              "description": "Delivery platform of the files."
+            },
+            "bank_fee_pct": {
+              "description": "HungerStation only: the card payment fee percentage in the restaurant's contract, e.g. 1.8 for 1.8%.",
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 10
+            },
+            "label": {
+              "description": "Optional name for the period, e.g. 'سبتمبر 2026'.",
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          "required": [
+            "platform"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_audit_result",
+        "title": "Get the audit result",
+        "description": "Result of an audit started with start_audit: the invoice comparison, differences to claim and costliest branches, computed by Tadqeeq's accounting engine. If the upload is not finished yet it says so; ask the user to finish the upload and try again.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "request_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "request_id returned by start_audit."
+            }
+          },
+          "required": [
+            "request_id"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
         "name": "list_periods",
-        "title": "List analyzed periods",
-        "description": "List the invoice periods analyzed in the caller's Tadqeeq workspace, newest first.",
+        "title": "List audited periods",
+        "description": "Invoice periods already audited in the user's Tadqeeq workspace, newest first, with headline numbers (orders, sales, commission, platform charges). Use the id with get_period_summary, get_branch_performance or list_exceptions.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -39,7 +125,7 @@
               ]
             },
             "limit": {
-              "default": 20,
+              "default": 12,
               "description": "Maximum periods to return.",
               "type": "integer",
               "minimum": 1,
@@ -52,8 +138,8 @@
       },
       {
         "name": "get_period_summary",
-        "title": "Get period summary",
-        "description": "Get the summary totals and invoice reconciliation for one analyzed period.",
+        "title": "Period audit summary",
+        "description": "Audit of one period: headline numbers, the invoice line by line (recalculated vs invoiced), open differences with the amount to claim, and the costliest branches. Numbers come from Tadqeeq's engine; explain them, never recalculate.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -68,6 +154,65 @@
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
               "description": "Period id from list_periods."
+            }
+          },
+          "required": [
+            "period_id"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_branch_performance",
+        "title": "Branch performance",
+        "description": "Every branch in one period: orders, sales, commission and platform cost, largest platform cost first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "period_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Period id from list_periods."
+            }
+          },
+          "required": [
+            "period_id"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_exceptions",
+        "title": "Differences to review",
+        "description": "Differences Tadqeeq found in one period (invoice vs recalculation, contract rates, compensations), open ones largest first, with the amount to review and what can be recovered. Use it to answer 'what should I claim from the platform?'.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "period_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Period id from list_periods."
+            },
+            "include_closed": {
+              "default": false,
+              "description": "Also include differences already closed or recovered.",
+              "type": "boolean"
             }
           },
           "required": [

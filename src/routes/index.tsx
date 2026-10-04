@@ -41,6 +41,7 @@ import {
   PLAN_ADDONS,
   PLAN_FEATURES,
   PRICING_TERMS,
+  MCP_PLAN_CODE,
   orderBasedPlans,
   planIncludesAddon,
   recommendPlan,
@@ -2768,6 +2769,12 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
                   <p className={cn("mt-3 flex gap-2 text-sm font-semibold", dark ? "text-primary" : "text-primary-text")}>
                     <Check className="mt-0.5 size-4 shrink-0" />
                     يشمل Tadqeeq AI ومركز التعويضات مع بوت Telegram
+                  </p>
+                ) : null}
+                {plan.code === MCP_PLAN_CODE ? (
+                  <p className={cn("mt-2 flex gap-2 text-sm font-semibold", dark ? "text-primary" : "text-primary-text")}>
+                    <Check className="mt-0.5 size-4 shrink-0" />
+                    ودقّق فواتيرك من داخل Claude وChatGPT
                   </p>
                 ) : null}
               </div>

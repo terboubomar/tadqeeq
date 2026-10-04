@@ -281,6 +281,13 @@
       "when": 1791131599573,
       "tag": "0039_ensure_my_workspace",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791217999573,
+      "tag": "0040_mcp_audit_requests",
+      "breakpoints": true
     }
   ]
 }
