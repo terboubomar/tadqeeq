@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PGlite } from "@electric-sql/pglite";
 
-import { asUser, createMigratedDatabase } from "../../test-support/database";
+import { activateAllWorkspaces, asUser, createMigratedDatabase } from "../../test-support/database";
 
 /** Migration 0034: smart watch answers follow the workspace roles. */
 const U = {
@@ -23,6 +23,7 @@ beforeAll(async () => {
   for (const [name, id] of Object.entries(U)) {
     await db.query("insert into auth.users (id, email) values ($1, $2)", [id, `${name}@example.com`]);
   }
+  await activateAllWorkspaces(db);
   const ws = async (owner: string) =>
     (await db.query<{ id: string }>("select id from public.workspaces where owner_user_id = $1", [owner])).rows[0]!.id;
   wsA = await ws(U.ownerA);

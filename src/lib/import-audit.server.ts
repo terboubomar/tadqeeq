@@ -513,15 +513,20 @@ async function findDuplicate(
   return existing?.id ?? null;
 }
 
+/**
+ * Saves the engine's result. Members cannot write periods through the database API (migration 0042), so the
+ * server saves it with the service role after runImportAudit has checked imports.create for this workspace.
+ */
 async function insertPeriod(
-  client: ServerUserClient,
+  workspaceId: string,
   userId: string,
   result: AnalysisResult,
   columnChanges: ColumnChange[] = [],
 ): Promise<string> {
-  const { data, error } = await client
+  const { data, error } = await supabaseAdmin
     .from("periods")
     .insert({
+      workspace_id: workspaceId,
       user_id: userId,
       platform: result.platform,
       label: result.label,
@@ -890,7 +895,7 @@ async function runImportAudit(
 
   let periodId: string;
   try {
-    periodId = await insertPeriod(client, userId, result, columnChanges);
+    periodId = await insertPeriod(workspaceId, userId, result, columnChanges);
   } catch (cause) {
     if (
       cause &&
