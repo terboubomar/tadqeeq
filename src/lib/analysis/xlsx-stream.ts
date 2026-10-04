@@ -22,6 +22,25 @@ export interface SheetSource {
   matrix(name: string): SheetMatrix | undefined;
 }
 
+/**
+ * Marks a row read with column projection that had values only in skipped columns: it is not
+ * blank, although every kept cell is empty.
+ */
+export const ROW_HAS_SKIPPED_VALUES = Symbol("rowHasSkippedValues");
+
+/**
+ * Column projection for very large sheets: keep only the columns an engine reads. The header row
+ * and the first `fullRows` rows below it stay complete (smart-column checks sample them); later
+ * rows keep the projected columns only and drop trailing empty cells. Applies to a sheet only when
+ * its XML is at least `minBytes`, so ordinary files are read in full.
+ */
+export interface ColumnProjection {
+  /** Which matrix columns to keep, given the sheet name and its header row; null keeps everything. */
+  columns(sheet: string, header: unknown[]): ((column: number) => boolean) | null;
+  fullRows: number;
+  minBytes: number;
+}
+
 class Unsupported extends Error {}
 
 // ---------------------------------------------------------------- zip
@@ -30,6 +49,7 @@ interface ZipEntry {
   name: string;
   method: number;
   compressedSize: number;
+  size: number;
   dataOffset: number;
 }
 
@@ -52,6 +72,7 @@ function readZipEntries(bytes: Uint8Array): Map<string, ZipEntry> {
     if (view.getUint32(offset, true) !== 0x02014b50) throw new Unsupported("bad central directory");
     const method = view.getUint16(offset + 10, true);
     const compressedSize = view.getUint32(offset + 20, true);
+    const size = view.getUint32(offset + 24, true);
     const nameLength = view.getUint16(offset + 28, true);
     const extraLength = view.getUint16(offset + 30, true);
     const commentLength = view.getUint16(offset + 32, true);
@@ -64,6 +85,7 @@ function readZipEntries(bytes: Uint8Array): Map<string, ZipEntry> {
       name,
       method,
       compressedSize,
+      size,
       dataOffset: localOffset + 30 + localName + localExtra,
     });
     offset += 46 + nameLength + extraLength + commentLength;
@@ -182,6 +204,10 @@ interface ParseState {
   strings: Array<string | undefined>;
   tagr: number;
   guess: { sr: number; sc: number; er: number; ec: number };
+  /** Column projection in force: matrix columns start at `sc`; rows after `fullUntil` are projected. */
+  projection?: { sc: number; fullUntil: number; keep: (column: number) => boolean };
+  /** Projected rows that had values in skipped columns. */
+  skippedValues: Set<number>;
 }
 
 /** One `</row>`-terminated segment, parsed like SheetJS parse_ws_xml_data. */
@@ -223,6 +249,17 @@ function parseRowSegment(segment: string, state: ParseState) {
       if (F_RE.test(body)) throw new Unsupported("formula without a value");
       continue;
     } else t = type || "n";
+    const projection = state.projection;
+    if (projection && rowIndex > projection.fullUntil && !projection.keep(tagc - projection.sc)) {
+      // Skipped before any conversion, so its text is never kept. Same rules as below: empty number
+      // and shared-string cells are no cell at all; an error cell is a cell without a value.
+      const counted = t === "n" ? v !== "" && v != null : t === "s" ? v !== undefined : true;
+      if (!counted) continue;
+      if (state.guess.sc > tagc) state.guess.sc = tagc;
+      if (state.guess.ec < tagc) state.guess.ec = tagc;
+      if (t !== "e") state.skippedValues.add(rowIndex);
+      continue;
+    }
     switch (t) {
       case "n":
         if (v === "" || v == null) continue;
@@ -269,18 +306,44 @@ function parseRowSegment(segment: string, state: ParseState) {
   }
 }
 
-async function readSheet(bytes: Uint8Array, entry: ZipEntry, strings: Array<string | undefined>): Promise<SheetMatrix> {
+function dimensionRange(head: string): { sr: number; sc: number; er: number; ec: number } | null {
+  const dimIndex = head.search(/<(?:\w*:)?dimension/);
+  if (dimIndex <= 0) return null;
+  const ref = head.slice(dimIndex, dimIndex + 50).match(/"(\w*:\w*)"/);
+  const d = ref ? decodeRange(ref[1]!) : null;
+  return d && d.sr <= d.er && d.sc <= d.ec && d.sr >= 0 && d.sc >= 0 ? d : null;
+}
+
+async function readSheet(
+  bytes: Uint8Array,
+  entry: ZipEntry,
+  strings: Array<string | undefined>,
+  project?: (header: unknown[]) => ((column: number) => boolean) | null,
+  fullRows = 0,
+): Promise<SheetMatrix> {
   const state: ParseState = {
     rows: new Map(),
     intern: new Map(),
     strings,
     tagr: 0,
     guess: { sr: 2_000_000, sc: 2_000_000, er: 0, ec: 0 },
+    skippedValues: new Set(),
   };
   let carry = "";
   let inData = false;
   let done = false;
   let head = "";
+  // Projection needs the range (from <dimension>) to know which row is the header.
+  let pending = project ? dimensionRange : null;
+  let headerRange: { sr: number; sc: number; er: number; ec: number } | null = null;
+  const afterRow = () => {
+    if (!project || !headerRange || state.projection || state.tagr - 1 < headerRange.sr) return;
+    const width = headerRange.ec - headerRange.sc + 1;
+    const source = state.rows.get(headerRange.sr) ?? [];
+    const header = Array.from({ length: width }, (_, c) => source[headerRange!.sc + c] ?? null);
+    const keep = project(header);
+    if (keep) state.projection = { sc: headerRange.sc, fullUntil: headerRange.sr + fullRows, keep };
+  };
   for await (const chunk of textChunks(entryStream(bytes, entry))) {
     if (done) continue;
     carry += chunk;
@@ -292,6 +355,10 @@ async function readSheet(bytes: Uint8Array, entry: ZipEntry, strings: Array<stri
       }
       const open = carry.slice(start).match(/<(?:\w+:)?sheetData[^>]*>/)![0];
       head = carry.slice(0, start);
+      if (pending) {
+        headerRange = pending(head);
+        pending = null;
+      }
       if (open.endsWith("/>")) {
         done = true;
         carry = "";
@@ -304,7 +371,10 @@ async function readSheet(bytes: Uint8Array, entry: ZipEntry, strings: Array<stri
     const usable = end >= 0 ? carry.slice(0, end) : carry;
     const parts = usable.split(/<\/(?:\w+:)?row>/);
     const rest = end >= 0 ? "" : parts.pop() ?? "";
-    for (const part of end >= 0 ? parts : parts) parseRowSegment(part, state);
+    for (const part of parts) {
+      parseRowSegment(part, state);
+      afterRow();
+    }
     carry = rest;
     if (end >= 0) {
       done = true;
@@ -313,26 +383,37 @@ async function readSheet(bytes: Uint8Array, entry: ZipEntry, strings: Array<stri
   }
   if (!done && carry) parseRowSegment(carry, state);
 
-  let range: { sr: number; sc: number; er: number; ec: number } | null = null;
-  const dimIndex = head.search(/<(?:\w*:)?dimension/);
-  if (dimIndex > 0) {
-    const ref = head.slice(dimIndex, dimIndex + 50).match(/"(\w*:\w*)"/);
-    const d = ref ? decodeRange(ref[1]!) : null;
-    if (d && d.sr <= d.er && d.sc <= d.ec && d.sr >= 0 && d.sc >= 0) range = d;
-  }
+  let range = dimensionRange(head);
   const g = state.guess;
   if (!range && g.ec >= g.sc && g.er >= g.sr) range = g;
   if (!range) return [];
 
   const matrix: SheetMatrix = [];
   const width = range.ec - range.sc + 1;
+  const projection = state.projection;
   for (let r = range.sr; r <= range.er; r++) {
     const source = state.rows.get(r);
-    const out = new Array<unknown>(width);
-    for (let c = 0; c < width; c++) {
-      const value = source ? source[range.sc + c] : undefined;
-      out[c] = value === undefined ? null : value;
+    state.rows.delete(r);
+    // Projected rows end at their last kept value; readers treat missing cells as empty (null).
+    let length = width;
+    if (projection && r > projection.fullUntil) {
+      length = 0;
+      if (source) for (let c = Math.min(width, source.length - range.sc) - 1; c >= 0; c--) if (source[range.sc + c] !== undefined) { length = c + 1; break; }
     }
+    let out: unknown[];
+    if (source && range.sc === 0) {
+      // Fill the parsed row in place rather than copying it.
+      out = source;
+      for (let c = 0; c < length; c++) if (out[c] === undefined) out[c] = null;
+      out.length = length;
+    } else {
+      out = new Array<unknown>(length);
+      for (let c = 0; c < length; c++) {
+        const value = source ? source[range.sc + c] : undefined;
+        out[c] = value === undefined ? null : value;
+      }
+    }
+    if (state.skippedValues.has(r)) Object.defineProperty(out, ROW_HAS_SKIPPED_VALUES, { value: true });
     matrix.push(out);
   }
   return matrix;
@@ -342,7 +423,11 @@ async function readSheet(bytes: Uint8Array, entry: ZipEntry, strings: Array<stri
  * Reads the named sheets (all when `wanted` is omitted). Returns null when the file uses
  * something this reader does not reproduce exactly; use SheetJS then.
  */
-export async function readXlsxSheets(file: ArrayBuffer, wanted?: (name: string) => boolean): Promise<SheetSource | null> {
+export async function readXlsxSheets(
+  file: ArrayBuffer,
+  wanted?: (name: string) => boolean,
+  projection?: ColumnProjection,
+): Promise<SheetSource | null> {
   try {
     const bytes = new Uint8Array(file);
     const entries = readZipEntries(bytes);
@@ -371,7 +456,11 @@ export async function readXlsxSheets(file: ArrayBuffer, wanted?: (name: string) 
       if (wanted && !wanted(sheet.name)) continue;
       const entry = entries.get(sheet.path);
       if (!entry) return null;
-      matrices.set(sheet.name, await readSheet(bytes, entry, strings));
+      const project =
+        projection && entry.size >= projection.minBytes
+          ? (header: unknown[]) => projection.columns(sheet.name, header)
+          : undefined;
+      matrices.set(sheet.name, await readSheet(bytes, entry, strings, project, projection?.fullRows ?? 0));
     }
     return { names: sheets.map((sheet) => sheet.name), matrix: (name) => matrices.get(name) };
   } catch (error) {

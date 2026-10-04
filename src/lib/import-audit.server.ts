@@ -2,7 +2,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
 
 import { UnsupportedFormatError } from "./analysis/formats/types";
-import { analyzeHungerStation } from "./analysis/hungerstation";
+import { analyzeHungerStation, analyzeHungerStationSheets, hungerStationProjection } from "./analysis/hungerstation";
 import { analyzeJahez } from "./analysis/jahez";
 import { analyzeKeeta, analyzeKeetaSheets } from "./analysis/keeta";
 import { readXlsxSheets, type SheetSource } from "./analysis/xlsx-stream";
@@ -346,12 +346,23 @@ export async function buildAnalysis(
 
   const label = formString(form, "label");
   const originalBuffer = await dataFile.arrayBuffer();
-  // Large Keeta exports do not fit in a Worker when opened with SheetJS; read them as a stream.
-  const sheets = platform === "keeta" ? await readXlsxSheets(originalBuffer) : null;
+  const requestedAliases = parseColumnAliases(form);
+  const storedAliases = await loadColumnAliases(client, userId, platform);
+  // Large Excel exports do not fit in a Worker when opened with SheetJS; read them as a stream.
+  // Very large HungerStation sheets keep only the columns the engine reads (and renamed ones).
+  const sheets =
+    platform === "keeta"
+      ? await readXlsxSheets(originalBuffer)
+      : platform === "hungerstation"
+        ? await readXlsxSheets(
+            originalBuffer,
+            undefined,
+            hungerStationProjection([...requestedAliases, ...storedAliases].map((alias) => alias.observed)),
+          )
+        : null;
 
   // Confirmed column matches rename changed headers back to the names the engine expects.
-  const confirmedAliases = validateAliases(platform, originalBuffer, parseColumnAliases(form), sheets ?? undefined);
-  const storedAliases = await loadColumnAliases(client, userId, platform);
+  const confirmedAliases = validateAliases(platform, originalBuffer, requestedAliases, sheets ?? undefined);
   const aliases = [...confirmedAliases, ...storedAliases];
   const { file: dataBuffer, applied: appliedAliases } = sheets
     ? { file: originalBuffer, applied: applyAliasesToSheets(platform, sheets, aliases) }
@@ -384,7 +395,7 @@ export async function buildAnalysis(
       const persistedMappings = await loadHungerStationMappings(client, userId);
       const bankRate = parsePercentRateInput(formString(form, "bankRate"));
 
-      result = analyzeHungerStation(dataBuffer, {
+      const hungerOptions = {
         ...(invoice ? { invoice } : {}),
         ...(cpcInvoice ? { cpcInvoice } : {}),
         ...(bankRate ? { manualBankRate: bankRate.fraction } : {}),
@@ -393,7 +404,8 @@ export async function buildAnalysis(
           ...approvedMappings,
         },
         ...(label ? { label } : {}),
-      });
+      };
+      result = sheets ? analyzeHungerStationSheets(sheets, hungerOptions) : analyzeHungerStation(dataBuffer, hungerOptions);
     } else if (platform === "keeta") {
       const keetaOptions = {
         ...(invoice ? { invoice } : {}),

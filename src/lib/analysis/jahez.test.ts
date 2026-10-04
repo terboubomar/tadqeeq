@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { analyzeJahez } from "./jahez";
+import { analyzeJahez, csvRows, parseCsv, scanCsv } from "./jahez";
 import { ParseError } from "./parse";
 import { parseJahezInvoice } from "./pdf";
 
@@ -188,5 +188,66 @@ describe("Jahez PDF parser", () => {
     expect(invoice.totalExVat).toBeCloseTo(149181.39, 6);
     expect(invoice.vat).toBeCloseTo(22377.21, 6);
     expect(invoice.totalIncVat).toBeCloseTo(171558.6, 6);
+  });
+});
+
+describe("csv reading", () => {
+  // The character-by-character parser csvRows replaced; the rows must be identical.
+  function referenceParseCsv(text: string): string[][] {
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let field = "";
+    let quoted = false;
+    for (let index = 0; index < text.length; index += 1) {
+      const char = text[index]!;
+      if (quoted) {
+        if (char === '"') {
+          if (text[index + 1] === '"') {
+            field += '"';
+            index += 1;
+          } else {
+            quoted = false;
+          }
+        } else {
+          field += char;
+        }
+        continue;
+      }
+      if (char === '"') quoted = true;
+      else if (char === ",") {
+        row.push(field);
+        field = "";
+      } else if (char === "\n") {
+        row.push(field.replace(/\r$/, ""));
+        rows.push(row);
+        row = [];
+        field = "";
+      } else field += char;
+    }
+    if (field || row.length) {
+      row.push(field.replace(/\r$/, ""));
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  test("csvRows splits exactly like the previous parser", () => {
+    const pieces = ['"', '""', ",", "\n", "\r\n", "\r", "a", "فرع", " ", "1.50", 'x"y', "#"];
+    let seed = 7;
+    const random = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+    const cases = ["", "\n", "a,b\n", "a,b", '"a,b",c\r\n"d""e",f\n\n', 'ab"c,d"e,f\n"open', "x\r", ",,\n,"];
+    for (let i = 0; i < 400; i++) {
+      cases.push(Array.from({ length: 1 + Math.floor(random() * 40) }, () => pieces[Math.floor(random() * pieces.length)]).join(""));
+    }
+    for (const text of cases) expect(parseCsv(text)).toEqual(referenceParseCsv(text));
+  });
+
+  test("scanCsv keeps the head, counts every row and resumes after the header", () => {
+    const text = 'Restaurant,Date\r\nPast,"01/08/2026"\r\n\r\n#,Branch\r\n1,"A, B"\r\n\r\n2,C\r\n';
+    const scan = scanCsv(text, (row) => row[0]?.trim() === "#", 2);
+    expect(scan.head).toEqual(referenceParseCsv(text).slice(0, 4));
+    expect(scan.rowCount).toBe(referenceParseCsv(text).length);
+    expect(scan.headerIndex).toBe(3);
+    expect([...csvRows(text, scan.headerEnd)]).toEqual(referenceParseCsv(text).slice(4));
   });
 });

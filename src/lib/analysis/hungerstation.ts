@@ -11,8 +11,9 @@ import type {
 } from "./types";
 import { detectHungerStationFormat } from "./formats";
 import { ParseError, parseAmount, parseDate } from "./parse";
-import { resolveSheetName } from "./sheets";
+import { findColumnIgnoringCase, objectRows, resolveSheetName, rowKeys, workbookSheetSource } from "./sheets";
 import { HUNGERSTATION_TOLERANCES } from "./tolerances";
+import type { ColumnProjection, SheetSource } from "./xlsx-stream";
 
 const VAT = 1.15;
 
@@ -21,19 +22,66 @@ function text(value: unknown): string {
   return String(value).trim();
 }
 
+/**
+ * Every column the engine reads, on any sheet (kept in step with the col()/hasColumn() calls below
+ * by a test). Very large exports are read with only these columns.
+ */
+export const HUNGERSTATION_COLUMNS = [
+  "Status",
+  "Branch Name",
+  "HS Branch ID",
+  "Payment Type",
+  "Commissionable GMV (VAT Excluded)",
+  "Commission",
+  "CC Amount",
+  "Wallet Amount",
+  "Transmitter Amount",
+  "Operation Day",
+  "Creation Time",
+  "HS Food Discount",
+  "Rewards Discount",
+  "Rewards Discounts",
+  "Restaurant Food discount",
+  "Restaurant delivery Discount",
+  "Flash Deals Fee Excluding Vat",
+  "Compensation",
+  "Modification Amount",
+  "Refunded Amount",
+  "CC Refund Amount",
+  "Wallet Refund",
+  "Avoidable Waiting Time Fee",
+];
+
+/**
+ * Low-memory reading of a very large HungerStation export: sheets over 32 MB of XML keep only the
+ * engine's columns (plus `extraHeaders`, e.g. renamed columns about to be mapped back), after the
+ * first 500 rows. The audit is the same; only unread columns are skipped.
+ */
+export function hungerStationProjection(extraHeaders: string[] = []): ColumnProjection {
+  const wanted = new Set([...HUNGERSTATION_COLUMNS, ...extraHeaders].map((name) => name.trim().toLowerCase()));
+  return {
+    minBytes: 32 * 1024 * 1024,
+    fullRows: 500,
+    columns: (_sheet, header) => {
+      const keep = header.map((cell) => cell !== null && wanted.has(String(cell).trim().toLowerCase()));
+      return (column) => keep[column] === true;
+    },
+  };
+}
+
 /** Match HungerStation sheets deterministically while allowing numeric prefixes. */
-function findSheet(wb: XLSX.WorkBook, keyword: string): string | undefined {
-  return resolveSheetName(wb.SheetNames, keyword, {
+function findSheet(source: SheetSource, keyword: string): string | undefined {
+  return resolveSheetName(source.names, keyword, {
     platform: "hungerstation",
   });
 }
 
-function rowsOf(wb: XLSX.WorkBook, keyword: string): Record<string, unknown>[] {
-  const name = findSheet(wb, keyword);
+function rowsOf(source: SheetSource, keyword: string): Record<string, unknown>[] {
+  const name = findSheet(source, keyword);
   if (!name) return [];
-  const sheet = wb.Sheets[name];
-  if (!sheet) return [];
-  return XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null });
+  const matrix = source.matrix(name);
+  if (!matrix) return [];
+  return objectRows(matrix);
 }
 
 /** Pick a column value by trying several header spellings. */
@@ -41,16 +89,11 @@ function col(row: Record<string, unknown>, ...candidates: string[]): unknown {
   for (const candidate of candidates) {
     if (candidate in row) return row[candidate];
   }
-  const keys = Object.keys(row);
-  for (const candidate of candidates) {
-    const lower = candidate.toLowerCase();
-    const hit = keys.find((k) => k.toLowerCase() === lower);
-    if (hit) return row[hit];
-  }
-  return null;
+  const hit = findColumnIgnoringCase(row, candidates);
+  return hit ? row[hit] : null;
 }
 function hasColumn(row: Record<string, unknown>, ...candidates: string[]): boolean {
-  const keys = Object.keys(row).map((key) => key.toLowerCase());
+  const keys = rowKeys(row).map((key) => key.toLowerCase());
   return candidates.some((candidate) => keys.includes(candidate.toLowerCase()));
 }
 
@@ -339,7 +382,14 @@ export function analyzeHungerStation(
   file: ArrayBuffer,
   options: HungerOptions = {},
 ): AnalysisResult {
-  const wb = XLSX.read(file, { type: "array" });
+  return analyzeHungerStationSheets(workbookSheetSource(XLSX.read(file, { type: "array" })), options);
+}
+
+/** analyzeHungerStation for sheets already read (for large exports, by the low-memory reader). */
+export function analyzeHungerStationSheets(
+  wb: SheetSource,
+  options: HungerOptions = {},
+): AnalysisResult {
   const formatId = detectHungerStationFormat(wb);
 
   const orders = rowsOf(wb, "commissionable gmv");

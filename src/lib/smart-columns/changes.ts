@@ -1,7 +1,7 @@
 import { normalizeFormatHeader } from "../analysis/formats/types";
 import type { Platform } from "../analysis/types";
 import type { SheetSource } from "../analysis/xlsx-stream";
-import { FINGERPRINTS, isDate, isMoney, nameScore, readSourceTable } from "./match";
+import { FINGERPRINTS, isDate, isMoney, nameScore, sourceRows } from "./match";
 
 /**
  * New and vanished money columns, learned per workspace.
@@ -58,22 +58,33 @@ function amount(value: unknown): number {
 export function profileColumns(platform: Platform, file: ArrayBuffer, sheets?: SheetSource): SourceProfile[] {
   const profiles: SourceProfile[] = [];
   for (const fingerprint of FINGERPRINTS[platform]) {
-    const table = readSourceTable(platform, fingerprint.source, file, MAX_ROWS, sheets);
+    const table = sourceRows(platform, fingerprint.source, file, MAX_ROWS, sheets);
     if (!table) continue;
+    // Tallied row by row (rows are read lazily), in row order so totals add up exactly as before.
+    const tally = table.headers.map(() => ({ present: 0, amounts: 0, nonZero: false, sum: 0 }));
+    for (const row of table.rows) {
+      for (let index = 0; index < tally.length; index++) {
+        const value = row[index];
+        if (value === null || value === undefined || String(value).trim() === "") continue;
+        const column = tally[index]!;
+        column.present += 1;
+        if (!isMoney(value) || isDate(value)) continue;
+        column.amounts += 1;
+        const parsed = amount(value);
+        if (parsed !== 0) column.nonZero = true;
+        column.sum += parsed;
+      }
+    }
     const columns = table.headers
       .map((name, index): ColumnProfile | null => {
         if (!name) return null;
-        const present = table.rows
-          .map((row) => row[index])
-          .filter((value) => value !== null && value !== undefined && String(value).trim() !== "");
-        const amounts = present.filter((value) => isMoney(value) && !isDate(value));
-        const money = present.length > 0 && amounts.length / present.length >= MONEY_SHARE;
-        const values = money ? amounts.map(amount) : [];
+        const { present, amounts, nonZero, sum } = tally[index]!;
+        const money = present > 0 && amounts / present >= MONEY_SHARE;
         return {
           name,
           money,
-          nonZero: values.some((value) => value !== 0),
-          total: Math.round(values.reduce((sum, value) => sum + value, 0) * 100) / 100,
+          nonZero: money && nonZero,
+          total: money ? Math.round(sum * 100) / 100 : 0,
         };
       })
       .filter((column): column is ColumnProfile => column !== null);

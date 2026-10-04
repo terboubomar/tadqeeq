@@ -81,49 +81,101 @@ function emptyBranch(branch: string): BranchRow {
   };
 }
 
-export function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
+/**
+ * CSV rows one at a time, starting at character `from` (a row boundary). Fields are cut from the
+ * text rather than built a character at a time, which kept every value of a large export as a
+ * chain of one-character strings. Same rules as before: `"` toggles quoting anywhere in a field,
+ * `""` inside quotes is one quote, a trailing \r is dropped from a row's last field, and a final
+ * newline does not start an empty row. `cursor.end` is set to the character after each row.
+ */
+export function* csvRows(text: string, from = 0, cursor?: { end: number }): Generator<string[]> {
   let row: string[] = [];
   let field = "";
+  let start = from;
   let quoted = false;
-
-  for (let index = 0; index < text.length; index += 1) {
-    const char = text[index]!;
+  const length = text.length;
+  for (let index = from; index < length; index += 1) {
+    const code = text.charCodeAt(index);
     if (quoted) {
-      if (char === '"') {
-        if (text[index + 1] === '"') {
-          field += '"';
+      if (code === 34) {
+        if (text.charCodeAt(index + 1) === 34) {
+          field += text.slice(start, index + 1);
           index += 1;
         } else {
+          field += text.slice(start, index);
           quoted = false;
         }
-      } else {
-        field += char;
+        start = index + 1;
       }
       continue;
     }
-
-    if (char === '"') {
+    if (code === 34) {
+      field += text.slice(start, index);
       quoted = true;
-    } else if (char === ",") {
-      row.push(field);
+      start = index + 1;
+    } else if (code === 44) {
+      row.push(field + text.slice(start, index));
       field = "";
-    } else if (char === "\n") {
-      row.push(field.replace(/\r$/, ""));
-      rows.push(row);
+      start = index + 1;
+    } else if (code === 10) {
+      row.push((field + text.slice(start, index)).replace(/\r$/, ""));
+      if (cursor) cursor.end = index + 1;
+      yield row;
       row = [];
       field = "";
-    } else {
-      field += char;
+      start = index + 1;
     }
   }
-
+  field += text.slice(start);
   if (field || row.length) {
     row.push(field.replace(/\r$/, ""));
-    rows.push(row);
+    if (cursor) cursor.end = length;
+    yield row;
   }
+}
 
-  return rows;
+/**
+ * A standalone copy of a value cut from the CSV text. Long slices otherwise keep the whole decoded
+ * file alive for as long as they are kept (branch names, order numbers in the order index).
+ */
+export function standalone(value: string, cache?: Map<string, string>): string {
+  if (value.length < 13) return value;
+  let copy = cache?.get(value);
+  if (copy === undefined) {
+    copy = JSON.parse(JSON.stringify(value)) as string;
+    cache?.set(copy, copy);
+  }
+  return copy;
+}
+
+export function parseCsv(text: string): string[][] {
+  return [...csvRows(text)];
+}
+
+/**
+ * The top of a CSV without holding the rest: the rows up to and including the first row matching
+ * `isHeader` (and at least `minRows` rows), the total row count, and where the matched row ends.
+ * Without a match, `head` holds every row and `headerEnd` is the end of the text.
+ */
+export function scanCsv(
+  text: string,
+  isHeader: (row: string[], index: number) => boolean,
+  minRows = 0,
+): { head: string[][]; rowCount: number; headerIndex: number; headerEnd: number } {
+  const head: string[][] = [];
+  const cursor = { end: 0 };
+  let rowCount = 0;
+  let headerIndex = -1;
+  let headerEnd = text.length;
+  for (const row of csvRows(text, 0, cursor)) {
+    if (headerIndex < 0 && isHeader(row, rowCount)) {
+      headerIndex = rowCount;
+      headerEnd = cursor.end;
+    }
+    if (headerIndex < 0 || rowCount <= headerIndex || rowCount < minRows) head.push(row);
+    rowCount += 1;
+  }
+  return { head, rowCount, headerIndex, headerEnd };
 }
 
 function rowObject(headers: string[], row: string[]): CsvRow {
@@ -432,10 +484,13 @@ function deliveryInvoiceUnitExVat(deliveryOfferInclVat: number): number {
 
 export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): AnalysisResult {
   const text = new TextDecoder("utf-8").decode(file).replace(/^\uFEFF/, "");
-  const matrix = parseCsv(text);
+  // Only the summary rows and the detail table's header are held; order rows are read one at a
+  // time below, so a large month fits in a Worker's memory.
+  const csv = scanCsv(text, (row) => row[0]?.trim() === "#", 2);
+  const matrix = csv.head;
   const formatId = detectJahezFormat(matrix);
 
-  if (matrix.length < 5) {
+  if (csv.rowCount < 5) {
     throw new Error("ملف جاهز لا يحتوي البيانات المتوقعة.");
   }
 
@@ -482,10 +537,6 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
     ],
     "Jahez Order Details",
   );
-  const details = matrix
-    .slice(detailHeaderIndex + 1)
-    .filter((row) => row.some((value) => value.trim()))
-    .map((row) => rowObject(detailHeaders, row));
 
   const branches = new Map<string, JahezAccumulator>();
   const daily = new Map<string, DailyRow>();
@@ -503,9 +554,14 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
   let detailDeliveryCharge = 0;
   let detailCalculatedSettlement = 0;
 
-  for (const [detailIndex, source] of details.entries()) {
+  const branchNames = new Map<string, string>();
+  let detailCount = 0;
+  for (const raw of csvRows(text, csv.headerEnd)) {
+    if (!raw.some((value) => value.trim())) continue;
+    const detailIndex = detailCount++;
+    const source = rowObject(detailHeaders, raw);
     const rowNumber = detailHeaderIndex + detailIndex + 2;
-    const branchName = normalizeBranch(source["Branch Name"] || "غير محدد");
+    const branchName = standalone(normalizeBranch(source["Branch Name"] || "غير محدد"), branchNames);
     let branch = branches.get(branchName);
     if (!branch) {
       branch = {
@@ -524,7 +580,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
       branches.set(branchName, branch);
     }
 
-    const orderId = (source["Order #"] || "").trim();
+    const orderId = standalone((source["Order #"] || "").trim());
     const orderDate = dateKey(
       source["Date"] ?? "",
       {
@@ -753,7 +809,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
 
   const resultSummary: Summary = {
     platform: "jahez",
-    orders: details.length,
+    orders: detailCount,
     grossSales: merchantGrossSales,
     netSales: merchantRestaurantAmount,
     commission: commissionInvoiceExVat,
@@ -780,7 +836,7 @@ export function analyzeJahez(file: ArrayBuffer, options: JahezOptions = {}): Ana
     invoiceOnlyExtras: 0,
     totalCharges: invoiceExVatComputed,
     branchCount: branchRows.length,
-    statusCounts: { "طلبات جاهز": details.length },
+    statusCounts: { "طلبات جاهز": detailCount },
     periodStart: range.start,
     periodEnd: range.end,
     jahezCommissionInclVat: merchantCommissionInclVat,
