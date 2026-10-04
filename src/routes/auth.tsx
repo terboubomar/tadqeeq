@@ -82,6 +82,18 @@ function AuthPage() {
     navigate({ to: "/dashboard", replace: true });
   }
 
+  async function apple() {
+    const result = await lovable.auth.signInWithOAuth("apple", {
+      redirect_uri: window.location.origin,
+    });
+    if (result.error) {
+      toast.error("تعذّر تسجيل الدخول عبر Apple");
+      return;
+    }
+    if (result.redirected) return;
+    navigate({ to: "/dashboard", replace: true });
+  }
+
   return (
     <div className="grid min-h-screen bg-background lg:grid-cols-[0.85fr_1.15fr]">
       <aside className="hidden bg-ink p-12 text-ink-foreground lg:flex lg:flex-col lg:justify-between">
@@ -158,6 +170,9 @@ function AuthPage() {
 
         <Button variant="outline" className="w-full" onClick={google}>
           المتابعة باستخدام جوجل
+        </Button>
+        <Button variant="outline" className="mt-3 w-full" onClick={apple}>
+          المتابعة باستخدام Apple
         </Button>
 
         <button
