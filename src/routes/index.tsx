@@ -24,6 +24,7 @@ import {
   Megaphone,
   PieChart,
   Play,
+  Plus,
   Radar,
   Columns3,
   Sparkles,
@@ -43,8 +44,12 @@ import {
   PRICING_TERMS,
   MCP_PLAN_CODE,
   orderBasedPlans,
+  planCardItems,
+  planComparison,
   planIncludesAddon,
   recommendPlan,
+  type ComparisonCell,
+  type ComparisonRow,
   type PublicPlan,
 } from "@/lib/plans";
 import { cn } from "@/lib/utils";
@@ -2748,14 +2753,6 @@ function CompensationStepVisual({ step, active }: { step: number; active: boolea
 }
 
 /** What every order-based plan includes. */
-const PRICING_INCLUDED = [
-  "فروع ومنصات ومستخدمون بلا حدود",
-  "رفع ملفات بلا حدود",
-  "مطابقة الفاتورة وخريطة الرسوم",
-  "مركز الاستثناءات والعقود",
-  "عائد الإعلانات الحقيقي",
-  "المراقب الذكي والقراءة الذكية للملفات",
-];
 const ORDER_PRESETS = [5000, 12000, 30000, 60000];
 
 function Pricing({ plans }: { plans: PublicPlan[] }) {
@@ -2773,6 +2770,9 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
   const bundled = (plan: PublicPlan) => PLAN_ADDONS.some((addon) => planIncludesAddon(plan.features, addon.key));
   const addonFor = plans.filter((plan) => !bundled(plan) && !plan.customPrice).map((plan) => plan.name);
   const addonIn = plans.filter(bundled).map((plan) => plan.name);
+  const comparison = planComparison(plans);
+  const addon = PLAN_ADDONS[0];
+  const featured = (plan: PublicPlan) => recommended?.id === plan.id || (recommended === null && plan.highlighted);
 
   return (
     <section id="pricing" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
@@ -2830,7 +2830,7 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
           plans.length <= 3 ? "lg:grid-cols-3" : plans.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-5",
         )}
       >
-        {plans.map((plan) => {
+        {plans.map((plan, index) => {
           const fit = recommended?.id === plan.id;
           const dark = fit || (recommended === null && plan.highlighted);
           const price = yearly && plan.priceYearly !== null ? plan.priceYearly : plan.price;
@@ -2858,18 +2858,6 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
                     "طلبات بلا حدود"
                   )}
                 </p>
-                {bundled(plan) ? (
-                  <p className={cn("mt-3 flex gap-2 text-sm font-semibold", dark ? "text-primary" : "text-primary-text")}>
-                    <Check className="mt-0.5 size-4 shrink-0" />
-                    يشمل Tadqeeq AI ومركز التعويضات مع بوت Telegram
-                  </p>
-                ) : null}
-                {plan.code === MCP_PLAN_CODE ? (
-                  <p className={cn("mt-2 flex gap-2 text-sm font-semibold", dark ? "text-primary" : "text-primary-text")}>
-                    <Check className="mt-0.5 size-4 shrink-0" />
-                    ودقّق فواتيرك من داخل Claude و ChatGPT
-                  </p>
-                ) : null}
               </div>
               {plan.customPrice ? (
                 <p className="font-display text-2xl font-extrabold">بالاتفاق</p>
@@ -2885,31 +2873,24 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
                 to="/auth"
                 search={{ mode: "signup" }}
                 className={cn(
-                  "mt-auto inline-flex h-11 items-center justify-center rounded-full text-sm font-bold",
+                  "inline-flex h-11 items-center justify-center rounded-full text-sm font-bold",
                   dark ? "bg-primary text-primary-foreground" : "bg-ink text-ink-foreground",
                 )}
               >
                 {plan.customPrice ? "تواصل معنا" : "ابدأ تجربتك المجانية"}
               </Link>
+              <PlanCardFeatures plans={plans} index={index} dark={dark} addonOffered={!bundled(plan) && !plan.customPrice && !!addon} />
             </article>
           );
         })}
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        <div data-reveal className="rounded-[22px] border border-border bg-card p-6">
-          <p className="text-sm font-bold">مشمول في كل الباقات</p>
-          <ul className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-            {PRICING_INCLUDED.map((label) => (
-              <li key={label} className="flex gap-2.5">
-                <Check className="size-4 shrink-0 text-success" />
-                {label}
-              </li>
-            ))}
-          </ul>
-        </div>
+      <PlanComparisonTable plans={plans} rows={comparison} featured={featured} yearly={yearly} />
+
+      <div className="mt-6 grid gap-4">
         {PLAN_ADDONS.map((addon) => (
-          <div key={addon.key} data-reveal className="rounded-[22px] bg-secondary p-6">
+          <div key={addon.key} data-reveal className="rounded-[22px] bg-secondary p-6 sm:flex sm:items-center sm:justify-between sm:gap-8">
+            <div>
             <p className="text-xs font-semibold text-primary-text">
               {addonFor.length ? `إضافة اختيارية ${addonFor.length === 1 ? "لباقة" : addonFor.length === 2 ? "لباقتي" : "لباقات"} ${addonFor.join(" و")}` : "إضافة اختيارية"}
               {addonIn.length ? ` · مشمولة في ${addonIn.join(" و")}` : ""}
@@ -2918,8 +2899,9 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
             <p className="mt-2 text-sm leading-7 text-foreground/80">
               اعترض على التعويضات بفيديو من قروب الفرع، واسأل عن أرقامك بلغة بسيطة.
             </p>
-            <p className="mt-3 font-semibold">
-              <span className="num">{addon.price.toLocaleString("en-US")}</span> ر.س كل {addon.months} أشهر
+            </div>
+            <p className="mt-3 shrink-0 font-semibold sm:mt-0">
+              <span className="num text-2xl">{addon.price.toLocaleString("en-US")}</span> ر.س كل {addon.months} أشهر
             </p>
           </div>
         ))}
@@ -2932,6 +2914,116 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
       </ul>
     </section>
   );
+}
+
+/** What a plan card includes: its own list, or "everything in the previous plan" plus what it adds. */
+function PlanCardFeatures({ plans, index, dark, addonOffered }: { plans: PublicPlan[]; index: number; dark: boolean; addonOffered: boolean }) {
+  const { basedOn, items } = planCardItems(plans, index);
+  const addon = PLAN_ADDONS[0];
+  return (
+    <div className={cn("mt-1 border-t pt-4 text-sm", dark ? "border-ink-foreground/15" : "border-border")}>
+      {basedOn ? (
+        <p className="font-semibold">{items.length ? `كل ما في ${basedOn}، و:` : `كل ما في ${basedOn}، مع حد طلبات أعلى.`}</p>
+      ) : (
+        <p className="font-semibold">تشمل:</p>
+      )}
+      {items.length ? (
+        <ul className="mt-3 space-y-2.5">
+          {items.map((item) => (
+            <li key={item} className="flex gap-2.5 leading-6">
+              <Check className={cn("mt-0.5 size-4 shrink-0", dark ? "text-primary" : "text-success")} />
+              {item}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {addonOffered && addon ? (
+        <p className={cn("mt-3 flex gap-2.5 leading-6", dark ? "text-ink-muted" : "text-muted-foreground")}>
+          <Plus className="mt-0.5 size-4 shrink-0" />
+          <span>
+            إضافة اختيارية: {addon.label} (<span className="num">{addon.price.toLocaleString("en-US")}</span> ر.س / {addon.months} أشهر)
+          </span>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Every feature against every plan, so a restaurant can compare at a glance. */
+function PlanComparisonTable({
+  plans,
+  rows,
+  featured,
+  yearly,
+}: {
+  plans: PublicPlan[];
+  rows: ComparisonRow[];
+  featured: (plan: PublicPlan) => boolean;
+  yearly: boolean;
+}) {
+  return (
+    <div data-reveal className="mt-10">
+      <h3 className="font-display text-xl font-extrabold">قارن الباقات</h3>
+      <div className="mt-4 overflow-x-auto rounded-[22px] border border-border bg-card">
+        <table className="w-full table-fixed text-[12.5px] sm:text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              <th scope="col" className="w-[34%] p-2.5 text-start font-semibold text-muted-foreground sm:w-[40%] sm:p-4">
+                الميزة
+              </th>
+              {plans.map((plan) => {
+                const price = yearly && plan.priceYearly !== null ? plan.priceYearly : plan.price;
+                return (
+                  <th key={plan.id} scope="col" className={cn("p-2 text-center align-bottom sm:p-4", featured(plan) && "bg-secondary")}>
+                    <span className="block font-display text-sm font-extrabold sm:text-base">{plan.name}</span>
+                    <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                      {plan.customPrice ? (
+                        "بالاتفاق"
+                      ) : (
+                        <>
+                          <span className="num">{price.toLocaleString("en-US")}</span> ر.س / {yearly && plan.priceYearly !== null ? "سنوياً" : "شهرياً"}
+                        </>
+                      )}
+                    </span>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.label} className="border-b border-border/70 last:border-0">
+                <th scope="row" className="p-2.5 text-start font-medium leading-6 sm:p-4">
+                  {row.label}
+                </th>
+                {row.cells.map((cell, index) => (
+                  <td key={plans[index]!.id} className={cn("p-2 text-center sm:p-4", featured(plans[index]!) && "bg-secondary/60")}>
+                    <ComparisonValue cell={cell} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ComparisonValue({ cell }: { cell: ComparisonCell }) {
+  if (cell.kind === "yes") return <Check aria-label="مشمول" className="mx-auto size-5 text-success" />;
+  if (cell.kind === "no") return <span aria-label="غير متاح" className="text-muted-foreground">—</span>;
+  if (cell.kind === "addon") {
+    // "إضافة · 399 ر.س / 4 أشهر" → the word on one line and the price under it, so it fits a phone column.
+    const [word, price] = cell.text.split(" · ");
+    return (
+      <span className="text-xs font-semibold leading-5 text-primary-text">
+        {word}
+        {price ? <span className="block font-normal">{price.split(/(\d[\d,]*)/).map((part, i) => (/^\d/.test(part) ? <span key={i} className="num">{part}</span> : part))}</span> : null}
+      </span>
+    );
+  }
+  return <span className="font-semibold">{cell.text.split(/(\d[\d,]*)/).map((part, i) => (/^\d/.test(part) ? <span key={i} className="num">{part}</span> : part))}</span>;
 }
 
 function LegacyPricing({ plans }: { plans: PublicPlan[] }) {
