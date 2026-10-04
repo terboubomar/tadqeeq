@@ -57,6 +57,8 @@ import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/as
 import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
 import { Route as OpsClientsWorkspaceIdRouteImport } from './routes/ops/clients_.$workspaceId'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
+import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
+import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiCompensationEvidenceEvidenceIdMediaRouteImport } from './routes/api/compensation/evidence/$evidenceId/media'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -301,6 +303,16 @@ const ApiPublicTelegramWebhookRoute =
     path: '/api/public/telegram-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
+  id: '/lovable/email/auth/webhook',
+  path: '/lovable/email/auth/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
+  id: '/lovable/email/auth/preview',
+  path: '/lovable/email/auth/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCompensationEvidenceEvidenceIdMediaRoute =
   ApiCompensationEvidenceEvidenceIdMediaRouteImport.update({
     id: '/api/compensation/evidence/$evidenceId/media',
@@ -356,6 +368,8 @@ export interface FileRoutesByFullPath {
   '/ops/': typeof OpsIndexRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/api/compensation/evidence/$evidenceId/media': typeof ApiCompensationEvidenceEvidenceIdMediaRoute
 }
 export interface FileRoutesByTo {
@@ -404,6 +418,8 @@ export interface FileRoutesByTo {
   '/ops': typeof OpsIndexRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/api/compensation/evidence/$evidenceId/media': typeof ApiCompensationEvidenceEvidenceIdMediaRoute
 }
 export interface FileRoutesById {
@@ -456,6 +472,8 @@ export interface FileRoutesById {
   '/ops/': typeof OpsIndexRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients_/$workspaceId': typeof OpsClientsWorkspaceIdRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/api/compensation/evidence/$evidenceId/media': typeof ApiCompensationEvidenceEvidenceIdMediaRoute
 }
 export interface FileRouteTypes {
@@ -508,6 +526,8 @@ export interface FileRouteTypes {
     | '/ops/'
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/api/compensation/evidence/$evidenceId/media'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -556,6 +576,8 @@ export interface FileRouteTypes {
     | '/ops'
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/api/compensation/evidence/$evidenceId/media'
   id:
     | '__root__'
@@ -607,6 +629,8 @@ export interface FileRouteTypes {
     | '/ops/'
     | '/api/public/telegram-webhook'
     | '/ops/clients_/$workspaceId'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/api/compensation/evidence/$evidenceId/media'
   fileRoutesById: FileRoutesById
 }
@@ -627,6 +651,8 @@ export interface RootRouteChildren {
   GuidesKeetaInvoiceRoute: typeof GuidesKeetaInvoiceRoute
   GuidesIndexRoute: typeof GuidesIndexRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
+  LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
+  LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   ApiCompensationEvidenceEvidenceIdMediaRoute: typeof ApiCompensationEvidenceEvidenceIdMediaRoute
 }
 
@@ -968,6 +994,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lovable/email/auth/webhook': {
+      id: '/lovable/email/auth/webhook'
+      path: '/lovable/email/auth/webhook'
+      fullPath: '/lovable/email/auth/webhook'
+      preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/auth/preview': {
+      id: '/lovable/email/auth/preview'
+      path: '/lovable/email/auth/preview'
+      fullPath: '/lovable/email/auth/preview'
+      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/compensation/evidence/$evidenceId/media': {
       id: '/api/compensation/evidence/$evidenceId/media'
       path: '/api/compensation/evidence/$evidenceId/media'
@@ -1086,6 +1126,8 @@ const rootRouteChildren: RootRouteChildren = {
   GuidesKeetaInvoiceRoute: GuidesKeetaInvoiceRoute,
   GuidesIndexRoute: GuidesIndexRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
+  LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
+  LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   ApiCompensationEvidenceEvidenceIdMediaRoute:
     ApiCompensationEvidenceEvidenceIdMediaRoute,
 }
