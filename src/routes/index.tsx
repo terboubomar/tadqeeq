@@ -228,6 +228,9 @@ const EXPLAINER_VIDEO = {
   poster: "/video/tadqeeq-explainer-poster.jpg",
   mobileSrc: "/video/tadqeeq-explainer-mobile.mp4",
   mobilePoster: "/video/tadqeeq-explainer-mobile-poster.jpg",
+  /** 12 s silent loop (≈35 KB) that plays inside the widget. */
+  preview: "/video/tadqeeq-explainer-preview.mp4",
+  previewPoster: "/video/tadqeeq-explainer-preview.jpg",
 };
 
 const HOME_SCHEMA = {
@@ -438,10 +441,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
                 ))}
               </ul>
             </div>
-            <div className="relative pb-10 sm:pb-12">
-              <HeroDashboard />
-              <HeroVideoCard />
-            </div>
+            <HeroDashboard />
           </div>
         </section>
 
@@ -642,76 +642,33 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
   );
 }
 
-const VIDEO_LAUNCHER_KEY = "tadqeeq:video-launcher-hidden";
-
-/** The video's place in the hero: a thumbnail card on the product preview. Opens the pop-up via #video. */
-function HeroVideoCard() {
-  return (
-    <a
-      id="hero-video-card"
-      href="#video"
-      aria-label="شاهد كيف يعمل تدقيق (فيديو، دقيقة و55 ثانية)"
-      className="lp-slide group absolute bottom-0 start-4 flex w-[15.5rem] items-center gap-3 rounded-2xl bg-card p-2.5 pe-4 shadow-[0_24px_48px_-20px_rgb(19_35_43/0.55)] ring-1 ring-border transition-shadow hover:ring-primary sm:start-8 sm:w-[17.5rem]"
-      style={{ animationDelay: "0.9s" }}
-    >
-      <span className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-xl bg-ink sm:w-28">
-        <img src={EXPLAINER_VIDEO.poster} alt="" className="size-full object-cover opacity-80" />
-        <span className="absolute inset-0 grid place-items-center">
-          <span className="relative grid size-9 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform group-hover:scale-110">
-            <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-primary/50 [animation-duration:2.4s]" />
-            <Play className="relative size-4 fill-current" />
-          </span>
-        </span>
-        <span className="num absolute bottom-1 end-1 rounded bg-ink/80 px-1 text-[10px] leading-4 text-ink-foreground">1:55</span>
-      </span>
-      <span className="min-w-0">
-        <span className="block text-sm font-bold">شاهد كيف يعمل</span>
-        <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">من الفاتورة إلى التعويض</span>
-      </span>
-    </a>
-  );
-}
+const VIDEO_WIDGET_KEY = "tadqeeq:video-widget-minimized";
 
 /**
- * The explainer pop-up (16:9 on wide screens, 9:16 on phones), opened by any #video link, plus a
- * floating "see how it works" button that appears only once the hero card has scrolled away and
- * hides again at the closing call to action.
+ * Video widget: a small portrait card in the corner playing a silent preview of the explainer.
+ * Clicking it opens the full film with sound in a pop-up (16:9 on wide screens, 9:16 on phones);
+ * × folds it into a play circle (remembered for the session). Any #video link opens the pop-up.
  */
 function ExplainerVideoLauncher() {
   const [open, setOpen] = useState(false);
-  const [inRange, setInRange] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [hidden, setHidden] = useState(false);
+  const [shown, setShown] = useState(false);
+  const [minimized, setMinimized] = useState(false);
   const [mobile, setMobile] = useState(false);
+  const [animate, setAnimate] = useState(true);
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 639px)");
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     setMobile(query.matches);
+    setAnimate(!motion.matches);
     const onChange = (event: MediaQueryListEvent) => setMobile(event.matches);
     query.addEventListener("change", onChange);
     try {
-      setHidden(window.sessionStorage.getItem(VIDEO_LAUNCHER_KEY) === "1");
+      setMinimized(window.sessionStorage.getItem(VIDEO_WIDGET_KEY) === "1");
     } catch {
-      // Storage unavailable: keep the button.
+      // Storage unavailable: start expanded.
     }
-
-    // Visible between the hero card leaving the screen and the closing call to action arriving.
-    const heroCard = document.getElementById("hero-video-card");
-    const finalCta = document.getElementById("final-cta");
-    const state = { heroVisible: true, ctaReached: false };
-    const update = () => setInRange(!state.heroVisible && !state.ctaReached);
-    const observer = new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        // Still "ahead" while the card is on screen or not yet scrolled to (it sits below the fold on phones).
-        if (entry.target === heroCard) state.heroVisible = entry.isIntersecting || entry.boundingClientRect.top > 0;
-        if (entry.target === finalCta) state.ctaReached = entry.isIntersecting || entry.boundingClientRect.top < 0;
-      }
-      update();
-    });
-    if (heroCard) observer.observe(heroCard);
-    else state.heroVisible = false;
-    if (finalCta) observer.observe(finalCta);
-    update();
+    const show = window.setTimeout(() => setShown(true), 1200);
 
     const fromHash = () => {
       if (window.location.hash !== "#video") return;
@@ -722,26 +679,17 @@ function ExplainerVideoLauncher() {
     window.addEventListener("hashchange", fromHash);
     return () => {
       query.removeEventListener("change", onChange);
-      observer.disconnect();
+      window.clearTimeout(show);
       window.removeEventListener("hashchange", fromHash);
     };
   }, []);
 
-  // Each time the button appears it shows its label for a few seconds, then folds into a circle.
-  useEffect(() => {
-    if (!inRange) return;
-    setExpanded(true);
-    const fold = window.setTimeout(() => setExpanded(false), 6000);
-    return () => window.clearTimeout(fold);
-  }, [inRange]);
-
-  const visible = inRange && !open && !hidden;
-  const hide = () => {
-    setHidden(true);
+  const setMin = (value: boolean) => {
+    setMinimized(value);
     try {
-      window.sessionStorage.setItem(VIDEO_LAUNCHER_KEY, "1");
+      window.sessionStorage.setItem(VIDEO_WIDGET_KEY, value ? "1" : "0");
     } catch {
-      // Not remembered; it returns on the next page load.
+      // Not remembered across pages.
     }
   };
 
@@ -749,44 +697,63 @@ function ExplainerVideoLauncher() {
     <>
       <div
         className={cn(
-          "group/launcher fixed bottom-4 left-4 z-40 transition-[opacity,transform] duration-500 sm:bottom-6 sm:left-6",
-          visible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-6 opacity-0",
+          "fixed bottom-4 left-4 z-40 transition-[opacity,transform] duration-500 sm:bottom-6 sm:left-6",
+          shown && !open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-6 opacity-0",
         )}
-        onMouseEnter={() => setExpanded(true)}
-        onMouseLeave={() => setExpanded(false)}
       >
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          onFocus={() => setExpanded(true)}
-          onBlur={() => setExpanded(false)}
-          aria-label="شاهد كيف يعمل تدقيق (فيديو)"
-          className="flex items-center rounded-full bg-ink p-1.5 text-ink-foreground shadow-[0_18px_40px_-12px_rgb(19_35_43/0.6)] ring-1 ring-ink-foreground/10"
-        >
-          <span className="relative grid size-12 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
-            <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-primary/45 [animation-duration:2.4s]" />
-            <Play className="relative size-5 fill-current" />
-          </span>
-          <span
-            className={cn(
-              "overflow-hidden whitespace-nowrap text-start transition-[max-width,opacity,padding] duration-500",
-              expanded ? "max-w-60 ps-3 pe-4 opacity-100" : "max-w-0 opacity-0",
-            )}
+        {minimized ? (
+          <button
+            type="button"
+            onClick={() => setMin(false)}
+            aria-label="إظهار فيديو: شاهد كيف يعمل"
+            className="relative grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_18px_40px_-12px_rgb(19_35_43/0.6)] ring-4 ring-ink transition-transform hover:scale-105"
           >
-            <span className="block text-sm font-bold">شاهد كيف يعمل</span>
-            <span className="block text-[11px] text-ink-muted">
-              فيديو · <span className="num">1:55</span>
-            </span>
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={hide}
-          aria-label="إخفاء زر الفيديو"
-          className="absolute -top-2 -right-2 grid size-6 place-items-center rounded-full bg-card text-muted-foreground opacity-100 shadow ring-1 ring-border transition-opacity sm:opacity-0 sm:group-hover/launcher:opacity-100 sm:focus:opacity-100"
-        >
-          <X className="size-3.5" />
-        </button>
+            <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-primary/40 [animation-duration:2.4s]" />
+            <Play className="relative size-5 fill-current" />
+          </button>
+        ) : (
+          <div className="group relative w-[104px] sm:w-[150px]">
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              aria-label="شاهد كيف يعمل تدقيق (فيديو بالصوت، دقيقة و55 ثانية)"
+              className="relative block aspect-[9/16] w-full overflow-hidden rounded-[20px] bg-ink shadow-[0_24px_50px_-16px_rgb(19_35_43/0.65)] ring-[3px] ring-primary transition-transform hover:-translate-y-1"
+            >
+              {animate ? (
+                <video
+                  src={EXPLAINER_VIDEO.preview}
+                  poster={EXPLAINER_VIDEO.previewPoster}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="auto"
+                  aria-hidden="true"
+                  className="size-full object-cover object-top"
+                />
+              ) : (
+                <img src={EXPLAINER_VIDEO.previewPoster} alt="" className="size-full object-cover object-top" />
+              )}
+              <span className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-1.5 bg-gradient-to-t from-ink via-ink/85 to-transparent px-2 pb-2.5 pt-10 text-center text-ink-foreground sm:gap-2 sm:pb-3.5">
+                <span className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform group-hover:scale-110 sm:size-11">
+                  <Play className="size-4 fill-current sm:size-5" />
+                </span>
+                <span className="text-[12px] font-bold leading-4 sm:text-sm">شاهد كيف يعمل</span>
+                <span className="hidden text-[11px] text-ink-muted sm:block">
+                  بالصوت · <span className="num">1:55</span>
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMin(true)}
+              aria-label="تصغير الفيديو"
+              className="absolute -top-2.5 -right-2.5 grid size-7 place-items-center rounded-full bg-card text-foreground shadow-md ring-1 ring-border hover:bg-muted"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
