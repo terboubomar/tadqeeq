@@ -40,6 +40,7 @@ import { CORE_FEATURE_LABELS, PLAN_FEATURES, type PublicPlan } from "@/lib/plans
 import { cn } from "@/lib/utils";
 import { listPublicPlans } from "@/lib/plans.functions";
 import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
 import { PlatformIcon, PlatformName, PlatformWordmark } from "@/components/brand/PlatformLogo";
 import { PLATFORM_KEYS } from "@/lib/platforms";
@@ -330,6 +331,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
 
   return (
     <div ref={rootRef} id="top" className="lp-root min-h-screen bg-background" dir="rtl">
+      <ExplainerVideoLauncher />
       <div className="flex items-center justify-center gap-3 bg-ink px-4 py-2.5 text-center text-xs text-ink-foreground sm:text-[13px]">
         <span className="lp-pulse shrink-0 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-primary-foreground">جديد</span>
         <span className="hidden sm:inline">شاهد كيف يشتغل تدقيق في دقيقتين، من رفع الفاتورة إلى استرجاع التعويض</span>
@@ -452,8 +454,6 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
             </ul>
           </div>
         </section>
-
-        <ExplainerVideo />
 
         <section className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:py-28">
           <SectionIntro eyebrow="المشكلة" title="ثلاث منصات، ثلاث صيغ، وفاتورة لا تُراجع.">
@@ -639,71 +639,132 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
   );
 }
 
-/** The explainer film (16:9 on wide screens, 9:16 on phones); loads only when played. */
-function ExplainerVideo() {
-  const [playing, setPlaying] = useState(false);
+const VIDEO_BUBBLE_KEY = "tadqeeq:video-bubble-dismissed";
+
+/**
+ * Floating "see how it works" button with a message bubble; opens the explainer film in a pop-up
+ * (16:9 on wide screens, 9:16 on phones). Any link to #video opens it too.
+ */
+function ExplainerVideoLauncher() {
+  const [open, setOpen] = useState(false);
+  const [shown, setShown] = useState(false);
+  const [bubble, setBubble] = useState(false);
   const [mobile, setMobile] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
+
   useEffect(() => {
     const query = window.matchMedia("(max-width: 639px)");
     setMobile(query.matches);
     const onChange = (event: MediaQueryListEvent) => setMobile(event.matches);
     query.addEventListener("change", onChange);
-    return () => query.removeEventListener("change", onChange);
+
+    let dismissed = false;
+    try {
+      dismissed = window.localStorage.getItem(VIDEO_BUBBLE_KEY) === "1";
+    } catch {
+      // Storage unavailable: show the bubble anyway.
+    }
+    const showButton = window.setTimeout(() => setShown(true), 1500);
+    const showBubble = dismissed ? 0 : window.setTimeout(() => setBubble(true), 3500);
+
+    const fromHash = () => {
+      if (window.location.hash !== "#video") return;
+      setOpen(true);
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    };
+    fromHash();
+    window.addEventListener("hashchange", fromHash);
+    return () => {
+      query.removeEventListener("change", onChange);
+      window.clearTimeout(showButton);
+      window.clearTimeout(showBubble);
+      window.removeEventListener("hashchange", fromHash);
+    };
   }, []);
-  useEffect(() => {
-    if (playing) void videoRef.current?.play().catch(() => undefined);
-  }, [playing]);
-  const src = mobile ? EXPLAINER_VIDEO.mobileSrc : EXPLAINER_VIDEO.src;
-  const poster = mobile ? EXPLAINER_VIDEO.mobilePoster : EXPLAINER_VIDEO.poster;
+
+  const dismissBubble = () => {
+    setBubble(false);
+    try {
+      window.localStorage.setItem(VIDEO_BUBBLE_KEY, "1");
+    } catch {
+      // Not remembered; it only reappears on the next visit.
+    }
+  };
+  const openVideo = () => {
+    dismissBubble();
+    setOpen(true);
+  };
 
   return (
-    <section id="video" aria-labelledby="video-title" className="bg-ink text-ink-foreground">
-      <div className="mx-auto flex max-w-6xl flex-col items-center gap-8 px-4 py-16 text-center sm:px-6 lg:py-24">
-        <div data-reveal className="flex max-w-2xl flex-col items-center gap-3">
-          <p className="text-[13px] font-semibold text-primary">في أقل من دقيقتين</p>
-          <h2 id="video-title" className="font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]">
-            كيف يشتغل تدقيق، من رفع الفاتورة إلى استرجاع التعويض.
-          </h2>
-        </div>
-        <div
-          data-reveal
-          className="relative w-full max-w-[420px] overflow-hidden rounded-[22px] bg-ink-foreground/5 shadow-[0_40px_80px_-40px_rgb(0_0_0/0.6)] ring-1 ring-ink-foreground/10 sm:max-w-none sm:rounded-[28px]"
-          style={{ aspectRatio: mobile ? "9 / 16" : "16 / 9" }}
+    <>
+      <div
+        className={cn(
+          "fixed bottom-4 left-4 z-40 flex items-end gap-3 transition-[opacity,transform] duration-500 sm:bottom-6 sm:left-6",
+          shown && !open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0",
+        )}
+      >
+        <button
+          type="button"
+          onClick={openVideo}
+          aria-label="شاهد كيف يعمل تدقيق (فيديو)"
+          className="group relative grid size-16 shrink-0 place-items-center rounded-full bg-ink shadow-[0_18px_40px_-14px_rgb(19_35_43/0.6)] ring-4 ring-primary transition-transform hover:scale-105 sm:size-[72px]"
         >
-          {playing ? (
-            <video
-              ref={videoRef}
-              key={src}
-              src={src}
-              poster={poster}
-              controls
-              playsInline
-              preload="metadata"
-              className="absolute inset-0 size-full bg-ink object-cover"
-            />
-          ) : (
-            <button type="button" onClick={() => setPlaying(true)} aria-label="تشغيل الفيديو: كيف يشتغل تدقيق" className="group absolute inset-0">
-              <img src={poster} alt="" loading="lazy" className="size-full object-cover" />
-              <span className="absolute inset-0 grid place-items-center bg-ink/25 transition-colors group-hover:bg-ink/15">
-                <span className="lp-pulse grid size-20 place-items-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform group-hover:scale-105 sm:size-24">
-                  <Play className="size-8 translate-x-[-2px] fill-current sm:size-9" />
-                </span>
-              </span>
-              <span className="num absolute bottom-3 start-3 rounded-full bg-ink/80 px-3 py-1 text-xs font-semibold text-ink-foreground">1:55</span>
-            </button>
+          <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-primary/40 [animation-duration:2.4s]" />
+          <img src={EXPLAINER_VIDEO.mobilePoster} alt="" className="absolute inset-0 size-full rounded-full object-cover object-top opacity-60" />
+          <span className="relative grid size-9 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg">
+            <Play className="size-4 fill-current" />
+          </span>
+        </button>
+        <div
+          role="status"
+          className={cn(
+            "relative mb-2 w-[min(15rem,calc(100vw-7rem))] origin-bottom-left rounded-2xl rounded-es-sm bg-card p-3.5 pe-9 shadow-[0_18px_40px_-16px_rgb(19_35_43/0.45)] ring-1 ring-border transition-[opacity,transform] duration-500",
+            bubble && !open ? "scale-100 opacity-100" : "pointer-events-none scale-90 opacity-0",
           )}
+        >
+          <button type="button" onClick={openVideo} className="block text-start">
+            <span className="block text-sm font-bold">شاهد كيف يعمل ▶</span>
+            <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">تدقيق في أقل من دقيقتين، من رفع الفاتورة إلى استرجاع التعويض.</span>
+          </button>
+          <button
+            type="button"
+            onClick={dismissBubble}
+            aria-label="إخفاء الرسالة"
+            className="absolute end-2 top-2 grid size-6 place-items-center rounded-full text-muted-foreground hover:bg-muted"
+          >
+            <X className="size-3.5" />
+          </button>
         </div>
-        <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[13px] text-ink-muted">
-          {["مطابقة الفاتورة", "أدلة Telegram للتعويضات", "عائد الإعلانات الحقيقي", "المراقب الذكي", "Tadqeeq AI"].map((item) => (
-            <li key={item} className="flex items-center gap-1.5">
-              <Check className="size-4 text-primary" />
-              {item}
-            </li>
-          ))}
-        </ul>
       </div>
-    </section>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          className={cn(
+            "w-auto max-w-none gap-0 overflow-hidden rounded-[22px] border-0 bg-ink p-0 shadow-2xl [&>button:last-child]:hidden",
+            mobile ? "h-[min(84vh,calc(92vw*16/9))] aspect-[9/16]" : "w-[min(92vw,1120px)] aspect-video",
+          )}
+        >
+          <DialogTitle className="sr-only">كيف يشتغل تدقيق</DialogTitle>
+          <DialogDescription className="sr-only">فيديو تعريفي مدته دقيقة و55 ثانية.</DialogDescription>
+          {open ? (
+            <video
+              key={mobile ? "mobile" : "wide"}
+              src={mobile ? EXPLAINER_VIDEO.mobileSrc : EXPLAINER_VIDEO.src}
+              poster={mobile ? EXPLAINER_VIDEO.mobilePoster : EXPLAINER_VIDEO.poster}
+              controls
+              autoPlay
+              playsInline
+              className="size-full bg-ink object-contain"
+            />
+          ) : null}
+          <DialogClose
+            aria-label="إغلاق الفيديو"
+            className="absolute end-3 top-3 grid size-10 place-items-center rounded-full bg-ink/70 text-ink-foreground backdrop-blur transition-colors hover:bg-ink"
+          >
+            <X className="size-5" />
+          </DialogClose>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
