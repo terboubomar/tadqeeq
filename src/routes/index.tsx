@@ -23,6 +23,9 @@ import {
   AlertTriangle,
   Megaphone,
   PieChart,
+  Play,
+  Radar,
+  Columns3,
   Sparkles,
   Upload,
   Video,
@@ -86,6 +89,7 @@ const FOOTER_GROUPS = [
   {
     title: "تعرّف على تدقيق",
     links: [
+      ["#video", "فيديو تعريفي"],
       ["#how", "كيف يعمل"],
       ["#who", "لمن تدقيق"],
       ["#pricing", "الخطط والأسعار"],
@@ -213,10 +217,17 @@ const FAQS = [
   ],
   ["ما الملفات التي أحتاجها؟", "ملف الطلبات من بوابة التاجر وفاتورة المنصة لنفس الفترة. نقبل Excel وCSV وPDF."],
   ["هل يغيّر الذكاء الاصطناعي أي رقم؟", "لا. الأرقام من المحرك المحاسبي، والذكاء الاصطناعي يشرح ويلخص النتائج فقط."],
-  ["ماذا لو غيّرت المنصة صيغة ملفاتها؟", "يظهر تنبيه بتغيّر الصيغة بدلاً من احتساب نتيجة غير موثوقة."],
+  ["ماذا لو غيّرت المنصة صيغة ملفاتها؟", "تدقيق يتعرف على الأعمدة التي تغيّر اسمها ويطلب منك تأكيداً بسيطاً، وينبهك لأي عمود مالي جديد أو مختفٍ بدلاً من احتساب نتيجة غير موثوقة."],
   ["هل يحتاج موظف الفرع تطبيقاً لإرسال الأدلة؟", "لا. يرسل الصورة أو الفيديو في قروب الفرع على Telegram، والبوت يربطه برقم الطلب."],
   ["هل بيانات شركتي منفصلة؟", "نعم. لكل شركة مساحة خاصة، مع صلاحيات تحدد ما يراه ويعدله كل موظف."],
 ];
+
+const EXPLAINER_VIDEO = {
+  src: "/video/tadqeeq-explainer.mp4",
+  poster: "/video/tadqeeq-explainer-poster.jpg",
+  mobileSrc: "/video/tadqeeq-explainer-mobile.mp4",
+  mobilePoster: "/video/tadqeeq-explainer-mobile-poster.jpg",
+};
 
 const HOME_SCHEMA = {
   "@context": "https://schema.org",
@@ -247,6 +258,17 @@ const HOME_SCHEMA = {
       operatingSystem: "Web",
       inLanguage: "ar-SA",
       description: HOME_DESCRIPTION,
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+    {
+      "@type": "VideoObject",
+      name: "كيف يشتغل تدقيق",
+      description: "من رفع ملف الطلبات والفاتورة إلى استرجاع التعويض بأدلة Telegram، في أقل من دقيقتين.",
+      thumbnailUrl: `${SITE_URL}${EXPLAINER_VIDEO.poster}`,
+      contentUrl: `${SITE_URL}${EXPLAINER_VIDEO.src}`,
+      uploadDate: "2026-10-04",
+      duration: "PT1M55S",
+      inLanguage: "ar-SA",
       publisher: { "@id": `${SITE_URL}/#organization` },
     },
     {
@@ -310,9 +332,9 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
     <div ref={rootRef} id="top" className="lp-root min-h-screen bg-background" dir="rtl">
       <div className="flex items-center justify-center gap-3 bg-ink px-4 py-2.5 text-center text-xs text-ink-foreground sm:text-[13px]">
         <span className="lp-pulse shrink-0 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-primary-foreground">جديد</span>
-        <span className="hidden sm:inline">مركز التعويضات: اعترض على التعويضات بفيديو من قروب الفرع على Telegram</span>
-        <span className="sm:hidden">اعترض على التعويضات بأدلة من Telegram</span>
-        <a href="#compensation" className="shrink-0 font-semibold text-primary">اعرف أكثر ←</a>
+        <span className="hidden sm:inline">شاهد كيف يشتغل تدقيق في دقيقتين، من رفع الفاتورة إلى استرجاع التعويض</span>
+        <span className="sm:hidden">شاهد كيف يشتغل تدقيق في دقيقتين</span>
+        <a href="#video" className="shrink-0 font-semibold text-primary">شاهد الفيديو ←</a>
       </div>
 
       <div className="sticky top-0 z-40 px-3 pt-3 sm:px-6 sm:pt-4">
@@ -400,7 +422,8 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
                   ابدأ التدقيق
                   <ArrowLeft className="size-4" />
                 </Link>
-                <a href="#how" className="inline-flex h-[52px] items-center rounded-full border border-border bg-card px-6 text-[15px] font-semibold">
+                <a href="#video" className="inline-flex h-[52px] items-center gap-2 rounded-full border border-border bg-card px-6 text-[15px] font-semibold">
+                  <Play className="size-4 fill-current" />
                   شاهد كيف يعمل
                 </a>
               </div>
@@ -429,6 +452,8 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
             </ul>
           </div>
         </section>
+
+        <ExplainerVideo />
 
         <section className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:py-28">
           <SectionIntro eyebrow="المشكلة" title="ثلاث منصات، ثلاث صيغ، وفاتورة لا تُراجع.">
@@ -614,6 +639,74 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
   );
 }
 
+/** The explainer film (16:9 on wide screens, 9:16 on phones); loads only when played. */
+function ExplainerVideo() {
+  const [playing, setPlaying] = useState(false);
+  const [mobile, setMobile] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 639px)");
+    setMobile(query.matches);
+    const onChange = (event: MediaQueryListEvent) => setMobile(event.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+  useEffect(() => {
+    if (playing) void videoRef.current?.play().catch(() => undefined);
+  }, [playing]);
+  const src = mobile ? EXPLAINER_VIDEO.mobileSrc : EXPLAINER_VIDEO.src;
+  const poster = mobile ? EXPLAINER_VIDEO.mobilePoster : EXPLAINER_VIDEO.poster;
+
+  return (
+    <section id="video" aria-labelledby="video-title" className="bg-ink text-ink-foreground">
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-8 px-4 py-16 text-center sm:px-6 lg:py-24">
+        <div data-reveal className="flex max-w-2xl flex-col items-center gap-3">
+          <p className="text-[13px] font-semibold text-primary">في أقل من دقيقتين</p>
+          <h2 id="video-title" className="font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]">
+            كيف يشتغل تدقيق، من رفع الفاتورة إلى استرجاع التعويض.
+          </h2>
+        </div>
+        <div
+          data-reveal
+          className="relative w-full max-w-[420px] overflow-hidden rounded-[22px] bg-ink-foreground/5 shadow-[0_40px_80px_-40px_rgb(0_0_0/0.6)] ring-1 ring-ink-foreground/10 sm:max-w-none sm:rounded-[28px]"
+          style={{ aspectRatio: mobile ? "9 / 16" : "16 / 9" }}
+        >
+          {playing ? (
+            <video
+              ref={videoRef}
+              key={src}
+              src={src}
+              poster={poster}
+              controls
+              playsInline
+              preload="metadata"
+              className="absolute inset-0 size-full bg-ink object-cover"
+            />
+          ) : (
+            <button type="button" onClick={() => setPlaying(true)} aria-label="تشغيل الفيديو: كيف يشتغل تدقيق" className="group absolute inset-0">
+              <img src={poster} alt="" loading="lazy" className="size-full object-cover" />
+              <span className="absolute inset-0 grid place-items-center bg-ink/25 transition-colors group-hover:bg-ink/15">
+                <span className="lp-pulse grid size-20 place-items-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform group-hover:scale-105 sm:size-24">
+                  <Play className="size-8 translate-x-[-2px] fill-current sm:size-9" />
+                </span>
+              </span>
+              <span className="num absolute bottom-3 start-3 rounded-full bg-ink/80 px-3 py-1 text-xs font-semibold text-ink-foreground">1:55</span>
+            </button>
+          )}
+        </div>
+        <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[13px] text-ink-muted">
+          {["مطابقة الفاتورة", "أدلة Telegram للتعويضات", "عائد الإعلانات الحقيقي", "المراقب الذكي", "Tadqeeq AI"].map((item) => (
+            <li key={item} className="flex items-center gap-1.5">
+              <Check className="size-4 text-primary" />
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
 const SHOWCASE: TourItem[] = [
   {
     key: "invoice",
@@ -645,10 +738,24 @@ const SHOWCASE: TourItem[] = [
   },
   {
     key: "promotions",
-    name: "تحليل العروض و ROI",
-    tagline: "أي عرض يربح، وأي عرض يأكل هامشك.",
-    body: "لكل حملة ما دفعته فيها وما جلبته من مبيعات إضافية، حتى تقرر أي عرض تكرره وأي عرض توقفه.",
+    name: "عائد الإعلانات الحقيقي",
+    tagline: "الربح بعد العمولة والخصومات، لا رقم المنصة.",
+    body: "لكل حملة ما دفعته فيها وما بقي لك فعلاً بعد العمولة والخصومات والإعلان، مع الحملات الخاسرة وأين تنقل ميزانيتك.",
     icon: Megaphone,
+  },
+  {
+    key: "watch",
+    name: "المراقب الذكي",
+    tagline: "يقارن كل فرع بتاريخه، وينبّهك لما هو غير معتاد.",
+    body: "بعد كل رفع يقارن تدقيق العمولة والرسوم والتعويضات لكل فرع بأشهره السابقة وبالفروع المشابهة، ويرتب التنبيهات حسب أثرها بالريال.",
+    icon: Radar,
+  },
+  {
+    key: "columns",
+    name: "قراءة ذكية للملفات",
+    tagline: "المنصة غيّرت ملفها؟ تدقيق يفهم التغيير.",
+    body: "إذا تغيّر اسم عمود يقترح تدقيق العمود المطابق ويطلب تأكيدك مرة واحدة، وينبهك لأي عمود مالي جديد أو مختفٍ. والملفات الكبيرة تُقرأ بدون مشاكل.",
+    icon: Columns3,
   },
   {
     key: "ai",
@@ -1179,6 +1286,68 @@ function ShowcaseVisual({ kind, active }: { kind: string; active: boolean }) {
           ))}
         </div>
         <p className="mt-4 rounded-xl bg-secondary p-3 text-xs text-foreground/80">العرض الثالث كلّف أكثر مما جلب من مبيعات إضافية.</p>
+      </div>
+    );
+  }
+  if (kind === "watch") {
+    const rows: Array<[string, string, string, boolean]> = [
+      ["عمولة طلبات الاستلام · فرع العليا", "21.4%", "16.2%", true],
+      ["رسوم الدفع · فرع الملقا", "2.2%", "ضمن المعتاد", false],
+      ["التعويضات · فرع النرجس", "0.4%", "ضمن المعتاد", false],
+    ];
+    return (
+      <div className={card}>
+        <div className="flex items-center justify-between">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <Radar className="size-4 text-primary-text" /> المراقب الذكي
+          </p>
+          <span className="rounded-full bg-destructive/12 px-2.5 py-0.5 text-[11px] font-semibold text-destructive">تنبيه واحد</span>
+        </div>
+        <div className="mt-4 space-y-2.5">
+          {rows.map(([label, value, usual, alert], i) => (
+            <div
+              key={label}
+              className={cn(
+                "flex items-center justify-between gap-3 rounded-xl border p-3 transition-[opacity,transform] duration-500",
+                alert ? "border-destructive/40 bg-destructive/6" : "border-border",
+                active ? "translate-x-0 opacity-100" : "translate-x-6 opacity-0",
+              )}
+              style={{ transitionDelay: `${0.15 + i * 0.12}s` }}
+            >
+              <p className="text-[13px] font-semibold">{label}</p>
+              <p className="shrink-0 text-end">
+                <span className={cn("num block text-sm font-semibold", alert && "text-destructive")}>{value}</span>
+                <span className={cn("block text-[11px]", alert ? "text-destructive" : "text-success")}>{alert ? (
+                    <>
+                      المعتاد <bdi dir="ltr">{usual}</bdi>
+                    </>
+                  ) : (
+                    `✓ ${usual}`
+                  )}</span>
+              </p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 rounded-xl bg-secondary p-3 text-xs text-foreground/80">
+          أثر التنبيه هذا الشهر: <span className="num font-semibold">1,240 ر.س</span>
+        </p>
+      </div>
+    );
+  }
+  if (kind === "columns") {
+    return (
+      <div className={cn(card, "flex flex-col gap-4")}>
+        <p className="text-sm font-semibold">المنصة غيّرت ملفها</p>
+        <div dir="ltr" className="flex flex-wrap items-center gap-2.5 font-mono text-[13px]">
+          <span className="rounded-lg border border-border px-2.5 py-1.5 text-muted-foreground line-through">Commission</span>
+          <ArrowLeft className="size-4 rotate-180 text-primary-text" />
+          <span className={cn("rounded-lg border border-primary px-2.5 py-1.5 transition-opacity duration-700", active ? "opacity-100" : "opacity-0")} style={{ transitionDelay: "0.3s" }}>
+            Commission Amount
+          </span>
+          <Check className={cn("size-5 text-success transition-opacity duration-500", active ? "opacity-100" : "opacity-0")} style={{ transitionDelay: "0.8s" }} />
+        </div>
+        <p className="rounded-xl bg-success-soft p-3 text-xs font-semibold text-success">✓ تأكيد بسيط مرة واحدة، ويتذكره تدقيق للملفات القادمة</p>
+        <p className="rounded-xl bg-warning/15 p-3 text-xs font-semibold text-warning">عمود مالي جديد: «Packaging fee» · راجعه قبل اعتماد النتيجة</p>
       </div>
     );
   }
