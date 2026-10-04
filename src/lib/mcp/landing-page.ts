@@ -1,28 +1,15 @@
-// route: /mcp — owned by the app (banner removed so the MCP plugin leaves it alone).
-// Browsers (GET + text/html, no bearer token) get a friendly explainer page;
-// every other request goes to the MCP handler unchanged.
+// Friendly HTML shown when a person opens /mcp in a browser.
+// MCP clients (POST, bearer token, event-stream) never match isMcpBrowserVisit.
 
-import { createFileRoute } from "@tanstack/react-router";
-
-import { createTanStackMcpHandler } from "@lovable.dev/mcp-js/stacks/tanstack";
-
-import mcp from "../lib/mcp/index";
-
-const mcpHandler = createTanStackMcpHandler(mcp, {
-  resourcePath: "/mcp",
-  metadataPath: "/.well-known/oauth-protected-resource",
-  trustForwardedHost: true,
-  trustForwardedProto: true,
-});
-
-function isBrowserVisit(request: Request): boolean {
+export function isMcpBrowserVisit(request: Request): boolean {
+  if (new URL(request.url).pathname !== "/mcp") return false;
   if (request.method !== "GET") return false;
   if (request.headers.get("authorization")) return false;
   const accept = request.headers.get("accept") ?? "";
   return accept.includes("text/html") && !accept.includes("text/event-stream");
 }
 
-function page(origin: string): string {
+export function renderMcpLandingPage(origin: string): string {
   const url = `${origin}/mcp`;
   return `<!doctype html>
 <html lang="ar" dir="rtl"><head>
@@ -86,20 +73,3 @@ a{color:#8a5d14}footer{text-align:center;font-size:13px;color:#5b6a70;padding-bo
 </body></html>`;
 }
 
-export const Route = createFileRoute("/mcp")({
-  server: {
-    handlers: {
-      ANY: async (ctx) => {
-        const { request } = ctx;
-        if (isBrowserVisit(request)) {
-          const proto = request.headers.get("x-forwarded-proto") ?? new URL(request.url).protocol.replace(":", "");
-          const host = request.headers.get("x-forwarded-host") ?? new URL(request.url).host;
-          return new Response(page(`${proto}://${host}`), {
-            headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
-          });
-        }
-        return mcpHandler(ctx);
-      },
-    },
-  },
-});
