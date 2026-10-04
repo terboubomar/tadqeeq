@@ -60,15 +60,27 @@ jobs:
       - name: Build
         run: bun run build
 
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      # Fails on high or critical advisories in production dependencies; dev tooling is reported as warnings.
+      - name: Dependency audit
+        run: bun scripts/dependency-audit.ts
+
   quality-gate:
     if: always()
-    needs: [typecheck, lint, test, build]
+    needs: [typecheck, lint, test, build, dependency-audit]
     runs-on: ubuntu-latest
     steps:
       - name: All checks passed
         run: |
-          echo "typecheck=${{ needs.typecheck.result }} lint=${{ needs.lint.result }} test=${{ needs.test.result }} build=${{ needs.build.result }}"
+          echo "typecheck=${{ needs.typecheck.result }} lint=${{ needs.lint.result }} test=${{ needs.test.result }} build=${{ needs.build.result }} dependency-audit=${{ needs.dependency-audit.result }}"
           test "${{ needs.typecheck.result }}" = "success"
           test "${{ needs.lint.result }}" = "success"
           test "${{ needs.test.result }}" = "success"
           test "${{ needs.build.result }}" = "success"
+          test "${{ needs.dependency-audit.result }}" = "success"

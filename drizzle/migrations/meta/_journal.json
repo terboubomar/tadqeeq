@@ -302,6 +302,13 @@
       "when": 1791390799573,
       "tag": "0042_plan_limits_in_database",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1791477199573,
+      "tag": "0043_request_limits_and_workspace_guard",
+      "breakpoints": true
     }
   ]
 }
