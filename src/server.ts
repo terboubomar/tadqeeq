@@ -3,6 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { withSecurityHeaders } from "./lib/security-headers";
+import { isMcpBrowserVisit, renderMcpLandingPage } from "./lib/mcp/landing-page";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -48,6 +49,17 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      if (isMcpBrowserVisit(request)) {
+        const u = new URL(request.url);
+        const proto = request.headers.get("x-forwarded-proto") ?? u.protocol.replace(":", "");
+        const host = request.headers.get("x-forwarded-host") ?? u.host;
+        return withSecurityHeaders(
+          request,
+          new Response(renderMcpLandingPage(`${proto}://${host}`), {
+            headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+          }),
+        );
+      }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return withSecurityHeaders(request, await normalizeCatastrophicSsrResponse(response));
