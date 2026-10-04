@@ -14,6 +14,7 @@ import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PricingDotmdRouteImport } from './routes/pricing[.]md'
 import { Route as OpsRouteImport } from './routes/ops'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as CompensationRouteImport } from './routes/compensation'
@@ -56,8 +57,10 @@ import { Route as AuthenticatedBreakdownRouteImport } from './routes/_authentica
 import { Route as AuthenticatedBranchesRouteImport } from './routes/_authenticated/branches'
 import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
 import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as OpsClientsWorkspaceIdRouteImport } from './routes/ops/clients_.$workspaceId'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiCompensationEvidenceEvidenceIdMediaRouteImport } from './routes/api/compensation/evidence/$evidenceId/media'
@@ -85,6 +88,11 @@ const PricingDotmdRoute = PricingDotmdRouteImport.update({
 const OpsRoute = OpsRouteImport.update({
   id: '/ops',
   path: '/ops',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
@@ -298,6 +306,12 @@ const AuthenticatedAiRoute = AuthenticatedAiRouteImport.update({
   path: '/ai',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const OpsClientsWorkspaceIdRoute = OpsClientsWorkspaceIdRouteImport.update({
   id: '/clients_/$workspaceId',
   path: '/clients/$workspaceId',
@@ -309,6 +323,11 @@ const ApiPublicTelegramWebhookRoute =
     path: '/api/public/telegram-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
   id: '/lovable/email/auth/webhook',
   path: '/lovable/email/auth/webhook',
@@ -333,11 +352,13 @@ export interface FileRoutesByFullPath {
   '/compensation': typeof CompensationRouteWithChildren
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/mcp': typeof McpRoute
   '/ops': typeof OpsRouteWithChildren
   '/pricing.md': typeof PricingDotmdRoute
   '/reset-password': typeof ResetPasswordRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/ai': typeof AuthenticatedAiRoute
   '/ask': typeof AuthenticatedAskRoute
   '/branches': typeof AuthenticatedBranchesRoute
@@ -373,6 +394,7 @@ export interface FileRoutesByFullPath {
   '/compensation/': typeof CompensationIndexRoute
   '/guides/': typeof GuidesIndexRoute
   '/ops/': typeof OpsIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -385,10 +407,12 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/mcp': typeof McpRoute
   '/pricing.md': typeof PricingDotmdRoute
   '/reset-password': typeof ResetPasswordRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/ai': typeof AuthenticatedAiRoute
   '/ask': typeof AuthenticatedAskRoute
   '/branches': typeof AuthenticatedBranchesRoute
@@ -424,6 +448,7 @@ export interface FileRoutesByTo {
   '/compensation': typeof CompensationIndexRoute
   '/guides': typeof GuidesIndexRoute
   '/ops': typeof OpsIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -439,11 +464,13 @@ export interface FileRoutesById {
   '/compensation': typeof CompensationRouteWithChildren
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/mcp': typeof McpRoute
   '/ops': typeof OpsRouteWithChildren
   '/pricing.md': typeof PricingDotmdRoute
   '/reset-password': typeof ResetPasswordRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/ai': typeof AuthenticatedAiRoute
   '/_authenticated/ask': typeof AuthenticatedAskRoute
   '/_authenticated/branches': typeof AuthenticatedBranchesRoute
@@ -479,6 +506,7 @@ export interface FileRoutesById {
   '/compensation/': typeof CompensationIndexRoute
   '/guides/': typeof GuidesIndexRoute
   '/ops/': typeof OpsIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients_/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -494,11 +522,13 @@ export interface FileRouteTypes {
     | '/compensation'
     | '/llms-full.txt'
     | '/llms.txt'
+    | '/mcp'
     | '/ops'
     | '/pricing.md'
     | '/reset-password'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/.well-known/oauth-protected-resource'
     | '/ai'
     | '/ask'
     | '/branches'
@@ -534,6 +564,7 @@ export interface FileRouteTypes {
     | '/compensation/'
     | '/guides/'
     | '/ops/'
+    | '/.lovable/oauth/consent'
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
     | '/lovable/email/auth/preview'
@@ -546,10 +577,12 @@ export interface FileRouteTypes {
     | '/auth'
     | '/llms-full.txt'
     | '/llms.txt'
+    | '/mcp'
     | '/pricing.md'
     | '/reset-password'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/.well-known/oauth-protected-resource'
     | '/ai'
     | '/ask'
     | '/branches'
@@ -585,6 +618,7 @@ export interface FileRouteTypes {
     | '/compensation'
     | '/guides'
     | '/ops'
+    | '/.lovable/oauth/consent'
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
     | '/lovable/email/auth/preview'
@@ -599,11 +633,13 @@ export interface FileRouteTypes {
     | '/compensation'
     | '/llms-full.txt'
     | '/llms.txt'
+    | '/mcp'
     | '/ops'
     | '/pricing.md'
     | '/reset-password'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/.well-known/oauth-protected-resource'
     | '/_authenticated/ai'
     | '/_authenticated/ask'
     | '/_authenticated/branches'
@@ -639,6 +675,7 @@ export interface FileRouteTypes {
     | '/compensation/'
     | '/guides/'
     | '/ops/'
+    | '/.lovable/oauth/consent'
     | '/api/public/telegram-webhook'
     | '/ops/clients_/$workspaceId'
     | '/lovable/email/auth/preview'
@@ -654,15 +691,18 @@ export interface RootRouteChildren {
   CompensationRoute: typeof CompensationRouteWithChildren
   LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
+  McpRoute: typeof McpRoute
   OpsRoute: typeof OpsRouteWithChildren
   PricingDotmdRoute: typeof PricingDotmdRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   GuidesHungerstationCompensationRoute: typeof GuidesHungerstationCompensationRoute
   GuidesJahezCommissionRoute: typeof GuidesJahezCommissionRoute
   GuidesKeetaInvoiceRoute: typeof GuidesKeetaInvoiceRoute
   GuidesIndexRoute: typeof GuidesIndexRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -704,6 +744,13 @@ declare module '@tanstack/react-router' {
       path: '/ops'
       fullPath: '/ops'
       preLoaderRoute: typeof OpsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/llms.txt': {
@@ -1000,6 +1047,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAiRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ops/clients_/$workspaceId': {
       id: '/ops/clients_/$workspaceId'
       path: '/clients/$workspaceId'
@@ -1012,6 +1066,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/telegram-webhook'
       fullPath: '/api/public/telegram-webhook'
       preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lovable/email/auth/webhook': {
@@ -1137,15 +1198,19 @@ const rootRouteChildren: RootRouteChildren = {
   CompensationRoute: CompensationRouteWithChildren,
   LlmsFullDottxtRoute: LlmsFullDottxtRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
+  McpRoute: McpRoute,
   OpsRoute: OpsRouteWithChildren,
   PricingDotmdRoute: PricingDotmdRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   GuidesHungerstationCompensationRoute: GuidesHungerstationCompensationRoute,
   GuidesJahezCommissionRoute: GuidesJahezCommissionRoute,
   GuidesKeetaInvoiceRoute: GuidesKeetaInvoiceRoute,
   GuidesIndexRoute: GuidesIndexRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
