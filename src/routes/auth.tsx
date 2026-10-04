@@ -69,8 +69,13 @@ function AuthPage() {
           },
         });
         if (error) throw error;
+        if (data.user && (data.user.identities?.length ?? 0) === 0) {
+          toast.error("هذا البريد مسجّل مسبقاً — سجّل الدخول أو استخدم «نسيت كلمة المرور».");
+          setMode("signin");
+          return;
+        }
         if (data.session) go();
-        else toast.success("تم إنشاء الحساب — تحقق من بريدك لتأكيد التسجيل.");
+        else toast.success("تم إنشاء الحساب — تحقق من بريدك (وصندوق الرسائل غير المرغوب فيها) لتأكيد التسجيل.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
