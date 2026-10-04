@@ -1707,42 +1707,54 @@ export type Database = {
       subscription_plans: {
         Row: {
           active: boolean
+          code: string | null
           created_at: string
+          custom_price: boolean
           cycle: string
           description: string | null
           features: Json
           highlighted: boolean
           id: string
           name: string
+          order_limit: number | null
           price: number
+          price_yearly: number | null
           pricing: string
           sort_order: number
           upload_limit: number | null
         }
         Insert: {
           active?: boolean
+          code?: string | null
           created_at?: string
+          custom_price?: boolean
           cycle?: string
           description?: string | null
           features?: Json
           highlighted?: boolean
           id?: string
           name: string
+          order_limit?: number | null
           price?: number
+          price_yearly?: number | null
           pricing?: string
           sort_order?: number
           upload_limit?: number | null
         }
         Update: {
           active?: boolean
+          code?: string | null
           created_at?: string
+          custom_price?: boolean
           cycle?: string
           description?: string | null
           features?: Json
           highlighted?: boolean
           id?: string
           name?: string
+          order_limit?: number | null
           price?: number
+          price_yearly?: number | null
           pricing?: string
           sort_order?: number
           upload_limit?: number | null
@@ -1751,6 +1763,7 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          addons: Json
           branch_count: number
           created_at: string
           cycle: string
@@ -1765,6 +1778,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          addons?: Json
           branch_count?: number
           created_at?: string
           cycle?: string
@@ -1779,6 +1793,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          addons?: Json
           branch_count?: number
           created_at?: string
           cycle?: string
