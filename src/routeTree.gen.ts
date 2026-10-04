@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PricingDotmdRouteImport } from './routes/pricing[.]md'
 import { Route as OpsRouteImport } from './routes/ops'
 import { Route as McpRouteImport } from './routes/mcp'
@@ -72,6 +73,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
   id: '/robots.txt',
   path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PricingDotmdRoute = PricingDotmdRouteImport.update({
@@ -349,6 +355,7 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/ops': typeof OpsRouteWithChildren
   '/pricing.md': typeof PricingDotmdRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -402,6 +409,7 @@ export interface FileRoutesByTo {
   '/llms.txt': typeof LlmsDottxtRoute
   '/mcp': typeof McpRoute
   '/pricing.md': typeof PricingDotmdRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -459,6 +467,7 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/ops': typeof OpsRouteWithChildren
   '/pricing.md': typeof PricingDotmdRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -516,6 +525,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/ops'
     | '/pricing.md'
+    | '/reset-password'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/.well-known/oauth-protected-resource'
@@ -569,6 +579,7 @@ export interface FileRouteTypes {
     | '/llms.txt'
     | '/mcp'
     | '/pricing.md'
+    | '/reset-password'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/.well-known/oauth-protected-resource'
@@ -625,6 +636,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/ops'
     | '/pricing.md'
+    | '/reset-password'
     | '/robots.txt'
     | '/sitemap.xml'
     | '/.well-known/oauth-protected-resource'
@@ -682,6 +694,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   OpsRoute: typeof OpsRouteWithChildren
   PricingDotmdRoute: typeof PricingDotmdRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -710,6 +723,13 @@ declare module '@tanstack/react-router' {
       path: '/robots.txt'
       fullPath: '/robots.txt'
       preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pricing.md': {
@@ -1181,6 +1201,7 @@ const rootRouteChildren: RootRouteChildren = {
   McpRoute: McpRoute,
   OpsRoute: OpsRouteWithChildren,
   PricingDotmdRoute: PricingDotmdRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:

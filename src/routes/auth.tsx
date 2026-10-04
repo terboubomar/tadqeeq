@@ -22,9 +22,10 @@ export const Route = createFileRoute("/auth")({
       { property: "og:description", content: "سجّل الدخول لمراجعة فواتير تطبيقات التوصيل." },
     ],
   }),
-  validateSearch: (search: Record<string, unknown>): { mode?: "signup"; next?: string } => {
+  validateSearch: (search: Record<string, unknown>): { mode?: "signup" | "reset"; next?: string } => {
     const next = typeof search["next"] === "string" && search["next"].startsWith("/") && !search["next"].startsWith("//") ? search["next"] : undefined;
-    return { ...(search["mode"] === "signup" ? { mode: "signup" as const } : {}), ...(next ? { next } : {}) };
+    const mode = search["mode"] === "signup" ? ("signup" as const) : search["mode"] === "reset" ? ("reset" as const) : undefined;
+    return { ...(mode ? { mode } : {}), ...(next ? { next } : {}) };
   },
   component: AuthPage,
 });
@@ -32,7 +33,8 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
-  const [mode, setMode] = useState<"signin" | "signup">(search.mode === "signup" ? "signup" : "signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "reset">(search.mode ?? "signin");
+  const [resetSentTo, setResetSentTo] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -51,7 +53,13 @@ function AuthPage() {
     event.preventDefault();
     setBusy(true);
     try {
-      if (mode === "signup") {
+      if (mode === "reset") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        setResetSentTo(email.trim());
+      } else if (mode === "signup") {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -116,8 +124,44 @@ function AuthPage() {
         </div>
 
         <h2 className="mt-8 font-display text-xl font-semibold">
-          {mode === "signin" ? "تسجيل الدخول" : "سجّل منشأتك"}
+          {mode === "signin" ? "تسجيل الدخول" : mode === "signup" ? "سجّل منشأتك" : "إعادة تعيين كلمة المرور"}
         </h2>
+
+        {mode === "reset" ? (
+          resetSentTo ? (
+            <div className="mt-5 space-y-4">
+              <p className="rounded-md bg-secondary p-4 text-sm leading-7">
+                إذا كان <span dir="ltr" className="font-semibold">{resetSentTo}</span> مسجّلاً لدينا، سيصلك خلال دقائق رابط لتعيين كلمة مرور جديدة. تحقق
+                من صندوق الرسائل غير المرغوب فيها إن لم تجده.
+              </p>
+              <Button variant="outline" className="w-full" onClick={() => setResetSentTo(null)}>
+                إرسال الرابط مرة أخرى
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={submit} className="mt-5 space-y-4">
+              <p className="text-xs leading-5 text-muted-foreground">اكتب بريدك الذي تسجّل به، وسنرسل لك رابطاً لتعيين كلمة مرور جديدة.</p>
+              <div className="space-y-2">
+                <Label htmlFor="reset-email">البريد الإلكتروني</Label>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  dir="ltr"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@company.com"
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={busy}>
+                {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+                أرسل رابط إعادة التعيين
+              </Button>
+            </form>
+          )
+        ) : (
+          <>
 
         {mode === "signup" ? (
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -150,7 +194,14 @@ function AuthPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">كلمة المرور</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="password">كلمة المرور</Label>
+              {mode === "signin" ? (
+                <button type="button" onClick={() => setMode("reset")} className="text-xs text-muted-foreground underline-offset-4 hover:text-primary hover:underline">
+                  نسيت كلمة المرور؟
+                </button>
+              ) : null}
+            </div>
             <Input
               id="password"
               type="password"
@@ -179,13 +230,18 @@ function AuthPage() {
         <Button variant="outline" className="mt-3 w-full" onClick={apple}>
           المتابعة باستخدام Apple
         </Button>
+          </>
+        )}
 
         <button
           type="button"
-          onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+          onClick={() => {
+            setResetSentTo(null);
+            setMode(mode === "signin" ? "signup" : "signin");
+          }}
           className="mt-6 w-full text-center text-sm text-muted-foreground transition-colors hover:text-primary"
         >
-          {mode === "signin" ? "ليس لديك حساب؟ أنشئ حساباً" : "لديك حساب؟ سجّل الدخول"}
+          {mode === "signin" ? "ليس لديك حساب؟ أنشئ حساباً" : mode === "signup" ? "لديك حساب؟ سجّل الدخول" : "رجوع لتسجيل الدخول"}
         </button>
       </div>
       </main>
