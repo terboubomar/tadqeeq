@@ -986,6 +986,63 @@ export type Database = {
           },
         ]
       }
+      mcp_audit_requests: {
+        Row: {
+          bank_fee_pct: number | null
+          completed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          label: string | null
+          period_id: string | null
+          platform: string
+          status: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          bank_fee_pct?: number | null
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          label?: string | null
+          period_id?: string | null
+          platform: string
+          status?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          bank_fee_pct?: number | null
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          label?: string | null
+          period_id?: string | null
+          platform?: string
+          status?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_audit_requests_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_audit_requests_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ops_audit_log: {
         Row: {
           action: string
@@ -2240,7 +2297,17 @@ export type Database = {
         }
         Returns: string
       }
+      ensure_my_workspace: { Args: never; Returns: string }
       is_platform_admin: { Args: never; Returns: boolean }
+      mcp_access: { Args: never; Returns: Json }
+      mcp_complete_audit_request: {
+        Args: { p_period_id: string; p_request_id: string }
+        Returns: boolean
+      }
+      mcp_create_audit_request: {
+        Args: { p_bank_fee_pct: number; p_label: string; p_platform: string }
+        Returns: string
+      }
       my_workspace_plan: { Args: { p_workspace_id: string }; Returns: Json }
       ops_role: { Args: never; Returns: string }
       reserve_ai_call: {
