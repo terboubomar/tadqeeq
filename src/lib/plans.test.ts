@@ -155,7 +155,7 @@ describe("plan comparison", () => {
     ]);
     expect(row("مركز التعويضات وبوت Telegram").map((c) => c.kind)).toEqual(["addon", "addon", "yes"]);
     expect(row("مركز التعويضات وبوت Telegram")[0]).toEqual({ kind: "addon", text: "إضافة · 399 ر.س / 4 أشهر" });
-    expect(row("التدقيق من داخل Claude و ChatGPT").map((c) => c.kind)).toEqual(["no", "no", "yes"]);
+    expect(row("التدقيق من داخل Claude و ChatGPT").map((c) => c.kind)).toEqual(["addon", "addon", "yes"]);
     expect(row("مطابقة الفاتورة وخريطة الرسوم").map((c) => c.kind)).toEqual(["yes", "yes", "yes"]);
   });
 

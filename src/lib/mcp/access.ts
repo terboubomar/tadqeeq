@@ -28,7 +28,7 @@ export function accessMessage(access: McpAccess): string {
       return "حساب تدقيق موقوف حالياً. تواصل مع فريق تدقيق لإعادة التفعيل. / This Tadqeeq account is suspended.";
     case "trial":
     case "plan":
-      return `استخدام تدقيق من Claude وChatGPT متاح في باقة «الشاملة»${access.plan_name ? ` (باقتك الحالية: ${access.plan_name})` : " (حسابك في التجربة المجانية)"}. اطلب الترقية من ${APP_URL}/subscribe / Using Tadqeeq from AI assistants is part of the الشاملة plan.`;
+      return `استخدام تدقيق من Claude و ChatGPT متاح في باقة «الشاملة»، أو مع الإضافة (مركز التعويضات و Tadqeeq AI) في أي باقة${access.plan_name ? ` (باقتك الحالية: ${access.plan_name})` : " (حسابك في التجربة المجانية)"}. اطلبها من ${APP_URL}/subscribe / Available on the الشاملة plan or with the add-on on any plan.`;
     default:
       return "";
   }
@@ -41,7 +41,7 @@ export async function loadMcpAccess(ctx: ToolContext): Promise<McpAccess> {
   return data as unknown as McpAccess;
 }
 
-/** Every data tool starts here: the caller's workspace must be on الشاملة and not suspended. */
+/** Every data tool starts here: the caller's workspace must have Tadqeeq AI (الشاملة or the add-on) and not be suspended. */
 export async function requireMcpAccess(ctx: ToolContext): Promise<McpAccess> {
   const access = await loadMcpAccess(ctx);
   if (!access.allowed) throw new ToolError(accessMessage(access));

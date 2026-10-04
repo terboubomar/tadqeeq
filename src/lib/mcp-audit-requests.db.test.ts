@@ -3,7 +3,7 @@ import type { PGlite } from "@electric-sql/pglite";
 
 import { asUser, createMigratedDatabase } from "../test-support/database";
 
-/** Migration 0040: MCP access by plan, and audit requests opened from an AI assistant. */
+/** Migrations 0040–0041: MCP access by plan or add-on, and audit requests opened from an AI assistant. */
 const OWNER = "00000000-0000-4000-8000-0000000004a1";
 const OTHER = "00000000-0000-4000-8000-0000000004b1";
 
@@ -23,11 +23,11 @@ async function asUserCommitted<T>(user: string, sql: string, params: unknown[] =
   });
 }
 
-async function subscribe(workspaceId: string, code: string) {
+async function subscribe(workspaceId: string, code: string, addons: string[] = []) {
   await db.query("update public.subscriptions set status = 'cancelled' where workspace_id = $1", [workspaceId]);
   await db.query(
-    "insert into public.subscriptions (workspace_id, plan_id, price, cycle, status) select $1, id, 799, 'monthly', 'active' from public.subscription_plans where code = $2",
-    [workspaceId, code],
+    "insert into public.subscriptions (workspace_id, plan_id, price, cycle, status, addons) select $1, id, 799, 'monthly', 'active', $3::jsonb from public.subscription_plans where code = $2",
+    [workspaceId, code, JSON.stringify(addons)],
   );
 }
 
@@ -53,6 +53,10 @@ describe("mcp_access", () => {
     await subscribe(ws, "growth");
     expect(await access(OWNER)).toMatchObject({ plan_code: "growth", allowed: false, reason: "plan" });
 
+    // Migration 0041: the add-on opens it on any plan.
+    await subscribe(ws, "start", ["compensation_ai"]);
+    expect(await access(OWNER)).toMatchObject({ plan_code: "start", has_addon: true, allowed: true, reason: null });
+
     await subscribe(ws, "unlimited");
     expect(await access(OWNER)).toMatchObject({ plan_code: "unlimited", plan_name: "الشاملة", allowed: true, reason: null });
 
@@ -63,7 +67,7 @@ describe("mcp_access", () => {
 });
 
 describe("audit requests", () => {
-  test("only الشاملة can open one, and the period completes it", async () => {
+  test("only plans with Tadqeeq AI can open one, and the period completes it", async () => {
     const id = (await asUserCommitted<{ id: string }>(OWNER, "select public.mcp_create_audit_request('hungerstation', 1.8, ' سبتمبر ') as id"))[0]!.id;
 
     const own = await asUser<{ platform: string; bank_fee_pct: string; label: string; status: string }>(db, OWNER, "select platform, bank_fee_pct, label, status from public.mcp_audit_requests where id = $1", [id]);

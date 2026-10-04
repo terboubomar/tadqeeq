@@ -85,7 +85,7 @@ export function ordersMonthLabel(month: string | null): string {
 
 export type PlanAddon = "compensation_ai";
 
-/** Paid on top of a plan that does not include it. The one package: compensation center with the Telegram bot, and Tadqeeq AI. */
+/** Paid on top of a plan that does not include it. The one package: compensation center with the Telegram bot, Tadqeeq AI, and Tadqeeq in Claude and ChatGPT. */
 export const PLAN_ADDONS: Array<{ key: PlanAddon; label: string; features: PlanFeature[]; price: number; months: number }> = [
   {
     key: "compensation_ai",
@@ -96,8 +96,10 @@ export const PLAN_ADDONS: Array<{ key: PlanAddon; label: string; features: PlanF
   },
 ];
 
-/** Plan code whose customers can use Tadqeeq from AI assistants (Claude, ChatGPT) through the MCP. */
-export const MCP_PLAN_CODE = "unlimited";
+/** Tadqeeq in Claude and ChatGPT (the MCP) comes with Tadqeeq AI: in الشاملة, or with the add-on on any plan. */
+export function planHasAssistant(features: readonly PlanFeature[]): boolean {
+  return features.includes("ai");
+}
 
 /** The plan already includes everything the add-on unlocks (the unlimited plan includes the package). */
 export function planIncludesAddon(features: readonly PlanFeature[], addon: PlanAddon): boolean {
@@ -160,7 +162,7 @@ export function planComparison(plans: PublicPlan[]): ComparisonRow[] {
     { label: "Tadqeeq AI للأسئلة عن أرقامك", cells: plans.map((plan) => featureCell(plan, "ai")) },
     {
       label: "التدقيق من داخل Claude و ChatGPT",
-      cells: plans.map((plan): ComparisonCell => (plan.code === MCP_PLAN_CODE ? { kind: "yes" } : { kind: "no" })),
+      cells: plans.map((plan) => featureCell(plan, "ai")),
     },
   ];
 }

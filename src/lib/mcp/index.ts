@@ -19,7 +19,7 @@ export default defineMcp({
     "To audit new files: ask for the platform (and for HungerStation the card fee %), call start_audit, give the user the upload_url, and when they say they are done call get_audit_result.",
     "For past audits: list_periods, then get_period_summary, get_branch_performance or list_exceptions.",
     "All money values are SAR from Tadqeeq's accounting engine. Explain them; never recalculate or invent numbers.",
-    "Available on the الشاملة plan. If a tool says the plan does not include it, or returns nothing, call get_account and tell the user.",
+    "Available on the الشاملة plan, or with the add-on on any plan. If a tool says the plan does not include it, or returns nothing, call get_account and tell the user.",
   ].join(" "),
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,

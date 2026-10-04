@@ -42,7 +42,6 @@ import {
   PLAN_ADDONS,
   PLAN_FEATURES,
   PRICING_TERMS,
-  MCP_PLAN_CODE,
   orderBasedPlans,
   planCardItems,
   planComparison,
@@ -1920,7 +1919,7 @@ const ASSISTANT_STEPS = [
   { title: "اسأل عن النتيجة", body: "الفروقات وما تطالب به، أعلى الفروع تكلفة، والمقارنة مع الشهر الماضي، في نفس المحادثة." },
 ];
 
-/** Using Tadqeeq from Claude or ChatGPT (the MCP, الشاملة plan): three steps and an illustrative chat. */
+/** Using Tadqeeq from Claude or ChatGPT (the MCP: الشاملة, or the add-on on other plans): three steps and an illustrative chat. */
 function AssistantSection() {
   return (
     <section id="assistant" className="bg-ink text-ink-foreground">
@@ -1928,7 +1927,7 @@ function AssistantSection() {
         <div data-reveal>
           <p className="flex items-center gap-2 text-[13px] font-semibold text-primary">
             <span className="size-1.5 rounded-full bg-primary" />
-            جديد · في باقة الشاملة
+            جديد · في الشاملة، أو كإضافة لباقتك
           </p>
           <h2 className="mt-3 font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]">دقّق فواتيرك من داخل Claude و ChatGPT.</h2>
           <p className="mt-4 text-base leading-8 text-ink-muted sm:text-[17px]">
@@ -1947,7 +1946,7 @@ function AssistantSection() {
             ))}
           </ol>
           <a href="#pricing" className="mt-8 inline-flex h-11 w-fit items-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground">
-            اطّلع على باقة الشاملة
+            اطّلع على الباقات
             <ArrowLeft className="size-4" />
           </a>
         </div>
@@ -2897,7 +2896,7 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
             </p>
             <p className="mt-2 font-display text-lg font-extrabold leading-8">{addon.label}</p>
             <p className="mt-2 text-sm leading-7 text-foreground/80">
-              اعترض على التعويضات بفيديو من قروب الفرع، واسأل عن أرقامك بلغة بسيطة.
+              اعترض على التعويضات بفيديو من قروب الفرع، واسأل عن أرقامك بلغة بسيطة، ودقّق فواتيرك من داخل Claude و ChatGPT.
             </p>
             </div>
             <p className="mt-3 shrink-0 font-semibold sm:mt-0">
@@ -2941,7 +2940,10 @@ function PlanCardFeatures({ plans, index, dark, addonOffered }: { plans: PublicP
         <p className={cn("mt-3 flex gap-2.5 leading-6", dark ? "text-ink-muted" : "text-muted-foreground")}>
           <Plus className="mt-0.5 size-4 shrink-0" />
           <span>
-            إضافة اختيارية: {addon.label} (<span className="num">{addon.price.toLocaleString("en-US")}</span> ر.س / {addon.months} أشهر)
+            <span className="block font-semibold">
+              إضافة اختيارية · <span className="num">{addon.price.toLocaleString("en-US")}</span> ر.س كل {addon.months} أشهر
+            </span>
+            <span className="block">مركز التعويضات، و Tadqeeq AI، والتدقيق من Claude و ChatGPT</span>
           </span>
         </p>
       ) : null}

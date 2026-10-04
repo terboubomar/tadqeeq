@@ -19,7 +19,7 @@
       {
         "name": "get_account",
         "title": "Connected account",
-        "description": "Which Tadqeeq account is connected: email, company workspace, role and plan, and whether this assistant may use Tadqeeq (الشاملة plan). Call this first, or when other tools return nothing.",
+        "description": "Which Tadqeeq account is connected: email, company workspace, role and plan, and whether this assistant may use Tadqeeq (الشاملة plan or the add-on). Call this first, or when other tools return nothing.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
