@@ -108,6 +108,11 @@ function TaskRow({ t }: { t: OpsTask }) {
             <Mail className="size-4" />
           </a>
         ) : null}
+        {t.kind === "plan_request" || t.kind === "over_limit" ? (
+          <Link to="/ops/subscriptions" className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted">
+            الاشتراكات
+          </Link>
+        ) : null}
         <Link
           to="/ops/clients/$workspaceId"
           params={{ workspaceId: t.workspaceId }}

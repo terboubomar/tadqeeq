@@ -164,7 +164,7 @@ export interface PlanRequest {
   requestedAt: string;
 }
 
-/** The workspace's latest plan request from the app, if any. */
+/** The workspace's latest plan request from the app, while the team has not answered it with a subscription. */
 export async function getMyPlanRequestOnServer(): Promise<PlanRequest | null> {
   const ctx = await requireServerUserAnyStatus();
   const { data } = await db()
@@ -178,6 +178,13 @@ export async function getMyPlanRequestOnServer(): Promise<PlanRequest | null> {
   if (!data) return null;
   const m = (data.metadata ?? {}) as Row;
   if (typeof m["planId"] !== "string") return null;
+  // Answered once the team creates or changes the subscription after the request.
+  const { count } = await db()
+    .from("subscriptions")
+    .select("id", { count: "exact", head: true })
+    .eq("workspace_id", ctx.workspaceId)
+    .gte("updated_at", String(data.created_at));
+  if (count) return null;
   return {
     planId: m["planId"],
     cycle: m["cycle"] === "yearly" ? "yearly" : "monthly",

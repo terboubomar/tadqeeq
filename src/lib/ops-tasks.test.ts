@@ -54,6 +54,15 @@ describe("buildOpsTasks", () => {
     expect(kinds(clients, false)).toEqual([]);
   });
 
+  test("plan requests and two months over the plan limit are finance tasks", () => {
+    const clients = [
+      client({ name: "asked", status: "pending_details", trialUploads: 1, planRequestedAt: "2026-09-26T09:00:00Z" }),
+      client({ name: "big", overLimit: true }),
+    ];
+    expect(kinds(clients)).toEqual(["asked:plan_request", "asked:trial_used", "big:over_limit"]);
+    expect(kinds(clients, false)).toEqual(["asked:trial_used"]);
+  });
+
   test("suspended clients show up only when they ask to be reactivated", () => {
     expect(
       kinds([

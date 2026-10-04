@@ -9,14 +9,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CYCLE_LABELS, opsCan, sarFmt, SUBSCRIPTION_STATUS_LABELS, type Cycle, type SubscriptionStatus } from "@/lib/ops";
 import { listOpsClients, listPlanRequests, listPlans, listSubscriptions, saveSubscription, workspaceOrderUsage } from "@/lib/ops.functions";
-import { PLAN_ADDONS, type PlanAddon } from "@/lib/plans";
+import { PLAN_ADDONS, planIncludesAddon, type PlanAddon } from "@/lib/plans";
 import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
 export const Route = createFileRoute("/ops/subscriptions")({ component: Subscriptions });
 
 const sel = "h-9 w-full rounded-md border border-input bg-background px-2 text-sm";
 type SubForm = { id?: string; workspaceId: string; planId: string | null; price: number; branchCount: number; cycle: Cycle; status: SubscriptionStatus; startsOn: string; endsOn: string | null; notes?: string; addons: PlanAddon[] };
-const blank = (): SubForm => ({ workspaceId: "", planId: null, price: 0, branchCount: 1, cycle: "monthly", status: "active", startsOn: new Date().toISOString().slice(0, 10), endsOn: null, addons: [] });
+/** Renewal date one cycle after `start` (YYYY-MM-DD). */
+function renewalDate(start: string, cycle: Cycle): string {
+  const date = new Date(`${start}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return start;
+  if (cycle === "yearly") date.setUTCFullYear(date.getUTCFullYear() + 1);
+  else date.setUTCMonth(date.getUTCMonth() + 1);
+  return date.toISOString().slice(0, 10);
+}
+const blank = (): SubForm => {
+  const startsOn = new Date().toISOString().slice(0, 10);
+  return { workspaceId: "", planId: null, price: 0, branchCount: 1, cycle: "monthly", status: "active", startsOn, endsOn: renewalDate(startsOn, "monthly"), addons: [] };
+};
+const LIVE: SubscriptionStatus[] = ["trial", "active", "overdue"];
 const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 
 function Subscriptions() {
@@ -41,16 +53,21 @@ function Subscriptions() {
   /** The plan's price for a cycle: its yearly price when it has one, otherwise its own price and cycle. */
   function applyPlan(f: SubForm, planId: string | null, cycle: Cycle = f.cycle): SubForm {
     const p = plans.data?.find((x) => x.id === planId);
-    if (!p) return { ...f, planId, cycle };
-    if (p.customPrice) return { ...f, planId, cycle };
-    if (cycle === "yearly" && p.priceYearly !== null) return { ...f, planId, cycle, price: p.priceYearly };
-    if (cycle === "monthly" && p.cycle === "monthly") return { ...f, planId, cycle, price: p.price };
-    return { ...f, planId, cycle: p.cycle, price: p.price };
+    const next: SubForm = (() => {
+      if (!p || p.customPrice) return { ...f, planId, cycle };
+      if (cycle === "yearly" && p.priceYearly !== null) return { ...f, planId, cycle, price: p.priceYearly };
+      if (cycle === "monthly" && p.cycle === "monthly") return { ...f, planId, cycle, price: p.price };
+      return { ...f, planId, cycle: p.cycle, price: p.price };
+    })();
+    // A new subscription renews one cycle after it starts; an existing one keeps its dates.
+    return f.id ? next : { ...next, endsOn: renewalDate(next.startsOn, next.cycle) };
   }
+  /** The client's current subscription (the one keeping the account open), if any. */
+  const liveSub = (workspaceId: string) => (subs.data ?? []).find((x) => x.workspaceId === workspaceId && LIVE.includes(x.status));
+  const formPlan = form ? plans.data?.find((p) => p.id === form.planId) ?? null : null;
   const planName = (id: string | null) => plans.data?.find((p) => p.id === id)?.name ?? "مخصص";
   const clientName = (id: string) => clients.data?.find((c) => c.workspaceId === id)?.name ?? "—";
-  const subscribed = new Set((subs.data ?? []).filter((x) => x.status !== "cancelled").map((x) => x.workspaceId));
-  const openRequests = (requests.data ?? []).filter((r) => !subscribed.has(r.workspaceId) || (subs.data ?? []).some((x) => x.workspaceId === r.workspaceId && x.planId !== r.planId));
+  const openRequests = requests.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -69,11 +86,25 @@ function Subscriptions() {
                   {r.addons.length ? ` · ${PLAN_ADDONS.filter((a) => r.addons.includes(a.key)).map((a) => a.label).join("، ")}` : ""}
                   <span className="num ms-2 text-xs text-muted-foreground">{r.requestedAt.slice(0, 10)}</span>
                 </span>
-                {role !== "support" ? (
-                  <Button size="sm" variant="outline" onClick={() => setForm(applyPlan({ ...blank(), workspaceId: r.workspaceId, addons: r.addons }, r.planId, r.cycle))}>
-                    إنشاء اشتراك
-                  </Button>
-                ) : null}
+                {role !== "support" ? (() => {
+                  // Upgrades and downgrades change the current subscription instead of adding a second one.
+                  const current = liveSub(r.workspaceId);
+                  return (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setForm(
+                          current
+                            ? applyPlan({ ...current, notes: current.notes ?? undefined, status: "active", addons: r.addons }, r.planId, r.cycle)
+                            : applyPlan({ ...blank(), workspaceId: r.workspaceId, addons: r.addons }, r.planId, r.cycle),
+                        )
+                      }
+                    >
+                      {current ? "تحديث الاشتراك الحالي" : "إنشاء اشتراك"}
+                    </Button>
+                  );
+                })() : null}
               </li>
             ))}
           </ul>
@@ -90,26 +121,39 @@ function Subscriptions() {
           <div className="space-y-1"><Label>الباقة</Label>
             <select className={sel} value={form.planId ?? ""} onChange={(e) => setForm(applyPlan(form, e.target.value || null))}>
               <option value="">مخصص</option>
-              {(plans.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              {(plans.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}{p.active ? "" : " (مخفية)"}</option>)}
             </select></div>
           <div className="space-y-1"><Label>السعر لكل دورة (ر.س)</Label><Input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} /></div>
           <div className="space-y-1"><Label>الدورة</Label><select className={sel} value={form.cycle} onChange={(e) => setForm(applyPlan(form, form.planId, e.target.value as Cycle))}><option value="monthly">شهري</option><option value="yearly">سنوي</option></select></div>
           <div className="space-y-1"><Label>الحالة</Label><select className={sel} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as SubscriptionStatus })}>{Object.entries(SUBSCRIPTION_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
-          <div className="space-y-1"><Label>البداية</Label><Input type="date" value={form.startsOn} onChange={(e) => setForm({ ...form, startsOn: e.target.value })} /></div>
+          <div className="space-y-1"><Label>البداية</Label><Input type="date" value={form.startsOn} onChange={(e) => setForm(form.id ? { ...form, startsOn: e.target.value } : { ...form, startsOn: e.target.value, endsOn: renewalDate(e.target.value, form.cycle) })} /></div>
           <div className="space-y-1"><Label>النهاية / التجديد</Label><Input type="date" value={form.endsOn ?? ""} onChange={(e) => setForm({ ...form, endsOn: e.target.value || null })} /></div>
           <div className="space-y-1"><Label>الإضافات</Label>
-            {PLAN_ADDONS.map((a) => (
-              <label key={a.key} className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={form.addons.includes(a.key)} onChange={(e) => setForm({ ...form, addons: e.target.checked ? [...form.addons, a.key] : form.addons.filter((x) => x !== a.key) })} />
-                {a.label} <span className="num text-xs text-muted-foreground">({a.price} ر.س / {a.months} أشهر)</span>
-              </label>
-            ))}</div>
+            {PLAN_ADDONS.map((a) => {
+              const inPlan = !!formPlan && planIncludesAddon(formPlan.features, a.key);
+              return (
+                <label key={a.key} className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" disabled={inPlan} checked={inPlan || form.addons.includes(a.key)} onChange={(e) => setForm({ ...form, addons: e.target.checked ? [...form.addons, a.key] : form.addons.filter((x) => x !== a.key) })} />
+                  {a.label} <span className="text-xs text-muted-foreground">{inPlan ? "(مشمولة في الباقة)" : <span className="num">({a.price} ر.س / {a.months} أشهر)</span>}</span>
+                </label>
+              );
+            })}</div>
           <div className="space-y-1 sm:col-span-2 lg:col-span-2"><Label>ملاحظات</Label><Input value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
           <div className="flex items-end gap-2">
-            <Button disabled={!form.workspaceId || saveSub.isPending} onClick={() => saveSub.mutate(form)}>حفظ</Button>
+            <Button disabled={!form.workspaceId || saveSub.isPending} onClick={() => saveSub.mutate({ ...form, addons: form.addons.filter((a) => !(formPlan && planIncludesAddon(formPlan.features, a))) })}>حفظ</Button>
             <Button variant="ghost" onClick={() => setForm(null)}>إلغاء</Button>
           </div>
-          <p className="text-xs text-muted-foreground sm:col-span-4">الإيقاف أو الإلغاء يقفل حساب العميل تلقائياً، والتفعيل يعيد فتحه.</p>
+          {!form.id && form.workspaceId && liveSub(form.workspaceId) ? (
+            <p className="flex flex-wrap items-center gap-2 rounded-md bg-warning/10 p-2 text-xs sm:col-span-4">
+              لهذا العميل اشتراك ساري. للترقية أو تغيير الباقة عدّل الاشتراك الحالي بدل إنشاء اشتراك ثانٍ.
+              <Button size="sm" variant="outline" onClick={() => { const c = liveSub(form.workspaceId)!; setForm({ ...c, notes: c.notes ?? undefined, addons: c.addons }); }}>
+                تعديل الاشتراك الحالي
+              </Button>
+            </p>
+          ) : null}
+          <p className="text-xs text-muted-foreground sm:col-span-4">
+            «نشط» يفتح حساب العميل وينهي التجربة المجانية. الإيقاف أو الإلغاء يقفل الحساب، إلا إذا كان للعميل اشتراك آخر ساري.
+          </p>
         </section>
       ) : null}
 

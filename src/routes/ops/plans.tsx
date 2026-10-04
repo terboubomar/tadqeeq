@@ -33,7 +33,7 @@ function Plans() {
 }
 
 type PlanRow = { id: string; name: string; price: number; cycle: Cycle; active: boolean; features: PlanFeature[]; uploadLimit: number | null; description: string; highlighted: boolean; sortOrder: number; code: string | null; orderLimit: number | null; priceYearly: number | null; customPrice: boolean };
-const blankPlan = (): Omit<PlanRow, "id" | "code"> & { id?: string; code?: string | null } => ({ name: "", price: 0, cycle: "monthly", active: true, features: ["invoice_audit", "exceptions", "contracts"], uploadLimit: null, description: "", highlighted: false, sortOrder: 0, orderLimit: 10_000, priceYearly: null, customPrice: false });
+const blankPlan = (): Omit<PlanRow, "id" | "code"> & { id?: string; code?: string | null } => ({ name: "", price: 0, cycle: "monthly", active: true, features: ["invoice_audit", "exceptions", "contracts"], uploadLimit: null, description: "", highlighted: false, sortOrder: 0, orderLimit: 15_000, priceYearly: null, customPrice: false });
 
 function PlansEditor({ plans, canEdit, subscribers }: { plans: PlanRow[]; canEdit: boolean; subscribers: Map<string, number> }) {
   const qc = useQueryClient();

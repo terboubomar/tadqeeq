@@ -3,8 +3,8 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 import { buildOpsTasks, type OpsTask, type OpsTaskClient } from "./ops-tasks";
-import { isPlanAddon, PLAN_REQUEST_EVENT, TRIAL_UPLOAD_EVENT, type PlanAddon, type PlanFeature } from "./plans";
-import { opsCan, type Cycle, type OpsRole, type OpsSection, type SubscriptionStatus } from "./ops";
+import { isPlanAddon, PLAN_ADDONS, PLAN_REQUEST_EVENT, TRIAL_UPLOAD_EVENT, type PlanAddon, type PlanFeature } from "./plans";
+import { LIVE_SUBSCRIPTION_STATUSES, opsCan, subscriptionAccessChange, type Cycle, type OpsRole, type OpsSection, type SubscriptionStatus } from "./ops";
 import { loadSuspension } from "./onboarding.server";
 import { REACTIVATION_REQUEST_EVENT, type OnboardingStatus, type SuspensionInfo, type SuspensionReason } from "./onboarding";
 
@@ -61,13 +61,17 @@ async function log(actor: OpsActor, action: string, entityType: string, entityId
 }
 
 const yearly = (price: number, cycle: string) => (cycle === "yearly" ? price : price * 12);
+/** Yearly revenue of a subscription's add-ons (each is billed every few months). */
+const addonsYearly = (addons: unknown) =>
+  PLAN_ADDONS.filter((addon) => Array.isArray(addons) && addons.includes(addon.key)).reduce((sum, addon) => sum + (addon.price * 12) / addon.months, 0);
+
 const today = () => new Date().toISOString().slice(0, 10);
 
 // ---------------- Overview ----------------
 export async function getOpsOverviewOnServer() {
   await requireOps("overview");
   const [{ data: subs }, { data: onb }, { data: pays }] = await Promise.all([
-    db().from("subscriptions").select("workspace_id,price,cycle,status,ends_on,created_at"),
+    db().from("subscriptions").select("*"),
     db().from("workspace_onboarding").select("workspace_id,status,created_at"),
     db().from("payments").select("amount,paid_on"),
   ]);
@@ -77,7 +81,7 @@ export async function getOpsOverviewOnServer() {
   const t = today();
   const in30 = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
   const billable = subRows.filter((s) => s["status"] === "active" || s["status"] === "overdue");
-  const arr = billable.reduce((a, s) => a + yearly(Number(s["price"]), String(s["cycle"])), 0);
+  const arr = billable.reduce((a, s) => a + yearly(Number(s["price"]), String(s["cycle"])) + addonsYearly(s["addons"]), 0);
   const counts: Record<string, number> = {};
   for (const r of onbRows) counts[String(r["status"])] = (counts[String(r["status"])] ?? 0) + 1;
 
@@ -591,6 +595,7 @@ export async function listSubscriptionsOnServer() {
     endsOn: (r["ends_on"] as string) ?? null,
     notes: (r["notes"] as string) ?? null,
     addons: (Array.isArray(r["addons"]) ? r["addons"] : []).filter(isPlanAddon),
+    updatedAt: String(r["updated_at"] ?? r["created_at"]),
   }));
 }
 
@@ -614,6 +619,10 @@ function previousMonth(month: string): string {
  */
 export async function workspaceOrderUsageOnServer() {
   await requireOps("subscriptions");
+  return loadOrderUsage();
+}
+
+async function loadOrderUsage() {
   const since = new Date(Date.now() - 400 * 86400_000).toISOString();
   const { data } = await db()
     .from("periods")
@@ -635,15 +644,24 @@ export async function workspaceOrderUsageOnServer() {
   });
 }
 
-/** Each client's latest plan request from the app (plan, cycle, add-ons), newest first. */
+/** Each client's latest plan request from the app (plan, cycle, add-ons) that no subscription change has answered yet. */
 export async function listPlanRequestsOnServer() {
   await requireOps("subscriptions");
-  const { data } = await db()
-    .from("workspace_audit_events")
-    .select("workspace_id,metadata,created_at")
-    .eq("event_type", PLAN_REQUEST_EVENT)
-    .order("created_at", { ascending: false })
-    .limit(500);
+  return loadOpenPlanRequests();
+}
+
+async function loadOpenPlanRequests() {
+  const [{ data }, { data: subs }] = await Promise.all([
+    db().from("workspace_audit_events").select("workspace_id,metadata,created_at").eq("event_type", PLAN_REQUEST_EVENT).order("created_at", { ascending: false }).limit(500),
+    db().from("subscriptions").select("workspace_id,updated_at,created_at"),
+  ]);
+  // A subscription created or edited after the request answers it.
+  const lastChange = new Map<string, number>();
+  for (const r of (subs ?? []) as Row[]) {
+    const id = String(r["workspace_id"]);
+    const at = Date.parse(String(r["updated_at"] ?? r["created_at"]));
+    if (at > (lastChange.get(id) ?? 0)) lastChange.set(id, at);
+  }
   const latest = new Map<string, { workspaceId: string; planId: string | null; cycle: Cycle; addons: PlanAddon[]; requestedAt: string }>();
   for (const r of (data ?? []) as Row[]) {
     const workspaceId = String(r["workspace_id"]);
@@ -657,7 +675,7 @@ export async function listPlanRequestsOnServer() {
       requestedAt: String(r["created_at"]),
     });
   }
-  return [...latest.values()];
+  return [...latest.values()].filter((r) => (lastChange.get(r.workspaceId) ?? 0) < Date.parse(r.requestedAt));
 }
 
 export async function saveSubscriptionOnServer(input: {
@@ -671,20 +689,33 @@ export async function saveSubscriptionOnServer(input: {
     // Add-ons (migration 0037); only sent when the form has them.
     ...(input.addons !== undefined ? { addons: input.addons.filter(isPlanAddon) } : {}),
   };
-  const { error } = input.id ? await db().from("subscriptions").update(row).eq("id", input.id) : await db().from("subscriptions").insert(row);
+  const { data: saved, error } = input.id
+    ? await db().from("subscriptions").update(row).eq("id", input.id).select("id").single()
+    : await db().from("subscriptions").insert(row).select("id").single();
   if (error) throw new Error(error.message);
-  // Sync workspace access with subscription state.
-  if (input.status === "suspended" || input.status === "cancelled") {
-    const { data: o } = await db().from("workspace_onboarding").select("status").eq("workspace_id", input.workspaceId).maybeSingle();
-    await db().from("workspace_onboarding").update({ status: "suspended", updated_at: new Date().toISOString() }).eq("workspace_id", input.workspaceId);
-    if (o?.status !== "suspended") {
-      await log(actor, "client.status", "workspace", input.workspaceId, input.workspaceId, { status: "suspended", reason: "payment", source: "subscription" });
-    }
-  } else if (input.status === "active") {
-    const { data: o } = await db().from("workspace_onboarding").select("status").eq("workspace_id", input.workspaceId).maybeSingle();
-    if (o?.status === "suspended") await db().from("workspace_onboarding").update({ status: "active", updated_at: new Date().toISOString() }).eq("workspace_id", input.workspaceId);
-  }
+  await syncAccessWithSubscription(actor, input.workspaceId, String(saved.id), input.status);
   await log(actor, input.id ? "subscription.update" : "subscription.create", "subscription", input.id ?? null, input.workspaceId, { status: input.status, price: input.price, cycle: input.cycle });
+}
+
+/** Keeps the client's account in step with the subscription just saved (rules in subscriptionAccessChange). */
+async function syncAccessWithSubscription(actor: OpsActor, workspaceId: string, subscriptionId: string, status: SubscriptionStatus) {
+  const [{ data: o }, { count: otherLive }, archives] = await Promise.all([
+    db().from("workspace_onboarding").select("status,paid_at,activated_at").eq("workspace_id", workspaceId).maybeSingle(),
+    db().from("subscriptions").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).in("status", LIVE_SUBSCRIPTION_STATUSES).neq("id", subscriptionId),
+    latestArchiveEvents(workspaceId),
+  ]);
+  const change = subscriptionAccessChange({
+    status,
+    onboardingStatus: (o?.status as OnboardingStatus | undefined) ?? null,
+    otherLiveSubscription: !!otherLive,
+    archived: archives.get(workspaceId)?.action === ARCHIVE_ACTION,
+  });
+  if (!change) return;
+  const now = new Date().toISOString();
+  const patch = change === "suspend" ? { status: "suspended", updated_at: now } : { status: "active", updated_at: now, paid_at: o.paid_at ?? now, activated_at: o.activated_at ?? now };
+  const { error } = await db().from("workspace_onboarding").update(patch).eq("workspace_id", workspaceId);
+  if (error) throw new Error(error.message);
+  await log(actor, "client.status", "workspace", workspaceId, workspaceId, change === "suspend" ? { status: "suspended", reason: "payment", source: "subscription" } : { status: "active", source: "subscription" });
 }
 
 // ---------------- Payments ----------------
@@ -751,7 +782,7 @@ export interface OpsClientProfile {
   branches: { id: string; name: string; active: boolean; hungerstation: boolean; jahez: boolean; keeta: boolean }[];
   periods: { id: string; label: string | null; platform: string; start: string | null; end: string | null; createdAt: string; superseded: boolean }[];
   /** null when the viewer's role cannot see subscriptions or payments. */
-  subscriptions: { id: string; planName: string | null; price: number; cycle: Cycle; status: SubscriptionStatus; branchCount: number; startsOn: string; endsOn: string | null; notes: string | null }[] | null;
+  subscriptions: { id: string; planName: string | null; price: number; cycle: Cycle; status: SubscriptionStatus; branchCount: number; addons: PlanAddon[]; startsOn: string; endsOn: string | null; notes: string | null }[] | null;
   payments: { id: string; amount: number; paidOn: string; reference: string | null; notes: string | null; hasReceipt: boolean }[] | null;
   timeline: { id: string; source: "ops" | "client"; action: string; actor: string; details: string; createdAt: string }[];
   /** Set only while the client is suspended. */
@@ -878,6 +909,7 @@ export async function getOpsClientProfileOnServer(workspaceId: string): Promise<
           cycle: s["cycle"] as Cycle,
           status: s["status"] as SubscriptionStatus,
           branchCount: Number(s["branch_count"]),
+          addons: (Array.isArray(s["addons"]) ? s["addons"] : []).filter(isPlanAddon),
           startsOn: String(s["starts_on"]),
           endsOn: text(s, "ends_on"),
           notes: text(s, "notes"),
@@ -926,15 +958,21 @@ async function lastSignIns(): Promise<Map<string, string>> {
 export async function getOpsTasksOnServer(): Promise<{ tasks: OpsTask[]; finance: boolean; archivedCount: number }> {
   const actor = await requireOps("clients");
   const finance = opsCan(actor.role, "subscriptions");
-  const [{ data: ws }, { data: onb }, { data: subs }, { data: members }, { data: trial }, archives, logins] = await Promise.all([
+  const [{ data: ws }, { data: onb }, { data: subs }, { data: members }, { data: trial }, archives, logins, planRequests, usage, { data: plans }] = await Promise.all([
     db().from("workspaces").select("id,name,created_at"),
     db().from("workspace_onboarding").select("workspace_id,status,meeting_at,updated_at,contact_mobile,contact_email"),
-    db().from("subscriptions").select("workspace_id,status,ends_on,created_at").order("created_at", { ascending: false }),
+    db().from("subscriptions").select("workspace_id,plan_id,status,ends_on,created_at").order("created_at", { ascending: false }),
     db().from("workspace_members").select("workspace_id,user_id,status"),
     db().from("workspace_audit_events").select("workspace_id").eq("event_type", TRIAL_UPLOAD_EVENT),
     latestArchiveEvents(),
     lastSignIns(),
+    finance ? loadOpenPlanRequests() : Promise.resolve([]),
+    finance ? loadOrderUsage() : Promise.resolve([]),
+    finance ? db().from("subscription_plans").select("id,order_limit") : Promise.resolve({ data: [] }),
   ]);
+  const requestedAt = new Map(planRequests.map((r) => [r.workspaceId, r.requestedAt]));
+  const usageOf = new Map(usage.map((u) => [u.workspaceId, u]));
+  const limitOf = new Map(((plans ?? []) as Row[]).map((p) => [String(p["id"]), typeof p["order_limit"] === "number" ? (p["order_limit"] as number) : null]));
   const { data: requests } = await db()
     .from("workspace_audit_events")
     .select("workspace_id,created_at")
@@ -982,6 +1020,12 @@ export async function getOpsTasksOnServer(): Promise<{ tasks: OpsTask[]; finance
         return at && (!changed || at > changed) ? at : null;
       })(),
       subscription: sub ? { status: sub["status"] as SubscriptionStatus, endsOn: (sub["ends_on"] as string | null) ?? null } : null,
+      planRequestedAt: requestedAt.get(id) ?? null,
+      overLimit: (() => {
+        const limit = sub && LIVE_SUBSCRIPTION_STATUSES.includes(sub["status"] as SubscriptionStatus) ? limitOf.get(String(sub["plan_id"])) ?? null : null;
+        const u = usageOf.get(id);
+        return limit !== null && !!u && u.latest > limit && u.previous > limit;
+      })(),
     };
   });
   return { tasks: buildOpsTasks(clients, new Date(), { finance }), finance, archivedCount };
