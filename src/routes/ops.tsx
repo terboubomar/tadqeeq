@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { OPS_ROLE_LABELS, opsAllowedHost, opsCan, type OpsSection } from "@/lib/ops";
 import { getOpsMe, getOpsTasks } from "@/lib/ops.functions";
+import { OpsMfa } from "@/components/OpsMfa";
 import { OpsRoleContext } from "@/components/OpsShared";
 import { LogoMark } from "@/components/brand/Logo";
 import { NOINDEX } from "@/lib/seo";
@@ -82,7 +83,7 @@ function OpsLayout() {
   const tasks = useQuery({
     queryKey: ["ops-tasks"],
     queryFn: () => getOpsTasks({ data: {} }),
-    enabled: opsCan(role, "clients"),
+    enabled: opsCan(role, "clients") && me.data?.mfa !== "required",
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
   });
@@ -94,6 +95,11 @@ function OpsLayout() {
     await supabase.auth.signOut();
     qc.clear();
     window.location.href = "/ops";
+  }
+
+  if (me.data.mfa === "required") {
+    // The session upgraded to aal2: reload everything ops shows with the new token.
+    return <OpsMfa email={me.data.email} onDone={() => void qc.invalidateQueries()} onSignOut={() => void signOut()} />;
   }
 
   const badges = { tasks: tasks.data?.tasks.length ?? 0, archived: tasks.data?.archivedCount ?? 0 };

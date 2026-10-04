@@ -12,7 +12,7 @@ The core access model is solid. No cross-company data leak was found. The open i
 |---|---|---|---|
 | H1 | High | ~~Open redirect after sign-in (`/auth?next=/\evil.com`)~~ ✅ fixed | 1 |
 | M1 | Medium | No browser security headers (CSP, clickjacking, HSTS) (✅ headers live; CSP in report-only, enforce after a clean week) | 2 |
-| M2 | Medium | Ops console: no two-step sign-in; reachable on preview hosts | 3 |
+| M2 | Medium | Ops console: no two-step sign-in; reachable on preview hosts (✅ two-step sign-in built; host limit after `ops.tadqeeq.app` is live) | 3 |
 | M3 | Medium | ~~Payment receipts accept any file type; SVG logos allowed~~ ✅ fixed | 1 |
 | M4 | Medium | Plan limits enforced in the app server only, not the database | 4 |
 | L1 | Low | ~~CSV export formula injection~~ ✅ fixed | 1 |
@@ -104,7 +104,13 @@ Built in `src/lib/security-headers.ts`, applied to every response in `src/server
 
 ---
 
-## Phase 3: ops console protection
+## Phase 3: ops console protection — ✅ two-step sign-in built
+
+Every ops server action now requires a session that passed an authenticator code (Supabase `aal2`), via `requireOps` and `opsMfaState` in `src/lib/ops.ts`. The ops console shows `OpsMfa`: a QR code to set up an authenticator app on first sign-in, then the 6-digit code each time. Server secret `OPS_MFA_REQUIRED=false` turns it off as an emergency switch only.
+
+Not done yet, on purpose:
+- **Hosts:** previews stay allowed until `ops.tadqeeq.app` is confirmed as the way the team opens ops, so nobody is locked out. The two-step code protects every host meanwhile.
+- **Session length:** after the team has used the code for a while, consider asking for it again every 12 hours.
 
 ### M2 · Ops sign-in is password-only; ops opens on preview hosts — Medium
 
