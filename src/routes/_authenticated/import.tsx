@@ -624,13 +624,11 @@ function HungerStationBranchMappingReviewPanel({
     <div className="space-y-4">
       <div className="rounded-[10px] border border-warning/30 bg-warning/[0.06] p-4">
         <h3 className="text-[15px] font-semibold">
-          تأكيد ربط فروع هنقرستيشن
+          خطوة أخيرة: اربط فروع الفاتورة بفروع ملف الطلبات
         </h3>
         <p className="mt-1.5 text-[12.5px] leading-6 text-muted-foreground">
-          بعض أسماء الفروع في الفاتورة لا تطابق أسماء ملف الطلبات بشكل موثوق.
-          اختر اسم فرع الفاتورة المقابل لكل HS Branch ID. سيُحفظ الربط بعد
-          تأكيدك ويُستخدم في الفترات القادمة، بدون استخدام المبيعات أو الرسوم
-          أو العمولات لتحديد الهوية.
+          هنقرستيشن كتبت أسماء {review.branches.length === 1 ? "فرع" : "بعض الفروع"} في الفاتورة بشكل مختلف عن ملف الطلبات. اختر لكل فرع
+          اسمه في الفاتورة ثم «تأكيد الربط وإعادة التحليل». هذه الخطوة مرة واحدة فقط: نحفظ اختيارك ولن نسألك عنه في الأشهر القادمة.
         </p>
       </div>
 
@@ -641,6 +639,7 @@ function HungerStationBranchMappingReviewPanel({
             className="grid gap-3 rounded-[10px] border border-border bg-white p-4 sm:grid-cols-[minmax(0,1fr)_minmax(240px,1fr)] sm:items-center"
           >
             <div>
+              <p className="text-[11.5px] text-muted-foreground">الفرع في ملف الطلبات</p>
               <p className="text-sm font-semibold">{branch.branch}</p>
               <p className="num mt-1 text-[11.5px] text-muted-foreground">
                 HS Branch ID: {branch.branchId}
@@ -690,8 +689,7 @@ function HungerStationBranchMappingReviewPanel({
       </div>
 
       <p className="text-[11.5px] leading-6 text-muted-foreground">
-        إذا لم تكن متأكداً من الربط، اختر «متابعة بدون ربط» وسيبقى الفرع غير
-        مطابق بدلاً من أن يخمّن Tadqeeq.
+        غير متأكد؟ اضغط «متابعة بدون ربط» لحفظ الفترة الآن. يظهر الفرع «غير مطابق» في تقرير الفروع بدلاً من أن يخمّن تدقيق، وباقي الأرقام كما هي.
       </p>
     </div>
   );
@@ -1278,7 +1276,7 @@ function RunDialog({
                 <DialogDescription className="text-sm leading-6">
                   {notice.kind === "missing"
                     ? "اختر ملف بيانات الطلبات أولاً ثم اضغط بدء التحليل."
-                    : "تحتاج مطابقة فروع هنقرستيشن إلى تأكيدك قبل حفظ الفترة. راجع الفروع في الصفحة ثم اضغط تأكيد الربط وإعادة التحليل."}
+                    : "خطوة أخيرة قبل الحفظ: اختر اسم كل فرع كما يظهر في فاتورة هنقرستيشن ثم «تأكيد الربط وإعادة التحليل»، أو «متابعة بدون ربط» لحفظ الفترة الآن. نحفظ اختيارك فلا نسألك عنه مرة أخرى."}
                 </DialogDescription>
               </div>
             </div>

@@ -414,7 +414,7 @@ function BranchPicker({
         </div>
       ) : (
         <p className="text-xs text-destructive">
-          لا توجد فروع نشطة. أضف فرعاً من إعدادات الفروع أولاً.
+          لا توجد فروع بعد. تُضاف الفروع تلقائياً عند رفع ملفات أي منصة، أو عند ربط فرع بـ Telegram.
         </p>
       )}
     </div>
