@@ -148,7 +148,19 @@ async function loadWorkspaceContext(
   if (profileError) throw new Error(profileError.message);
   if (memberError) throw new Error(memberError.message);
 
-  const activeMemberships = (memberships ?? []) as WorkspaceMemberRow[];
+  let activeMemberships = (memberships ?? []) as WorkspaceMemberRow[];
+  if (!activeMemberships.length) {
+    // Accounts created before company workspaces existed get one (with the application form) on first sign-in.
+    const { data: created } = await (client as unknown as { rpc: (fn: string) => Promise<{ data: unknown }> }).rpc("ensure_my_workspace");
+    if (created) {
+      const { data: retry } = await db
+        .from("workspace_members")
+        .select("id,workspace_id,user_id,role,status,created_at")
+        .eq("user_id", actorUserId)
+        .eq("status", "active");
+      activeMemberships = (retry ?? []) as WorkspaceMemberRow[];
+    }
+  }
   if (!activeMemberships.length) {
     throw new Error("لا يوجد حساب Tadqeeq نشط مرتبط بهذا المستخدم.");
   }
