@@ -594,26 +594,45 @@ export async function listSubscriptionsOnServer() {
   }));
 }
 
-/** Orders in each workspace's uploads this month and last month (Riyadh), for plan-limit follow-up. */
+/** Month (YYYY-MM-01) a period's data belongs to: its start date, else its upload date in Riyadh. */
+function dataMonth(periodStart: unknown, createdAt: unknown): string {
+  if (typeof periodStart === "string" && periodStart.length >= 7) return `${periodStart.slice(0, 7)}-01`;
+  const riyadh = new Date(Date.parse(String(createdAt)) + 3 * 3600_000);
+  return `${riyadh.toISOString().slice(0, 7)}-01`;
+}
+
+/** Calendar month before `month` (YYYY-MM-01). */
+function previousMonth(month: string): string {
+  const date = new Date(`${month}T00:00:00Z`);
+  date.setUTCMonth(date.getUTCMonth() - 1);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Each workspace's monthly orders for plan-limit follow-up: all platforms in the latest month its current data
+ * covers, and the month before. Periods replaced by a re-upload are ignored (same rule as my_workspace_plan).
+ */
 export async function workspaceOrderUsageOnServer() {
   await requireOps("subscriptions");
-  const riyadh = new Date(Date.now() + 3 * 3600_000);
-  const monthStart = (offset: number) => new Date(Date.UTC(riyadh.getUTCFullYear(), riyadh.getUTCMonth() + offset, 1) - 3 * 3600_000).toISOString();
+  const since = new Date(Date.now() - 400 * 86400_000).toISOString();
   const { data } = await db()
     .from("periods")
-    .select("workspace_id,created_at,orders:summary->orders")
-    .gte("created_at", monthStart(-1));
-  const usage = new Map<string, { thisMonth: number; lastMonth: number }>();
-  const thisStart = Date.parse(monthStart(0));
+    .select("workspace_id,period_start,created_at,orders:summary->orders")
+    .is("superseded_at", null)
+    .gte("created_at", since);
+  const byWorkspace = new Map<string, Map<string, number>>();
   for (const r of (data ?? []) as Row[]) {
     const id = String(r["workspace_id"]);
     const orders = typeof r["orders"] === "number" ? (r["orders"] as number) : 0;
-    const entry = usage.get(id) ?? { thisMonth: 0, lastMonth: 0 };
-    if (Date.parse(String(r["created_at"])) >= thisStart) entry.thisMonth += orders;
-    else entry.lastMonth += orders;
-    usage.set(id, entry);
+    const months = byWorkspace.get(id) ?? new Map<string, number>();
+    const month = dataMonth(r["period_start"], r["created_at"]);
+    months.set(month, (months.get(month) ?? 0) + orders);
+    byWorkspace.set(id, months);
   }
-  return [...usage.entries()].map(([workspaceId, value]) => ({ workspaceId, ...value }));
+  return [...byWorkspace.entries()].map(([workspaceId, months]) => {
+    const month = [...months.keys()].sort().at(-1)!;
+    return { workspaceId, month, latest: months.get(month) ?? 0, previous: months.get(previousMonth(month)) ?? 0 };
+  });
 }
 
 /** Each client's latest plan request from the app (plan, cycle, add-ons), newest first. */

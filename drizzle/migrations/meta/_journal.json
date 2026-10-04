@@ -267,6 +267,13 @@
       "when": 1790389739960,
       "tag": "0037_order_based_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790476139960,
+      "tag": "0038_three_plans_monthly_orders",
+      "breakpoints": true
     }
   ]
 }

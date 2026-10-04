@@ -42,6 +42,7 @@ import {
   PLAN_FEATURES,
   PRICING_TERMS,
   orderBasedPlans,
+  planIncludesAddon,
   recommendPlan,
   type PublicPlan,
 } from "@/lib/plans";
@@ -2661,7 +2662,7 @@ const PRICING_INCLUDED = [
   "عائد الإعلانات الحقيقي",
   "المراقب الذكي والقراءة الذكية للملفات",
 ];
-const ORDER_PRESETS = [1500, 6000, 20000, 50000];
+const ORDER_PRESETS = [5000, 12000, 30000, 60000];
 
 function Pricing({ plans }: { plans: PublicPlan[] }) {
   const ordered = orderBasedPlans(plans);
@@ -2675,6 +2676,9 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
   const recommended = orders !== null ? recommendPlan(plans, orders) : null;
   const yearly = cycle === "yearly";
   const largestLimit = Math.max(0, ...plans.map((plan) => plan.orderLimit ?? 0));
+  const bundled = (plan: PublicPlan) => PLAN_ADDONS.some((addon) => planIncludesAddon(plan.features, addon.key));
+  const addonFor = plans.filter((plan) => !bundled(plan) && !plan.customPrice).map((plan) => plan.name);
+  const addonIn = plans.filter(bundled).map((plan) => plan.name);
 
   return (
     <section id="pricing" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
@@ -2726,7 +2730,12 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
         </div>
       </div>
 
-      <div className="mt-6 grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div
+        className={cn(
+          "mt-6 grid items-stretch gap-4 sm:grid-cols-2",
+          plans.length <= 3 ? "lg:grid-cols-3" : plans.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-5",
+        )}
+      >
         {plans.map((plan) => {
           const fit = recommended?.id === plan.id;
           const dark = fit || (recommended === null && plan.highlighted);
@@ -2746,9 +2755,21 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
               ) : null}
               <div>
                 <h3 className="font-display text-xl font-extrabold">{plan.name}</h3>
-                <p className={cn("num mt-1 text-sm", dark ? "text-ink-muted" : "text-muted-foreground")}>
-                  {plan.orderLimit !== null ? `حتى ${plan.orderLimit.toLocaleString("en-US")} طلب شهرياً` : `أكثر من ${largestLimit.toLocaleString("en-US")} طلب شهرياً`}
+                <p className={cn("mt-1 text-sm", dark ? "text-ink-muted" : "text-muted-foreground")}>
+                  {plan.orderLimit !== null || plan.customPrice ? (
+                    <>
+                      {plan.customPrice ? "أكثر من" : "حتى"} <span className="num">{(plan.orderLimit ?? largestLimit).toLocaleString("en-US")}</span> طلب شهرياً
+                    </>
+                  ) : (
+                    "طلبات بلا حدود"
+                  )}
                 </p>
+                {bundled(plan) ? (
+                  <p className={cn("mt-3 flex gap-2 text-sm font-semibold", dark ? "text-primary" : "text-primary-text")}>
+                    <Check className="mt-0.5 size-4 shrink-0" />
+                    يشمل Tadqeeq AI ومركز التعويضات مع بوت Telegram
+                  </p>
+                ) : null}
               </div>
               {plan.customPrice ? (
                 <p className="font-display text-2xl font-extrabold">بالاتفاق</p>
@@ -2789,7 +2810,10 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
         </div>
         {PLAN_ADDONS.map((addon) => (
           <div key={addon.key} data-reveal className="rounded-[22px] bg-secondary p-6">
-            <p className="text-xs font-semibold text-primary-text">إضافة اختيارية</p>
+            <p className="text-xs font-semibold text-primary-text">
+              {addonFor.length ? `إضافة اختيارية ${addonFor.length === 1 ? "لباقة" : addonFor.length === 2 ? "لباقتي" : "لباقات"} ${addonFor.join(" و")}` : "إضافة اختيارية"}
+              {addonIn.length ? ` · مشمولة في ${addonIn.join(" و")}` : ""}
+            </p>
             <p className="mt-2 font-display text-lg font-extrabold leading-8">{addon.label}</p>
             <p className="mt-2 text-sm leading-7 text-foreground/80">
               اعترض على التعويضات بفيديو من قروب الفرع، واسأل عن أرقامك بلغة بسيطة.

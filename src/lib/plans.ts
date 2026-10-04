@@ -52,7 +52,7 @@ export interface PublicPlan {
   uploadLimit: number | null;
   description: string | null;
   highlighted: boolean;
-  /** Stable key of the order-based plans (start, growth, scale, groups, enterprise); null for older plans. */
+  /** Stable key of the order-based plans (start, growth, unlimited; older: scale, groups, enterprise); null for older plans. */
   code: string | null;
   /** Orders checked per month the plan is sized for (soft limit); null = no limit. */
   orderLimit: number | null;
@@ -67,16 +67,25 @@ export function orderBasedPlans(plans: PublicPlan[]): PublicPlan[] {
   return plans.filter((plan) => plan.code !== null);
 }
 
-/** The smallest order-based plan sized for `orders` a month (the custom plan above the largest limit). */
+/** The smallest order-based plan sized for `orders` a month; above every limit, the unlimited plan (or the one priced by agreement). */
 export function recommendPlan(plans: PublicPlan[], orders: number): PublicPlan | null {
-  const sized = orderBasedPlans(plans).filter((plan) => !plan.customPrice && plan.orderLimit !== null);
+  const coded = orderBasedPlans(plans);
+  const sized = coded.filter((plan) => !plan.customPrice && plan.orderLimit !== null);
   const fit = sized.filter((plan) => orders <= (plan.orderLimit ?? 0)).sort((a, b) => (a.orderLimit ?? 0) - (b.orderLimit ?? 0))[0];
-  return fit ?? orderBasedPlans(plans).find((plan) => plan.customPrice) ?? null;
+  return fit ?? coded.find((plan) => !plan.customPrice && plan.orderLimit === null) ?? coded.find((plan) => plan.customPrice) ?? null;
+}
+
+const ARABIC_MONTHS = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+
+/** "طلبات سبتمبر" for the month monthly orders are counted from (YYYY-MM-01); "طلبات آخر شهر" before any upload. */
+export function ordersMonthLabel(month: string | null): string {
+  const index = month ? Number(month.slice(5, 7)) - 1 : -1;
+  return ARABIC_MONTHS[index] ? `طلبات ${ARABIC_MONTHS[index]}` : "طلبات آخر شهر";
 }
 
 export type PlanAddon = "compensation_ai";
 
-/** Paid on top of any plan. The one package: compensation center with the Telegram bot, and Tadqeeq AI. */
+/** Paid on top of a plan that does not include it. The one package: compensation center with the Telegram bot, and Tadqeeq AI. */
 export const PLAN_ADDONS: Array<{ key: PlanAddon; label: string; features: PlanFeature[]; price: number; months: number }> = [
   {
     key: "compensation_ai",
@@ -86,6 +95,12 @@ export const PLAN_ADDONS: Array<{ key: PlanAddon; label: string; features: PlanF
     months: 4,
   },
 ];
+
+/** The plan already includes everything the add-on unlocks (the unlimited plan includes the package). */
+export function planIncludesAddon(features: readonly PlanFeature[], addon: PlanAddon): boolean {
+  const unlocks = PLAN_ADDONS.find((item) => item.key === addon)?.features ?? [];
+  return unlocks.length > 0 && unlocks.every((feature) => features.includes(feature));
+}
 
 export function isPlanAddon(value: unknown): value is PlanAddon {
   return PLAN_ADDONS.some((addon) => addon.key === value);

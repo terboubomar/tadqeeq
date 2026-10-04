@@ -20,7 +20,8 @@ export interface WorkspaceClientContext {
   uploadLimit: number | null;
   uploadsThisMonth: number;
   orderLimit: number | null;
-  ordersThisMonth: number;
+  monthlyOrders: number;
+  ordersMonth: string | null;
   addons: string[];
   trial: boolean;
   planLockedPermissions: readonly WorkspacePermission[];
@@ -55,7 +56,8 @@ export async function getMyWorkspaceContextOnServer(): Promise<WorkspaceClientCo
     uploadLimit: context.uploadLimit,
     uploadsThisMonth: context.uploadsThisMonth,
     orderLimit: context.orderLimit,
-    ordersThisMonth: context.ordersThisMonth,
+    monthlyOrders: context.monthlyOrders,
+    ordersMonth: context.ordersMonth,
     addons: context.addons,
     trial: context.trial,
     planLockedPermissions: context.planLockedPermissions,

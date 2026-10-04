@@ -36,5 +36,6 @@
   "0034_smart_watch": "531a402758b2981d4e2b628c446bd0c24926650723b205d7f440263a506c28c6",
   "0035_format_column_aliases": "e9747fafbd185837753c608adc8f56ee874e977b2ee0c6ce8c6cb6d35aec8008",
   "0036_platform_column_snapshots": "5f2ff8b4cac2a59acd1f2a59128de3939b04958c95991a59d94015bf532cffc8",
-  "0037_order_based_plans": "0457ff6d53ac80e9a5e697d4a3e328e53895e6cd8b7536f6c73d5a12ff2ff3ad"
+  "0037_order_based_plans": "0457ff6d53ac80e9a5e697d4a3e328e53895e6cd8b7536f6c73d5a12ff2ff3ad",
+  "0038_three_plans_monthly_orders": "cfbba240c4685da788015fcd2e015a988139cdfc3fe19d5a1b61bac0d9049811"
 }

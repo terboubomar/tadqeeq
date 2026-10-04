@@ -13,6 +13,7 @@ import {
   orderBasedPlans,
   PLAN_ADDONS,
   PLAN_FEATURES,
+  planIncludesAddon,
   PRICING_TERMS,
   TRIAL_FEATURES,
   type PublicPlan,
@@ -93,7 +94,8 @@ function orderPlanLines(plan: PublicPlan): string {
     plan.customPrice
       ? "- Price: by agreement (contact us)"
       : `- Price: ${plan.price.toLocaleString("en-US")} SAR per month${plan.priceYearly !== null ? ` or ${plan.priceYearly.toLocaleString("en-US")} SAR per year` : ""}`,
-    `- Orders checked per month: ${plan.orderLimit === null ? "more than the largest plan" : `up to ${plan.orderLimit.toLocaleString("en-US")}`}`,
+    `- Orders checked per month: ${plan.orderLimit !== null ? `up to ${plan.orderLimit.toLocaleString("en-US")}` : plan.customPrice ? "more than the largest plan" : "unlimited"}`,
+    ...PLAN_ADDONS.filter((addon) => planIncludesAddon(plan.features, addon.key)).map((addon) => `- Includes the add-on: ${addon.label}`),
     ...(plan.description ? [`- For: ${plan.description}`] : []),
   ].join("\n");
 }
@@ -121,7 +123,10 @@ function pricingBody(plans: PublicPlan[]): string {
     ordered.map(orderPlanLines).join("\n\n"),
     "## Add-on",
     "",
-    ...PLAN_ADDONS.map((addon) => `- ${addon.label}: ${addon.price} SAR every ${addon.months} months`),
+    ...PLAN_ADDONS.map((addon) => {
+      const bundled = ordered.filter((plan) => planIncludesAddon(plan.features, addon.key)).map((plan) => plan.name);
+      return `- ${addon.label}: ${addon.price} SAR every ${addon.months} months${bundled.length ? ` (included in ${bundled.join(", ")})` : ""}`;
+    }),
     "",
     "## Terms",
     "",
