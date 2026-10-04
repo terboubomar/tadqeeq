@@ -288,6 +288,13 @@
       "when": 1791217999573,
       "tag": "0040_mcp_audit_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791304399573,
+      "tag": "0041_mcp_access_with_addon",
+      "breakpoints": true
     }
   ]
 }

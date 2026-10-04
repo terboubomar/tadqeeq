@@ -24,6 +24,7 @@ import {
   Megaphone,
   PieChart,
   Play,
+  Plus,
   Radar,
   Columns3,
   Sparkles,
@@ -41,10 +42,13 @@ import {
   PLAN_ADDONS,
   PLAN_FEATURES,
   PRICING_TERMS,
-  MCP_PLAN_CODE,
   orderBasedPlans,
+  planCardItems,
+  planComparison,
   planIncludesAddon,
   recommendPlan,
+  type ComparisonCell,
+  type ComparisonRow,
   type PublicPlan,
 } from "@/lib/plans";
 import { cn } from "@/lib/utils";
@@ -559,6 +563,8 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         <ProductShowcase />
 
         <ChecksGrid />
+
+        <AssistantSection />
 
         <Audiences />
 
@@ -1907,6 +1913,97 @@ function CheckTile({
   );
 }
 
+const ASSISTANT_STEPS = [
+  { title: "اكتب طلبك في المحادثة", body: "مثل: «دقق فاتورة هنقرستيشن لشهر سبتمبر، رسوم البنك 1.8%»." },
+  { title: "ارفع من الرابط الجاهز", body: "رابط آمن فيه المنصة والنسبة مسبقاً. تسحب ملف الطلبات والفاتورة وتضغط تحليل." },
+  { title: "اسأل عن النتيجة", body: "الفروقات وما تطالب به، أعلى الفروع تكلفة، والمقارنة مع الشهر الماضي، في نفس المحادثة." },
+];
+
+/** Using Tadqeeq from Claude or ChatGPT (the MCP: الشاملة, or the add-on on other plans): three steps and an illustrative chat. */
+function AssistantSection() {
+  return (
+    <section id="assistant" className="bg-ink text-ink-foreground">
+      <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:py-28">
+        <div data-reveal>
+          <p className="flex items-center gap-2 text-[13px] font-semibold text-primary">
+            <span className="size-1.5 rounded-full bg-primary" />
+            جديد · في الشاملة، أو كإضافة لباقتك
+          </p>
+          <h2 className="mt-3 font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]">دقّق فواتيرك من داخل Claude و ChatGPT.</h2>
+          <p className="mt-4 text-base leading-8 text-ink-muted sm:text-[17px]">
+            اربط حساب تدقيق بمساعدك الذكي واطلب التدقيق بجملة. يعطيك رابط رفع جاهز، وبعد الرفع يشرح لك النتيجة في نفس المحادثة. الأرقام من
+            المحرك المحاسبي في تدقيق، والمساعد يشرحها فقط.
+          </p>
+          <ol className="mt-8 space-y-5">
+            {ASSISTANT_STEPS.map((step, index) => (
+              <li key={step.title} className="flex gap-4">
+                <span className="num grid size-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{index + 1}</span>
+                <span>
+                  <span className="block font-semibold">{step.title}</span>
+                  <span className="mt-1 block text-sm leading-7 text-ink-muted">{step.body}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+          <a href="#pricing" className="mt-8 inline-flex h-11 w-fit items-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground">
+            اطّلع على الباقات
+            <ArrowLeft className="size-4" />
+          </a>
+        </div>
+        <AssistantChatMock />
+      </div>
+    </section>
+  );
+}
+
+function AssistantChatMock() {
+  const user = "ms-auto max-w-[85%] rounded-2xl rounded-se-sm bg-primary px-4 py-3 text-sm leading-7 text-primary-foreground";
+  const bot = "max-w-[92%] rounded-2xl rounded-ss-sm bg-ink-foreground/10 px-4 py-3 text-sm leading-7";
+  return (
+    <div data-reveal aria-label="مثال توضيحي لمحادثة مع المساعد" className="rounded-[22px] border border-ink-foreground/15 bg-ink-foreground/[0.04] p-4 sm:p-6">
+      <div className="mb-4 flex items-center justify-between text-xs text-ink-muted">
+        <span className="flex items-center gap-2">
+          <Sparkles className="size-4 text-primary" />
+          Claude · ChatGPT + تدقيق
+        </span>
+        <span className="rounded-full border border-ink-foreground/20 px-2.5 py-0.5">مثال توضيحي</span>
+      </div>
+      <div className="space-y-3">
+        <p className={user}>دقق فاتورة هنقرستيشن لشهر سبتمبر، رسوم البنك 1.8%</p>
+        <div className={bot}>
+          جهّزت لك رابط الرفع. ارفع ملف الطلبات والفاتورة ثم ارجع واكتب «خلصت».
+          <span className="mt-2 flex items-center gap-2 rounded-xl bg-ink-foreground/10 px-3 py-2 text-xs">
+            <Upload className="size-4 shrink-0 text-primary" />
+            <span dir="ltr" className="num truncate">tadqeeq.app/import</span>
+            <span className="ms-auto shrink-0 text-ink-muted">
+              هنقرستيشن · <span className="num">1.8%</span>
+            </span>
+          </span>
+        </div>
+        <p className={user}>خلصت</p>
+        <div className={bot}>
+          <p>دققت سبتمبر لـ <span className="num">6</span> فروع:</p>
+          <ul className="mt-2 space-y-1.5">
+            <li className="flex justify-between gap-3">
+              <span>فرق في العمولة (<span className="num">3</span> فروع)</span>
+              <span className="font-semibold text-primary"><span className="num">2,340</span> ر.س</span>
+            </li>
+            <li className="flex justify-between gap-3">
+              <span>تعويضات بدون دليل</span>
+              <span className="font-semibold text-primary"><span className="num">1,180</span> ر.س</span>
+            </li>
+            <li className="flex justify-between gap-3 border-t border-ink-foreground/15 pt-1.5">
+              <span className="font-semibold">تستطيع المطالبة بـ</span>
+              <span className="font-bold"><span className="num">3,520</span> ر.س</span>
+            </li>
+          </ul>
+          <p className="mt-2 text-ink-muted">أعلى فرع تكلفة: العليا. تبي أقارنه مع أغسطس؟</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SectionIntro({
   eyebrow,
   title,
@@ -2655,14 +2752,6 @@ function CompensationStepVisual({ step, active }: { step: number; active: boolea
 }
 
 /** What every order-based plan includes. */
-const PRICING_INCLUDED = [
-  "فروع ومنصات ومستخدمون بلا حدود",
-  "رفع ملفات بلا حدود",
-  "مطابقة الفاتورة وخريطة الرسوم",
-  "مركز الاستثناءات والعقود",
-  "عائد الإعلانات الحقيقي",
-  "المراقب الذكي والقراءة الذكية للملفات",
-];
 const ORDER_PRESETS = [5000, 12000, 30000, 60000];
 
 function Pricing({ plans }: { plans: PublicPlan[] }) {
@@ -2680,6 +2769,9 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
   const bundled = (plan: PublicPlan) => PLAN_ADDONS.some((addon) => planIncludesAddon(plan.features, addon.key));
   const addonFor = plans.filter((plan) => !bundled(plan) && !plan.customPrice).map((plan) => plan.name);
   const addonIn = plans.filter(bundled).map((plan) => plan.name);
+  const comparison = planComparison(plans);
+  const addon = PLAN_ADDONS[0];
+  const featured = (plan: PublicPlan) => recommended?.id === plan.id || (recommended === null && plan.highlighted);
 
   return (
     <section id="pricing" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
@@ -2737,7 +2829,7 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
           plans.length <= 3 ? "lg:grid-cols-3" : plans.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-5",
         )}
       >
-        {plans.map((plan) => {
+        {plans.map((plan, index) => {
           const fit = recommended?.id === plan.id;
           const dark = fit || (recommended === null && plan.highlighted);
           const price = yearly && plan.priceYearly !== null ? plan.priceYearly : plan.price;
@@ -2765,18 +2857,6 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
                     "طلبات بلا حدود"
                   )}
                 </p>
-                {bundled(plan) ? (
-                  <p className={cn("mt-3 flex gap-2 text-sm font-semibold", dark ? "text-primary" : "text-primary-text")}>
-                    <Check className="mt-0.5 size-4 shrink-0" />
-                    يشمل Tadqeeq AI ومركز التعويضات مع بوت Telegram
-                  </p>
-                ) : null}
-                {plan.code === MCP_PLAN_CODE ? (
-                  <p className={cn("mt-2 flex gap-2 text-sm font-semibold", dark ? "text-primary" : "text-primary-text")}>
-                    <Check className="mt-0.5 size-4 shrink-0" />
-                    ودقّق فواتيرك من داخل Claude وChatGPT
-                  </p>
-                ) : null}
               </div>
               {plan.customPrice ? (
                 <p className="font-display text-2xl font-extrabold">بالاتفاق</p>
@@ -2792,41 +2872,35 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
                 to="/auth"
                 search={{ mode: "signup" }}
                 className={cn(
-                  "mt-auto inline-flex h-11 items-center justify-center rounded-full text-sm font-bold",
+                  "inline-flex h-11 items-center justify-center rounded-full text-sm font-bold",
                   dark ? "bg-primary text-primary-foreground" : "bg-ink text-ink-foreground",
                 )}
               >
                 {plan.customPrice ? "تواصل معنا" : "ابدأ تجربتك المجانية"}
               </Link>
+              <PlanCardFeatures plans={plans} index={index} dark={dark} addonOffered={!bundled(plan) && !plan.customPrice && !!addon} />
             </article>
           );
         })}
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        <div data-reveal className="rounded-[22px] border border-border bg-card p-6">
-          <p className="text-sm font-bold">مشمول في كل الباقات</p>
-          <ul className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-            {PRICING_INCLUDED.map((label) => (
-              <li key={label} className="flex gap-2.5">
-                <Check className="size-4 shrink-0 text-success" />
-                {label}
-              </li>
-            ))}
-          </ul>
-        </div>
+      <PlanComparisonTable plans={plans} rows={comparison} featured={featured} yearly={yearly} />
+
+      <div className="mt-6 grid gap-4">
         {PLAN_ADDONS.map((addon) => (
-          <div key={addon.key} data-reveal className="rounded-[22px] bg-secondary p-6">
+          <div key={addon.key} data-reveal className="rounded-[22px] bg-secondary p-6 sm:flex sm:items-center sm:justify-between sm:gap-8">
+            <div>
             <p className="text-xs font-semibold text-primary-text">
               {addonFor.length ? `إضافة اختيارية ${addonFor.length === 1 ? "لباقة" : addonFor.length === 2 ? "لباقتي" : "لباقات"} ${addonFor.join(" و")}` : "إضافة اختيارية"}
               {addonIn.length ? ` · مشمولة في ${addonIn.join(" و")}` : ""}
             </p>
             <p className="mt-2 font-display text-lg font-extrabold leading-8">{addon.label}</p>
             <p className="mt-2 text-sm leading-7 text-foreground/80">
-              اعترض على التعويضات بفيديو من قروب الفرع، واسأل عن أرقامك بلغة بسيطة.
+              اعترض على التعويضات بفيديو من قروب الفرع، واسأل عن أرقامك بلغة بسيطة، ودقّق فواتيرك من داخل Claude و ChatGPT.
             </p>
-            <p className="mt-3 font-semibold">
-              <span className="num">{addon.price.toLocaleString("en-US")}</span> ر.س كل {addon.months} أشهر
+            </div>
+            <p className="mt-3 shrink-0 font-semibold sm:mt-0">
+              <span className="num text-2xl">{addon.price.toLocaleString("en-US")}</span> ر.س كل {addon.months} أشهر
             </p>
           </div>
         ))}
@@ -2839,6 +2913,119 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
       </ul>
     </section>
   );
+}
+
+/** What a plan card includes: its own list, or "everything in the previous plan" plus what it adds. */
+function PlanCardFeatures({ plans, index, dark, addonOffered }: { plans: PublicPlan[]; index: number; dark: boolean; addonOffered: boolean }) {
+  const { basedOn, items } = planCardItems(plans, index);
+  const addon = PLAN_ADDONS[0];
+  return (
+    <div className={cn("mt-1 border-t pt-4 text-sm", dark ? "border-ink-foreground/15" : "border-border")}>
+      {basedOn ? (
+        <p className="font-semibold">{items.length ? `كل ما في ${basedOn}، و:` : `كل ما في ${basedOn}، مع حد طلبات أعلى.`}</p>
+      ) : (
+        <p className="font-semibold">تشمل:</p>
+      )}
+      {items.length ? (
+        <ul className="mt-3 space-y-2.5">
+          {items.map((item) => (
+            <li key={item} className="flex gap-2.5 leading-6">
+              <Check className={cn("mt-0.5 size-4 shrink-0", dark ? "text-primary" : "text-success")} />
+              {item}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {addonOffered && addon ? (
+        <p className={cn("mt-3 flex gap-2.5 leading-6", dark ? "text-ink-muted" : "text-muted-foreground")}>
+          <Plus className="mt-0.5 size-4 shrink-0" />
+          <span>
+            <span className="block font-semibold">
+              إضافة اختيارية · <span className="num">{addon.price.toLocaleString("en-US")}</span> ر.س كل {addon.months} أشهر
+            </span>
+            <span className="block">مركز التعويضات، و Tadqeeq AI، والتدقيق من Claude و ChatGPT</span>
+          </span>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Every feature against every plan, so a restaurant can compare at a glance. */
+function PlanComparisonTable({
+  plans,
+  rows,
+  featured,
+  yearly,
+}: {
+  plans: PublicPlan[];
+  rows: ComparisonRow[];
+  featured: (plan: PublicPlan) => boolean;
+  yearly: boolean;
+}) {
+  return (
+    <div data-reveal className="mt-10">
+      <h3 className="font-display text-xl font-extrabold">قارن الباقات</h3>
+      <div className="mt-4 overflow-x-auto rounded-[22px] border border-border bg-card">
+        <table className="w-full table-fixed text-[12.5px] sm:text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              <th scope="col" className="w-[34%] p-2.5 text-start font-semibold text-muted-foreground sm:w-[40%] sm:p-4">
+                الميزة
+              </th>
+              {plans.map((plan) => {
+                const price = yearly && plan.priceYearly !== null ? plan.priceYearly : plan.price;
+                return (
+                  <th key={plan.id} scope="col" className={cn("p-2 text-center align-bottom sm:p-4", featured(plan) && "bg-secondary")}>
+                    <span className="block font-display text-sm font-extrabold sm:text-base">{plan.name}</span>
+                    <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                      {plan.customPrice ? (
+                        "بالاتفاق"
+                      ) : (
+                        <>
+                          <span className="num">{price.toLocaleString("en-US")}</span> ر.س / {yearly && plan.priceYearly !== null ? "سنوياً" : "شهرياً"}
+                        </>
+                      )}
+                    </span>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.label} className="border-b border-border/70 last:border-0">
+                <th scope="row" className="p-2.5 text-start font-medium leading-6 sm:p-4">
+                  {row.label}
+                </th>
+                {row.cells.map((cell, index) => (
+                  <td key={plans[index]!.id} className={cn("p-2 text-center sm:p-4", featured(plans[index]!) && "bg-secondary/60")}>
+                    <ComparisonValue cell={cell} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ComparisonValue({ cell }: { cell: ComparisonCell }) {
+  if (cell.kind === "yes") return <Check aria-label="مشمول" className="mx-auto size-5 text-success" />;
+  if (cell.kind === "no") return <span aria-label="غير متاح" className="text-muted-foreground">—</span>;
+  if (cell.kind === "addon") {
+    // "إضافة · 399 ر.س / 4 أشهر" → the word on one line and the price under it, so it fits a phone column.
+    const [word, price] = cell.text.split(" · ");
+    return (
+      <span className="text-xs font-semibold leading-5 text-primary-text">
+        {word}
+        {price ? <span className="block font-normal">{price.split(/(\d[\d,]*)/).map((part, i) => (/^\d/.test(part) ? <span key={i} className="num">{part}</span> : part))}</span> : null}
+      </span>
+    );
+  }
+  return <span className="font-semibold">{cell.text.split(/(\d[\d,]*)/).map((part, i) => (/^\d/.test(part) ? <span key={i} className="num">{part}</span> : part))}</span>;
 }
 
 function LegacyPricing({ plans }: { plans: PublicPlan[] }) {

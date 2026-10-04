@@ -6,7 +6,7 @@ export default defineTool({
   name: "get_account",
   title: "Connected account",
   description:
-    "Which Tadqeeq account is connected: email, company workspace, role and plan, and whether this assistant may use Tadqeeq (الشاملة plan). Call this first, or when other tools return nothing.",
+    "Which Tadqeeq account is connected: email, company workspace, role and plan, and whether this assistant may use Tadqeeq (الشاملة plan or the add-on). Call this first, or when other tools return nothing.",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_args, ctx) => {

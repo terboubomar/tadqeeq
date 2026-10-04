@@ -56,7 +56,7 @@ export const FAQS: Array<[question: string, answer: string]> = [
   ],
   [
     "هل أستطيع استخدام تدقيق من ChatGPT أو Claude؟",
-    "نعم، في باقة الشاملة. تربط حسابك بـ Claude أو ChatGPT، وتكتب مثلاً «دقق فاتورة هنقرستيشن لشهر سبتمبر ونسبة رسوم البنك 1.8%»، فيعطيك رابط رفع آمن جاهز بالمنصة والنسبة. بعد الرفع يشرح لك النتيجة في المحادثة: الفروقات وما تستطيع المطالبة به وأعلى الفروع تكلفة. الأرقام دائماً من المحرك المحاسبي في تدقيق.",
+    "نعم، في باقة الشاملة، أو مع الإضافة (399 ر.س كل 4 أشهر) في البداية والنمو. تربط حسابك بـ Claude أو ChatGPT، وتكتب مثلاً «دقق فاتورة هنقرستيشن لشهر سبتمبر ونسبة رسوم البنك 1.8%»، فيعطيك رابط رفع آمن جاهز بالمنصة والنسبة. بعد الرفع يشرح لك النتيجة في المحادثة: الفروقات وما تستطيع المطالبة به وأعلى الفروع تكلفة. الأرقام دائماً من المحرك المحاسبي في تدقيق.",
   ],
   ["هل يغيّر الذكاء الاصطناعي أي رقم؟", "لا. الأرقام من المحرك المحاسبي، والذكاء الاصطناعي يشرح ويلخص النتائج فقط."],
   ["هل بيانات شركتي منفصلة؟", "نعم. لكل شركة مساحة خاصة، مع صلاحيات تحدد ما يراه ويعدله كل موظف."],
@@ -102,6 +102,12 @@ export const FEATURES: Array<{ name: string; nameEn: string; description: string
     nameEn: "Smart file reading",
     description:
       "Matches renamed columns after a one-time confirmation and warns about new or vanished money columns instead of computing an unreliable result. Large monthly exports (up to 25 MB per file) are supported.",
+  },
+  {
+    name: "تدقيق من داخل Claude وChatGPT",
+    nameEn: "Tadqeeq in Claude and ChatGPT (MCP)",
+    description:
+      "On the الشاملة plan, or with the add-on on any plan, connect Tadqeeq to Claude or ChatGPT: ask for an audit in the chat, upload the files through a secure pre-filled link, then ask about the result (differences to claim, costliest branches, month comparisons). Numbers come from the accounting engine.",
   },
   {
     name: "Tadqeeq AI",

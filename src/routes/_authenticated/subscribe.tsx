@@ -16,7 +16,7 @@ import {
   PRICING_TERMS,
   featureForPermission,
   lockedFeatureLabel,
-  MCP_PLAN_CODE,
+  planHasAssistant,
   orderBasedPlans,
   ordersMonthLabel,
   planIncludesAddon,
@@ -218,7 +218,7 @@ function PlanPicker({ plans: allPlans }: { plans: PublicPlan[] }) {
               {PLAN_ADDONS.some((addon) => planIncludesAddon(plan.features, addon.key)) ? (
                 <span className="text-xs font-semibold text-primary-text">يشمل Tadqeeq AI ومركز التعويضات</span>
               ) : null}
-              {plan.code === MCP_PLAN_CODE ? <span className="text-xs font-semibold text-primary-text">والتدقيق من داخل Claude وChatGPT</span> : null}
+              {planHasAssistant(plan.features) ? <span className="text-xs font-semibold text-primary-text">والتدقيق من داخل Claude و ChatGPT</span> : null}
               <span className="mt-auto pt-2">
                 {plan.customPrice ? (
                   <span className="font-semibold">بالاتفاق</span>
@@ -251,7 +251,8 @@ function PlanPicker({ plans: allPlans }: { plans: PublicPlan[] }) {
                 <span>
                   <span className="block font-bold">إضافة: {addon.label}</span>
                   <span className="mt-1 block text-sm leading-7 text-muted-foreground">
-                    الكاشير يرسل فيديو الطلب في قروب الفرع، وتدقيق يربطه برقم الطلب ويجهّز طلب مراجعة التعويض. ومعه Tadqeeq AI للأسئلة عن أرقامك.
+                    الكاشير يرسل فيديو الطلب في قروب الفرع، وتدقيق يربطه برقم الطلب ويجهّز طلب مراجعة التعويض. ومعه Tadqeeq AI للأسئلة عن أرقامك،
+                    والتدقيق من داخل Claude و ChatGPT.
                   </span>
                   <span className="mt-1 block text-sm font-semibold">
                     {inPlan ? (

@@ -85,19 +85,21 @@ export function ordersMonthLabel(month: string | null): string {
 
 export type PlanAddon = "compensation_ai";
 
-/** Paid on top of a plan that does not include it. The one package: compensation center with the Telegram bot, and Tadqeeq AI. */
+/** Paid on top of a plan that does not include it. The one package: compensation center with the Telegram bot, Tadqeeq AI, and Tadqeeq in Claude and ChatGPT. */
 export const PLAN_ADDONS: Array<{ key: PlanAddon; label: string; features: PlanFeature[]; price: number; months: number }> = [
   {
     key: "compensation_ai",
-    label: "مركز التعويضات وبوت Telegram + Tadqeeq AI",
+    label: "مركز التعويضات مع بوت Telegram، و Tadqeeq AI",
     features: ["compensation", "ai"],
     price: 399,
     months: 4,
   },
 ];
 
-/** Plan code whose customers can use Tadqeeq from AI assistants (Claude, ChatGPT) through the MCP. */
-export const MCP_PLAN_CODE = "unlimited";
+/** Tadqeeq in Claude and ChatGPT (the MCP) comes with Tadqeeq AI: in الشاملة, or with the add-on on any plan. */
+export function planHasAssistant(features: readonly PlanFeature[]): boolean {
+  return features.includes("ai");
+}
 
 /** The plan already includes everything the add-on unlocks (the unlimited plan includes the package). */
 export function planIncludesAddon(features: readonly PlanFeature[], addon: PlanAddon): boolean {
@@ -115,6 +117,74 @@ export function featuresWithAddons(features: readonly PlanFeature[] | null, addo
   const all = new Set(features);
   for (const addon of PLAN_ADDONS) if (addons.includes(addon.key)) addon.features.forEach((feature) => all.add(feature));
   return [...all];
+}
+
+export type ComparisonCell = { kind: "yes" } | { kind: "no" } | { kind: "addon"; text: string } | { kind: "text"; text: string };
+export interface ComparisonRow {
+  label: string;
+  cells: ComparisonCell[];
+}
+
+const count = (n: number) => n.toLocaleString("en-US");
+
+/** A plan feature's cell: included, available as the paid add-on, or not available. */
+function featureCell(plan: PublicPlan, feature: PlanFeature): ComparisonCell {
+  if (plan.features.includes(feature)) return { kind: "yes" };
+  const addon = PLAN_ADDONS.find((item) => item.features.includes(feature));
+  return addon ? { kind: "addon", text: `إضافة · ${count(addon.price)} ر.س / ${addon.months} أشهر` } : { kind: "no" };
+}
+
+/**
+ * The plan comparison shown on the pricing section (cards and table), built from the plans themselves so a
+ * change in the ops console shows up here. Rows are in the order a restaurant reads them.
+ */
+export function planComparison(plans: PublicPlan[]): ComparisonRow[] {
+  const all = (text: string): ComparisonCell[] => plans.map(() => ({ kind: "text", text }));
+  const yes = (): ComparisonCell[] => plans.map(() => ({ kind: "yes" }));
+  const largest = Math.max(0, ...plans.map((plan) => plan.orderLimit ?? 0));
+  return [
+    {
+      label: "الطلبات المدققة شهرياً",
+      cells: plans.map((plan) => ({
+        kind: "text",
+        text: plan.orderLimit !== null ? `حتى ${count(plan.orderLimit)}` : plan.customPrice ? `أكثر من ${count(largest)}` : "بلا حدود",
+      })),
+    },
+    { label: "الفروع والمنصات والمستخدمون", cells: all("بلا حدود") },
+    { label: "رفع ملفات هنقرستيشن وكيتا وجاهز", cells: all("بلا حدود") },
+    { label: "اللوحة التنفيذية وتقارير الفروع والأيام", cells: yes() },
+    { label: "مطابقة الفاتورة وخريطة الرسوم", cells: plans.map((plan) => featureCell(plan, "invoice_audit")) },
+    { label: "عائد الإعلانات الحقيقي وتحليل العروض", cells: plans.map((plan) => featureCell(plan, "invoice_audit")) },
+    { label: "مركز الاستثناءات", cells: plans.map((plan) => featureCell(plan, "exceptions")) },
+    { label: "العقود وشروط المنصات", cells: plans.map((plan) => featureCell(plan, "contracts")) },
+    { label: "المراقب الذكي والقراءة الذكية للملفات", cells: yes() },
+    { label: "مركز التعويضات وبوت Telegram", cells: plans.map((plan) => featureCell(plan, "compensation")) },
+    { label: "Tadqeeq AI للأسئلة عن أرقامك", cells: plans.map((plan) => featureCell(plan, "ai")) },
+    {
+      label: "التدقيق من داخل Claude و ChatGPT",
+      cells: plans.map((plan) => featureCell(plan, "ai")),
+    },
+  ];
+}
+
+/**
+ * What a plan card lists: the first plan's own items, then "everything in <previous>" plus what changes.
+ * The order limit is left out because the card shows it above the price.
+ */
+export function planCardItems(plans: PublicPlan[], index: number): { basedOn: string | null; items: string[] } {
+  const rows = planComparison(plans).slice(1);
+  const describe = (row: ComparisonRow, cell: ComparisonCell) => (cell.kind === "text" ? `${row.label}: ${cell.text}` : row.label);
+  const offered = (cell: ComparisonCell | undefined) => cell?.kind === "yes" || cell?.kind === "text";
+  if (index === 0) {
+    return { basedOn: null, items: rows.filter((row) => offered(row.cells[0])).map((row) => describe(row, row.cells[0]!)) };
+  }
+  const same = (a: ComparisonCell | undefined, b: ComparisonCell | undefined) => JSON.stringify(a) === JSON.stringify(b);
+  return {
+    basedOn: plans[index - 1]?.name ?? null,
+    items: rows
+      .filter((row) => offered(row.cells[index]) && !same(row.cells[index], row.cells[index - 1]))
+      .map((row) => describe(row, row.cells[index]!)),
+  };
 }
 
 /** Shown on every price: what the price excludes and how plans are paid and cancelled. */

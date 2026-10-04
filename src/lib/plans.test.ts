@@ -7,6 +7,8 @@ import {
   isTrialStatus,
   orderBasedPlans,
   ordersMonthLabel,
+  planCardItems,
+  planComparison,
   planIncludesAddon,
   recommendPlan,
   resolvePlanAccess,
@@ -132,5 +134,44 @@ describe("order-based plans", () => {
     expect(featuresWithAddons(null, ["compensation_ai"])).toBeNull();
     expect(isPlanAddon("compensation_ai")).toBe(true);
     expect(isPlanAddon("ai")).toBe(false);
+  });
+});
+
+describe("plan comparison", () => {
+  const base = { cycle: "monthly" as const, uploadLimit: null, description: null, highlighted: false, priceYearly: null, customPrice: false };
+  const core: PublicPlan["features"] = ["invoice_audit", "exceptions", "contracts"];
+  const plans: PublicPlan[] = [
+    { ...base, id: "1", code: "start", name: "البداية", price: 299, orderLimit: 15000, features: core },
+    { ...base, id: "2", code: "growth", name: "النمو", price: 499, orderLimit: 45000, features: core },
+    { ...base, id: "3", code: "unlimited", name: "الشاملة", price: 799, orderLimit: null, features: [...core, "compensation", "ai"] },
+  ];
+  const row = (label: string) => planComparison(plans).find((r) => r.label === label)!.cells;
+
+  test("orders, add-on and the assistant feature differ by plan", () => {
+    expect(row("الطلبات المدققة شهرياً")).toEqual([
+      { kind: "text", text: "حتى 15,000" },
+      { kind: "text", text: "حتى 45,000" },
+      { kind: "text", text: "بلا حدود" },
+    ]);
+    expect(row("مركز التعويضات وبوت Telegram").map((c) => c.kind)).toEqual(["addon", "addon", "yes"]);
+    expect(row("مركز التعويضات وبوت Telegram")[0]).toEqual({ kind: "addon", text: "إضافة · 399 ر.س / 4 أشهر" });
+    expect(row("التدقيق من داخل Claude و ChatGPT").map((c) => c.kind)).toEqual(["addon", "addon", "yes"]);
+    expect(row("مطابقة الفاتورة وخريطة الرسوم").map((c) => c.kind)).toEqual(["yes", "yes", "yes"]);
+  });
+
+  test("cards list the first plan in full, then only what each plan adds", () => {
+    expect(planCardItems(plans, 0).basedOn).toBeNull();
+    expect(planCardItems(plans, 0).items).toContain("الفروع والمنصات والمستخدمون: بلا حدود");
+    expect(planCardItems(plans, 0).items.some((item) => item.startsWith("الطلبات"))).toBe(false);
+    expect(planCardItems(plans, 0).items).not.toContain("مركز التعويضات وبوت Telegram");
+    expect(planCardItems(plans, 1)).toEqual({ basedOn: "البداية", items: [] });
+    expect(planCardItems(plans, 2)).toEqual({
+      basedOn: "النمو",
+      items: [
+        "مركز التعويضات وبوت Telegram",
+        "Tadqeeq AI للأسئلة عن أرقامك",
+        "التدقيق من داخل Claude و ChatGPT",
+      ],
+    });
   });
 });
