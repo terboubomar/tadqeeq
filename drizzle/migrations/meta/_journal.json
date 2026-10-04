@@ -295,6 +295,13 @@
       "when": 1791304399573,
       "tag": "0041_mcp_access_with_addon",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791390799573,
+      "tag": "0042_plan_limits_in_database",
+      "breakpoints": true
     }
   ]
 }

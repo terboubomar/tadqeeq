@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PGlite } from "@electric-sql/pglite";
 
-import { applyMigration, asUser, createMigratedDatabase } from "../test-support/database";
+import { activateAllWorkspaces, applyMigration, asUser, createMigratedDatabase } from "../test-support/database";
 import { caseWriteErrorMessage, normalizeOrderLookupKey } from "./compensation-evidence";
 import {
   advanceCaseWorkflow,
@@ -29,6 +29,7 @@ let secondEvidenceId: string;
 beforeAll(async () => {
   db = await createMigratedDatabase();
   await db.query("insert into auth.users (id, email) values ($1, 'owner@example.com'), ($2, 'agent@example.com')", [OWNER, AGENT]);
+  await activateAllWorkspaces(db);
   workspace = (await db.query<{ id: string }>("select id from public.workspaces where owner_user_id = $1", [OWNER])).rows[0]!.id;
 
   // Branch and a compensation employee assigned to it.

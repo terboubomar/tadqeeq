@@ -69,3 +69,14 @@ export async function asUser<T = Record<string, unknown>>(
 export async function applyMigration(db: PGlite, tag: string): Promise<void> {
   await db.exec(readFileSync(join(HERE, "../../drizzle/migrations", `${tag}.sql`), "utf8"));
 }
+
+/**
+ * Marks every company in the test database as an active client. New sign-ups start in the free trial, where
+ * the database itself allows only the invoice check (migration 0042); tests about roles, isolation and paid
+ * features model active clients instead.
+ */
+export async function activateAllWorkspaces(db: PGlite): Promise<void> {
+  await db.query(
+    "insert into public.workspace_onboarding (workspace_id, status) select id, 'active' from public.workspaces on conflict (workspace_id) do update set status = 'active'",
+  );
+}

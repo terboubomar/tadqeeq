@@ -14,10 +14,10 @@ The core access model is solid. No cross-company data leak was found. The open i
 | M1 | Medium | No browser security headers (CSP, clickjacking, HSTS) (✅ headers live; CSP in report-only, enforce after a clean week) | 2 |
 | M2 | Medium | Ops console: no two-step sign-in; reachable on preview hosts (✅ two-step sign-in built; host limit after `ops.tadqeeq.app` is live) | 3 |
 | M3 | Medium | ~~Payment receipts accept any file type; SVG logos allowed~~ ✅ fixed | 1 |
-| M4 | Medium | Plan limits enforced in the app server only, not the database | 4 |
+| M4 | Medium | ~~Plan limits enforced in the app server only, not the database~~ ✅ fixed (migration 0042) | 4 |
 | L1 | Low | ~~CSV export formula injection~~ ✅ fixed | 1 |
 | L2 | Low | No throttle on plan, reactivation and MCP audit requests | 5 |
-| L3 | Low | Uploaders can write `periods` rows directly through the API | 4 |
+| L3 | Low | ~~Uploaders can write `periods` rows directly through the API~~ ✅ fixed (migration 0042) | 4 |
 | L4 | Low | `ensure_my_workspace` creates workspaces for ops staff and removed members | 5 |
 | L5 | Low | Sign-up password minimum is 6 characters (✅ code fixed; Supabase setting to verify) | 1 + verify |
 | L6 | Low | No dependency vulnerability scanning in CI | 5 |
@@ -131,7 +131,15 @@ Not done yet, on purpose:
 
 ---
 
-## Phase 4: database hardening
+## Phase 4: database hardening — ✅ built (migration 0042)
+
+`private.has_workspace_permission` now combines the unchanged role rules (`private.workspace_role_allows`) with the plan (`private.workspace_feature_allows`):
+- the free trial allows only the invoice check;
+- otherwise the plan's features, plus compensation and AI with the add-on;
+- no plan means everything, as in the app;
+- platform admins are never limited.
+
+Every row-level rule and database function that checks a permission picks this up. Members can no longer insert or update `periods` directly; the upload saves them on the server. Covered by `src/lib/plan-limits-db.db.test.ts`; the older isolation tests now model active clients (`activateAllWorkspaces`). Watch query times on large evidence lists after deploy: gated permissions now do two extra indexed lookups per check.
 
 ### M4 · Plan limits are enforced in the app server only — Medium
 

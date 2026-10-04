@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PGlite } from "@electric-sql/pglite";
 
-import { asUser, createMigratedDatabase } from "../test-support/database";
+import { activateAllWorkspaces, asUser, createMigratedDatabase } from "../test-support/database";
 import { ROLE_PERMISSIONS, type WorkspaceRole } from "./workspace-access";
 
 /**
@@ -41,6 +41,8 @@ beforeAll(async () => {
   }
   wsA = await workspaceOf(U.ownerA);
   wsB = await workspaceOf(U.ownerB);
+  // Active clients without a plan: every paid feature is open, so these tests cover roles and isolation only.
+  await activateAllWorkspaces(db);
 
   const members: Array<[string, WorkspaceRole]> = [
     [U.adminA, "admin"],
