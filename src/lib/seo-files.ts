@@ -10,6 +10,7 @@ import {
 } from "./seo";
 import {
   CORE_FEATURE_LABELS,
+  MCP_PLAN_CODE,
   orderBasedPlans,
   PLAN_ADDONS,
   PLAN_FEATURES,
@@ -96,6 +97,7 @@ function orderPlanLines(plan: PublicPlan): string {
       : `- Price: ${plan.price.toLocaleString("en-US")} SAR per month${plan.priceYearly !== null ? ` or ${plan.priceYearly.toLocaleString("en-US")} SAR per year` : ""}`,
     `- Orders checked per month: ${plan.orderLimit !== null ? `up to ${plan.orderLimit.toLocaleString("en-US")}` : plan.customPrice ? "more than the largest plan" : "unlimited"}`,
     ...PLAN_ADDONS.filter((addon) => planIncludesAddon(plan.features, addon.key)).map((addon) => `- Includes the add-on: ${addon.label}`),
+    ...(plan.code === MCP_PLAN_CODE ? ["- Includes using Tadqeeq from AI assistants (Claude, ChatGPT) through its MCP server: start an audit and ask about results from the chat"] : []),
     ...(plan.description ? [`- For: ${plan.description}`] : []),
   ].join("\n");
 }

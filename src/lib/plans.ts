@@ -96,6 +96,9 @@ export const PLAN_ADDONS: Array<{ key: PlanAddon; label: string; features: PlanF
   },
 ];
 
+/** Plan code whose customers can use Tadqeeq from AI assistants (Claude, ChatGPT) through the MCP. */
+export const MCP_PLAN_CODE = "unlimited";
+
 /** The plan already includes everything the add-on unlocks (the unlimited plan includes the package). */
 export function planIncludesAddon(features: readonly PlanFeature[], addon: PlanAddon): boolean {
   const unlocks = PLAN_ADDONS.find((item) => item.key === addon)?.features ?? [];

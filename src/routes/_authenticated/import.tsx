@@ -55,10 +55,27 @@ export const Route = createFileRoute("/_authenticated/import")({
     ],
   }),
   // ?platform=keeta opens the upload with that platform already chosen (from the top bar).
-  validateSearch: (search: Record<string, unknown>): { platform?: Platform } =>
-    isPlatformKey(search["platform"]) ? { platform: search["platform"] } : {},
+  // Links from an AI assistant (the MCP) also carry the bank fee, a label and the request id (?mcp=).
+  validateSearch: (search: Record<string, unknown>): ImportSearch => {
+    const text = (key: string, max: number) => {
+      const value = search[key];
+      const raw = typeof value === "number" ? String(value) : typeof value === "string" ? value.trim() : "";
+      return raw && raw.length <= max ? raw : undefined;
+    };
+    const mcp = text("mcp", 36);
+    const bankRate = text("bankRate", 8);
+    const label = text("label", 120);
+    return {
+      ...(isPlatformKey(search["platform"]) ? { platform: search["platform"] } : {}),
+      ...(bankRate && /^\d+(\.\d+)?$/.test(bankRate) ? { bankRate } : {}),
+      ...(label ? { label } : {}),
+      ...(mcp && /^[0-9a-f-]{36}$/i.test(mcp) ? { mcp } : {}),
+    };
+  },
   component: ImportPage,
 });
+
+type ImportSearch = { platform?: Platform; bankRate?: string; label?: string; mcp?: string };
 
 const STEPS = [
   { title: "المنصة والفترة", note: "اختر مصدر البيانات واسم الفترة" },
@@ -175,8 +192,8 @@ function ImportPage() {
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [cpcFile, setCpcFile] = useState<File | null>(null);
   const [compensationFile, setCompensationFile] = useState<File | null>(null);
-  const [bankRate, setBankRate] = useState("");
-  const [label, setLabel] = useState("");
+  const [bankRate, setBankRate] = useState(search.bankRate ?? "");
+  const [label, setLabel] = useState(search.label ?? "");
   const [busy, setBusy] = useState(false);
   // Outcome of "run analysis" shown as a popup so it cannot be missed.
   const [notice, setNotice] = useState<RunNotice | null>(null);
@@ -295,6 +312,7 @@ function ImportPage() {
       if (cpcFile) form.set("cpcFile", cpcFile);
       if (compensationFile) form.set("compensationFile", compensationFile);
       if (bankRate.trim()) form.set("bankRate", bankRate.trim());
+      if (search.mcp) form.set("mcpRequest", search.mcp);
       if (options.approvedMappings) {
         form.set(
           "approvedMappings",
@@ -332,7 +350,7 @@ function ImportPage() {
       }
 
       if (response.status === "duplicate") {
-        setNotice({ kind: "duplicate", periodId: response.existingPeriodId });
+        setNotice({ kind: "duplicate", periodId: response.existingPeriodId, fromAssistant: Boolean(search.mcp) });
         return;
       }
 
@@ -353,6 +371,11 @@ function ImportPage() {
           duration: 10_000,
         });
       }
+      if (search.mcp) {
+        // Started from an AI assistant: the result is waiting there, so say where to go next.
+        setNotice({ kind: "assistant_done", periodId: response.periodId });
+        return;
+      }
       navigate({ to: "/dashboard" });
     } catch (error) {
       console.error(error);
@@ -371,6 +394,15 @@ function ImportPage() {
         <p className="mt-1.5 text-[14px] leading-7 text-muted-foreground">
           أكمل كل خطوة على حدة. لن ينتقل تدقيق للمرحلة التالية قبل اكتمال البيانات المطلوبة.
         </p>
+        {search.mcp ? (
+          <p className="mt-3 flex items-start gap-2 rounded-[10px] bg-secondary p-3 text-[13.5px] leading-6">
+            <Info className="mt-0.5 size-4 shrink-0 text-primary-text" />
+            <span>
+              هذا الرفع طلبه مساعدك الذكي (Claude أو ChatGPT). المنصة{search.bankRate ? " ونسبة رسوم الدفع" : ""} معبأة مسبقاً — ارفع الملفات
+              واضغط «بدء التحليل»، ثم ارجع للمحادثة واكتب «خلصت».
+            </span>
+          </p>
+        ) : null}
       </header>
 
       <WorkflowHeader
@@ -1129,7 +1161,8 @@ function ReviewRow({
 type RunNotice =
   | { kind: "missing" }
   | { kind: "mapping" }
-  | { kind: "duplicate"; periodId: string }
+  | { kind: "duplicate"; periodId: string; fromAssistant?: boolean }
+  | { kind: "assistant_done"; periodId: string }
   | { kind: "error"; message: string };
 
 function RunDialog({
@@ -1192,6 +1225,26 @@ function RunDialog({
               </Button>
             </DialogFooter>
           </>
+        ) : notice?.kind === "assistant_done" ? (
+          <>
+            <div className="flex items-start gap-3 pt-2">
+              <Check className="mt-0.5 size-6 shrink-0 text-success" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <DialogTitle className="text-base">اكتمل التدقيق</DialogTitle>
+                <DialogDescription className="text-sm leading-6">
+                  النتيجة جاهزة لمساعدك الذكي. ارجع للمحادثة في Claude أو ChatGPT واكتب «خلصت» ليشرح لك النتيجة ويجيب عن أسئلتك.
+                </DialogDescription>
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:justify-start">
+              <Button type="button" onClick={() => onOpenPeriod(notice.periodId)}>
+                عرض النتيجة في تدقيق
+              </Button>
+              <Button type="button" variant="outline" onClick={onClose}>
+                إغلاق
+              </Button>
+            </DialogFooter>
+          </>
         ) : notice?.kind === "duplicate" ? (
           <>
             <div className="flex items-start gap-3 pt-2">
@@ -1199,7 +1252,9 @@ function RunDialog({
               <div className="min-w-0 flex-1 space-y-1.5">
                 <DialogTitle className="text-base">هذه الفترة محفوظة مسبقاً</DialogTitle>
                 <DialogDescription className="text-sm leading-6">
-                  يمكنك فتح الفترة المحفوظة بدلاً من إنشاء نسخة مكررة.
+                  {notice.fromAssistant
+                    ? "أرسلنا الفترة المحفوظة لمساعدك الذكي. ارجع للمحادثة واكتب «خلصت» ليشرح لك النتيجة."
+                    : "يمكنك فتح الفترة المحفوظة بدلاً من إنشاء نسخة مكررة."}
                 </DialogDescription>
               </div>
             </div>

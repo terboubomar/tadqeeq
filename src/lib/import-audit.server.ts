@@ -697,6 +697,18 @@ async function rollbackPeriod(
   }
 }
 
+/** An upload started from an AI assistant (the MCP) reports its period back, so the assistant can read the result. */
+async function completeMcpRequest(client: ServerUserClient, form: FormData, periodId: string) {
+  const requestId = formString(form, "mcpRequest");
+  if (!requestId || !/^[0-9a-f-]{36}$/i.test(requestId)) return;
+  // The function is not in the generated types yet.
+  const rpc = client as unknown as {
+    rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ error: { message: string } | null }>;
+  };
+  const { error } = await rpc.rpc("mcp_complete_audit_request", { p_request_id: requestId, p_period_id: periodId });
+  if (error) console.error("Failed to complete MCP audit request", error.message);
+}
+
 async function recordTrialUpload(workspaceId: string, actorUserId: string, periodId: string, platform: string) {
   // workspace_audit_events is not in the generated types yet; users can read it but only the service role writes.
   const events = supabaseAdmin as unknown as {
@@ -827,6 +839,7 @@ async function runImportAudit(
 
   const duplicate = await findDuplicate(client, userId, result);
   if (duplicate) {
+    await completeMcpRequest(client, form, duplicate);
     return { status: "duplicate", existingPeriodId: duplicate };
   }
 
@@ -885,6 +898,7 @@ async function runImportAudit(
   }
 
   if (trial) await recordTrialUpload(workspaceId, actorUserId, periodId, platform);
+  await completeMcpRequest(client, form, periodId);
   if (nextSnapshots) {
     await saveColumnSnapshots(client, { workspaceId, ownerUserId: userId, platform, snapshots: nextSnapshots });
   }

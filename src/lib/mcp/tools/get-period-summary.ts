@@ -1,21 +1,19 @@
-import { defineTool, ToolError } from "@lovable.dev/mcp-js";
+import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { supabaseForUser } from "../supabase";
+
+import { APP_URL, requireMcpAccess, result } from "../access";
+import { loadPeriod } from "../period";
+import { periodReadout } from "../readout";
 
 export default defineTool({
   name: "get_period_summary",
-  title: "Get period summary",
-  description: "Get the summary totals and invoice reconciliation for one analyzed period.",
+  title: "Period audit summary",
+  description:
+    "Audit of one period: headline numbers, the invoice line by line (recalculated vs invoiced), open differences with the amount to claim, and the costliest branches. Numbers come from Tadqeeq's engine; explain them, never recalculate.",
   inputSchema: { period_id: z.string().uuid().describe("Period id from list_periods.") },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ period_id }, ctx) => {
-    const { data, error } = await supabaseForUser(ctx)
-      .from("periods")
-      .select("id,label,platform,period_start,period_end,summary,invoice")
-      .eq("id", period_id)
-      .maybeSingle();
-    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
-    if (!data) throw new ToolError("Period not found.");
-    return { content: [{ type: "text", text: JSON.stringify(data) }] };
+    await requireMcpAccess(ctx);
+    return result(periodReadout(await loadPeriod(ctx, period_id), APP_URL));
   },
 });
