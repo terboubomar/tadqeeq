@@ -33,13 +33,24 @@ function download(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Text for one CSV cell. Text that starts with = + - @ (or a tab / carriage return) would run as a formula in
+ * Excel, and branch names and labels come from platform files, so such text gets a leading apostrophe.
+ * Numbers are written as they are.
+ */
+export function csvSafeText(cell: unknown): string {
+  const value = String(cell ?? "");
+  if (typeof cell === "number") return value;
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+}
+
 export function exportCsv<T>(rows: T[], columns: ExportColumn<T>[], filename: string) {
   const matrix = toMatrix(rows, columns);
   const csv = matrix
     .map((line) =>
       line
         .map((cell) => {
-          const value = String(cell);
+          const value = csvSafeText(cell);
           return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
         })
         .join(","),

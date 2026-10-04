@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LogoLockup, LogoWordmark } from "@/components/brand/Logo";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 import { PLATFORM_KEYS } from "@/lib/platforms";
+import { safeNextPath } from "@/lib/redirects";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/auth")({
     ],
   }),
   validateSearch: (search: Record<string, unknown>): { mode?: "signup" | "reset"; next?: string } => {
-    const next = typeof search["next"] === "string" && search["next"].startsWith("/") && !search["next"].startsWith("//") ? search["next"] : undefined;
+    const next = safeNextPath(search["next"]);
     const mode = search["mode"] === "signup" ? ("signup" as const) : search["mode"] === "reset" ? ("reset" as const) : undefined;
     return { ...(mode ? { mode } : {}), ...(next ? { next } : {}) };
   },
@@ -213,9 +214,11 @@ function AuthPage() {
               dir="ltr"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              minLength={6}
+              minLength={mode === "signup" ? 8 : undefined}
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
               required
             />
+            {mode === "signup" ? <p className="text-xs text-muted-foreground">8 أحرف على الأقل.</p> : null}
           </div>
           <Button type="submit" className="w-full" disabled={busy}>
             {busy ? <Loader2 className="size-4 animate-spin" /> : null}

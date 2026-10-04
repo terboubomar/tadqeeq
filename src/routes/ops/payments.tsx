@@ -53,7 +53,7 @@ function Payments() {
         <div className="space-y-1"><Label>تاريخ التحويل</Label><Input type="date" value={f.paidOn} onChange={(e) => setF({ ...f, paidOn: e.target.value })} /></div>
         <div className="space-y-1 lg:col-span-2"><Label>رقم المرجع</Label><Input value={f.reference} onChange={(e) => setF({ ...f, reference: e.target.value })} /></div>
         <div className="space-y-1 lg:col-span-3"><Label>ملاحظات</Label><Input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></div>
-        <div className="space-y-1 lg:col-span-2"><Label>الإيصال (PDF أو صورة، حتى 5MB)</Label><Input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></div>
+        <div className="space-y-1 lg:col-span-2"><Label>الإيصال (PDF أو صورة، حتى 5MB)</Label><Input type="file" accept="application/pdf,image/png,image/jpeg,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></div>
         <div className="flex items-end"><Button className="w-full" disabled={!f.workspaceId || f.amount <= 0 || save.isPending} onClick={() => save.mutate()}>{save.isPending ? <Loader2 className="size-4 animate-spin" /> : null}تسجيل</Button></div>
       </section>
 

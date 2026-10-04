@@ -2,6 +2,7 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
+import { dataUrlBytes, sniffFile } from "./file-sniff";
 import { buildOpsTasks, type OpsTask, type OpsTaskClient } from "./ops-tasks";
 import { isPlanAddon, PLAN_ADDONS, PLAN_REQUEST_EVENT, TRIAL_UPLOAD_EVENT, type PlanAddon, type PlanFeature } from "./plans";
 import { LIVE_SUBSCRIPTION_STATUSES, opsCan, subscriptionAccessChange, type Cycle, type OpsRole, type OpsSection, type SubscriptionStatus } from "./ops";
@@ -736,14 +737,13 @@ export async function recordPaymentOnServer(input: { workspaceId: string; amount
   const actor = await requireOps("payments");
   let receiptPath: string | null = null;
   if (input.receiptDataUrl) {
-    const m = input.receiptDataUrl.match(/^data:([\w/+.-]+);base64,(.+)$/);
-    if (!m) throw new Error("صيغة الإيصال غير مدعومة.");
-    const mime = m[1] ?? "application/octet-stream";
-    const ext = mime.includes("pdf") ? "pdf" : mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
-    const bytes = Buffer.from(m[2] ?? "", "base64");
+    // Stored with the type read from the file's bytes: PDF, PNG, JPEG or WEBP only (never HTML or SVG).
+    const bytes = dataUrlBytes(input.receiptDataUrl);
+    const sniffed = bytes ? sniffFile(bytes) : null;
+    if (!bytes || !sniffed) throw new Error("صيغة الإيصال غير مدعومة. ارفع PDF أو صورة PNG / JPG / WEBP.");
     if (bytes.byteLength > 5 * 1024 * 1024) throw new Error("حجم الإيصال يجب ألا يتجاوز 5MB.");
-    receiptPath = `${input.workspaceId}/${Date.now()}.${ext}`;
-    const { error } = await supabaseAdmin.storage.from(RECEIPTS).upload(receiptPath, bytes, { contentType: mime });
+    receiptPath = `${input.workspaceId}/${Date.now()}.${sniffed.ext}`;
+    const { error } = await supabaseAdmin.storage.from(RECEIPTS).upload(receiptPath, bytes, { contentType: sniffed.mime });
     if (error) throw new Error("تعذّر رفع الإيصال.");
   }
   const { data: sub } = await db().from("subscriptions").select("id").eq("workspace_id", input.workspaceId).order("created_at", { ascending: false }).limit(1).maybeSingle();

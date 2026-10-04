@@ -354,13 +354,13 @@ function OnboardingForm({ record }: { record: OnboardingRecord }) {
           <Field label="عدد الفروع" error={show("branchCount")}>
             <Input dir="ltr" type="number" min={1} value={form.branchCount} onChange={set("branchCount")} />
           </Field>
-          <Field label="شعار العلامة" hint="PNG / JPG / SVG حتى 2MB">
+          <Field label="شعار العلامة" hint="PNG / JPG / WEBP حتى 2MB">
             <label className="flex h-10 cursor-pointer items-center gap-2 rounded-md border border-input px-3 text-sm text-muted-foreground">
               <Upload className="size-4" />
               <span className="truncate">{logo?.name ?? "اختر ملفاً"}</span>
               <input
                 type="file"
-                accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                accept="image/png,image/jpeg,image/webp"
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];

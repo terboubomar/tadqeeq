@@ -10,6 +10,7 @@ const root = process.cwd();
  */
 const CASCADES_WITH_WORKSPACE = [
   "client_notes",
+  "mcp_audit_requests",
   "ops_audit_log",
   "payments",
   "subscriptions",

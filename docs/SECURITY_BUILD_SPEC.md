@@ -10,16 +10,16 @@ The core access model is solid. No cross-company data leak was found. The open i
 
 | ID | Severity | Item | Phase |
 |---|---|---|---|
-| H1 | High | Open redirect after sign-in (`/auth?next=/\evil.com`) | 1 |
+| H1 | High | ~~Open redirect after sign-in (`/auth?next=/\evil.com`)~~ ✅ fixed | 1 |
 | M1 | Medium | No browser security headers (CSP, clickjacking, HSTS) | 2 |
 | M2 | Medium | Ops console: no two-step sign-in; reachable on preview hosts | 3 |
-| M3 | Medium | Payment receipts accept any file type; SVG logos allowed | 1 |
+| M3 | Medium | ~~Payment receipts accept any file type; SVG logos allowed~~ ✅ fixed | 1 |
 | M4 | Medium | Plan limits enforced in the app server only, not the database | 4 |
-| L1 | Low | CSV export formula injection | 1 |
+| L1 | Low | ~~CSV export formula injection~~ ✅ fixed | 1 |
 | L2 | Low | No throttle on plan, reactivation and MCP audit requests | 5 |
 | L3 | Low | Uploaders can write `periods` rows directly through the API | 4 |
 | L4 | Low | `ensure_my_workspace` creates workspaces for ops staff and removed members | 5 |
-| L5 | Low | Sign-up password minimum is 6 characters | 1 + verify |
+| L5 | Low | Sign-up password minimum is 6 characters (✅ code fixed; Supabase setting to verify) | 1 + verify |
 | L6 | Low | No dependency vulnerability scanning in CI | 5 |
 | V1–V5 | Verify | Dashboard settings to confirm | any time |
 
@@ -35,7 +35,9 @@ The core access model is solid. No cross-company data leak was found. The open i
 
 ---
 
-## Phase 1: quick fixes (one PR)
+## Phase 1: quick fixes (one PR) — ✅ done
+
+Built in `src/lib/redirects.ts` (`safeNextPath`), `src/lib/file-sniff.ts` (`sniffFile`) and `csvSafeText` in `src/lib/export.ts`, each with tests. Sign-up asks for 8+ characters; sign-in still accepts existing shorter passwords.
 
 ### H1 · Open redirect after sign-in — High
 
