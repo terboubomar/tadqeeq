@@ -212,7 +212,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const planLine = context.trial
     ? `تجربة مجانية · الرفع ${Math.min(context.uploadsThisMonth, context.uploadLimit ?? 0)} / ${context.uploadLimit}`
     : context.planName
-      ? `باقة ${context.planName} · الرفع هذا الشهر ${context.uploadsThisMonth}${context.uploadLimit !== null ? ` / ${context.uploadLimit}` : ""}`
+      ? context.orderLimit !== null
+        ? `باقة ${context.planName} · الطلبات هذا الشهر ${count(context.ordersThisMonth)} / ${count(context.orderLimit)}`
+        : `باقة ${context.planName} · الرفع هذا الشهر ${context.uploadsThisMonth}${context.uploadLimit !== null ? ` / ${context.uploadLimit}` : ""}`
       : null;
 
   async function signOut() {

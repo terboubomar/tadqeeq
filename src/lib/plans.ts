@@ -45,13 +45,66 @@ export function filterPermissionsByPlan(
 export interface PublicPlan {
   id: string;
   name: string;
+  /** Price per `cycle` (monthly for order-based plans). */
   price: number;
   cycle: "monthly" | "yearly";
   features: PlanFeature[];
   uploadLimit: number | null;
   description: string | null;
   highlighted: boolean;
+  /** Stable key of the order-based plans (start, growth, scale, groups, enterprise); null for older plans. */
+  code: string | null;
+  /** Orders checked per month the plan is sized for (soft limit); null = no limit. */
+  orderLimit: number | null;
+  /** Yearly price of the same plan, when it has one. */
+  priceYearly: number | null;
+  /** Priced by agreement (no public price). */
+  customPrice: boolean;
 }
+
+/** Order-based plans (they carry a code); older plans are shown only when none exist. */
+export function orderBasedPlans(plans: PublicPlan[]): PublicPlan[] {
+  return plans.filter((plan) => plan.code !== null);
+}
+
+/** The smallest order-based plan sized for `orders` a month (the custom plan above the largest limit). */
+export function recommendPlan(plans: PublicPlan[], orders: number): PublicPlan | null {
+  const sized = orderBasedPlans(plans).filter((plan) => !plan.customPrice && plan.orderLimit !== null);
+  const fit = sized.filter((plan) => orders <= (plan.orderLimit ?? 0)).sort((a, b) => (a.orderLimit ?? 0) - (b.orderLimit ?? 0))[0];
+  return fit ?? orderBasedPlans(plans).find((plan) => plan.customPrice) ?? null;
+}
+
+export type PlanAddon = "compensation_ai";
+
+/** Paid on top of any plan. The one package: compensation center with the Telegram bot, and Tadqeeq AI. */
+export const PLAN_ADDONS: Array<{ key: PlanAddon; label: string; features: PlanFeature[]; price: number; months: number }> = [
+  {
+    key: "compensation_ai",
+    label: "مركز التعويضات وبوت Telegram + Tadqeeq AI",
+    features: ["compensation", "ai"],
+    price: 399,
+    months: 4,
+  },
+];
+
+export function isPlanAddon(value: unknown): value is PlanAddon {
+  return PLAN_ADDONS.some((addon) => addon.key === value);
+}
+
+/** A subscription's features: the plan's plus those its add-ons unlock (null plan stays null = everything). */
+export function featuresWithAddons(features: readonly PlanFeature[] | null, addons: readonly PlanAddon[]): PlanFeature[] | null {
+  if (!features) return null;
+  const all = new Set(features);
+  for (const addon of PLAN_ADDONS) if (addons.includes(addon.key)) addon.features.forEach((feature) => all.add(feature));
+  return [...all];
+}
+
+/** Shown on every price: what the price excludes and how plans are paid and cancelled. */
+export const PRICING_TERMS = [
+  "الأسعار بالريال السعودي ولا تشمل ضريبة القيمة المضافة",
+  "الاشتراك الشهري يُلغى في أي وقت، والسنوي التزام لمدة سنة",
+  "الدفع بتحويل بنكي بعد إصدار الفاتورة",
+];
 
 /** Onboarding statuses that mean "signed up, not activated yet" — these workspaces run as a free trial. */
 const TRIAL_STATUSES = new Set(["pending_details", "meeting_booked", "awaiting_payment", "onboarding"]);
@@ -61,6 +114,8 @@ export const TRIAL_FEATURES: PlanFeature[] = ["invoice_audit"];
 export const TRIAL_UPLOAD_LIMIT = 1;
 /** Audit event written for every trial upload, so deleting the period does not reset the trial. */
 export const TRIAL_UPLOAD_EVENT = "trial.upload";
+/** Audit event for a plan the customer requested from the app (metadata: planId, cycle, addons). */
+export const PLAN_REQUEST_EVENT = "plan.request";
 /** Core permissions that are still closed during the trial. */
 export const TRIAL_BLOCKED_PERMISSIONS: WorkspacePermission[] = ["users.manage"];
 

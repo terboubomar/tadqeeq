@@ -89,8 +89,8 @@ describe("llms.txt", () => {
 
 describe("AI files", () => {
   const plans = [
-    { id: "p1", name: "أساسي", price: 399, cycle: "monthly" as const, features: ["invoice_audit" as const], uploadLimit: 4, description: null, highlighted: false },
-    { id: "p2", name: "المجموعات", price: 9990, cycle: "yearly" as const, features: ["invoice_audit" as const, "compensation" as const], uploadLimit: null, description: "حتى 50 فرعاً", highlighted: true },
+    { id: "p1", name: "أساسي", price: 399, cycle: "monthly" as const, features: ["invoice_audit" as const], uploadLimit: 4, description: null, highlighted: false, code: null, orderLimit: null, priceYearly: null, customPrice: false },
+    { id: "p2", name: "المجموعات", price: 9990, cycle: "yearly" as const, features: ["invoice_audit" as const, "compensation" as const], uploadLimit: null, description: "حتى 50 فرعاً", highlighted: true, code: null, orderLimit: null, priceYearly: null, customPrice: false },
   ];
 
   test("pricing.md lists the trial and every plan with price, unit and limits", () => {
@@ -120,5 +120,23 @@ describe("AI files", () => {
     const txt = buildLlmsTxt();
     expect(txt).toContain(`${SITE_URL}/llms-full.txt`);
     expect(txt).toContain(`${SITE_URL}/pricing.md`);
+  });
+});
+
+describe("pricing.md with order-based plans", () => {
+  const plan = (code: string, name: string, price: number, priceYearly: number | null, orderLimit: number | null, customPrice = false) => ({
+    id: code, name, price, cycle: "monthly" as const, features: [], uploadLimit: null, description: null, highlighted: false, code, orderLimit, priceYearly, customPrice,
+  });
+
+  test("lists order limits, both prices, the custom plan, the add-on and the terms", () => {
+    const md = buildPricingMd([plan("start", "البداية", 299, 2990, 3000), plan("enterprise", "المؤسسات", 0, null, null, true)]);
+    expect(md).toContain("## البداية");
+    expect(md).toContain("- Price: 299 SAR per month or 2,990 SAR per year");
+    expect(md).toContain("- Orders checked per month: up to 3,000");
+    expect(md).toContain("- Price: by agreement (contact us)");
+    expect(md).not.toContain("0 SAR per month");
+    expect(md).toContain("399 SAR every 4 months");
+    expect(md).toContain("لا تشمل ضريبة القيمة المضافة");
+    expect(md).toContain("unlimited branches, platforms, users and uploads");
   });
 });

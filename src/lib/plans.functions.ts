@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 
 import { isPlanFeature, type PublicPlan } from "./plans";
 
+const num = (value: unknown): number | null => (typeof value === "number" ? value : typeof value === "string" && value !== "" && Number.isFinite(Number(value)) ? Number(value) : null);
+
 /** Active plans as the public pricing shows them (also read by /pricing.md and /llms-full.txt). */
 export async function loadPublicPlans(): Promise<PublicPlan[]> {
   const url = process.env["SUPABASE_URL"];
@@ -21,7 +23,8 @@ export async function loadPublicPlans(): Promise<PublicPlan[]> {
   });
   const { data } = await sb
     .from("subscription_plans")
-    .select("id,name,price,cycle,features,upload_limit,description,highlighted,sort_order")
+    // All columns: order-based fields exist only once migration 0037 has run.
+    .select("*")
     .eq("active", true)
     .order("sort_order");
   return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
@@ -33,6 +36,10 @@ export async function loadPublicPlans(): Promise<PublicPlan[]> {
     uploadLimit: typeof r["upload_limit"] === "number" ? r["upload_limit"] : null,
     description: (r["description"] as string | null) ?? null,
     highlighted: r["highlighted"] === true,
+    code: typeof r["code"] === "string" ? r["code"] : null,
+    orderLimit: num(r["order_limit"]),
+    priceYearly: num(r["price_yearly"]),
+    customPrice: r["custom_price"] === true,
   }));
 }
 

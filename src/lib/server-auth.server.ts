@@ -12,7 +12,16 @@ import {
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 import { logEvent } from "./observability";
-import { isPlanFeature, isTrialStatus, resolvePlanAccess, TRIAL_UPLOAD_EVENT, type PlanFeature } from "./plans";
+import {
+  featuresWithAddons,
+  isPlanAddon,
+  isPlanFeature,
+  isTrialStatus,
+  resolvePlanAccess,
+  TRIAL_UPLOAD_EVENT,
+  type PlanAddon,
+  type PlanFeature,
+} from "./plans";
 
 export type ServerUserClient = ReturnType<typeof createServerUserClient>;
 
@@ -42,6 +51,11 @@ export interface ServerUserAuth {
   uploadLimit: number | null;
   /** Uploads counted against uploadLimit: this month on a plan, all-time during the trial. */
   uploadsThisMonth: number;
+  /** Orders the plan is sized for each month (soft: never blocks an upload); null = no limit. */
+  orderLimit: number | null;
+  /** Orders in the files uploaded this month (Riyadh time). */
+  ordersThisMonth: number;
+  addons: PlanAddon[];
   /** Signed up but not activated yet: runs as a free trial limited to analysis. */
   trial: boolean;
   /** Allowed by the member's role but closed by the plan or trial. */
@@ -205,7 +219,9 @@ async function loadWorkspaceContext(
 
   const plan = (planData ?? {}) as Record<string, unknown>;
   const rawFeatures = plan["features"];
-  const planFeatures = Array.isArray(rawFeatures) ? rawFeatures.filter(isPlanFeature) : null;
+  const addons = Array.isArray(plan["addons"]) ? plan["addons"].filter(isPlanAddon) : [];
+  // Add-ons open their sections on top of the plan's.
+  const planFeatures = featuresWithAddons(Array.isArray(rawFeatures) ? rawFeatures.filter(isPlanFeature) : null, addons);
   const onboardingStatus = typeof onboardingRow?.status === "string" ? onboardingRow.status : "active";
   const isPlatformAdmin = adminFlag === true;
 
@@ -237,6 +253,9 @@ async function loadWorkspaceContext(
     planFeatures,
     uploadLimit: access.uploadLimit,
     uploadsThisMonth: access.uploadsUsed,
+    orderLimit: typeof plan["order_limit"] === "number" ? plan["order_limit"] : null,
+    ordersThisMonth: typeof plan["orders_this_month"] === "number" ? plan["orders_this_month"] : 0,
+    addons,
     trial: access.trial,
     planLockedPermissions: access.planLockedPermissions,
   };

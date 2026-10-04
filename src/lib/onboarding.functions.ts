@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import {
   getMyOnboardingOnServer,
+  getMyPlanRequestOnServer,
+  requestPlanOnServer,
   listTenantsOnServer,
   requestReactivationOnServer,
   setTenantStatusOnServer,
@@ -35,6 +37,20 @@ export const submitOnboarding = createServerFn({ method: "POST" })
 export const requestReactivation = createServerFn({ method: "POST" })
   .validator(z.object({ note: z.string().max(1000).optional() }))
   .handler(async ({ data }) => requestReactivationOnServer(data));
+
+export const getMyPlanRequest = createServerFn({ method: "POST" })
+  .validator(z.object({}))
+  .handler(async () => getMyPlanRequestOnServer());
+
+export const requestPlan = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      planId: z.string().uuid(),
+      cycle: z.enum(["monthly", "yearly"]),
+      addons: z.array(z.enum(["compensation_ai"])).max(1),
+    }),
+  )
+  .handler(async ({ data }) => requestPlanOnServer(data));
 
 export const listTenants =createServerFn({ method: "POST" })
   .validator(z.object({}))

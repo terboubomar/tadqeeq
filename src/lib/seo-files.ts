@@ -8,7 +8,15 @@ import {
   SITE_URL,
   type PublicPage,
 } from "./seo";
-import { CORE_FEATURE_LABELS, PLAN_FEATURES, TRIAL_FEATURES, type PublicPlan } from "./plans";
+import {
+  CORE_FEATURE_LABELS,
+  orderBasedPlans,
+  PLAN_ADDONS,
+  PLAN_FEATURES,
+  PRICING_TERMS,
+  TRIAL_FEATURES,
+  type PublicPlan,
+} from "./plans";
 import { GUIDES, guideMarkdown } from "./guides";
 import { CONTENT_UPDATED, EXPLAINER_VIDEO, FAQS, FEATURES } from "./site-content";
 
@@ -78,6 +86,18 @@ ${PUBLIC_PAGES.map((page) => `- [${page.title}](${SITE_URL}${page.path})`).join(
 `;
 }
 
+function orderPlanLines(plan: PublicPlan): string {
+  return [
+    `## ${plan.name}`,
+    "",
+    plan.customPrice
+      ? "- Price: by agreement (contact us)"
+      : `- Price: ${plan.price.toLocaleString("en-US")} SAR per month${plan.priceYearly !== null ? ` or ${plan.priceYearly.toLocaleString("en-US")} SAR per year` : ""}`,
+    `- Orders checked per month: ${plan.orderLimit === null ? "more than the largest plan" : `up to ${plan.orderLimit.toLocaleString("en-US")}`}`,
+    ...(plan.description ? [`- For: ${plan.description}`] : []),
+  ].join("\n");
+}
+
 function planLines(plan: PublicPlan): string {
   const unit = plan.cycle === "yearly" ? "year" : "month";
   const features = [...CORE_FEATURE_LABELS, ...PLAN_FEATURES.filter((feature) => plan.features.includes(feature.key)).map((feature) => feature.label)];
@@ -89,6 +109,24 @@ function planLines(plan: PublicPlan): string {
     ...(plan.description ? [`- Notes: ${plan.description}`] : []),
     `- Includes: ${features.join("، ")}`,
   ].join("\n");
+}
+
+function pricingBody(plans: PublicPlan[]): string {
+  const ordered = orderBasedPlans(plans);
+  if (!ordered.length) {
+    return plans.length ? plans.map(planLines).join("\n\n") : "Paid plans: shown on the homepage pricing section; contact us from inside the account to subscribe.";
+  }
+  return [
+    "Priced by the number of orders checked per month across all delivery platforms. Every plan includes unlimited branches, platforms, users and uploads, with invoice check, charges map, exceptions, contracts, real ad return, Smart Watch and smart file reading. The order limit is soft: uploads are never blocked.",
+    ordered.map(orderPlanLines).join("\n\n"),
+    "## Add-on",
+    "",
+    ...PLAN_ADDONS.map((addon) => `- ${addon.label}: ${addon.price} SAR every ${addon.months} months`),
+    "",
+    "## Terms",
+    "",
+    ...PRICING_TERMS.map((term) => `- ${term}`),
+  ].join("\n\n").replace(/\n\n\n+/g, "\n\n");
 }
 
 /** Plans and prices as Markdown for AI agents comparing tools; empty plans still describe the free trial. */
@@ -105,7 +143,7 @@ Prices in Saudi riyals (SAR). Last updated: ${CONTENT_UPDATED}. Live prices: ${S
 - Includes: ${[...CORE_FEATURE_LABELS, ...trial].join("، ")}
 - Start: ${SITE_URL}/auth?mode=signup
 
-${plans.length ? plans.map(planLines).join("\n\n") : "Paid plans: shown on the homepage pricing section; contact us from inside the account to subscribe."}
+${pricingBody(plans)}
 `;
 }
 

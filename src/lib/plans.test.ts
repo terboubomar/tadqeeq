@@ -1,6 +1,16 @@
 import { describe, expect, test } from "bun:test";
 
-import { featureForPermission, isTrialStatus, resolvePlanAccess, TRIAL_UPLOAD_LIMIT } from "./plans";
+import {
+  featureForPermission,
+  featuresWithAddons,
+  isPlanAddon,
+  isTrialStatus,
+  orderBasedPlans,
+  recommendPlan,
+  resolvePlanAccess,
+  TRIAL_UPLOAD_LIMIT,
+  type PublicPlan,
+} from "./plans";
 import { ROLE_PERMISSIONS } from "./workspace-access";
 
 const owner = ROLE_PERMISSIONS.owner;
@@ -62,5 +72,46 @@ describe("featureForPermission", () => {
     expect(featureForPermission("compensation.read")).toBe("compensation");
     expect(featureForPermission("ai.use")).toBe("ai");
     expect(featureForPermission("reports.read")).toBeNull();
+  });
+});
+
+describe("order-based plans", () => {
+  const plan = (code: string | null, orderLimit: number | null, customPrice = false): PublicPlan => ({
+    id: code ?? "old",
+    name: code ?? "old",
+    price: 100,
+    cycle: "monthly",
+    features: [],
+    uploadLimit: null,
+    description: null,
+    highlighted: false,
+    code,
+    orderLimit,
+    priceYearly: 1000,
+    customPrice,
+  });
+  const plans = [plan("start", 3000), plan("growth", 10000), plan("scale", 30000), plan("groups", 75000), plan("enterprise", null, true), plan(null, null)];
+
+  test("recommends the smallest plan sized for the month's orders", () => {
+    expect(recommendPlan(plans, 0)?.code).toBe("start");
+    expect(recommendPlan(plans, 3000)?.code).toBe("start");
+    expect(recommendPlan(plans, 3001)?.code).toBe("growth");
+    expect(recommendPlan(plans, 60000)?.code).toBe("groups");
+    expect(recommendPlan(plans, 80000)?.code).toBe("enterprise");
+  });
+
+  test("older plans without a code are left out of the order-based list", () => {
+    expect(orderBasedPlans(plans).map((p) => p.code)).toEqual(["start", "growth", "scale", "groups", "enterprise"]);
+  });
+
+  test("the add-on package opens the compensation center and Tadqeeq AI", () => {
+    expect(featuresWithAddons(["invoice_audit", "exceptions", "contracts"], ["compensation_ai"])?.sort()).toEqual(
+      ["ai", "compensation", "contracts", "exceptions", "invoice_audit"],
+    );
+    expect(featuresWithAddons(["invoice_audit"], [])).toEqual(["invoice_audit"]);
+    // No plan means everything is open; add-ons do not narrow it.
+    expect(featuresWithAddons(null, ["compensation_ai"])).toBeNull();
+    expect(isPlanAddon("compensation_ai")).toBe(true);
+    expect(isPlanAddon("ai")).toBe(false);
   });
 });

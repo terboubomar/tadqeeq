@@ -13,6 +13,7 @@ import {
   type OnboardingStatus,
   type SuspensionInfo,
 } from "./onboarding";
+import { isPlanAddon, PLAN_REQUEST_EVENT, type PlanAddon } from "./plans";
 import { requireServerUserAnyStatus } from "./server-auth.server";
 
 const LOGO_BUCKET = "workspace-logos";
@@ -154,6 +155,58 @@ export async function requestReactivationOnServer(input: { note?: string }): Pro
     .single();
   if (error) throw new Error(error.message);
   return { requestedAt: String(data.created_at) };
+}
+
+export interface PlanRequest {
+  planId: string;
+  cycle: "monthly" | "yearly";
+  addons: PlanAddon[];
+  requestedAt: string;
+}
+
+/** The workspace's latest plan request from the app, if any. */
+export async function getMyPlanRequestOnServer(): Promise<PlanRequest | null> {
+  const ctx = await requireServerUserAnyStatus();
+  const { data } = await db()
+    .from("workspace_audit_events")
+    .select("metadata,created_at")
+    .eq("workspace_id", ctx.workspaceId)
+    .eq("event_type", PLAN_REQUEST_EVENT)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  const m = (data.metadata ?? {}) as Row;
+  if (typeof m["planId"] !== "string") return null;
+  return {
+    planId: m["planId"],
+    cycle: m["cycle"] === "yearly" ? "yearly" : "monthly",
+    addons: (Array.isArray(m["addons"]) ? m["addons"] : []).filter(isPlanAddon),
+    requestedAt: String(data.created_at),
+  };
+}
+
+/** Records the plan the customer picked; the team activates it after the invoice is paid. */
+export async function requestPlanOnServer(input: { planId: string; cycle: "monthly" | "yearly"; addons: string[] }): Promise<PlanRequest> {
+  const ctx = await requireServerUserAnyStatus();
+  if (ctx.role !== "owner" && ctx.role !== "admin") throw new Error("مالك الحساب أو المدير فقط يستطيع طلب باقة.");
+  const { data: plan } = await db().from("subscription_plans").select("id,active").eq("id", input.planId).maybeSingle();
+  if (!plan || plan.active !== true) throw new Error("الباقة غير متاحة.");
+  const addons = input.addons.filter(isPlanAddon);
+  const { data, error } = await db()
+    .from("workspace_audit_events")
+    .insert({
+      workspace_id: ctx.workspaceId,
+      actor_user_id: ctx.actorUserId,
+      event_type: PLAN_REQUEST_EVENT,
+      entity_type: "workspace",
+      entity_id: ctx.workspaceId,
+      metadata: { planId: input.planId, cycle: input.cycle, addons },
+    })
+    .select("created_at")
+    .single();
+  if (error) throw new Error(error.message);
+  return { planId: input.planId, cycle: input.cycle, addons, requestedAt: String(data.created_at) };
 }
 
 export interface SubmitOnboardingInput {
