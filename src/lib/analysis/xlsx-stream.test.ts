@@ -4,7 +4,9 @@ import { readFileSync } from "node:fs";
 import * as XLSX from "xlsx";
 
 import { analyzeFixture, FIXTURE_DIRS } from "./fixtures/load";
+import { analyzeHungerStation, analyzeHungerStationSheets, HUNGERSTATION_COLUMNS, hungerStationProjection } from "./hungerstation";
 import { analyzeKeeta, analyzeKeetaSheets } from "./keeta";
+import { objectRows, rowKeys, workbookSheetSource } from "./sheets";
 import { readXlsxSheets } from "./xlsx-stream";
 
 function sheetjs(file: ArrayBuffer): Record<string, unknown[][]> {
@@ -164,5 +166,77 @@ describe("low-memory xlsx reader", () => {
     const fromStream = analyzeKeetaSheets((await readXlsxSheets(file))!);
     expect(fromStream).toEqual(analyzeKeeta(file));
     expect(fromStream).toEqual(await analyzeFixture("keeta"));
+  });
+
+  test("object rows from streamed sheets match SheetJS sheet_to_json({ defval: null })", async () => {
+    // Blank and repeated headers, an empty-string cell, blank rows, a header shaped like a number.
+    const sheet =
+      '<dimension ref="A1:G6"/><sheetData>' +
+      '<row r="1"><c r="A1" t="inlineStr"><is><t>Status</t></is></c><c r="B1" t="inlineStr"><is><t>Amount</t></is></c><c r="D1" t="inlineStr"><is><t>Amount</t></is></c><c r="E1" t="inlineStr"><is><t>Amount_1</t></is></c><c r="F1"><v>2026</v></c><c r="G1" t="inlineStr"><is><t>Amount</t></is></c></row>' +
+      '<row r="2"><c r="A2" t="inlineStr"><is><t>Successful</t></is></c><c r="B2"><v>10.5</v></c><c r="D2"><v>3</v></c><c r="F2"><v>7</v></c></row>' +
+      '<row r="4"><c r="C4" t="inlineStr"><is><t></t></is></c></row>' +
+      '<row r="6"><c r="A6" t="inlineStr"><is><t>Cancelled</t></is></c><c r="G6"><v>-1</v></c></row>' +
+      "</sheetData>";
+    const file = workbookXml({ Orders: sheet });
+    const expected = XLSX.utils.sheet_to_json<Record<string, unknown>>(XLSX.read(file, { type: "array" }).Sheets["Orders"]!, { defval: null });
+    const plain = (rows: Record<string, unknown>[]) => rows.map((row) => Object.fromEntries(rowKeys(row).map((key) => [key, row[key]])));
+    const streamedRows = objectRows((await readXlsxSheets(file))!.matrix("Orders")!);
+    expect(plain(streamedRows)).toEqual(expected);
+    expect(streamedRows.map((row) => rowKeys(row))).toEqual(expected.map((row) => Object.keys(row)));
+    expect(plain(objectRows(workbookSheetSource(XLSX.read(file, { type: "array" })).matrix("Orders")!))).toEqual(expected);
+    expect("Amount_2" in streamedRows[0]!).toBe(true);
+  });
+
+  test("the HungerStation engine gives the same audit from streamed sheets", async () => {
+    const hs = JSON.parse(readFileSync(FIXTURE_DIRS.hungerstation + "/source.json", "utf8")) as { sheetName: string; rows: Array<Record<string, unknown>> };
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hs.rows), hs.sheetName);
+    const file = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+    const fromStream = analyzeHungerStationSheets((await readXlsxSheets(file))!);
+    expect(fromStream).toEqual(analyzeHungerStation(file));
+    expect(fromStream).toEqual(await analyzeFixture("hungerstation"));
+  });
+
+  test("HUNGERSTATION_COLUMNS lists every column the engine reads", () => {
+    const source = readFileSync("src/lib/analysis/hungerstation.ts", "utf8");
+    const read = new Set<string>();
+    for (const call of source.matchAll(/\b(?:col|hasColumn)\(\s*\w+\s*,((?:\s*"[^"]*"\s*,?)+)\s*\)/g)) {
+      for (const name of call[1]!.matchAll(/"([^"]*)"/g)) read.add(name[1]!);
+    }
+    expect(read.size).toBeGreaterThan(15);
+    expect([...read].filter((name) => !HUNGERSTATION_COLUMNS.includes(name))).toEqual([]);
+  });
+
+  test("a projected HungerStation read gives the same audit as a full one", async () => {
+    const extra = ["Order Code", "Customer Code", "Rider ID", "Notes"];
+    const orders: unknown[][] = [["Order ID", "Status", "Branch Name", "Notes", "HS Branch ID", "Payment Type", "Commissionable GMV (VAT Excluded)", "Commission", "CC Amount", "Wallet Amount", "Transmitter Amount", "Operation Day", ...extra.slice(0, 3)]];
+    for (let i = 0; i < 40; i++) {
+      const gmv = 50 + i * 3.25;
+      orders.push([1000 + i, i % 5 === 4 ? "Cancelled" : "Successful", `Branch ${i % 3}`, `note ${i}`, 100 + (i % 3), i % 2 ? "Online payment" : "Cash", gmv, +(gmv * 0.18).toFixed(2), i % 2 ? +(gmv * 1.15).toFixed(2) : null, 0, 0, "2026-08-0" + (1 + (i % 9)), `HS-${i}`, `C${i}`, `R${i}`]);
+    }
+    // A row with values only in columns the engine never reads, and a fully blank row.
+    orders.push([null, null, null, "only a note", null, null, null, null, null, null, null, null, "HS-x", null, null]);
+    orders.push(Array(15).fill(null));
+    orders.push([2000, "Successful", "Branch 1", null, 101, "Online payment", 80, 14.4, 92, 0, 0, "2026-08-09", null, null, null]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(orders), "Commissionable GMV");
+    XLSX.utils.book_append_sheet(
+      wb,
+      XLSX.utils.aoa_to_sheet([["Order ID", "Rider ID", "Status", "Branch Name", "HS Branch ID"], ...Array.from({ length: 12 }, (_, i) => [1000 + i, `R${i}`, "Successful", `Branch ${i % 3}`, 100 + (i % 3)]), [null, "R-only", null, null, null]]),
+      "Free Delivery",
+    );
+    const file = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+
+    const full = analyzeHungerStationSheets((await readXlsxSheets(file))!);
+    const projected = await readXlsxSheets(file, undefined, { ...hungerStationProjection(), minBytes: 0, fullRows: 3 });
+    const matrix = projected!.matrix("Commissionable GMV")!;
+    expect(matrix[1]!.length).toBe(15); // within the first rows: complete
+    expect(matrix[10]!.length).toBe(12); // later rows: engine columns only, trailing cells dropped
+    expect(matrix[10]![3]).toBeNull(); // "Notes" skipped
+    expect(analyzeHungerStationSheets(projected!)).toEqual(full);
+    expect(full).toEqual(analyzeHungerStation(file));
+    // Files under the size threshold are read in full.
+    const small = await readXlsxSheets(file, undefined, hungerStationProjection());
+    expect(small!.matrix("Commissionable GMV")).toEqual((await readXlsxSheets(file))!.matrix("Commissionable GMV"));
   });
 });

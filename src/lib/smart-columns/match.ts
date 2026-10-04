@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 
-import { parseCsv as parseJahezCsv } from "../analysis/jahez";
+import { csvRows, parseCsv as parseJahezCsv, standalone } from "../analysis/jahez";
 import { HUNGERSTATION_ORDER_FORMAT, JAHEZ_DETAIL_FORMAT, JAHEZ_SUMMARY_FORMAT, KEETA_ORDER_FORMAT } from "../analysis/formats";
 import { normalizeFormatHeader, type FormatFingerprint } from "../analysis/formats/types";
 import { resolveSheetName } from "../analysis/sheets";
@@ -245,19 +245,76 @@ export function readSourceTable(
   /** Sheets already read (low-memory reader); avoids opening an Excel file again. */
   sheets?: SheetSource,
 ): SourceTable | null {
+  const table = sourceRows(platform, source, file, maxRows, sheets);
+  return table ? { source, headers: table.headers, rows: [...table.rows] } : null;
+}
+
+/** Up to `maxRows` non-blank rows after `from` (a row boundary in the CSV text). */
+function* csvBody(text: string, from: number, maxRows: number): Generator<string[]> {
+  let taken = 0;
+  for (const row of csvRows(text, from)) {
+    if (taken++ >= maxRows) return;
+    if (row.some((value) => value.trim() !== "")) yield row;
+  }
+}
+
+/**
+ * readSourceTable with the rows read lazily, so a whole large export is never held at once
+ * (profiling reads up to 100,000 rows). Same table and rows.
+ */
+export function sourceRows(
+  platform: Platform,
+  source: string,
+  file: ArrayBuffer,
+  maxRows: number = SAMPLE_ROWS,
+  sheets?: SheetSource,
+): { headers: string[]; rows: Iterable<unknown[]> } | null {
   if (platform === "jahez") {
-    const matrix = parseJahezCsv(new TextDecoder("utf-8").decode(file).replace(/^\uFEFF/, ""));
-    const table = jahezTable(matrix, source);
-    if (!table) return null;
-    const headers = (matrix[table.headerIndex] ?? []).map((value) => value.trim());
-    const end = source === JAHEZ_SUMMARY_FORMAT.source ? table.headerIndex + 2 : table.headerIndex + 1 + maxRows;
-    return { source, headers, rows: matrix.slice(table.headerIndex + 1, end).filter((row) => row.some((v) => v.trim() !== "")) };
+    const text = new TextDecoder("utf-8").decode(file).replace(/^\uFEFF/, "");
+    const cursor = { end: 0 };
+    // The first 40 rows (and where each ends), and the first "#" row after the summary.
+    const top: Array<{ row: string[]; end: number }> = [];
+    let header: { index: number; row: string[]; end: number } | null = null;
+    let index = 0;
+    for (const row of csvRows(text, 0, cursor)) {
+      if (index < 40) top.push({ row, end: cursor.end });
+      if (source === JAHEZ_SUMMARY_FORMAT.source && index >= 1) break;
+      if (source !== JAHEZ_SUMMARY_FORMAT.source && index > 0 && row[0]?.trim() === "#") {
+        header = { index, row, end: cursor.end };
+        break;
+      }
+      index += 1;
+    }
+    if (source === JAHEZ_SUMMARY_FORMAT.source) {
+      if (top.length === 0) return null;
+      const headers = top[0]!.row.map((value) => standalone(value.trim()));
+      return { headers, rows: top.slice(1, 2).map((item) => item.row).filter((row) => row.some((v) => v.trim() !== "")) };
+    }
+    if (!header) {
+      // The detail table's "#" column itself may have been renamed: take the widest row after the summary.
+      let width = 0;
+      top.slice(2, 40).forEach((item, i) => {
+        const count = item.row.filter((value) => value.trim() !== "" && !isMoney(value)).length;
+        if (count > width) {
+          width = count;
+          header = { index: i + 2, row: item.row, end: item.end };
+        }
+      });
+    }
+    if (!header) return null;
+    const found = header as { row: string[]; end: number };
+    // Standalone header names: profiles keep them, and slices would keep the whole text with them.
+    return { headers: found.row.map((value) => standalone(value.trim())), rows: csvBody(text, found.end, maxRows) };
   }
   const matrix = sheets ? sourceMatrix(sheets, platform, source) : sheetMatrix(XLSX.read(file, { type: "array" }), platform, source);
   if (!matrix || matrix.length === 0) return null;
   const index = platform === "hungerstation" ? 0 : headerRowIndex(matrix);
   const headers = (matrix[index] ?? []).map((value) => String(value ?? "").trim());
-  return { source, headers, rows: matrix.slice(index + 1, index + 1 + maxRows) };
+  function* rows() {
+    const end = Math.min(matrix!.length, index + 1 + maxRows);
+    for (let r = index + 1; r < end; r++) yield matrix![r]!;
+  }
+  return { headers, rows: rows() };
 }
 
 // ---------------------------------------------------------------- suggestions

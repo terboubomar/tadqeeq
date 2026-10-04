@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 
-import { resolveSheetName } from "../sheets";
+import { objectRows, resolveSheetName, rowKeys, workbookSheetSource } from "../sheets";
+import type { SheetSource } from "../xlsx-stream";
 import {
   UnsupportedFormatError,
   assertSupportedHeaders,
@@ -30,12 +31,14 @@ export const HUNGERSTATION_ORDER_FORMAT: FormatFingerprint = {
   ],
 };
 
-export function detectHungerStationFormat(wb: XLSX.WorkBook): string {
-  const sheetName = resolveSheetName(wb.SheetNames, "Commissionable GMV", {
+export function detectHungerStationFormat(input: XLSX.WorkBook | SheetSource): string {
+  const source = "matrix" in input ? input : workbookSheetSource(input);
+  const sheetName = resolveSheetName(source.names, "Commissionable GMV", {
     platform: "hungerstation",
   });
+  const matrix = sheetName ? source.matrix(sheetName) : undefined;
 
-  if (!sheetName || !wb.Sheets[sheetName]) {
+  if (!sheetName || !matrix) {
     throw new UnsupportedFormatError({
       platform: "hungerstation",
       source: HUNGERSTATION_ORDER_FORMAT.source,
@@ -44,11 +47,7 @@ export function detectHungerStationFormat(wb: XLSX.WorkBook): string {
     });
   }
 
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
-    wb.Sheets[sheetName]!,
-    { defval: null },
-  );
-  const first = rows[0];
+  const first = objectRows(matrix, 1)[0];
   if (!first) {
     throw new UnsupportedFormatError({
       platform: "hungerstation",
@@ -58,6 +57,6 @@ export function detectHungerStationFormat(wb: XLSX.WorkBook): string {
     });
   }
 
-  assertSupportedHeaders(HUNGERSTATION_ORDER_FORMAT, Object.keys(first));
+  assertSupportedHeaders(HUNGERSTATION_ORDER_FORMAT, rowKeys(first));
   return HUNGERSTATION_ORDER_FORMAT.id;
 }
