@@ -438,7 +438,10 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
                 ))}
               </ul>
             </div>
-            <HeroDashboard />
+            <div className="relative pb-10 sm:pb-12">
+              <HeroDashboard />
+              <HeroVideoCard />
+            </div>
           </div>
         </section>
 
@@ -535,7 +538,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
           </div>
         </section>
 
-        <section className="px-4 pb-16 sm:px-6">
+        <section id="final-cta" className="px-4 pb-16 sm:px-6">
           <div
             data-reveal
             className="mx-auto flex max-w-7xl flex-col items-center gap-5 rounded-[28px] bg-ink px-6 py-16 text-center text-ink-foreground sm:py-20"
@@ -639,16 +642,46 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
   );
 }
 
-const VIDEO_BUBBLE_KEY = "tadqeeq:video-bubble-dismissed";
+const VIDEO_LAUNCHER_KEY = "tadqeeq:video-launcher-hidden";
+
+/** The video's place in the hero: a thumbnail card on the product preview. Opens the pop-up via #video. */
+function HeroVideoCard() {
+  return (
+    <a
+      id="hero-video-card"
+      href="#video"
+      aria-label="شاهد كيف يعمل تدقيق (فيديو، دقيقة و55 ثانية)"
+      className="lp-slide group absolute bottom-0 start-4 flex w-[15.5rem] items-center gap-3 rounded-2xl bg-card p-2.5 pe-4 shadow-[0_24px_48px_-20px_rgb(19_35_43/0.55)] ring-1 ring-border transition-shadow hover:ring-primary sm:start-8 sm:w-[17.5rem]"
+      style={{ animationDelay: "0.9s" }}
+    >
+      <span className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-xl bg-ink sm:w-28">
+        <img src={EXPLAINER_VIDEO.poster} alt="" className="size-full object-cover opacity-80" />
+        <span className="absolute inset-0 grid place-items-center">
+          <span className="relative grid size-9 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform group-hover:scale-110">
+            <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-primary/50 [animation-duration:2.4s]" />
+            <Play className="relative size-4 fill-current" />
+          </span>
+        </span>
+        <span className="num absolute bottom-1 end-1 rounded bg-ink/80 px-1 text-[10px] leading-4 text-ink-foreground">1:55</span>
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-bold">شاهد كيف يعمل</span>
+        <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">من الفاتورة إلى التعويض</span>
+      </span>
+    </a>
+  );
+}
 
 /**
- * Floating "see how it works" button with a message bubble; opens the explainer film in a pop-up
- * (16:9 on wide screens, 9:16 on phones). Any link to #video opens it too.
+ * The explainer pop-up (16:9 on wide screens, 9:16 on phones), opened by any #video link, plus a
+ * floating "see how it works" button that appears only once the hero card has scrolled away and
+ * hides again at the closing call to action.
  */
 function ExplainerVideoLauncher() {
   const [open, setOpen] = useState(false);
-  const [shown, setShown] = useState(false);
-  const [bubble, setBubble] = useState(false);
+  const [inRange, setInRange] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [mobile, setMobile] = useState(false);
 
   useEffect(() => {
@@ -656,15 +689,29 @@ function ExplainerVideoLauncher() {
     setMobile(query.matches);
     const onChange = (event: MediaQueryListEvent) => setMobile(event.matches);
     query.addEventListener("change", onChange);
-
-    let dismissed = false;
     try {
-      dismissed = window.localStorage.getItem(VIDEO_BUBBLE_KEY) === "1";
+      setHidden(window.sessionStorage.getItem(VIDEO_LAUNCHER_KEY) === "1");
     } catch {
-      // Storage unavailable: show the bubble anyway.
+      // Storage unavailable: keep the button.
     }
-    const showButton = window.setTimeout(() => setShown(true), 1500);
-    const showBubble = dismissed ? 0 : window.setTimeout(() => setBubble(true), 3500);
+
+    // Visible between the hero card leaving the screen and the closing call to action arriving.
+    const heroCard = document.getElementById("hero-video-card");
+    const finalCta = document.getElementById("final-cta");
+    const state = { heroVisible: true, ctaReached: false };
+    const update = () => setInRange(!state.heroVisible && !state.ctaReached);
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        // Still "ahead" while the card is on screen or not yet scrolled to (it sits below the fold on phones).
+        if (entry.target === heroCard) state.heroVisible = entry.isIntersecting || entry.boundingClientRect.top > 0;
+        if (entry.target === finalCta) state.ctaReached = entry.isIntersecting || entry.boundingClientRect.top < 0;
+      }
+      update();
+    });
+    if (heroCard) observer.observe(heroCard);
+    else state.heroVisible = false;
+    if (finalCta) observer.observe(finalCta);
+    update();
 
     const fromHash = () => {
       if (window.location.hash !== "#video") return;
@@ -675,65 +722,71 @@ function ExplainerVideoLauncher() {
     window.addEventListener("hashchange", fromHash);
     return () => {
       query.removeEventListener("change", onChange);
-      window.clearTimeout(showButton);
-      window.clearTimeout(showBubble);
+      observer.disconnect();
       window.removeEventListener("hashchange", fromHash);
     };
   }, []);
 
-  const dismissBubble = () => {
-    setBubble(false);
+  // Each time the button appears it shows its label for a few seconds, then folds into a circle.
+  useEffect(() => {
+    if (!inRange) return;
+    setExpanded(true);
+    const fold = window.setTimeout(() => setExpanded(false), 6000);
+    return () => window.clearTimeout(fold);
+  }, [inRange]);
+
+  const visible = inRange && !open && !hidden;
+  const hide = () => {
+    setHidden(true);
     try {
-      window.localStorage.setItem(VIDEO_BUBBLE_KEY, "1");
+      window.sessionStorage.setItem(VIDEO_LAUNCHER_KEY, "1");
     } catch {
-      // Not remembered; it only reappears on the next visit.
+      // Not remembered; it returns on the next page load.
     }
-  };
-  const openVideo = () => {
-    dismissBubble();
-    setOpen(true);
   };
 
   return (
     <>
       <div
         className={cn(
-          "fixed bottom-4 left-4 z-40 flex items-end gap-3 transition-[opacity,transform] duration-500 sm:bottom-6 sm:left-6",
-          shown && !open ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0",
+          "group/launcher fixed bottom-4 left-4 z-40 transition-[opacity,transform] duration-500 sm:bottom-6 sm:left-6",
+          visible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-6 opacity-0",
         )}
+        onMouseEnter={() => setExpanded(true)}
+        onMouseLeave={() => setExpanded(false)}
       >
         <button
           type="button"
-          onClick={openVideo}
+          onClick={() => setOpen(true)}
+          onFocus={() => setExpanded(true)}
+          onBlur={() => setExpanded(false)}
           aria-label="شاهد كيف يعمل تدقيق (فيديو)"
-          className="group relative grid size-16 shrink-0 place-items-center rounded-full bg-ink shadow-[0_18px_40px_-14px_rgb(19_35_43/0.6)] ring-4 ring-primary transition-transform hover:scale-105 sm:size-[72px]"
+          className="flex items-center rounded-full bg-ink p-1.5 text-ink-foreground shadow-[0_18px_40px_-12px_rgb(19_35_43/0.6)] ring-1 ring-ink-foreground/10"
         >
-          <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-primary/40 [animation-duration:2.4s]" />
-          <img src={EXPLAINER_VIDEO.mobilePoster} alt="" className="absolute inset-0 size-full rounded-full object-cover object-top opacity-60" />
-          <span className="relative grid size-9 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg">
-            <Play className="size-4 fill-current" />
+          <span className="relative grid size-12 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+            <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-primary/45 [animation-duration:2.4s]" />
+            <Play className="relative size-5 fill-current" />
+          </span>
+          <span
+            className={cn(
+              "overflow-hidden whitespace-nowrap text-start transition-[max-width,opacity,padding] duration-500",
+              expanded ? "max-w-60 ps-3 pe-4 opacity-100" : "max-w-0 opacity-0",
+            )}
+          >
+            <span className="block text-sm font-bold">شاهد كيف يعمل</span>
+            <span className="block text-[11px] text-ink-muted">
+              فيديو · <span className="num">1:55</span>
+            </span>
           </span>
         </button>
-        <div
-          role="status"
-          className={cn(
-            "relative mb-2 w-[min(15rem,calc(100vw-7rem))] origin-bottom-left rounded-2xl rounded-es-sm bg-card p-3.5 pe-9 shadow-[0_18px_40px_-16px_rgb(19_35_43/0.45)] ring-1 ring-border transition-[opacity,transform] duration-500",
-            bubble && !open ? "scale-100 opacity-100" : "pointer-events-none scale-90 opacity-0",
-          )}
+        <button
+          type="button"
+          onClick={hide}
+          aria-label="إخفاء زر الفيديو"
+          className="absolute -top-2 -right-2 grid size-6 place-items-center rounded-full bg-card text-muted-foreground opacity-100 shadow ring-1 ring-border transition-opacity sm:opacity-0 sm:group-hover/launcher:opacity-100 sm:focus:opacity-100"
         >
-          <button type="button" onClick={openVideo} className="block text-start">
-            <span className="block text-sm font-bold">شاهد كيف يعمل ▶</span>
-            <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">تدقيق في أقل من دقيقتين، من رفع الفاتورة إلى استرجاع التعويض.</span>
-          </button>
-          <button
-            type="button"
-            onClick={dismissBubble}
-            aria-label="إخفاء الرسالة"
-            className="absolute end-2 top-2 grid size-6 place-items-center rounded-full text-muted-foreground hover:bg-muted"
-          >
-            <X className="size-3.5" />
-          </button>
-        </div>
+          <X className="size-3.5" />
+        </button>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
