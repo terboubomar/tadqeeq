@@ -2,9 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 
 import { NOINDEX_PAGES, PRIVATE_PAGES, PRIVATE_PREFIXES, PUBLIC_PAGES, SITE_URL } from "./seo";
-import { buildLlmsTxt, buildRobots, buildSitemap } from "./seo-files";
+import { buildLlmsFullTxt, buildLlmsTxt, buildPricingMd, buildRobots, buildSitemap } from "./seo-files";
+import { FAQS, FEATURES } from "./site-content";
 
-const SEO_FILES = ["/sitemap.xml", "/robots.txt", "/llms.txt"];
+const SEO_FILES = ["/sitemap.xml", "/robots.txt", "/llms.txt", "/llms-full.txt", "/pricing.md"];
 
 function appRoutes() {
   const tree = readFileSync(new URL("../routeTree.gen.ts", import.meta.url), "utf8");
@@ -83,5 +84,41 @@ describe("llms.txt", () => {
     expect(txt.startsWith("# تدقيق (Tadqeeq)")).toBe(true);
     expect(txt).toContain(`${SITE_URL}/`);
     expect(txt).toContain("HungerStation");
+  });
+});
+
+describe("AI files", () => {
+  const plans = [
+    { id: "p1", name: "أساسي", price: 399, cycle: "monthly" as const, features: ["invoice_audit" as const], uploadLimit: 4, description: null, highlighted: false },
+    { id: "p2", name: "المجموعات", price: 9990, cycle: "yearly" as const, features: ["invoice_audit" as const, "compensation" as const], uploadLimit: null, description: "حتى 50 فرعاً", highlighted: true },
+  ];
+
+  test("pricing.md lists the trial and every plan with price, unit and limits", () => {
+    const md = buildPricingMd(plans);
+    expect(md).toContain("## Free trial");
+    expect(md).toContain("- Price: 399 SAR per month");
+    expect(md).toContain("- Price: 9,990 SAR per year");
+    expect(md).toContain("- Uploads: 4 per month");
+    expect(md).toContain("- Uploads: unlimited");
+    expect(md).toContain("مركز التعويضات");
+    expect(buildPricingMd([])).toContain("## Free trial");
+  });
+
+  test("llms-full.txt carries the features, every FAQ answer and the pricing", () => {
+    const txt = buildLlmsFullTxt(plans);
+    for (const feature of FEATURES) expect(txt).toContain(feature.nameEn);
+    for (const [question, answer] of FAQS) {
+      expect(txt).toContain(question);
+      expect(txt).toContain(answer);
+    }
+    expect(txt).toContain("## Pricing");
+    expect(txt).toContain("### أساسي");
+    expect(txt.match(/^# /gm)?.length).toBe(1);
+  });
+
+  test("llms.txt points to the full file and the pricing file", () => {
+    const txt = buildLlmsTxt();
+    expect(txt).toContain(`${SITE_URL}/llms-full.txt`);
+    expect(txt).toContain(`${SITE_URL}/pricing.md`);
   });
 });

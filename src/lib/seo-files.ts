@@ -8,6 +8,8 @@ import {
   SITE_URL,
   type PublicPage,
 } from "./seo";
+import { CORE_FEATURE_LABELS, PLAN_FEATURES, TRIAL_FEATURES, type PublicPlan } from "./plans";
+import { CONTENT_UPDATED, EXPLAINER_VIDEO, FAQS, FEATURES } from "./site-content";
 
 export function buildSitemap(pages: PublicPage[] = PUBLIC_PAGES) {
   const urls = pages
@@ -38,31 +40,106 @@ export function buildRobots() {
   return `${groups.join("\n\n")}\n\nSitemap: ${SITE_URL}/sitemap.xml\n`;
 }
 
+const SUMMARY_EN =
+  "Tadqeeq is a Saudi SaaS that re-calculates every line of HungerStation, Keeta and Jahez delivery-app invoices from the restaurant's own order file and contract, flags differences per branch, and prepares compensation claims with evidence. Arabic-first.";
+const SUMMARY_AR =
+  "تدقيق منصة سعودية تعيد احتساب كل بند في فواتير هنقرستيشن وكيتا وجاهز من ملف الطلبات والعقد، وتكشف فروقات العمولة والرسوم لكل فرع، وتجهّز مطالبات التعويض بالأدلة.";
+
+const AUDIENCE =
+  "Restaurant owners, finance managers, multi-branch restaurant groups and accounting teams in Saudi Arabia selling on delivery apps (HungerStation, Keeta, Jahez).";
+
 export function buildLlmsTxt() {
   return `# ${SITE_NAME} (${SITE_NAME_EN})
 
-> ${SITE_NAME_EN} is a Saudi SaaS that re-calculates every line of HungerStation, Jahez and Keeta invoices from the restaurant's own order file and contract, flags differences per branch, and prepares compensation claims with evidence. Arabic-first.
+> ${SUMMARY_EN}
 
-تدقيق منصة سعودية تعيد احتساب كل بند في فواتير هنقرستيشن وجاهز وكيتا من ملف الطلبات والعقد، وتكشف فروقات العمولة والرسوم لكل فرع، وتجهّز مطالبات التعويض بالأدلة.
+${SUMMARY_AR}
 
 ## What it does
 
-- Invoice check: upload the platform invoice and the merchant order file (Excel, CSV or PDF); platform, period and branches are detected automatically.
-- Versioned recalculation engine: every result stores the engine and contract version, so the same files always give the same result.
-- Charges map: commission, payment fees, free-delivery campaigns, VAT on fees, offers, compensations and unclassified lines.
-- Exceptions center: each difference gets a severity, the source invoice line, the formula, an owner and a status until it is recovered.
-- Compensation center: branch staff send order videos or receipt photos in a Telegram group; the bot links them to the order number; dispute letters are generated in Arabic and English.
-- Tadqeeq AI explains results in plain language; numbers come from the accounting engine and AI never changes them.
+${FEATURES.map((feature) => `- ${feature.nameEn} (${feature.name}): ${feature.description}`).join("\n")}
 
 ## Who it is for
 
-Restaurant owners, finance managers, multi-branch restaurant groups and accounting teams in Saudi Arabia selling on delivery apps.
+${AUDIENCE}
 
 ## Pages
 
 ${PUBLIC_PAGES.map((page) => `- [${page.path === "/" ? "Home" : page.path}](${SITE_URL}${page.path})`).join("\n")}
-- [Pricing](${SITE_URL}/#pricing)
+- [Explainer video (Arabic, 1:55)](${SITE_URL}${EXPLAINER_VIDEO.src})
+- [Pricing](${SITE_URL}/#pricing): plans and prices as Markdown at [pricing.md](${SITE_URL}/pricing.md)
 - [FAQ](${SITE_URL}/#faq)
 - [Sign up](${SITE_URL}/auth?mode=signup)
+
+## Optional
+
+- [Full site content in one file](${SITE_URL}/llms-full.txt)
 `;
+}
+
+function planLines(plan: PublicPlan): string {
+  const unit = plan.cycle === "yearly" ? "year" : "month";
+  const features = [...CORE_FEATURE_LABELS, ...PLAN_FEATURES.filter((feature) => plan.features.includes(feature.key)).map((feature) => feature.label)];
+  return [
+    `## ${plan.name}`,
+    "",
+    `- Price: ${plan.price.toLocaleString("en-US")} SAR per ${unit}`,
+    `- Uploads: ${plan.uploadLimit === null ? "unlimited" : `${plan.uploadLimit} per month`}`,
+    ...(plan.description ? [`- Notes: ${plan.description}`] : []),
+    `- Includes: ${features.join("، ")}`,
+  ].join("\n");
+}
+
+/** Plans and prices as Markdown for AI agents comparing tools; empty plans still describe the free trial. */
+export function buildPricingMd(plans: PublicPlan[]) {
+  const trial = PLAN_FEATURES.filter((feature) => TRIAL_FEATURES.includes(feature.key)).map((feature) => feature.label);
+  return `# Pricing — ${SITE_NAME_EN} (${SITE_NAME})
+
+Prices in Saudi riyals (SAR). Last updated: ${CONTENT_UPDATED}. Live prices: ${SITE_URL}/#pricing
+
+## Free trial
+
+- Price: 0 SAR
+- Limits: one upload (one platform's files for one period)
+- Includes: ${[...CORE_FEATURE_LABELS, ...trial].join("، ")}
+- Start: ${SITE_URL}/auth?mode=signup
+
+${plans.length ? plans.map(planLines).join("\n\n") : "Paid plans: shown on the homepage pricing section; contact us from inside the account to subscribe."}
+`;
+}
+
+/** The whole public site in one Markdown file, so an assistant gets everything in one request. */
+export function buildLlmsFullTxt(plans: PublicPlan[]) {
+  return `# ${SITE_NAME} (${SITE_NAME_EN}) — full site content
+
+> ${SUMMARY_EN}
+
+${SUMMARY_AR}
+
+Last updated: ${CONTENT_UPDATED}. Website: ${SITE_URL}
+
+## Who it is for
+
+${AUDIENCE}
+
+## How it works
+
+1. Upload the month's order file from the platform's merchant portal (Excel or CSV) and the platform invoice (PDF). Platform, period and branches are detected automatically; files up to 25 MB.
+2. A versioned accounting engine recalculates every line from the orders and the contract: commission, payment fees, campaigns, compensations.
+3. Each difference between the invoice and the recalculation appears with the branch, the amount and its source, and becomes an exception with an owner and a status until it is closed.
+4. For compensations, branch staff send order videos or receipt photos in the branch Telegram group; the Tadqeeq bot links them to the order number, and staff get a ready review request in Arabic and English to send to the platform.
+
+## Features
+
+${FEATURES.map((feature) => `### ${feature.nameEn} (${feature.name})\n\n${feature.description}`).join("\n\n")}
+
+## Explainer video
+
+Arabic, 1 minute 55 seconds: ${SITE_URL}${EXPLAINER_VIDEO.src}
+
+## Frequently asked questions
+
+${FAQS.map(([question, answer]) => `### ${question}\n\n${answer}`).join("\n\n")}
+
+${buildPricingMd(plans).replace(/^# .*\n/, "## Pricing\n").replace(/^## /gm, (match, offset) => (offset === 0 ? match : "### "))}`;
 }

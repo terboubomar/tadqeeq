@@ -40,7 +40,7 @@ export type PublicPage = {
 };
 
 /** Every page that should be indexed. Adding a public page here adds it to sitemap.xml and llms.txt. */
-export const PUBLIC_PAGES: PublicPage[] = [{ path: "/", lastmod: "2026-09-27", changefreq: "weekly", priority: 1 }];
+export const PUBLIC_PAGES: PublicPage[] = [{ path: "/", lastmod: "2026-10-04", changefreq: "weekly", priority: 1 }];
 
 /** App sections whose every sub-path is private. */
 export const PRIVATE_PREFIXES = ["/api/", "/ops", "/compensation"];
