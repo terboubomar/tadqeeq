@@ -560,6 +560,8 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
 
         <ChecksGrid />
 
+        <AssistantSection />
+
         <Audiences />
 
         {plans.length ? <Pricing plans={plans} /> : null}
@@ -1907,6 +1909,97 @@ function CheckTile({
   );
 }
 
+const ASSISTANT_STEPS = [
+  { title: "اكتب طلبك في المحادثة", body: "مثل: «دقق فاتورة هنقرستيشن لشهر سبتمبر، رسوم البنك 1.8%»." },
+  { title: "ارفع من الرابط الجاهز", body: "رابط آمن فيه المنصة والنسبة مسبقاً. تسحب ملف الطلبات والفاتورة وتضغط تحليل." },
+  { title: "اسأل عن النتيجة", body: "الفروقات وما تطالب به، أعلى الفروع تكلفة، والمقارنة مع الشهر الماضي، في نفس المحادثة." },
+];
+
+/** Using Tadqeeq from Claude or ChatGPT (the MCP, الشاملة plan): three steps and an illustrative chat. */
+function AssistantSection() {
+  return (
+    <section id="assistant" className="bg-ink text-ink-foreground">
+      <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:py-28">
+        <div data-reveal>
+          <p className="flex items-center gap-2 text-[13px] font-semibold text-primary">
+            <span className="size-1.5 rounded-full bg-primary" />
+            جديد · في باقة الشاملة
+          </p>
+          <h2 className="mt-3 font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]">دقّق فواتيرك من داخل Claude و ChatGPT.</h2>
+          <p className="mt-4 text-base leading-8 text-ink-muted sm:text-[17px]">
+            اربط حساب تدقيق بمساعدك الذكي واطلب التدقيق بجملة. يعطيك رابط رفع جاهز، وبعد الرفع يشرح لك النتيجة في نفس المحادثة. الأرقام من
+            المحرك المحاسبي في تدقيق، والمساعد يشرحها فقط.
+          </p>
+          <ol className="mt-8 space-y-5">
+            {ASSISTANT_STEPS.map((step, index) => (
+              <li key={step.title} className="flex gap-4">
+                <span className="num grid size-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{index + 1}</span>
+                <span>
+                  <span className="block font-semibold">{step.title}</span>
+                  <span className="mt-1 block text-sm leading-7 text-ink-muted">{step.body}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+          <a href="#pricing" className="mt-8 inline-flex h-11 w-fit items-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground">
+            اطّلع على باقة الشاملة
+            <ArrowLeft className="size-4" />
+          </a>
+        </div>
+        <AssistantChatMock />
+      </div>
+    </section>
+  );
+}
+
+function AssistantChatMock() {
+  const user = "ms-auto max-w-[85%] rounded-2xl rounded-se-sm bg-primary px-4 py-3 text-sm leading-7 text-primary-foreground";
+  const bot = "max-w-[92%] rounded-2xl rounded-ss-sm bg-ink-foreground/10 px-4 py-3 text-sm leading-7";
+  return (
+    <div data-reveal aria-label="مثال توضيحي لمحادثة مع المساعد" className="rounded-[22px] border border-ink-foreground/15 bg-ink-foreground/[0.04] p-4 sm:p-6">
+      <div className="mb-4 flex items-center justify-between text-xs text-ink-muted">
+        <span className="flex items-center gap-2">
+          <Sparkles className="size-4 text-primary" />
+          Claude · ChatGPT + تدقيق
+        </span>
+        <span className="rounded-full border border-ink-foreground/20 px-2.5 py-0.5">مثال توضيحي</span>
+      </div>
+      <div className="space-y-3">
+        <p className={user}>دقق فاتورة هنقرستيشن لشهر سبتمبر، رسوم البنك 1.8%</p>
+        <div className={bot}>
+          جهّزت لك رابط الرفع. ارفع ملف الطلبات والفاتورة ثم ارجع واكتب «خلصت».
+          <span className="mt-2 flex items-center gap-2 rounded-xl bg-ink-foreground/10 px-3 py-2 text-xs">
+            <Upload className="size-4 shrink-0 text-primary" />
+            <span dir="ltr" className="num truncate">tadqeeq.app/import</span>
+            <span className="ms-auto shrink-0 text-ink-muted">
+              هنقرستيشن · <span className="num">1.8%</span>
+            </span>
+          </span>
+        </div>
+        <p className={user}>خلصت</p>
+        <div className={bot}>
+          <p>دققت سبتمبر لـ <span className="num">6</span> فروع:</p>
+          <ul className="mt-2 space-y-1.5">
+            <li className="flex justify-between gap-3">
+              <span>فرق في العمولة (<span className="num">3</span> فروع)</span>
+              <span className="font-semibold text-primary"><span className="num">2,340</span> ر.س</span>
+            </li>
+            <li className="flex justify-between gap-3">
+              <span>تعويضات بدون دليل</span>
+              <span className="font-semibold text-primary"><span className="num">1,180</span> ر.س</span>
+            </li>
+            <li className="flex justify-between gap-3 border-t border-ink-foreground/15 pt-1.5">
+              <span className="font-semibold">تستطيع المطالبة بـ</span>
+              <span className="font-bold"><span className="num">3,520</span> ر.س</span>
+            </li>
+          </ul>
+          <p className="mt-2 text-ink-muted">أعلى فرع تكلفة: العليا. تبي أقارنه مع أغسطس؟</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SectionIntro({
   eyebrow,
   title,
@@ -2774,7 +2867,7 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
                 {plan.code === MCP_PLAN_CODE ? (
                   <p className={cn("mt-2 flex gap-2 text-sm font-semibold", dark ? "text-primary" : "text-primary-text")}>
                     <Check className="mt-0.5 size-4 shrink-0" />
-                    ودقّق فواتيرك من داخل Claude وChatGPT
+                    ودقّق فواتيرك من داخل Claude و ChatGPT
                   </p>
                 ) : null}
               </div>

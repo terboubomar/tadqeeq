@@ -218,7 +218,7 @@ function PlanPicker({ plans: allPlans }: { plans: PublicPlan[] }) {
               {PLAN_ADDONS.some((addon) => planIncludesAddon(plan.features, addon.key)) ? (
                 <span className="text-xs font-semibold text-primary-text">يشمل Tadqeeq AI ومركز التعويضات</span>
               ) : null}
-              {plan.code === MCP_PLAN_CODE ? <span className="text-xs font-semibold text-primary-text">والتدقيق من داخل Claude وChatGPT</span> : null}
+              {plan.code === MCP_PLAN_CODE ? <span className="text-xs font-semibold text-primary-text">والتدقيق من داخل Claude و ChatGPT</span> : null}
               <span className="mt-auto pt-2">
                 {plan.customPrice ? (
                   <span className="font-semibold">بالاتفاق</span>

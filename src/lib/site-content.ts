@@ -104,6 +104,12 @@ export const FEATURES: Array<{ name: string; nameEn: string; description: string
       "Matches renamed columns after a one-time confirmation and warns about new or vanished money columns instead of computing an unreliable result. Large monthly exports (up to 25 MB per file) are supported.",
   },
   {
+    name: "تدقيق من داخل Claude وChatGPT",
+    nameEn: "Tadqeeq in Claude and ChatGPT (MCP)",
+    description:
+      "On the الشاملة plan, connect Tadqeeq to Claude or ChatGPT: ask for an audit in the chat, upload the files through a secure pre-filled link, then ask about the result (differences to claim, costliest branches, month comparisons). Numbers come from the accounting engine.",
+  },
+  {
     name: "Tadqeeq AI",
     nameEn: "Tadqeeq AI",
     description: "Answers questions about the numbers in plain Arabic; numbers come from the accounting engine and the AI never changes them.",
