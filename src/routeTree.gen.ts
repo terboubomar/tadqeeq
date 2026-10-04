@@ -59,6 +59,7 @@ import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as OpsClientsWorkspaceIdRouteImport } from './routes/ops/clients_.$workspaceId'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
+import { Route as ApiPublicCspReportRouteImport } from './routes/api/public/csp-report'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
@@ -317,6 +318,11 @@ const ApiPublicTelegramWebhookRoute =
     path: '/api/public/telegram-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCspReportRoute = ApiPublicCspReportRouteImport.update({
+  id: '/api/public/csp-report',
+  path: '/api/public/csp-report',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   id: '/.lovable/oauth/consent',
   path: '/.lovable/oauth/consent',
@@ -388,6 +394,7 @@ export interface FileRoutesByFullPath {
   '/guides/': typeof GuidesIndexRoute
   '/ops/': typeof OpsIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/api/public/csp-report': typeof ApiPublicCspReportRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -441,6 +448,7 @@ export interface FileRoutesByTo {
   '/guides': typeof GuidesIndexRoute
   '/ops': typeof OpsIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/api/public/csp-report': typeof ApiPublicCspReportRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -498,6 +506,7 @@ export interface FileRoutesById {
   '/guides/': typeof GuidesIndexRoute
   '/ops/': typeof OpsIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/api/public/csp-report': typeof ApiPublicCspReportRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients_/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -555,6 +564,7 @@ export interface FileRouteTypes {
     | '/guides/'
     | '/ops/'
     | '/.lovable/oauth/consent'
+    | '/api/public/csp-report'
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
     | '/lovable/email/auth/preview'
@@ -608,6 +618,7 @@ export interface FileRouteTypes {
     | '/guides'
     | '/ops'
     | '/.lovable/oauth/consent'
+    | '/api/public/csp-report'
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
     | '/lovable/email/auth/preview'
@@ -664,6 +675,7 @@ export interface FileRouteTypes {
     | '/guides/'
     | '/ops/'
     | '/.lovable/oauth/consent'
+    | '/api/public/csp-report'
     | '/api/public/telegram-webhook'
     | '/ops/clients_/$workspaceId'
     | '/lovable/email/auth/preview'
@@ -691,6 +703,7 @@ export interface RootRouteChildren {
   GuidesKeetaInvoiceRoute: typeof GuidesKeetaInvoiceRoute
   GuidesIndexRoute: typeof GuidesIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  ApiPublicCspReportRoute: typeof ApiPublicCspReportRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -1049,6 +1062,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/csp-report': {
+      id: '/api/public/csp-report'
+      path: '/api/public/csp-report'
+      fullPath: '/api/public/csp-report'
+      preLoaderRoute: typeof ApiPublicCspReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.lovable/oauth/consent': {
       id: '/.lovable/oauth/consent'
       path: '/.lovable/oauth/consent'
@@ -1190,6 +1210,7 @@ const rootRouteChildren: RootRouteChildren = {
   GuidesKeetaInvoiceRoute: GuidesKeetaInvoiceRoute,
   GuidesIndexRoute: GuidesIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  ApiPublicCspReportRoute: ApiPublicCspReportRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
