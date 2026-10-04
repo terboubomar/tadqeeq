@@ -24,6 +24,8 @@ import {
   buildHungerStationMappingReview,
   type HungerStationMappingReview,
 } from "./hungerstation-branch-review";
+import { planRegistrySync } from "./branch-registry-sync";
+import type { RegistryBranch } from "./branch-registry";
 import { normalizePeriodLabel, type StoredPeriod } from "./periods";
 import { TRIAL_UPLOAD_EVENT } from "./plans";
 import { requireServerUser, type ServerUserClient } from "./server-auth.server";
@@ -697,6 +699,36 @@ async function rollbackPeriod(
   }
 }
 
+/**
+ * Adds the upload's branches to the workspace branch list (team branch access, unified names), so no one has
+ * to type branches in by hand. Runs with the service role because uploaders may not manage branches; it never
+ * renames or removes anything and never blocks the upload.
+ */
+async function syncBranchRegistry(workspaceId: string, ownerUserId: string, platform: AnalysisResult["platform"], branches: AnalysisResult["branches"]) {
+  try {
+    // branch_registry is not fully in the generated types yet.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = supabaseAdmin as any;
+    const { data, error } = await db.from("branch_registry").select("id,name,hungerstation_id,keeta_id,jahez_id").eq("workspace_id", workspaceId);
+    if (error) throw new Error(error.message);
+    const plan = planRegistrySync((data ?? []) as RegistryBranch[], platform, branches);
+    const now = new Date().toISOString();
+    for (const { id, ...ids } of plan.updates) {
+      const { error: updateError } = await db.from("branch_registry").update({ ...ids, updated_at: now }).eq("id", id).eq("workspace_id", workspaceId);
+      if (updateError) console.error("Failed to link branch id", updateError.message);
+    }
+    for (const row of plan.inserts) {
+      const { error: insertError } = await db
+        .from("branch_registry")
+        .insert({ ...row, workspace_id: workspaceId, user_id: ownerUserId, active: true, updated_at: now });
+      // A unique-name or id clash means the branch is already there (e.g. a parallel upload).
+      if (insertError && insertError.code !== "23505") console.error("Failed to add branch", insertError.message);
+    }
+  } catch (cause) {
+    console.error("Failed to sync branch list", cause);
+  }
+}
+
 /** An upload started from an AI assistant (the MCP) reports its period back, so the assistant can read the result. */
 async function completeMcpRequest(client: ServerUserClient, form: FormData, periodId: string) {
   const requestId = formString(form, "mcpRequest");
@@ -898,6 +930,7 @@ async function runImportAudit(
   }
 
   if (trial) await recordTrialUpload(workspaceId, actorUserId, periodId, platform);
+  await syncBranchRegistry(workspaceId, userId, platform, result.branches);
   await completeMcpRequest(client, form, periodId);
   if (nextSnapshots) {
     await saveColumnSnapshots(client, { workspaceId, ownerUserId: userId, platform, snapshots: nextSnapshots });

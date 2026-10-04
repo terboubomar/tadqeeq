@@ -43,7 +43,6 @@ import { Route as CompensationCasesRouteImport } from './routes/compensation/cas
 import { Route as CompensationBranchesRouteImport } from './routes/compensation/branches'
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
 import { Route as AuthenticatedSubscribeRouteImport } from './routes/_authenticated/subscribe'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedPromotionsRouteImport } from './routes/_authenticated/promotions'
 import { Route as AuthenticatedInvoiceCheckRouteImport } from './routes/_authenticated/invoice-check'
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
@@ -235,11 +234,6 @@ const AuthenticatedSubscribeRoute = AuthenticatedSubscribeRouteImport.update({
   path: '/subscribe',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedPromotionsRoute = AuthenticatedPromotionsRouteImport.update({
   id: '/promotions',
   path: '/promotions',
@@ -372,7 +366,6 @@ export interface FileRoutesByFullPath {
   '/import': typeof AuthenticatedImportRoute
   '/invoice-check': typeof AuthenticatedInvoiceCheckRoute
   '/promotions': typeof AuthenticatedPromotionsRoute
-  '/settings': typeof AuthenticatedSettingsRoute
   '/subscribe': typeof AuthenticatedSubscribeRoute
   '/team': typeof AuthenticatedTeamRoute
   '/compensation/branches': typeof CompensationBranchesRoute
@@ -426,7 +419,6 @@ export interface FileRoutesByTo {
   '/import': typeof AuthenticatedImportRoute
   '/invoice-check': typeof AuthenticatedInvoiceCheckRoute
   '/promotions': typeof AuthenticatedPromotionsRoute
-  '/settings': typeof AuthenticatedSettingsRoute
   '/subscribe': typeof AuthenticatedSubscribeRoute
   '/team': typeof AuthenticatedTeamRoute
   '/compensation/branches': typeof CompensationBranchesRoute
@@ -484,7 +476,6 @@ export interface FileRoutesById {
   '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/invoice-check': typeof AuthenticatedInvoiceCheckRoute
   '/_authenticated/promotions': typeof AuthenticatedPromotionsRoute
-  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/subscribe': typeof AuthenticatedSubscribeRoute
   '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/compensation/branches': typeof CompensationBranchesRoute
@@ -542,7 +533,6 @@ export interface FileRouteTypes {
     | '/import'
     | '/invoice-check'
     | '/promotions'
-    | '/settings'
     | '/subscribe'
     | '/team'
     | '/compensation/branches'
@@ -596,7 +586,6 @@ export interface FileRouteTypes {
     | '/import'
     | '/invoice-check'
     | '/promotions'
-    | '/settings'
     | '/subscribe'
     | '/team'
     | '/compensation/branches'
@@ -653,7 +642,6 @@ export interface FileRouteTypes {
     | '/_authenticated/import'
     | '/_authenticated/invoice-check'
     | '/_authenticated/promotions'
-    | '/_authenticated/settings'
     | '/_authenticated/subscribe'
     | '/_authenticated/team'
     | '/compensation/branches'
@@ -949,13 +937,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSubscribeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/promotions': {
       id: '/_authenticated/promotions'
       path: '/promotions'
@@ -1113,7 +1094,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedInvoiceCheckRoute: typeof AuthenticatedInvoiceCheckRoute
   AuthenticatedPromotionsRoute: typeof AuthenticatedPromotionsRoute
-  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedSubscribeRoute: typeof AuthenticatedSubscribeRoute
   AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
 }
@@ -1132,7 +1112,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedInvoiceCheckRoute: AuthenticatedInvoiceCheckRoute,
   AuthenticatedPromotionsRoute: AuthenticatedPromotionsRoute,
-  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedSubscribeRoute: AuthenticatedSubscribeRoute,
   AuthenticatedTeamRoute: AuthenticatedTeamRoute,
 }
