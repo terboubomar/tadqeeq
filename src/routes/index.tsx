@@ -54,6 +54,7 @@ import {
 import { cn } from "@/lib/utils";
 import { listPublicPlans } from "@/lib/plans.functions";
 import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
+import { LegalLinks } from "@/components/legal/LegalPage";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { OG_IMAGE, SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
 import { CONTENT_UPDATED, EXPLAINER_VIDEO, FAQS, FEATURES, formatArabicDate } from "@/lib/site-content";
@@ -683,6 +684,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
             <p>
               <span className="num">© {new Date().getFullYear()}</span> تدقيق · مراجعة فواتير التوصيل للمطاعم · صُنع في السعودية
             </p>
+            <LegalLinks className="flex flex-wrap gap-4" />
             <a href="#top" className="inline-flex items-center gap-1.5 font-semibold transition-colors hover:text-foreground">
               العودة للأعلى
               <ArrowUp className="size-3.5" />

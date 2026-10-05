@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -301,6 +301,19 @@ function AuthPage() {
             {busy ? <Loader2 className="size-4 animate-spin" /> : null}
             {mode === "signin" ? "دخول" : "إنشاء الحساب"}
           </Button>
+          {mode === "signup" ? (
+            <p className="text-center text-xs leading-6 text-muted-foreground">
+              بإنشاء الحساب فإنك توافق على{" "}
+              <Link to="/terms" target="_blank" className="font-semibold text-foreground underline-offset-4 hover:underline">
+                الشروط والأحكام
+              </Link>{" "}
+              و
+              <Link to="/privacy" target="_blank" className="font-semibold text-foreground underline-offset-4 hover:underline">
+                سياسة الخصوصية
+              </Link>
+              .
+            </p>
+          ) : null}
         </form>
 
         <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">

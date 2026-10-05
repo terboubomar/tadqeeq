@@ -44,6 +44,12 @@ function GuideShell({ children }: { children: ReactNode }) {
             <a href="/#faq" className="hover:text-foreground">
               الأسئلة الشائعة
             </a>
+            <Link to="/privacy" className="hover:text-foreground">
+              سياسة الخصوصية
+            </Link>
+            <Link to="/terms" className="hover:text-foreground">
+              الشروط والأحكام
+            </Link>
           </nav>
         </div>
       </footer>
