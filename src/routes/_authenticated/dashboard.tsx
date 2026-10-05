@@ -18,6 +18,7 @@ import {
   Sparkles,
   Store,
   TrendingUp,
+  Upload,
   Wallet,
 } from "lucide-react";
 import {
@@ -41,6 +42,8 @@ import { reanalyzeAuditPeriod } from "@/lib/reanalyze-period.functions";
 import { setSelectedPeriodId, useSelectedPeriod } from "@/lib/use-period";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 import { SmartWatchCard } from "@/components/smart-watch/SmartWatchCard";
+import { ActionBar, NumberTiles, PageHeader } from "@/components/workspace/PageKit";
+import { PRODUCTS } from "@/lib/products";
 import { keetaCostSplit, keetaOutsideInvoice } from "@/lib/keeta-cost";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -256,37 +259,102 @@ function Dashboard() {
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="audit-heading">اللوحة التنفيذية</h1>
-          <p className="audit-subtitle">
-            {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)} ·{" "}
-            <PlatformName platform={selected.platform} iconClassName="size-4 rounded" /> · <span className="num">{count(s.branchCount)}</span> فرع ·{" "}
+      <PageHeader
+        crumbs={[{ label: "الرئيسية" }, { label: "اللوحة التنفيذية" }]}
+        title="اللوحة التنفيذية"
+        subtitle={
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)} ·
+            <PlatformName platform={selected.platform} iconClassName="size-4 rounded" /> · <span className="num">{count(s.branchCount)}</span> فرع ·
             <span className="num">{count(s.orders)}</span> طلب
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+          </span>
+        }
+        aside={
           <span
-            className="num rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-muted-foreground"
+            className="num rounded-full border border-border bg-card px-3 py-1 text-[11.5px] text-muted-foreground"
             title={selected.supersedes_period_id ? "إعادة تحليل" : "الإصدار الأصلي"}
           >
             Engine {selected.engine_version}
             {selected.supersedes_period_id ? " · إعادة تحليل" : ""}
           </span>
-          <Button type="button" size="sm" variant="outline" disabled={reanalyzing} onClick={() => void reanalyzeCurrentPeriod()}>
-            <RefreshCw className={reanalyzing ? "size-3.5 animate-spin" : "size-3.5"} />
-            {reanalyzing ? "جارٍ إعادة التحليل…" : "إعادة التحليل"}
+        }
+      />
+
+      <ActionBar>
+        <Button type="button" size="sm" variant="ghost" className="gap-1.5" disabled={reanalyzing} onClick={() => void reanalyzeCurrentPeriod()}>
+          <RefreshCw className={reanalyzing ? "size-4 animate-spin text-primary-text" : "size-4 text-primary-text"} />
+          {reanalyzing ? "جارٍ إعادة التحليل…" : "إعادة التحليل"}
+        </Button>
+        <Button asChild size="sm" variant="ghost" className="gap-1.5">
+          <Link to="/import">
+            <Upload className="size-4 text-primary-text" />
+            رفع فترة
+          </Link>
+        </Button>
+        <Button asChild size="sm" variant="ghost" className="gap-1.5">
+          <Link to="/branches">
+            <Store className="size-4 text-primary-text" />
+            تقرير الفروع
+          </Link>
+        </Button>
+        {can("exceptions.read") ? (
+          <Button asChild size="sm" variant="ghost" className="gap-1.5">
+            <Link to="/exceptions">
+              <ShieldCheck className="size-4 text-primary-text" />
+              {PRODUCTS.radar.name}
+            </Link>
           </Button>
-          {AI_UI_ENABLED ? (
-            <Button asChild size="sm">
-              <Link to="/ai">
-                <Sparkles className="size-3.5" />
-                Tadqeeq AI
-              </Link>
-            </Button>
-          ) : null}
-        </div>
-      </header>
+        ) : null}
+        {AI_UI_ENABLED ? (
+          <Button asChild size="sm" className="ms-auto gap-1.5">
+            <Link to="/ai">
+              <Sparkles className="size-3.5" />
+              Tadqeeq AI
+            </Link>
+          </Button>
+        ) : null}
+      </ActionBar>
+
+      {can("exceptions.read") ? (
+        <section aria-labelledby="activities" className="space-y-2.5">
+          <h2 id="activities" className="font-display text-[15px] font-bold">الأنشطة</h2>
+          <NumberTiles
+            items={[
+              {
+                label: "الاستثناءات المفتوحة",
+                value: count(exceptionSummary.openCount),
+                hint: count(exceptionSummary.criticalCount) + " حرج",
+                icon: CircleAlert,
+                tone: exceptionSummary.openCount ? "danger" : "plain",
+                to: "/exceptions",
+              },
+              {
+                label: "قابل للاسترداد من المنصة",
+                value: sar(exceptionSummary.potentialRecovery),
+                hint: "تحت المراجعة " + sar(exceptionSummary.underReview),
+                icon: ShieldCheck,
+                tone: "gold",
+                to: "/exceptions",
+              },
+              {
+                label: "تم استرداده",
+                value: sar(exceptionSummary.recovered),
+                hint: "حسب المسجل في «" + PRODUCTS.radar.name + "»",
+                icon: Banknote,
+                tone: exceptionSummary.recovered > 0 ? "success" : "plain",
+                to: "/exceptions",
+              },
+              {
+                label: "الطلبات",
+                value: count(s.orders),
+                hint: "متوسط الطلب " + sar(s.orders ? s.grossSales / s.orders : 0),
+                icon: ShoppingCart,
+                to: "/daily",
+              },
+            ]}
+          />
+        </section>
+      ) : null}
 
       <SmartWatchCard selected={selected} periods={periods} />
 
@@ -463,19 +531,11 @@ function Dashboard() {
         <div className="space-y-5 xl:col-span-5">
           {can("exceptions.read") ? (
             <>
-              <MetricCard
-                highlight
-                to="/exceptions"
-                label="قابل للاسترداد من المنصة"
-                value={sar(exceptionSummary.potentialRecovery)}
-                hint={`${count(exceptionSummary.openCount)} استثناء مفتوح · ${count(exceptionSummary.criticalCount)} حرج · تحت المراجعة ${sar(exceptionSummary.underReview)}`}
-                icon={ShieldCheck}
-              />
               <ChartCard
                 title="يحتاج انتباهك"
                 action={
                   <Link to="/exceptions" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                    رادار · الاستثناءات <ChevronLeft className="size-3.5" />
+                    {PRODUCTS.radar.name} · الاستثناءات <ChevronLeft className="size-3.5" />
                   </Link>
                 }
               >
