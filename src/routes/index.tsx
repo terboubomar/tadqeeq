@@ -296,16 +296,11 @@ function homeSchema(plans: PublicPlan[]) {
         ? {
             offers: publicPrices(plans).map((plan) => ({
               "@type": "Offer",
-              name: plan.name,
+              // Google's SoftwareApplication check rejects a nested priceSpecification, so the billing period goes in the name.
+              name: `${plan.name} · ${plan.cycle === "yearly" ? "سنوياً" : "شهرياً"}`,
               price: plan.price,
               priceCurrency: "SAR",
               url: `${SITE_URL}/#pricing`,
-              priceSpecification: {
-                "@type": "UnitPriceSpecification",
-                price: plan.price,
-                priceCurrency: "SAR",
-                unitCode: plan.cycle === "yearly" ? "ANN" : "MON",
-              },
             })),
           }
         : {}),
