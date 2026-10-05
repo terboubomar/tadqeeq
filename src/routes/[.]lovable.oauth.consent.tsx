@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { loadSupabase } from "@/integrations/supabase/lazy-client";
 import { needsMfaCode } from "@/lib/mfa";
 
 type OAuthResult = { data: { redirect_url?: string; redirect_to?: string; client?: { name?: string } } | null; error: { message: string } | null };
@@ -11,7 +11,7 @@ type OAuthApi = {
   approveAuthorization: (id: string) => Promise<OAuthResult>;
   denyAuthorization: (id: string) => Promise<OAuthResult>;
 };
-const oauth = () => (supabase.auth as unknown as { oauth: OAuthApi }).oauth;
+const oauth = async () => ((await loadSupabase()).auth as unknown as { oauth: OAuthApi }).oauth;
 
 export const Route = createFileRoute("/.lovable/oauth/consent")({
   ssr: false,
@@ -21,6 +21,7 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
   }),
   beforeLoad: async ({ search, location }) => {
     if (!search.authorization_id) throw new Error("Missing authorization_id");
+    const supabase = await loadSupabase();
     const { data } = await supabase.auth.getSession();
     if (!data.session) throw redirect({ to: "/auth", search: { next: location.pathname + location.searchStr } });
     // Claude / ChatGPT tokens stay at aal1, so approving them must pass the code for accounts that use it.
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
   },
   loader: async ({ location }) => {
     const id = new URLSearchParams(location.search).get("authorization_id")!;
-    const { data, error } = await oauth().getAuthorizationDetails(id);
+    const { data, error } = await (await oauth()).getAuthorizationDetails(id);
     if (error) throw new Error(error.message);
     const immediate = data?.redirect_url ?? data?.redirect_to;
     if (immediate && !data?.client) throw redirect({ href: immediate });
@@ -51,8 +52,8 @@ function Consent() {
   async function decide(approve: boolean) {
     setBusy(true);
     const { data, error } = approve
-      ? await oauth().approveAuthorization(authorization_id)
-      : await oauth().denyAuthorization(authorization_id);
+      ? await (await oauth()).approveAuthorization(authorization_id)
+      : await (await oauth()).denyAuthorization(authorization_id);
     const target = data?.redirect_url ?? data?.redirect_to;
     if (error || !target) {
       setBusy(false);

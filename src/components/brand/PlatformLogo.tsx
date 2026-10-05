@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 export function PlatformIcon({ platform, className }: { platform: PlatformKey; className?: string }) {
   return (
     <img
-      src={`/platforms/${platform}.png`}
+      src={`/platforms/${platform}.webp`}
       alt=""
       aria-hidden="true"
       width={20}
@@ -40,7 +40,7 @@ export function PlatformName({
 export function PlatformWordmark({ platform, className }: { platform: PlatformKey; className?: string }) {
   return (
     <img
-      src={`/platforms/${platform}-wide.png`}
+      src={`/platforms/${platform}-wide.webp`}
       alt={`${PLATFORM_BRANDS[platform].name} (${PLATFORM_BRANDS[platform].nameEn})`}
       height={48}
       loading="lazy"

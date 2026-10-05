@@ -8,6 +8,7 @@ import { Denied } from "@/components/compensation/shared";
 import { LockedFeatureCard } from "@/components/PlanUpgrade";
 import { useWorkspaceAccess, WorkspaceAccessProvider } from "@/components/WorkspaceAccessProvider";
 import { supabase } from "@/integrations/supabase/client";
+import { loadSupabase } from "@/integrations/supabase/lazy-client";
 import { isOpsHost } from "@/lib/ops";
 import { cn } from "@/lib/utils";
 import { WORKSPACE_ROLE_LABELS, type WorkspacePermission } from "@/lib/workspace-access";
@@ -17,7 +18,7 @@ export const Route = createFileRoute("/compensation")({
   ssr: false,
   beforeLoad: async () => {
     if (isOpsHost(window.location.host)) throw redirect({ to: "/ops" });
-    const { data, error } = await supabase.auth.getUser();
+    const { data, error } = await (await loadSupabase()).auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
     return { user: data.user };
   },
