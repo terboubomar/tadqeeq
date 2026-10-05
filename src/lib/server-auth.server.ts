@@ -11,7 +11,8 @@ import {
 } from "./workspace-access";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-import { hasVerifiedFactor, MFA_REQUIRED_MESSAGE, mfaSatisfied, tokenClaims } from "./mfa";
+import { EMAIL_CODE_REQUIRED_MESSAGE, emailCodeRequired, hasVerifiedFactor, MFA_REQUIRED_MESSAGE, mfaSatisfied, tokenClaims } from "./mfa";
+import { isEmailCodeVerified } from "./email-signin.server";
 import { logEvent } from "./observability";
 import {
   featuresWithAddons,
@@ -313,8 +314,14 @@ export async function requireServerUserAnyStatus(): Promise<ServerUserAuth> {
     throw new Error("الجلسة منتهية، سجّل الدخول مرة أخرى.");
   }
   // Optional two-step sign-in: a user who turned it on needs a session that passed the code.
-  if (!mfaSatisfied(tokenClaims(accessToken), hasVerifiedFactor(data.user.factors))) {
+  const claims = tokenClaims(accessToken);
+  const withFactor = hasVerifiedFactor(data.user.factors);
+  if (!mfaSatisfied(claims, withFactor)) {
     throw new Error(MFA_REQUIRED_MESSAGE);
+  }
+  // Password sign-ins also need the code emailed to the account.
+  if (emailCodeRequired(claims, withFactor) && !(await isEmailCodeVerified(data.user.id, claims.sessionId))) {
+    throw new Error(EMAIL_CODE_REQUIRED_MESSAGE);
   }
 
   const workspace = await loadWorkspaceContext(client, data.user.id);
