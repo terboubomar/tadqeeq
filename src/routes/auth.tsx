@@ -52,7 +52,7 @@ function AuthPage() {
   // New accounts land on a clear "email confirmed" page unless they were heading somewhere specific.
   const confirmUrl = () => (next ? returnUrl() : `${window.location.origin}/email-confirmed`);
   const [resendWait, setResendWait] = useState(0);
-  useEffect((): (() => void) | undefined => {
+  useEffect(() => {
     if (resendWait <= 0) return;
     const t = setTimeout(() => setResendWait((n) => n - 1), 1000);
     return () => clearTimeout(t);
@@ -61,7 +61,10 @@ function AuthPage() {
     setBusy(true);
     const { error } = await supabase.auth.resend({ type: "signup", email: to, options: { emailRedirectTo: confirmUrl() } });
     setBusy(false);
-    if (error) return toast.error(error.message.includes("seconds") ? "انتظر قليلاً قبل إعادة الإرسال." : "تعذّر إعادة إرسال الرابط");
+    if (error) {
+      toast.error(error.message.includes("seconds") ? "انتظر قليلاً قبل إعادة الإرسال." : "تعذّر إعادة إرسال الرابط");
+      return;
+    }
     toast.success("أعدنا إرسال رابط التأكيد إلى بريدك.");
     setResendWait(60);
   }
