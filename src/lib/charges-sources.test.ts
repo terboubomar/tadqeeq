@@ -1,7 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 
-import { branchBreakdown, chargeLineSource, combinedBranchBreakdown, DOCUMENTED_CHARGE_LINE_IDS } from "./charges-sources";
+import {
+  branchBreakdown,
+  chargeLineSource,
+  combinedBranchBreakdown,
+  cpcBranchesFromAds,
+  DOCUMENTED_CHARGE_LINE_IDS,
+  pickAdsAnalysisForPeriod,
+} from "./charges-sources";
 import type { MarketplaceChargeLine } from "./charges-mapper";
 import type { StoredPeriod } from "./periods";
 
@@ -102,5 +109,54 @@ describe("branch breakdown", () => {
     const split = branchBreakdown(line("hs-cpc"), { ...period, branches: [branch("A", {})] } as unknown as StoredPeriod, []);
     expect(split.rows).toEqual([]);
     expect(split.unavailable).toBeTruthy();
+  });
+});
+
+describe("CPC by branch from the ads report", () => {
+  const p = {
+    ...period,
+    period_start: "2026-09-01",
+    period_end: "2026-09-30",
+    branches: [
+      { branch: "فرع العليا", branchId: "500000" },
+      { branch: "فرع الملقا", branchId: "500007" },
+      { branch: "فرع النرجس", branchId: "500009" },
+    ],
+  } as unknown as StoredPeriod;
+
+  test("picks the saved analysis that covers most of the period", () => {
+    const analyses = [
+      { id: "aug", dateFrom: "2026-08-01", dateTo: "2026-08-31" },
+      { id: "sep-half", dateFrom: "2026-09-15", dateTo: "2026-10-10" },
+      { id: "sep", dateFrom: "2026-09-01", dateTo: "2026-09-30" },
+    ];
+    expect(pickAdsAnalysisForPeriod(analyses, p)?.id).toBe("sep");
+    expect(pickAdsAnalysisForPeriod([analyses[0]!], p)).toBeNull();
+  });
+
+  test("sums spend per branch within the period, matched by HS Branch ID, every branch listed", () => {
+    const split = cpcBranchesFromAds(
+      {
+        dateFrom: "2026-08-25",
+        dateTo: "2026-09-30",
+        campaigns: [
+          { date: "2026-09-02", restaurantId: "500000", outletName: "Delta - Branch 1", spent: 100 },
+          { date: "2026-09-03", restaurantId: "500000", outletName: "Delta - Branch 1", spent: 50 },
+          { date: "2026-09-03", restaurantId: "500007", outletName: "Alpha - Branch 2", spent: 40 },
+          { date: "2026-08-30", restaurantId: "500007", outletName: "Alpha - Branch 2", spent: 999 },
+          { date: "2026-09-04", restaurantId: "777", outletName: "Unknown outlet", spent: 10 },
+        ],
+      },
+      p,
+      230,
+    );
+    expect(split.rows).toEqual([
+      { name: "فرع العليا", value: 150 },
+      { name: "فرع الملقا", value: 40 },
+      { name: "Unknown outlet", value: 10 },
+      { name: "فرع النرجس", value: 0 },
+    ]);
+    expect(split.total).toBe(200);
+    expect(split.caption).toContain("230.00");
   });
 });

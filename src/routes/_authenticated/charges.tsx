@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/workspace/PageKit";
-import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { PRODUCTS, productPageTitle } from "@/lib/products";
 import { ProductName } from "@/components/ProductName";
 import {
@@ -17,7 +18,15 @@ import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/AppShell";
 import { Callout, ChartCard, SegmentBar, StatTiles } from "@/components/dash/DashKit";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { branchBreakdown, chargeLineSource, combinedBranchBreakdown, type BranchBreakdown } from "@/lib/charges-sources";
+import {
+  branchBreakdown,
+  chargeLineSource,
+  combinedBranchBreakdown,
+  cpcBranchesFromAds,
+  pickAdsAnalysisForPeriod,
+  type BranchBreakdown,
+} from "@/lib/charges-sources";
+import { getAdsRoiAnalysis, listAdsRoiAnalyses } from "@/lib/ads-roi/ads-roi.functions";
 import type { StoredPeriod } from "@/lib/periods";
 import {
   MARKETPLACE_CHARGE_CATEGORY_LABELS,
@@ -271,7 +280,8 @@ function SourceCard({
   showTitle: boolean;
 }) {
   const source = chargeLineSource(line, period);
-  const split = branchBreakdown(line, period, allLines);
+  const cpc = useCpcBranches(period, line);
+  const split = cpc ?? branchBreakdown(line, period, allLines);
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
       {showTitle ? (
@@ -336,11 +346,55 @@ function SourceCard({
         {split.rows.length ? (
           <BranchTable split={split} />
         ) : (
-          <p className="mt-1.5 rounded-xl bg-surface-raised px-3 py-2 text-[12px] leading-6 text-muted-foreground">{split.unavailable}</p>
+          <p className="mt-1.5 rounded-xl bg-surface-raised px-3 py-2 text-[12px] leading-6 text-muted-foreground">
+            {split.unavailable}
+            {line.id === "hs-cpc" && !(cpc && "loading" in cpc && cpc.loading) ? (
+              <>
+                {" "}
+                <Link to="/promotions" className="font-semibold text-primary-text underline underline-offset-4">
+                  فتح «{PRODUCTS.aaid.name}»
+                </Link>
+              </>
+            ) : null}
+          </p>
         )}
       </div>
     </section>
   );
+}
+
+/**
+ * CPC split per branch for HungerStation's ad invoice, from the ads report saved in «عائد» for the same dates.
+ * Returns null for every other line so the regular split applies.
+ */
+function useCpcBranches(period: StoredPeriod, line: MarketplaceChargeLine): (BranchBreakdown & { loading?: boolean }) | null {
+  const isCpc = line.id === "hs-cpc";
+  const analyses = useQuery({
+    queryKey: ["ads-roi-analyses"],
+    queryFn: () => listAdsRoiAnalyses({ data: {} }),
+    enabled: isCpc,
+    retry: false,
+  });
+  const match = analyses.data ? pickAdsAnalysisForPeriod(analyses.data, period) : null;
+  const record = useQuery({
+    queryKey: ["ads-roi-analysis", match?.id],
+    queryFn: () => getAdsRoiAnalysis({ data: { id: match!.id } }),
+    enabled: isCpc && Boolean(match),
+    retry: false,
+  });
+  if (!isCpc) return null;
+  if (analyses.isLoading || record.isLoading) {
+    return { rows: [], total: 0, loading: true, unavailable: "جارٍ البحث عن تقرير الإعلانات لهذه الفترة…" };
+  }
+  if (record.data) return cpcBranchesFromAds(record.data.report, period, line.amount);
+  return {
+    rows: [],
+    total: 0,
+    unavailable:
+      "فاتورة CPC تذكر المبلغ على مستوى الحساب فقط. لتوزيعه على الفروع ارفع تقرير الإعلانات من بوابة هنقرستيشن لنفس الفترة في «" +
+      PRODUCTS.aaid.name +
+      "»، وسيظهر الصرف لكل فرع هنا.",
+  };
 }
 
 function BranchTable({ split }: { split: BranchBreakdown }) {

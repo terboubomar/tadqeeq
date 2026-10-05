@@ -377,3 +377,62 @@ export function combinedBranchBreakdown(
   const rows = sortedRows([...totals.entries()].map(([name, value]) => ({ name, value })));
   return { rows, total: rowsTotal(rows) };
 }
+
+/** The part of a saved «عائد» ads analysis this split needs. */
+export interface AdsSpendSource {
+  dateFrom: string;
+  dateTo: string;
+  campaigns: { date: string; restaurantId: string; outletName: string; spent: number }[];
+}
+
+/** Picks the saved ads analysis that covers the most days of the period, or null when none overlaps. */
+export function pickAdsAnalysisForPeriod<T extends { dateFrom: string; dateTo: string }>(
+  analyses: T[],
+  period: Pick<StoredPeriod, "period_start" | "period_end">,
+): T | null {
+  if (!period.period_start || !period.period_end) return null;
+  const start = period.period_start;
+  const end = period.period_end;
+  let best: { item: T; days: number } | null = null;
+  for (const item of analyses) {
+    const from = item.dateFrom > start ? item.dateFrom : start;
+    const to = item.dateTo < end ? item.dateTo : end;
+    if (from > to) continue;
+    const days = (Date.parse(to) - Date.parse(from)) / 86_400_000 + 1;
+    if (!best || days > best.days) best = { item, days };
+  }
+  return best?.item ?? null;
+}
+
+/**
+ * CPC ad spend per branch, from the HungerStation ads report saved in «عائد»: spend within the period's dates,
+ * matched to order branches by HS Branch ID (the report's Restaurant ID), every branch listed. The CPC invoice
+ * itself only has an account total, so the caption gives both totals rather than scaling one to the other.
+ */
+export function cpcBranchesFromAds(source: AdsSpendSource, period: StoredPeriod, invoiceAmount: number): BranchBreakdown {
+  const start = period.period_start ?? source.dateFrom;
+  const end = period.period_end ?? source.dateTo;
+  const nameById = new Map(period.branches.map((b) => [b.branchId, b.branch]));
+  const values = new Map(period.branches.map((b) => [b.branch, 0]));
+  for (const campaign of source.campaigns) {
+    if (campaign.date < start || campaign.date > end) continue;
+    const name = nameById.get(campaign.restaurantId) ?? campaign.outletName ?? campaign.restaurantId;
+    values.set(name, (values.get(name) ?? 0) + campaign.spent);
+  }
+  const rows = sortedRows([...values.entries()].map(([name, value]) => ({ name, value })));
+  const total = rowsTotal(rows);
+  return {
+    rows,
+    total,
+    caption:
+      "من تقرير الإعلانات المحفوظ في «عائد» (" +
+      (start > source.dateFrom ? start : source.dateFrom) +
+      " إلى " +
+      (end < source.dateTo ? end : source.dateTo) +
+      "): الصرف كما في عمود Spent Budget لكل فرع. مجموع التقرير " +
+      total.toFixed(2) +
+      " مقابل فاتورة CPC " +
+      invoiceAmount.toFixed(2) +
+      " ر.س شامل الضريبة.",
+  };
+}
