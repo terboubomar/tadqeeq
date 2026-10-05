@@ -28,9 +28,16 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProductsIndexRouteImport } from './routes/products/index'
 import { Route as OpsIndexRouteImport } from './routes/ops/index'
 import { Route as GuidesIndexRouteImport } from './routes/guides/index'
 import { Route as CompensationIndexRouteImport } from './routes/compensation/index'
+import { Route as ProductsSmartAlertsRouteImport } from './routes/products/smart-alerts'
+import { Route as ProductsPromotionsRoiRouteImport } from './routes/products/promotions-roi'
+import { Route as ProductsInvoiceReconciliationRouteImport } from './routes/products/invoice-reconciliation'
+import { Route as ProductsExceptionsCenterRouteImport } from './routes/products/exceptions-center'
+import { Route as ProductsDeliveryFeesMapRouteImport } from './routes/products/delivery-fees-map'
+import { Route as ProductsCompensationClaimsRouteImport } from './routes/products/compensation-claims'
 import { Route as OpsUsageRouteImport } from './routes/ops/usage'
 import { Route as OpsTasksRouteImport } from './routes/ops/tasks'
 import { Route as OpsSubscriptionsRouteImport } from './routes/ops/subscriptions'
@@ -168,6 +175,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProductsIndexRoute = ProductsIndexRouteImport.update({
+  id: '/products/',
+  path: '/products/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OpsIndexRoute = OpsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -183,6 +195,39 @@ const CompensationIndexRoute = CompensationIndexRouteImport.update({
   path: '/',
   getParentRoute: () => CompensationRoute,
 } as any)
+const ProductsSmartAlertsRoute = ProductsSmartAlertsRouteImport.update({
+  id: '/products/smart-alerts',
+  path: '/products/smart-alerts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsPromotionsRoiRoute = ProductsPromotionsRoiRouteImport.update({
+  id: '/products/promotions-roi',
+  path: '/products/promotions-roi',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsInvoiceReconciliationRoute =
+  ProductsInvoiceReconciliationRouteImport.update({
+    id: '/products/invoice-reconciliation',
+    path: '/products/invoice-reconciliation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ProductsExceptionsCenterRoute =
+  ProductsExceptionsCenterRouteImport.update({
+    id: '/products/exceptions-center',
+    path: '/products/exceptions-center',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ProductsDeliveryFeesMapRoute = ProductsDeliveryFeesMapRouteImport.update({
+  id: '/products/delivery-fees-map',
+  path: '/products/delivery-fees-map',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsCompensationClaimsRoute =
+  ProductsCompensationClaimsRouteImport.update({
+    id: '/products/compensation-claims',
+    path: '/products/compensation-claims',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const OpsUsageRoute = OpsUsageRouteImport.update({
   id: '/usage',
   path: '/usage',
@@ -453,9 +498,16 @@ export interface FileRoutesByFullPath {
   '/ops/subscriptions': typeof OpsSubscriptionsRoute
   '/ops/tasks': typeof OpsTasksRoute
   '/ops/usage': typeof OpsUsageRoute
+  '/products/compensation-claims': typeof ProductsCompensationClaimsRoute
+  '/products/delivery-fees-map': typeof ProductsDeliveryFeesMapRoute
+  '/products/exceptions-center': typeof ProductsExceptionsCenterRoute
+  '/products/invoice-reconciliation': typeof ProductsInvoiceReconciliationRoute
+  '/products/promotions-roi': typeof ProductsPromotionsRoiRoute
+  '/products/smart-alerts': typeof ProductsSmartAlertsRoute
   '/compensation/': typeof CompensationIndexRoute
   '/guides/': typeof GuidesIndexRoute
   '/ops/': typeof OpsIndexRoute
+  '/products/': typeof ProductsIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
@@ -516,9 +568,16 @@ export interface FileRoutesByTo {
   '/ops/subscriptions': typeof OpsSubscriptionsRoute
   '/ops/tasks': typeof OpsTasksRoute
   '/ops/usage': typeof OpsUsageRoute
+  '/products/compensation-claims': typeof ProductsCompensationClaimsRoute
+  '/products/delivery-fees-map': typeof ProductsDeliveryFeesMapRoute
+  '/products/exceptions-center': typeof ProductsExceptionsCenterRoute
+  '/products/invoice-reconciliation': typeof ProductsInvoiceReconciliationRoute
+  '/products/promotions-roi': typeof ProductsPromotionsRoiRoute
+  '/products/smart-alerts': typeof ProductsSmartAlertsRoute
   '/compensation': typeof CompensationIndexRoute
   '/guides': typeof GuidesIndexRoute
   '/ops': typeof OpsIndexRoute
+  '/products': typeof ProductsIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
@@ -583,9 +642,16 @@ export interface FileRoutesById {
   '/ops/subscriptions': typeof OpsSubscriptionsRoute
   '/ops/tasks': typeof OpsTasksRoute
   '/ops/usage': typeof OpsUsageRoute
+  '/products/compensation-claims': typeof ProductsCompensationClaimsRoute
+  '/products/delivery-fees-map': typeof ProductsDeliveryFeesMapRoute
+  '/products/exceptions-center': typeof ProductsExceptionsCenterRoute
+  '/products/invoice-reconciliation': typeof ProductsInvoiceReconciliationRoute
+  '/products/promotions-roi': typeof ProductsPromotionsRoiRoute
+  '/products/smart-alerts': typeof ProductsSmartAlertsRoute
   '/compensation/': typeof CompensationIndexRoute
   '/guides/': typeof GuidesIndexRoute
   '/ops/': typeof OpsIndexRoute
+  '/products/': typeof ProductsIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
@@ -650,9 +716,16 @@ export interface FileRouteTypes {
     | '/ops/subscriptions'
     | '/ops/tasks'
     | '/ops/usage'
+    | '/products/compensation-claims'
+    | '/products/delivery-fees-map'
+    | '/products/exceptions-center'
+    | '/products/invoice-reconciliation'
+    | '/products/promotions-roi'
+    | '/products/smart-alerts'
     | '/compensation/'
     | '/guides/'
     | '/ops/'
+    | '/products/'
     | '/.lovable/oauth/consent'
     | '/api/public/csp-report'
     | '/api/public/telegram-webhook'
@@ -713,9 +786,16 @@ export interface FileRouteTypes {
     | '/ops/subscriptions'
     | '/ops/tasks'
     | '/ops/usage'
+    | '/products/compensation-claims'
+    | '/products/delivery-fees-map'
+    | '/products/exceptions-center'
+    | '/products/invoice-reconciliation'
+    | '/products/promotions-roi'
+    | '/products/smart-alerts'
     | '/compensation'
     | '/guides'
     | '/ops'
+    | '/products'
     | '/.lovable/oauth/consent'
     | '/api/public/csp-report'
     | '/api/public/telegram-webhook'
@@ -779,9 +859,16 @@ export interface FileRouteTypes {
     | '/ops/subscriptions'
     | '/ops/tasks'
     | '/ops/usage'
+    | '/products/compensation-claims'
+    | '/products/delivery-fees-map'
+    | '/products/exceptions-center'
+    | '/products/invoice-reconciliation'
+    | '/products/promotions-roi'
+    | '/products/smart-alerts'
     | '/compensation/'
     | '/guides/'
     | '/ops/'
+    | '/products/'
     | '/.lovable/oauth/consent'
     | '/api/public/csp-report'
     | '/api/public/telegram-webhook'
@@ -816,7 +903,14 @@ export interface RootRouteChildren {
   GuidesHungerstationCompensationRoute: typeof GuidesHungerstationCompensationRoute
   GuidesJahezCommissionRoute: typeof GuidesJahezCommissionRoute
   GuidesKeetaInvoiceRoute: typeof GuidesKeetaInvoiceRoute
+  ProductsCompensationClaimsRoute: typeof ProductsCompensationClaimsRoute
+  ProductsDeliveryFeesMapRoute: typeof ProductsDeliveryFeesMapRoute
+  ProductsExceptionsCenterRoute: typeof ProductsExceptionsCenterRoute
+  ProductsInvoiceReconciliationRoute: typeof ProductsInvoiceReconciliationRoute
+  ProductsPromotionsRoiRoute: typeof ProductsPromotionsRoiRoute
+  ProductsSmartAlertsRoute: typeof ProductsSmartAlertsRoute
   GuidesIndexRoute: typeof GuidesIndexRoute
+  ProductsIndexRoute: typeof ProductsIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiPublicCspReportRoute: typeof ApiPublicCspReportRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
@@ -961,6 +1055,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/products/': {
+      id: '/products/'
+      path: '/products'
+      fullPath: '/products/'
+      preLoaderRoute: typeof ProductsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ops/': {
       id: '/ops/'
       path: '/'
@@ -981,6 +1082,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/compensation/'
       preLoaderRoute: typeof CompensationIndexRouteImport
       parentRoute: typeof CompensationRoute
+    }
+    '/products/smart-alerts': {
+      id: '/products/smart-alerts'
+      path: '/products/smart-alerts'
+      fullPath: '/products/smart-alerts'
+      preLoaderRoute: typeof ProductsSmartAlertsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products/promotions-roi': {
+      id: '/products/promotions-roi'
+      path: '/products/promotions-roi'
+      fullPath: '/products/promotions-roi'
+      preLoaderRoute: typeof ProductsPromotionsRoiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products/invoice-reconciliation': {
+      id: '/products/invoice-reconciliation'
+      path: '/products/invoice-reconciliation'
+      fullPath: '/products/invoice-reconciliation'
+      preLoaderRoute: typeof ProductsInvoiceReconciliationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products/exceptions-center': {
+      id: '/products/exceptions-center'
+      path: '/products/exceptions-center'
+      fullPath: '/products/exceptions-center'
+      preLoaderRoute: typeof ProductsExceptionsCenterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products/delivery-fees-map': {
+      id: '/products/delivery-fees-map'
+      path: '/products/delivery-fees-map'
+      fullPath: '/products/delivery-fees-map'
+      preLoaderRoute: typeof ProductsDeliveryFeesMapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products/compensation-claims': {
+      id: '/products/compensation-claims'
+      path: '/products/compensation-claims'
+      fullPath: '/products/compensation-claims'
+      preLoaderRoute: typeof ProductsCompensationClaimsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/ops/usage': {
       id: '/ops/usage'
@@ -1397,7 +1540,14 @@ const rootRouteChildren: RootRouteChildren = {
   GuidesHungerstationCompensationRoute: GuidesHungerstationCompensationRoute,
   GuidesJahezCommissionRoute: GuidesJahezCommissionRoute,
   GuidesKeetaInvoiceRoute: GuidesKeetaInvoiceRoute,
+  ProductsCompensationClaimsRoute: ProductsCompensationClaimsRoute,
+  ProductsDeliveryFeesMapRoute: ProductsDeliveryFeesMapRoute,
+  ProductsExceptionsCenterRoute: ProductsExceptionsCenterRoute,
+  ProductsInvoiceReconciliationRoute: ProductsInvoiceReconciliationRoute,
+  ProductsPromotionsRoiRoute: ProductsPromotionsRoiRoute,
+  ProductsSmartAlertsRoute: ProductsSmartAlertsRoute,
   GuidesIndexRoute: GuidesIndexRoute,
+  ProductsIndexRoute: ProductsIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiPublicCspReportRoute: ApiPublicCspReportRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,

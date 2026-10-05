@@ -55,7 +55,8 @@ import { cn } from "@/lib/utils";
 import { listPublicPlans } from "@/lib/plans.functions";
 import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
 import { LEGAL_COMPANY, LEGAL_DOCS } from "@/lib/legal";
-import { PRODUCTS } from "@/lib/products";
+import { productPageFor } from "@/lib/product-pages";
+import { PRODUCTS, productTitle, type ProductKey } from "@/lib/products";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { OG_IMAGE, SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
 import { CONTENT_UPDATED, EXPLAINER_VIDEO, FAQS, FEATURES, formatArabicDate } from "@/lib/site-content";
@@ -103,9 +104,10 @@ const FOOTER_GROUPS = [
   {
     title: "المنتج",
     links: [
-      ["#features", "مُطابِق · مطابقة الفاتورة"],
-      ["#compensation", "استرداد · التعويضات"],
-      ["#products", "كل الأدوات"],
+      ["/products/invoice-reconciliation", productTitle("mutabiq")],
+      ["/products/compensation-claims", productTitle("istirdad")],
+      ["/products/promotions-roi", productTitle("aaid")],
+      ["/products", "كل المنتجات"],
       ["#checks", "ما الذي نراجعه"],
     ],
   },
@@ -865,6 +867,7 @@ const SHOWCASE: TourItem[] = [
     key: "invoice",
     name: PRODUCTS.mutabiq.name,
     descriptor: PRODUCTS.mutabiq.descriptor,
+    product: "mutabiq",
     tagline: "ما خصمته المنصة، وما يقوله عقدك، والفرق.",
     body: "ارفع الفاتورة وملف الطلبات ويعيد تدقيق احتساب كل بند من عقدك. كل فرق يظهر باسمه ومبلغه ونسبته، وجاهز للمطالبة.",
     icon: FileSpreadsheet,
@@ -873,6 +876,7 @@ const SHOWCASE: TourItem[] = [
     key: "charges",
     name: PRODUCTS.kashif.name,
     descriptor: PRODUCTS.kashif.descriptor,
+    product: "kashif",
     tagline: "أين يذهب كل ريال تخصمه المنصة.",
     body: "كل خصم في الفاتورة مصنف: عمولة، رسوم دفع، حملات، ضريبة. وأي بند لا يطابق الخريطة يظهر كبند غير مصنف بدلاً من أن يختفي.",
     icon: PieChart,
@@ -881,6 +885,7 @@ const SHOWCASE: TourItem[] = [
     key: "exceptions",
     name: PRODUCTS.radar.name,
     descriptor: PRODUCTS.radar.descriptor,
+    product: "radar",
     tagline: "كل فرق له حالة ومسؤول حتى يُغلق.",
     body: "الفروقات تتحول إلى استثناءات بأولوية وحالة ومسؤول، مع سجل لكل إجراء حتى يبقى إغلاق الشهر قابلاً للمراجعة.",
     icon: AlertTriangle,
@@ -889,6 +894,7 @@ const SHOWCASE: TourItem[] = [
     key: "compensation",
     name: PRODUCTS.istirdad.name,
     descriptor: PRODUCTS.istirdad.descriptor,
+    product: "istirdad",
     tagline: "تعويضات لم تتسبب فيها، تُعترض بالدليل.",
     body: "الكاشير يرسل فيديو الطلب في قروب الفرع على Telegram، وتدقيق يربطه برقم الطلب ويجهز ملف الاعتراض بالعربي والإنجليزي.",
     icon: Video,
@@ -897,6 +903,7 @@ const SHOWCASE: TourItem[] = [
     key: "promotions",
     name: PRODUCTS.aaid.name,
     descriptor: PRODUCTS.aaid.descriptor,
+    product: "aaid",
     tagline: "الربح بعد العمولة والخصومات، لا رقم المنصة.",
     body: "لكل حملة ما دفعته فيها وما بقي لك فعلاً بعد العمولة والخصومات والإعلان، مع الحملات الخاسرة وأين تنقل ميزانيتك.",
     icon: Megaphone,
@@ -905,6 +912,7 @@ const SHOWCASE: TourItem[] = [
     key: "watch",
     name: PRODUCTS.raqeeb.name,
     descriptor: PRODUCTS.raqeeb.descriptor,
+    product: "raqeeb",
     tagline: "يقارن كل فرع بتاريخه، وينبّهك لما هو غير معتاد.",
     body: "بعد كل رفع يقارن تدقيق العمولة والرسوم والتعويضات لكل فرع بأشهره السابقة وبالفروع المشابهة، ويرتب التنبيهات حسب أثرها بالريال.",
     icon: Eye,
@@ -926,7 +934,21 @@ const SHOWCASE: TourItem[] = [
   },
 ];
 
-type TourItem = { key: string; name: string; descriptor?: string; tagline: string; body: string; icon: LucideIcon; points?: string[] };
+type TourItem = { key: string; name: string; descriptor?: string; product?: ProductKey; tagline: string; body: string; icon: LucideIcon; points?: string[] };
+
+/** Link to the product's public page, when the tour item is a product that has one. */
+function TourMoreLink({ item, className }: { item: TourItem; className: string }) {
+  const page = item.product ? productPageFor(item.product) : undefined;
+  if (!page) return null;
+  return (
+    <a
+      href={page.path}
+      className={`inline-flex w-fit items-center rounded-full border border-border bg-card font-semibold transition-colors hover:border-primary ${className}`}
+    >
+      اعرف المزيد عن {item.name}
+    </a>
+  );
+}
 
 /** Scroll-pinned tour: the section stays on screen while scrolling moves through the items. */
 function PinnedTour({
@@ -1040,14 +1062,17 @@ function PinnedTour({
                     ))}
                   </ul>
                 ) : null}
-                <Link
-                  to="/auth"
-                  search={{ mode: "signup" }}
-                  className="mt-6 inline-flex h-12 w-fit items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-semibold text-ink-foreground transition-transform hover:-translate-y-0.5"
-                >
-                  {ctaLabel(current)}
-                  <ArrowLeft className="size-4" />
-                </Link>
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <Link
+                    to="/auth"
+                    search={{ mode: "signup" }}
+                    className="inline-flex h-12 w-fit items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-semibold text-ink-foreground transition-transform hover:-translate-y-0.5"
+                  >
+                    {ctaLabel(current)}
+                    <ArrowLeft className="size-4" />
+                  </Link>
+                  <TourMoreLink item={current} className="h-12 px-5 text-[15px]" />
+                </div>
               </div>
               <ol className="mt-8 border-t border-border pt-4">
                 {items.map((item, index) => {
@@ -1126,6 +1151,7 @@ function PinnedTour({
               </h3>
               <p className="mt-1 text-[15px] font-medium">{item.tagline}</p>
               <p className="mt-1 text-[13px] leading-6 text-muted-foreground">{item.body}</p>
+              <TourMoreLink item={item} className="mt-2 h-9 px-3.5 text-[13px]" />
               {item.points ? (
                 <ul className="mt-2 flex flex-wrap gap-1.5">
                   {item.points.map((point) => (

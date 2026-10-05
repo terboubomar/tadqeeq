@@ -256,7 +256,8 @@ export function guideBySlug(slug: string): Guide {
 }
 
 /** A guide as Markdown, for llms-full.txt. */
-export function guideMarkdown(guide: Guide, siteUrl: string): string {
+/** Markdown for llms-full.txt; also used for product pages, which share the same shape. */
+export function guideMarkdown(guide: Pick<Guide, "title" | "path" | "updated" | "answer" | "sections" | "faqs">, siteUrl: string): string {
   const parts = [`## ${guide.title}`, "", `${siteUrl}${guide.path} · Updated ${guide.updated}`, "", guide.answer];
   for (const section of guide.sections) {
     parts.push("", `### ${section.heading}`);

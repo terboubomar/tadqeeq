@@ -7,7 +7,8 @@ import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
 import { GUIDES, type Guide, type GuideSection } from "@/lib/guides";
 import { formatArabicDate } from "@/lib/site-content";
 
-function GuideShell({ children }: { children: ReactNode }) {
+/** Header, main column and footer shared by the guides, the product pages and their indexes. */
+export function GuideShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur">
@@ -15,7 +16,10 @@ function GuideShell({ children }: { children: ReactNode }) {
           <Link to="/" aria-label="تدقيق — الرئيسية">
             <LogoWordmark className="h-8 text-ink" />
           </Link>
-          <nav aria-label="الأدلة" className="flex items-center gap-1 text-sm">
+          <nav aria-label="روابط رئيسية" className="flex items-center gap-1 text-sm">
+            <Link to="/products" className="hidden rounded-full px-3 py-2 font-semibold text-foreground/75 hover:bg-muted sm:block">
+              المنتجات
+            </Link>
             <Link to="/guides" className="hidden rounded-full px-3 py-2 font-semibold text-foreground/75 hover:bg-muted sm:block">
               الأدلة
             </Link>
@@ -41,6 +45,9 @@ function GuideShell({ children }: { children: ReactNode }) {
             <Link to="/" className="hover:text-foreground">
               الرئيسية
             </Link>
+            <Link to="/products" className="hover:text-foreground">
+              المنتجات
+            </Link>
             <Link to="/guides" className="hover:text-foreground">
               كل الأدلة
             </Link>
@@ -60,7 +67,7 @@ function GuideShell({ children }: { children: ReactNode }) {
   );
 }
 
-function Section({ section }: { section: GuideSection }) {
+export function Section({ section }: { section: GuideSection }) {
   return (
     <section className="mt-10">
       <h2 className="font-display text-2xl font-extrabold leading-[1.5]">{section.heading}</h2>

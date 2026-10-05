@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 import { NOINDEX_PAGES, PRIVATE_PAGES, PRIVATE_PREFIXES, PUBLIC_PAGES, SITE_URL, trailingSlashRedirect } from "./seo";
 import { buildLlmsFullTxt, buildLlmsTxt, buildPricingMd, buildRobots, buildSitemap } from "./seo-files";
+import { PRODUCT_PAGES } from "./product-pages";
 import { FAQS, FEATURES } from "./site-content";
 
 const SEO_FILES = ["/sitemap.xml", "/robots.txt", "/llms.txt", "/llms-full.txt", "/pricing.md"];
@@ -110,6 +111,10 @@ describe("AI files", () => {
     for (const [question, answer] of FAQS) {
       expect(txt).toContain(question);
       expect(txt).toContain(answer);
+    }
+    for (const page of PRODUCT_PAGES) {
+      expect(txt).toContain(`### ${page.title}`);
+      expect(txt).toContain(`${SITE_URL}${page.path}`);
     }
     expect(txt).toContain("## Pricing");
     expect(txt).toContain("### أساسي");

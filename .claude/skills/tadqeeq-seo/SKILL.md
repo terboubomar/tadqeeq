@@ -29,6 +29,7 @@ Then use the generic skills for method: `seo-audit` (technical/on-page), `ai-seo
 | FAQs, feature list, explainer video, `CONTENT_UPDATED` | `src/lib/site-content.ts` |
 | Product names (مُطابِق، كاشِف، رادار، استرداد، عائد، رقيب، Tadqeeq AI) | `src/lib/products.ts`; never hard-code a product name |
 | Guides (articles) | data in `src/lib/guides.ts`, head/JSON-LD in `src/lib/guides-seo.ts`, UI in `src/components/guides/GuidePages.tsx`, routes in `src/routes/guides/` |
+| Product landing pages (/products, /products/<slug>) | data in `src/lib/product-pages.ts`, head/JSON-LD in `src/lib/product-pages-seo.ts`, UI in `src/components/products/ProductPages.tsx`, routes in `src/routes/products/`; also in llms-full.txt |
 | Legal pages | `src/lib/legal.ts`, `src/lib/legal-seo.ts`, `src/components/legal/LegalPage.tsx` |
 | Contact page (ContactPage JSON-LD) | `src/routes/contact.tsx`, `src/components/ContactPage.tsx` |
 | Plans and prices (live from the database) | `src/lib/plans.ts`, `listPublicPlans`; never hard-code prices in copy except FAQs that say so |
@@ -39,7 +40,7 @@ Then use the generic skills for method: `seo-audit` (technical/on-page), `ai-seo
 1. **Classify the route.** A new route must be added to `PUBLIC_PAGES` (indexable) or to the private lists. `src/lib/seo-files.test.ts` ("route coverage") fails otherwise.
 2. **Head tags.** Use `head: () => ({ meta: [title, description, ...socialMeta(...)], links: [canonical(path)], scripts: [jsonLd(...)] })`. Title ≤ ~60 chars ending "| تدقيق"; description 120–160 chars, Arabic, specific (platform names, the problem).
 3. **One H1**, Arabic, matching the main query. Section headings as real `<h2>`; if a section has phone and desktop copies, only one is a heading.
-4. **Structured data** that matches visible content: `Article` + `FAQPage` + `BreadcrumbList` for guides (see `guideHead`), `WebPage` for legal, `ContactPage` for contact, `SoftwareApplication` + `FAQPage` on the homepage. Validate with the Rich Results Test after deploy.
+4. **Structured data** that matches visible content: `Article` + `FAQPage` + `BreadcrumbList` for guides (see `guideHead`), `WebPage` for legal, `WebPage` + `FAQPage` + `BreadcrumbList` for product pages (no `SoftwareApplication`: it needs offers and ratings), `ContactPage` for contact, `SoftwareApplication` + `FAQPage` on the homepage. Validate with the Rich Results Test after deploy.
 5. **Arabic and RTL.** `lang="ar" dir="rtl"` is set at the root. Keep Latin words (Claude, HungerStation, Tadqeeq AI) away from the end of an Arabic sentence or line, because they reorder badly. Wrap numbers in `<span className="num">` where the page does. Check every new page at 390 px and 1280 px.
 6. **Product names** come from `PRODUCTS` / `productTitle()`; in prose quote them («استرداد»). The first mention on a page should include the descriptor (استرداد · مركز التعويضات), because people search for the descriptor, not the name.
 7. **Facts only.** Numbers in marketing copy are labelled as examples. No invented customer counts, logos, recovered amounts or rankings. Competitor claims must be verifiable (see `docs/marketing/competitors/`).
