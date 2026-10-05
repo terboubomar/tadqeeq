@@ -5,13 +5,20 @@ import { ProductName } from "@/components/ProductName";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronLeft,
   CircleDollarSign,
+  Columns3,
+  FileSpreadsheet,
   Layers3,
+  Sigma,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { EmptyState } from "@/components/AppShell";
-import { BarList, Callout, ChartCard, SegmentBar, StatTiles } from "@/components/dash/DashKit";
+import { Callout, ChartCard, SegmentBar, StatTiles } from "@/components/dash/DashKit";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { chargeLineSource } from "@/lib/charges-sources";
+import type { StoredPeriod } from "@/lib/periods";
 import {
   MARKETPLACE_CHARGE_CATEGORY_LABELS,
   buildMarketplaceChargeMap,
@@ -47,8 +54,11 @@ const EVIDENCE_LABELS: Record<MarketplaceChargeLine["evidence"], string> = {
   mixed: "مصادر مختلطة",
 };
 
+type SourceFocus = { title: string; lines: MarketplaceChargeLine[] };
+
 function MarketplaceChargesPage() {
   const { selected, isLoading } = useSelectedPeriod();
+  const [focus, setFocus] = useState<SourceFocus | null>(null);
 
   const map = useMemo(
     () => (selected ? buildMarketplaceChargeMap(selected) : null),
@@ -127,16 +137,44 @@ function MarketplaceChargesPage() {
             ...(map.outsideAuditAmount ? [{ label: "بنود خارج الإجمالي", value: sar(map.outsideAuditAmount) }] : []),
           ]}
         >
-          <BarList
-            items={categories.map(([category, amount]) => ({
-              key: category,
-              label: MARKETPLACE_CHARGE_CATEGORY_LABELS[category as MarketplaceChargeLine["category"]],
-              value: money(amount),
-              share: map.auditTotalCharges ? percent(amount / map.auditTotalCharges, 1) : undefined,
-              size: Math.abs(amount) / maxCategory,
-              color: category === "unmapped" ? "var(--color-destructive)" : undefined,
-            }))}
-          />
+          <p className="-mt-1 mb-3 text-[11.5px] text-muted-foreground">اضغط على أي تصنيف لترى من أين نأخذ أرقامه.</p>
+          <ul className="space-y-1.5">
+            {categories.map(([category, amount]) => {
+              const label = MARKETPLACE_CHARGE_CATEGORY_LABELS[category as MarketplaceChargeLine["category"]];
+              const size = Math.abs(amount) / maxCategory;
+              return (
+                <li key={category}>
+                  <button
+                    type="button"
+                    onClick={() => setFocus({ title: label, lines: auditLines.filter((line) => line.category === category) })}
+                    className="group -mx-2 block w-[calc(100%+1rem)] rounded-lg px-2 py-2 text-start transition-colors hover:bg-muted/60"
+                  >
+                    <span className="flex items-baseline justify-between gap-3">
+                      <span className="flex min-w-0 items-center gap-1 truncate text-[13px] font-medium">
+                        {label}
+                        <ChevronLeft className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                      </span>
+                      <span className="flex shrink-0 items-baseline gap-2">
+                        {map.auditTotalCharges ? (
+                          <span className="num text-[11.5px] text-muted-foreground">{percent(amount / map.auditTotalCharges, 1)}</span>
+                        ) : null}
+                        <span className="num text-[13px] font-semibold">{money(amount)}</span>
+                      </span>
+                    </span>
+                    <span className="mt-1.5 block h-2 overflow-hidden rounded-full bg-muted">
+                      <span
+                        className="block h-full rounded-full"
+                        style={{
+                          width: `${Math.max(size * 100, size > 0 ? 1.5 : 0)}%`,
+                          background: category === "unmapped" ? "var(--color-destructive)" : "var(--color-primary)",
+                        }}
+                      />
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </ChartCard>
         <ChartCard className="xl:col-span-5" title="تغطية التصنيف" totals={[{ label: "من إجمالي الرسوم مصنف", value: percent(map.coveragePct), tone: closed ? "positive" : "negative" }]}>
           <SegmentBar
@@ -166,6 +204,7 @@ function MarketplaceChargesPage() {
         title="البنود الداخلة في إجمالي رسوم التدقيق"
         subtitle="هذه البنود فقط هي التي تُستخدم لإقفال summary.totalCharges."
         lines={auditLines}
+        onOpen={(line) => setFocus({ title: line.label, lines: [line] })}
       />
 
       {outsideLines.length ? (
@@ -173,9 +212,134 @@ function MarketplaceChargesPage() {
           title="بنود مالية إضافية خارج إجمالي الرسوم"
           subtitle="تظهر للشفافية والتحليل القادم مثل True ROI، لكنها لا تغيّر إجمالي الرسوم الحالي ولا معادلات المنصة."
           lines={outsideLines}
+          onOpen={(line) => setFocus({ title: line.label, lines: [line] })}
         />
       ) : null}
+
+      <SourceSheet focus={focus} period={selected} onClose={() => setFocus(null)} />
     </div>
+  );
+}
+
+/** Side panel: for each line, the file, sheet and columns it is read from, how it is computed, and its branches. */
+function SourceSheet({
+  focus,
+  period,
+  onClose,
+}: {
+  focus: SourceFocus | null;
+  period: StoredPeriod;
+  onClose: () => void;
+}) {
+  const total = focus?.lines.reduce((sum, line) => sum + line.amount, 0) ?? 0;
+  return (
+    <Sheet open={Boolean(focus)} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent side="left" dir="rtl" className="w-full overflow-y-auto sm:max-w-xl">
+        {focus ? (
+          <>
+            <SheetHeader className="ps-9 text-start sm:text-start">
+              <SheetTitle className="font-display text-lg">{focus.title}</SheetTitle>
+              <SheetDescription>
+                من أين نأخذ {focus.lines.length > 1 ? "هذه البنود" : "هذا البند"} · {period.label} ·{" "}
+                <span className="num font-semibold text-foreground">{sar(total)}</span>
+              </SheetDescription>
+            </SheetHeader>
+            <div className="mt-5 space-y-4">
+              {focus.lines.map((line) => (
+                <SourceCard key={line.id} line={line} period={period} showTitle={focus.lines.length > 1} />
+              ))}
+            </div>
+          </>
+        ) : null}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function SourceCard({ line, period, showTitle }: { line: MarketplaceChargeLine; period: StoredPeriod; showTitle: boolean }) {
+  const source = chargeLineSource(line, period);
+  const branches =
+    source.branchValue && period.branches.length > 1
+      ? period.branches
+          .map((branch) => ({ name: branch.branch, value: source.branchValue!(branch) }))
+          .filter((row) => Math.abs(row.value) > 0.005)
+          .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+      : [];
+  return (
+    <section className="overflow-hidden rounded-2xl border border-border bg-card">
+      {showTitle ? (
+        <div className="flex items-center justify-between gap-3 border-b border-border/70 bg-surface-raised/50 px-4 py-2.5">
+          <span className="font-semibold">{line.label}</span>
+          <span className="num font-semibold">{sar(line.amount)}</span>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-3 bg-ink px-4 py-3 text-ink-foreground">
+          <span className="text-[12px] text-ink-muted">
+            {MARKETPLACE_CHARGE_CATEGORY_LABELS[line.category]} · {line.mapped ? "مصنف" : "غير مصنف"}
+          </span>
+          <span className="num text-xl font-semibold text-primary">{sar(line.amount)}</span>
+        </div>
+      )}
+      <dl className="space-y-3 p-4 text-[13px]">
+        <div className="flex items-start gap-2.5">
+          <FileSpreadsheet className="mt-0.5 size-4 shrink-0 text-primary-text" />
+          <div className="min-w-0">
+            <dt className="text-[11.5px] text-muted-foreground">الملف</dt>
+            <dd className="font-medium">{source.file}</dd>
+            {source.sheet ? (
+              <dd className="mt-0.5 text-[12px] text-muted-foreground">
+                الورقة: <span className="num font-medium text-foreground" dir="ltr">{source.sheet}</span>
+              </dd>
+            ) : null}
+          </div>
+        </div>
+        {source.columns.length ? (
+          <div className="flex items-start gap-2.5">
+            <Columns3 className="mt-0.5 size-4 shrink-0 text-primary-text" />
+            <div className="min-w-0">
+              <dt className="text-[11.5px] text-muted-foreground">{source.columns.length > 1 ? "الأعمدة" : "العمود"}</dt>
+              <dd className="mt-1 flex flex-wrap gap-1.5">
+                {source.columns.map((column) => (
+                  <code key={column} dir="ltr" className="rounded-md border border-border bg-surface-raised px-2 py-0.5 font-mono text-[11.5px]">
+                    {column}
+                  </code>
+                ))}
+              </dd>
+            </div>
+          </div>
+        ) : null}
+        {source.formula ? (
+          <div className="flex items-start gap-2.5">
+            <Sigma className="mt-0.5 size-4 shrink-0 text-primary-text" />
+            <div className="min-w-0">
+              <dt className="text-[11.5px] text-muted-foreground">طريقة الاحتساب</dt>
+              <dd className="leading-6">{source.formula}</dd>
+            </div>
+          </div>
+        ) : null}
+        <div className="flex flex-wrap gap-1.5 pt-1 text-[11px]">
+          <span className="rounded-full bg-secondary px-2 py-0.5 text-secondary-foreground">{EVIDENCE_LABELS[line.evidence]}</span>
+          <span className="rounded-full bg-secondary px-2 py-0.5 text-secondary-foreground">يموّله: {FUNDING_LABELS[line.fundingSource]}</span>
+        </div>
+        {line.note ? <p className="rounded-xl bg-surface-raised px-3 py-2 text-[12px] leading-6 text-muted-foreground">{line.note}</p> : null}
+      </dl>
+      {branches.length ? (
+        <div className="border-t border-border/70 px-4 py-3">
+          <p className="text-[11.5px] font-semibold text-muted-foreground">حسب الفرع</p>
+          <ul className="mt-2 space-y-1.5 text-[12.5px]">
+            {branches.slice(0, 12).map((row) => (
+              <li key={row.name} className="flex items-center justify-between gap-3">
+                <span className="truncate" title={row.name}>{row.name}</span>
+                <span className="num shrink-0">{money(row.value)}</span>
+              </li>
+            ))}
+          </ul>
+          {branches.length > 12 ? (
+            <p className="mt-1.5 text-[11px] text-muted-foreground">و{branches.length - 12} فروع أخرى في تقرير الفروع.</p>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -183,10 +347,12 @@ function ChargeTable({
   title,
   subtitle,
   lines,
+  onOpen,
 }: {
   title: string;
   subtitle: string;
   lines: MarketplaceChargeLine[];
+  onOpen: (line: MarketplaceChargeLine) => void;
 }) {
   return (
     <ChartCard title={title} bodyClassName="p-0">
@@ -198,7 +364,7 @@ function ChargeTable({
             <tr>
               <th className="px-4 py-2.5 text-start font-semibold">البند</th>
               <th className="px-4 py-2.5 text-start font-semibold">التصنيف</th>
-              <th className="px-4 py-2.5 text-start font-semibold">المصدر</th>
+              <th className="px-4 py-2.5 text-start font-semibold">المصدر (اضغط البند للتفاصيل)</th>
               <th className="px-4 py-2.5 text-start font-semibold">التمويل</th>
               <th className="px-4 py-2.5 text-start font-semibold">الحالة</th>
               <th className="px-4 py-2.5 text-end font-semibold">المبلغ</th>
@@ -208,7 +374,13 @@ function ChargeTable({
             {lines.map((line) => (
               <tr key={line.id} className="border-t border-border/70 align-top">
                 <td className="px-4 py-3">
-                  <p className="font-medium">{line.label}</p>
+                  <button
+                    type="button"
+                    onClick={() => onOpen(line)}
+                    className="font-medium text-start text-foreground underline decoration-border decoration-dashed underline-offset-4 hover:text-primary-text hover:decoration-primary"
+                  >
+                    {line.label}
+                  </button>
                   {line.note ? (
                     <p className="mt-1 max-w-xl text-[11px] leading-5 text-muted-foreground">
                       {line.note}
