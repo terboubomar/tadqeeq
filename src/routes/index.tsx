@@ -54,7 +54,7 @@ import {
 import { cn } from "@/lib/utils";
 import { listPublicPlans } from "@/lib/plans.functions";
 import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
-import { LegalLinks } from "@/components/legal/LegalPage";
+import { LEGAL_DOCS } from "@/lib/legal";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { OG_IMAGE, SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
 import { CONTENT_UPDATED, EXPLAINER_VIDEO, FAQS, FEATURES, formatArabicDate } from "@/lib/site-content";
@@ -636,7 +636,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
             </ul>
           </div>
 
-          <nav aria-label="روابط التذييل" className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3">
+          <nav aria-label="روابط التذييل" className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 xl:grid-cols-5">
             {FOOTER_GROUPS.map((group) => (
               <div key={group.title}>
                 <h2 className="text-sm font-bold">{group.title}</h2>
@@ -676,6 +676,18 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
                 <ArrowLeft className="size-3.5" />
               </Link>
             </div>
+            <div>
+              <h2 className="text-sm font-bold">قانوني</h2>
+              <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
+                {LEGAL_DOCS.map((doc) => (
+                  <li key={doc.key}>
+                    <Link to={doc.path} className="transition-colors hover:text-foreground">
+                      {doc.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </nav>
         </div>
 
@@ -684,7 +696,6 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
             <p>
               <span className="num">© {new Date().getFullYear()}</span> تدقيق · مراجعة فواتير التوصيل للمطاعم · صُنع في السعودية
             </p>
-            <LegalLinks className="flex flex-wrap gap-4" />
             <a href="#top" className="inline-flex items-center gap-1.5 font-semibold transition-colors hover:text-foreground">
               العودة للأعلى
               <ArrowUp className="size-3.5" />
