@@ -52,7 +52,7 @@ function AuthPage() {
   // New accounts land on a clear "email confirmed" page unless they were heading somewhere specific.
   const confirmUrl = () => (next ? returnUrl() : `${window.location.origin}/email-confirmed`);
   const [resendWait, setResendWait] = useState(0);
-  useEffect(() => {
+  useEffect((): (() => void) | undefined => {
     if (resendWait <= 0) return;
     const t = setTimeout(() => setResendWait((n) => n - 1), 1000);
     return () => clearTimeout(t);
