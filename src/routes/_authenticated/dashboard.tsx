@@ -475,7 +475,7 @@ function Dashboard() {
                 title="يحتاج انتباهك"
                 action={
                   <Link to="/exceptions" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                    مركز الاستثناءات <ChevronLeft className="size-3.5" />
+                    رادار · الاستثناءات <ChevronLeft className="size-3.5" />
                   </Link>
                 }
               >

@@ -19,7 +19,7 @@ export function TrialBanner({ uploadsUsed, uploadLimit }: { uploadsUsed: number;
       </span>
       <p className="min-w-0 flex-1 text-foreground/85">
         {used
-          ? "استخدمت الرفع المتاح في التجربة. اشترك لرفع فترات ومنصات أخرى وفتح مركز الاستثناءات والتعويضات والعقود وTadqeeq AI."
+          ? "استخدمت الرفع المتاح في التجربة. اشترك لرفع فترات ومنصات أخرى وفتح «رادار» و«استرداد» والعقود و Tadqeeq AI."
           : "ارفع ملفات منصة واحدة لفترة واحدة وشاهد تحليل فاتورتك كاملاً. بقية الأقسام تُفتح بعد الاشتراك."}
         {uploadLimit !== null ? (
           <span className="ms-2 text-muted-foreground">

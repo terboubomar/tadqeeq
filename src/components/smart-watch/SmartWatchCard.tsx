@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, CircleCheck, Columns3, Radar } from "lucide-react";
+import { ProductName } from "@/components/ProductName";
+import { Check, CircleCheck, Columns3, Eye } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -97,8 +98,8 @@ export function SmartWatchCard({ selected, periods }: { selected: StoredPeriod; 
     <section className="panel overflow-hidden">
       <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border px-5 py-3.5">
         <div className="flex items-center gap-2">
-          <Radar className="size-4 text-primary-text" />
-          <h2 className="text-[14px] font-bold">المراقب الذكي</h2>
+          <Eye className="size-4 text-primary-text" />
+          <h2 className="text-[14px] font-bold"><ProductName product="raqeeb" descriptorClassName="ms-1.5 text-[11.5px] font-medium text-muted-foreground" /></h2>
           <span
             className="text-[11.5px] text-muted-foreground"
             title={report.historyPeriods > 0 ? undefined : "ارفع فترات سابقة لهذه المنصة لتكون المقارنة مع تاريخ كل فرع"}

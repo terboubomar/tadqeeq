@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { productPageTitle } from "@/lib/products";
 import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowRight, FileSearch, FileSpreadsheet, FileText, LayoutDashboard, LogOut, Send } from "lucide-react";
 
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/compensation")({
   },
   head: () => ({
     meta: [
-      { title: "مركز التعويضات · تدقيق" },
+      { title: productPageTitle("istirdad") },
       NOINDEX,
       {
         name: "description",
@@ -72,7 +73,7 @@ function CompensationShell() {
     return (
       <div dir="rtl" className="grid min-h-screen place-items-center bg-background px-4">
         <div className="panel max-w-md p-7 text-center">
-          <p className="text-sm">أكمل تهيئة حسابك أولاً لفتح مركز التعويضات.</p>
+          <p className="text-sm">أكمل تهيئة حسابك أولاً لفتح «استرداد».</p>
           <Link to="/dashboard" className="mt-4 inline-block text-sm font-semibold text-primary">
             العودة إلى تدقيق
           </Link>
@@ -102,13 +103,13 @@ function CompensationShell() {
               ت
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-bold">تدقيق · التعويضات</p>
+              <p className="text-sm font-bold">استرداد <span className="font-normal text-ink-muted">· مركز التعويضات</span></p>
               <p className="truncate text-[11px] text-ink-muted">
                 {context.workspaceName} · {WORKSPACE_ROLE_LABELS[context.role]}
               </p>
             </div>
           </div>
-          <nav aria-label="أقسام مركز التعويضات" className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:overflow-visible">
+          <nav aria-label="أقسام استرداد" className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:overflow-visible">
             {items.map((item) => {
               const active = item.exact ? path === item.to : path.startsWith(item.to);
               return (

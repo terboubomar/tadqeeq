@@ -333,7 +333,7 @@ async function storeEvidence(
   if (!connection) {
     await sendMessage(
       incomingMessage.chat.id,
-      "هذا القروب غير مربوط بـ Tadqeeq. أنشئ رمز ربط من مركز التعويضات ثم استخدم /connect CODE.",
+      "هذا القروب غير مربوط بـ Tadqeeq. أنشئ رمز ربط من «استرداد» (مركز التعويضات) في تدقيق ثم استخدم /connect CODE.",
       incomingMessage.message_id,
     );
     return;

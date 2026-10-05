@@ -1,4 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { productPageTitle } from "@/lib/products";
+import { ProductName } from "@/components/ProductName";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   AlertTriangle,
@@ -60,7 +62,7 @@ import { PlatformName } from "@/components/brand/PlatformLogo";
 export const Route = createFileRoute("/_authenticated/exceptions")({
   head: () => ({
     meta: [
-      { title: "مركز الاستثناءات · تدقيق" },
+      { title: productPageTitle("radar") },
       {
         name: "description",
         content: "مركز موحد لمتابعة فروقات فواتير منصات التوصيل والمبالغ محل المراجعة.",
@@ -142,7 +144,7 @@ function ExceptionsPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="audit-heading">مركز الاستثناءات</h1>
+          <h1 className="audit-heading"><ProductName product="radar" /></h1>
           <p className="audit-subtitle">
             {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)} ·{" "}
             <PlatformName platform={selected.platform} iconClassName="size-4 rounded" />

@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { productPageTitle } from "@/lib/products";
+import { ProductName } from "@/components/ProductName";
 import { AlertTriangle, CheckCircle2, FileSearch, FileText, MinusCircle, Scale } from "lucide-react";
 import { useState } from "react";
 
@@ -11,12 +13,12 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/invoice-check")({
   head: () => ({
     meta: [
-      { title: "مطابقة الفاتورة · تدقيق" },
+      { title: productPageTitle("mutabiq") },
       {
         name: "description",
         content: "قارن كل بند محتسب من بيانات الطلبات بالمبلغ الذي طالبت به المنصة.",
       },
-      { property: "og:title", content: "مطابقة الفاتورة · تدقيق" },
+      { property: "og:title", content: productPageTitle("mutabiq") },
       {
         property: "og:description",
         content: "قارن كل بند محتسب من بيانات الطلبات بالمبلغ الذي طالبت به المنصة.",
@@ -114,7 +116,7 @@ function InvoiceCheck() {
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="audit-heading">مطابقة الفاتورة</h1>
+        <h1 className="audit-heading"><ProductName product="mutabiq" /></h1>
         <p className="audit-subtitle">
           {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)}
         </p>

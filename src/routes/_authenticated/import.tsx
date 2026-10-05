@@ -367,7 +367,7 @@ function ImportPage() {
       );
       if (response.columnChanges?.length) {
         toast.warning(`في الملف ${response.columnChanges.length} تغيير في أعمدة المبالغ مقارنة بملفاتك السابقة.`, {
-          description: "راجعها في المراقب الذكي على اللوحة.",
+          description: "راجعها في «رقيب» على اللوحة.",
           duration: 10_000,
         });
       }
@@ -1092,7 +1092,7 @@ function ReviewStep({
         <ol className="mt-2 list-decimal space-y-1 ps-5 text-[12px] leading-6 text-foreground/75">
           <li>إعادة احتساب بنود المنصة من ملف البيانات الخام.</li>
           <li>قراءة الفاتورة والمطابقة الرسمية إذا تم إرفاق PDF.</li>
-          <li>حفظ الفترة وتحديث التقارير ومركز الاستثناءات تلقائياً.</li>
+          <li>حفظ الفترة وتحديث التقارير و«رادار» تلقائياً.</li>
         </ol>
       </div>
     </div>

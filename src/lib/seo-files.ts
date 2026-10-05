@@ -121,7 +121,7 @@ function pricingBody(plans: PublicPlan[]): string {
     return plans.length ? plans.map(planLines).join("\n\n") : "Paid plans: shown on the homepage pricing section; contact us from inside the account to subscribe.";
   }
   return [
-    "Priced by the number of orders checked per month across all delivery platforms. Every plan includes unlimited branches, platforms, users and uploads, with invoice check, charges map, exceptions, contracts, real ad return, Smart Watch and smart file reading. The order limit is soft: uploads are never blocked.",
+    "Priced by the number of orders checked per month across all delivery platforms. Every plan includes unlimited branches, platforms, users and uploads, with Mutabiq (invoice check), Kashif (fee map), Radar (exceptions), contracts, Aaid (promotion & ad ROI), Raqeeb (smart watch) and smart file reading. The order limit is soft: uploads are never blocked.",
     ordered.map(orderPlanLines).join("\n\n"),
     "## Add-on",
     "",

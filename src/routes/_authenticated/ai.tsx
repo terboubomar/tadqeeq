@@ -30,7 +30,7 @@ function TadqeeqAiPage() {
       <section className="mx-auto mt-10 max-w-xl rounded-xl border border-border bg-white p-8 text-center">
         <h1 className="text-lg font-bold">Tadqeeq AI غير مفعّل</h1>
         <p className="mt-2 text-sm leading-7 text-muted-foreground">
-          التدقيق الحتمي والتقارير ومركز الاستثناءات تعمل بشكل طبيعي بدون الذكاء الاصطناعي.
+          التدقيق الحتمي والتقارير و«رادار» تعمل بشكل طبيعي بدون الذكاء الاصطناعي.
         </p>
       </section>
     );

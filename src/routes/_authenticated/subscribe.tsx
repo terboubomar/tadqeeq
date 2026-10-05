@@ -40,7 +40,7 @@ export const Route = createFileRoute("/_authenticated/subscribe")({
 type Cycle = "monthly" | "yearly";
 
 /** What every order-based plan includes, whatever its size. */
-const INCLUDED = ["فروع ومنصات ومستخدمون بلا حدود", "رفع ملفات بلا حدود", ...PLAN_FEATURES.filter((f) => ["invoice_audit", "exceptions", "contracts"].includes(f.key)).map((f) => f.label), "المراقب الذكي والقراءة الذكية للملفات"];
+const INCLUDED = ["فروع ومنصات ومستخدمون بلا حدود", "رفع ملفات بلا حدود", ...PLAN_FEATURES.filter((f) => ["invoice_audit", "exceptions", "contracts"].includes(f.key)).map((f) => f.label), "رقيب · المراقب الذكي والقراءة الذكية للملفات"];
 
 function SubscribePage() {
   const { context } = useWorkspaceAccess();
@@ -105,7 +105,7 @@ function UsagePanel() {
       </p>
       {context.trial ? (
         <p className="mt-2 text-sm leading-7 text-muted-foreground">
-          رفع ملفات منصة واحدة لفترة واحدة، مع اللوحة التنفيذية ومطابقة الفاتورة وخريطة الرسوم وتقارير الفروع.
+          رفع ملفات منصة واحدة لفترة واحدة، مع اللوحة التنفيذية و«مُطابِق» لمطابقة الفاتورة و«كاشِف» لخريطة الرسوم وتقارير الفروع.
           {context.uploadLimit !== null ? (
             <span className="num block">
               الرفع المستخدم: {Math.min(context.uploadsThisMonth, context.uploadLimit)} / {context.uploadLimit}
@@ -216,7 +216,7 @@ function PlanPicker({ plans: allPlans }: { plans: PublicPlan[] }) {
                 ) : plan.customPrice ? "طلبات أكثر وخدمة مخصصة" : plan.code ? "طلبات بلا حدود" : plan.description}
               </span>
               {PLAN_ADDONS.some((addon) => planIncludesAddon(plan.features, addon.key)) ? (
-                <span className="text-xs font-semibold text-primary-text">يشمل Tadqeeq AI ومركز التعويضات</span>
+                <span className="text-xs font-semibold text-primary-text">يشمل «استرداد» و Tadqeeq AI</span>
               ) : null}
               {planHasAssistant(plan.features) ? <span className="text-xs font-semibold text-primary-text">والتدقيق من داخل Claude و ChatGPT</span> : null}
               <span className="mt-auto pt-2">

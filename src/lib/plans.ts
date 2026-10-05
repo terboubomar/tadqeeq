@@ -1,11 +1,12 @@
+import { productTitle } from "./products";
 import type { WorkspacePermission } from "./workspace-access";
 
 export type PlanFeature = "invoice_audit" | "exceptions" | "compensation" | "contracts" | "ai";
 
 export const PLAN_FEATURES: Array<{ key: PlanFeature; label: string }> = [
-  { key: "invoice_audit", label: "مطابقة الفاتورة وخريطة الرسوم وتحليل العروض" },
-  { key: "exceptions", label: "مركز الاستثناءات" },
-  { key: "compensation", label: "مركز التعويضات وأدلة Telegram" },
+  { key: "invoice_audit", label: "مُطابِق وكاشِف وعائد: مطابقة الفاتورة وخريطة الرسوم وعائد العروض" },
+  { key: "exceptions", label: productTitle("radar") },
+  { key: "compensation", label: `${productTitle("istirdad")} وأدلة Telegram` },
   { key: "contracts", label: "العقود وشروط المنصات" },
   { key: "ai", label: "Tadqeeq AI" },
 ];
@@ -89,7 +90,7 @@ export type PlanAddon = "compensation_ai";
 export const PLAN_ADDONS: Array<{ key: PlanAddon; label: string; features: PlanFeature[]; price: number; months: number }> = [
   {
     key: "compensation_ai",
-    label: "مركز التعويضات مع بوت Telegram، و Tadqeeq AI",
+    label: "«استرداد» للتعويضات مع بوت Telegram، و Tadqeeq AI",
     features: ["compensation", "ai"],
     price: 399,
     months: 4,
@@ -153,12 +154,13 @@ export function planComparison(plans: PublicPlan[]): ComparisonRow[] {
     { label: "الفروع والمنصات والمستخدمون", cells: all("بلا حدود") },
     { label: "رفع ملفات هنقرستيشن وكيتا وجاهز", cells: all("بلا حدود") },
     { label: "اللوحة التنفيذية وتقارير الفروع والأيام", cells: yes() },
-    { label: "مطابقة الفاتورة وخريطة الرسوم", cells: plans.map((plan) => featureCell(plan, "invoice_audit")) },
-    { label: "عائد الإعلانات الحقيقي وتحليل العروض", cells: plans.map((plan) => featureCell(plan, "invoice_audit")) },
-    { label: "مركز الاستثناءات", cells: plans.map((plan) => featureCell(plan, "exceptions")) },
+    { label: productTitle("mutabiq"), cells: plans.map((plan) => featureCell(plan, "invoice_audit")) },
+    { label: productTitle("kashif"), cells: plans.map((plan) => featureCell(plan, "invoice_audit")) },
+    { label: productTitle("aaid"), cells: plans.map((plan) => featureCell(plan, "invoice_audit")) },
+    { label: productTitle("radar"), cells: plans.map((plan) => featureCell(plan, "exceptions")) },
     { label: "العقود وشروط المنصات", cells: plans.map((plan) => featureCell(plan, "contracts")) },
-    { label: "المراقب الذكي والقراءة الذكية للملفات", cells: yes() },
-    { label: "مركز التعويضات وبوت Telegram", cells: plans.map((plan) => featureCell(plan, "compensation")) },
+    { label: `${productTitle("raqeeb")} والقراءة الذكية للملفات`, cells: yes() },
+    { label: `${productTitle("istirdad")} وبوت Telegram`, cells: plans.map((plan) => featureCell(plan, "compensation")) },
     { label: "Tadqeeq AI للأسئلة عن أرقامك", cells: plans.map((plan) => featureCell(plan, "ai")) },
     {
       label: "التدقيق من داخل Claude و ChatGPT",

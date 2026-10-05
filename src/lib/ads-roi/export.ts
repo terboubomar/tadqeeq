@@ -188,7 +188,7 @@ function summarySheet(result: AdsRoiResult, meta: AdsRoiExportMeta): XLSX.WorkSh
     ["حملات قريبة من التعادل", verdict.thin.campaigns, INTEGER],
     ["حملات رابحة", verdict.profit.campaigns, INTEGER],
   ];
-  const data: Cell[][] = [["عائد الإعلانات الحقيقي · تدقيق"], [], ...rows.map(([label, value]) => [label, value])];
+  const data: Cell[][] = [["عائد · عائد العروض والإعلانات · تدقيق"], [], ...rows.map(([label, value]) => [label, value])];
   data.push([], ["من كل 1 ر.س مبيعات من الإعلان", "خصمك", "الضريبة", "العمولة", "رسوم الدفع", "عرض التوصيل", "رسوم أخرى", "تكلفة الطعام", "يبقى", "خط التعادل"]);
   const brandStart = data.length;
   for (const brand of result.brands) {
