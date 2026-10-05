@@ -105,7 +105,7 @@ export function NumberTiles({ items, className }: { items: NumberTile[]; classNa
               {item.label}
               {item.icon ? <item.icon className="size-4 shrink-0 opacity-80" /> : null}
             </span>
-            <span className={cn("num block truncate text-[18px] font-semibold leading-7 tracking-[-0.01em] sm:text-[24px] sm:leading-8", tone.value)}>{item.value}</span>
+            <span className={cn("num block truncate text-[16px] font-semibold leading-7 tracking-[-0.01em] sm:text-[24px] sm:leading-8", tone.value)}>{item.value}</span>
             {item.hint ? <span className={cn("block text-[11.5px] leading-5", tone.label)}>{item.hint}</span> : null}
           </>
         );
