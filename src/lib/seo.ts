@@ -48,6 +48,7 @@ export const PUBLIC_PAGES: PublicPage[] = [
   { path: "/guides/keeta-invoice", title: "كيف تراجع فاتورة كيتا؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
   { path: "/guides/hungerstation-compensation", title: "كيف تعترض على تعويضات هنقرستيشن؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
   { path: "/guides/jahez-commission", title: "كيف تتأكد من عمولة جاهز وصافي المطعم؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
+  { path: "/contact", title: "تواصل معنا", lastmod: "2026-10-05", changefreq: "yearly", priority: 0.5 },
   { path: "/privacy", title: "سياسة الخصوصية", lastmod: "2026-10-05", changefreq: "yearly", priority: 0.3 },
   { path: "/terms", title: "الشروط والأحكام", lastmod: "2026-10-05", changefreq: "yearly", priority: 0.3 },
   { path: "/refund-policy", title: "سياسة الإلغاء والاسترداد", lastmod: "2026-10-05", changefreq: "yearly", priority: 0.3 },

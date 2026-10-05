@@ -19,6 +19,9 @@ function GuideShell({ children }: { children: ReactNode }) {
             <Link to="/guides" className="hidden rounded-full px-3 py-2 font-semibold text-foreground/75 hover:bg-muted sm:block">
               الأدلة
             </Link>
+            <Link to="/contact" className="hidden rounded-full px-3 py-2 font-semibold text-foreground/75 hover:bg-muted sm:block">
+              تواصل معنا
+            </Link>
             <Link
               to="/auth"
               search={{ mode: "signup" }}
