@@ -49,6 +49,22 @@ function AuthPage() {
   const [emailStep, setEmailStep] = useState(false);
   const go = () => (next ? window.location.assign(next) : navigate({ to: "/dashboard", replace: true }));
   const returnUrl = () => window.location.origin + (next ?? "");
+  // New accounts land on a clear "email confirmed" page unless they were heading somewhere specific.
+  const confirmUrl = () => (next ? returnUrl() : `${window.location.origin}/email-confirmed`);
+  const [resendWait, setResendWait] = useState(0);
+  useEffect(() => {
+    if (resendWait <= 0) return;
+    const t = setTimeout(() => setResendWait((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendWait]);
+  async function resendConfirmation(to: string) {
+    setBusy(true);
+    const { error } = await supabase.auth.resend({ type: "signup", email: to, options: { emailRedirectTo: confirmUrl() } });
+    setBusy(false);
+    if (error) return toast.error(error.message.includes("seconds") ? "انتظر قليلاً قبل إعادة الإرسال." : "تعذّر إعادة إرسال الرابط");
+    toast.success("أعدنا إرسال رابط التأكيد إلى بريدك.");
+    setResendWait(60);
+  }
   // Accounts with two-step sign-in enter their authenticator code before going in.
   const finishSignIn = async () => {
     const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -80,7 +96,7 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: returnUrl(),
+            emailRedirectTo: confirmUrl(),
             data: { full_name: name },
           },
         });
@@ -93,6 +109,7 @@ function AuthPage() {
         if (data.session) await finishSignIn();
         else {
           setSignupSentTo(email.trim());
+          setResendWait(60);
           setPassword("");
           setName("");
         }
@@ -174,6 +191,10 @@ function AuthPage() {
               تم إنشاء حسابك ✅ تحقق من بريدك <span dir="ltr" className="font-semibold">{signupSentTo}</span> واضغط على رابط التأكيد لتفعيل الحساب. إن لم تجده
               خلال دقائق، تحقق من صندوق الرسائل غير المرغوب فيها.
             </p>
+            <Button className="w-full" disabled={busy || resendWait > 0} onClick={() => void resendConfirmation(signupSentTo)}>
+              {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+              {resendWait > 0 ? `إعادة إرسال رابط التأكيد (${resendWait})` : "إعادة إرسال رابط التأكيد"}
+            </Button>
             <Button
               variant="outline"
               className="w-full"
