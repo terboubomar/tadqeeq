@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/workspace/PageKit";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { KeyRound, Loader2, Plus, Shield, Trash2, UserCheck, UserX } from "lucide-react";
@@ -98,18 +99,17 @@ function TeamPage() {
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="audit-heading">المستخدمون والصلاحيات</h1>
-          <p className="audit-subtitle">
-            لكل موظف تسجيل دخول مستقل، ودور واضح، ونطاق فروع عند الحاجة.
-          </p>
-        </div>
-        <Button onClick={() => setInviteOpen((value) => !value)}>
-          <Plus className="size-4" />
-          إضافة مستخدم
-        </Button>
-      </header>
+      <PageHeader
+        crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "الإعداد" }, { label: "المستخدمون والصلاحيات" }]}
+        title="المستخدمون والصلاحيات"
+        subtitle="لكل موظف تسجيل دخول مستقل، ودور واضح، ونطاق فروع عند الحاجة."
+        aside={
+          <Button className="rounded-full" onClick={() => setInviteOpen((value) => !value)}>
+            <Plus className="size-4" />
+            إضافة مستخدم
+          </Button>
+        }
+      />
 
       {inviteOpen ? (
         <section className="rounded-xl border border-border bg-card p-5">

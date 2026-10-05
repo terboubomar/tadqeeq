@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/workspace/PageKit";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
@@ -49,10 +50,11 @@ function HistoryPage() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="audit-heading">الفترات السابقة</h1>
-        <p className="audit-subtitle">اضغط على أي فترة لعرضها في باقي التقارير.</p>
-      </header>
+      <PageHeader
+        crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التقارير" }, { label: "الفترات السابقة" }]}
+        title="الفترات السابقة"
+        subtitle="اضغط على أي فترة لعرضها في باقي التقارير."
+      />
 
       <section className="overflow-hidden rounded-[10px] border border-border bg-white">
         <div data-scroll className="overflow-x-auto">

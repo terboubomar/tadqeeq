@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/workspace/PageKit";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
@@ -141,12 +142,11 @@ function BranchesPage() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="audit-heading">تقرير الفروع</h1>
-        <p className="audit-subtitle">
-          اضغط على عنوان أي عمود للترتيب تصاعدياً أو تنازلياً.
-        </p>
-      </header>
+      <PageHeader
+        crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التقارير" }, { label: "تقرير الفروع" }]}
+        title="تقرير الفروع"
+        subtitle="اضغط على عنوان أي عمود للترتيب تصاعدياً أو تنازلياً."
+      />
       <ReportTable
         title={selected.label}
         rows={rows as unknown as Record<string, unknown>[]}

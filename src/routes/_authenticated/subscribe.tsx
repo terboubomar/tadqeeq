@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/workspace/PageKit";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, Clock, Lock, Sparkles } from "lucide-react";
@@ -53,12 +54,11 @@ function SubscribePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <header>
-        <h1 className="audit-heading">{context.trial ? "اشترك في تدقيق" : "باقتك وترقيتها"}</h1>
-        <p className="audit-subtitle">
-          تدفع حسب عدد طلباتك فقط. الفروع والمنصات والمستخدمون بلا حدود في كل الباقات.
-        </p>
-      </header>
+      <PageHeader
+        crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "الاشتراك" }]}
+        title={context.trial ? "اشترك في تدقيق" : "باقتك وترقيتها"}
+        subtitle="تدفع حسب عدد طلباتك فقط. الفروع والمنصات والمستخدمون بلا حدود في كل الباقات."
+      />
 
       <section className="grid gap-4 md:grid-cols-2">
         <UsagePanel />

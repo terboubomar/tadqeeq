@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/workspace/PageKit";
 import { createFileRoute } from "@tanstack/react-router";
 import { Download, Layers3, ListOrdered, Percent, Receipt } from "lucide-react";
 
@@ -135,11 +136,11 @@ function BreakdownPage() {
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="audit-heading">تفصيل البنود</h1>
-          <p className="audit-subtitle">{selected.label}</p>
-        </div>
+      <PageHeader
+        crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التقارير" }, { label: "تفصيل البنود" }]}
+        title="تفصيل البنود"
+        subtitle={selected.label}
+        aside={
         <Button
           data-noprint
           variant="outline"
@@ -157,7 +158,8 @@ function BreakdownPage() {
           <Download className="size-3.5" />
           تصدير Excel
         </Button>
-      </header>
+        }
+      />
 
       <StatTiles
         cols={4}
