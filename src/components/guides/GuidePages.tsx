@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { LogoWordmark } from "@/components/brand/Logo";
 import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
+import { ProductsMenu } from "@/components/products/ProductsMenu";
 import { GUIDES, type Guide, type GuideSection } from "@/lib/guides";
 import { formatArabicDate } from "@/lib/site-content";
 
@@ -12,14 +13,14 @@ export function GuideShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-3 px-4 sm:px-6">
+        <div className="relative mx-auto flex h-16 max-w-5xl items-center justify-between gap-3 px-4 sm:px-6">
           <Link to="/" aria-label="تدقيق — الرئيسية">
             <LogoWordmark className="h-8 text-ink" />
           </Link>
           <nav aria-label="روابط رئيسية" className="flex items-center gap-1 text-sm">
-            <Link to="/products" className="hidden rounded-full px-3 py-2 font-semibold text-foreground/75 hover:bg-muted sm:block">
-              المنتجات
-            </Link>
+            <div className="hidden sm:block">
+              <ProductsMenu triggerClassName="rounded-full px-3 py-2 font-semibold text-foreground/75 hover:bg-muted" />
+            </div>
             <Link to="/guides" className="hidden rounded-full px-3 py-2 font-semibold text-foreground/75 hover:bg-muted sm:block">
               الأدلة
             </Link>

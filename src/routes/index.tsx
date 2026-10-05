@@ -56,6 +56,7 @@ import { listPublicPlans } from "@/lib/plans.functions";
 import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
 import { LEGAL_COMPANY, LEGAL_DOCS } from "@/lib/legal";
 import { productPageFor } from "@/lib/product-pages";
+import { ProductsMenu, ProductsMenuList } from "@/components/products/ProductsMenu";
 import { PRODUCTS, productTitle, type ProductKey } from "@/lib/products";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { OG_IMAGE, SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
@@ -91,10 +92,9 @@ const HOME_TITLE = "تدقيق فواتير هنقرستيشن وجاهز وكي
 const HOME_DESCRIPTION =
   "تدقيق يعيد احتساب كل بند في فواتير هنقرستيشن وجاهز وكيتا من ملف طلباتك وعقدك، ويكشف فروقات العمولة والرسوم لكل فرع، ويجهّز مطالبات التعويض بالأدلة.";
 
+/** Header links after the «المنتجات» menu. */
 const NAV = [
-  ["#features", "المنتج"],
   ["#how", "كيف يعمل"],
-  ["#compensation", "استرداد"],
   ["#pricing", "الخطط والأسعار"],
   ["#faq", "الأسئلة"],
   ["/contact", "تواصل معنا"],
@@ -400,7 +400,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
       </div>
 
       <div className="sticky top-0 z-40 px-3 pt-3 sm:px-6 sm:pt-4">
-        <header className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 rounded-full border border-border bg-card/95 ps-4 pe-2 shadow-[0_12px_32px_-18px_rgb(19_35_43/0.28)] backdrop-blur sm:h-[68px] sm:ps-5">
+        <header className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 rounded-full border border-border bg-card/95 ps-4 pe-2 shadow-[0_12px_32px_-18px_rgb(19_35_43/0.28)] backdrop-blur sm:h-[68px] sm:ps-5">
           <Link to="/" aria-label="تدقيق — الرئيسية" className="flex items-center gap-2.5">
             <LogoWordmark className="h-8 text-ink sm:h-9" />
             <span className="hidden border-s border-border ps-2.5 text-[11px] leading-tight text-muted-foreground sm:block">
@@ -410,6 +410,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
             </span>
           </Link>
           <nav aria-label="الرئيسية" className="hidden items-center gap-1 rounded-full bg-background p-1 text-sm xl:flex">
+            <ProductsMenu triggerClassName="rounded-full px-4 py-2 text-foreground/75 transition-colors hover:bg-card hover:text-foreground hover:shadow-sm" />
             {navItems.map(([href, label]) => (
               <a
                 key={href}
@@ -445,6 +446,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         </header>
         {menuOpen ? (
           <nav aria-label="القائمة" className="mx-auto mt-2 flex max-w-7xl flex-col rounded-2xl border border-border bg-card p-2 shadow-lg xl:hidden">
+            <ProductsMenuList onNavigate={() => setMenuOpen(false)} />
             {navItems.map(([href, label]) => (
               <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-muted">
                 {label}
