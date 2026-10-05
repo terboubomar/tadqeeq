@@ -1,20 +1,23 @@
 # Product Marketing Context
 
-_Version 1.0 · 2026-09-27 · read by the marketing skills (seo-audit, competitors, copywriting, …) before they ask questions._
+_Version 1.1 · 2026-10-05 · read by the marketing skills (seo-audit, competitors, copywriting, …) before they ask questions._
 
 ## Product Overview
 
 - **Name**: تدقيق (Tadqeeq) — tadqeeq.app
 - **One line**: تدقيق يعيد احتساب كل بند في فواتير تطبيقات التوصيل (هنقرستيشن، جاهز، كيتا) من ملف الطلبات والعقد، ويكشف الفروقات لكل فرع، ويجهّز مطالبات التعويض بالأدلة.
 - **Category**: Restaurant delivery-invoice reconciliation / financial operations SaaS (Saudi Arabia).
-- **Core features (live in the app)**:
-  - Invoice check: upload the platform invoice + merchant order file (Excel/CSV/PDF); platform, period and branches are auto-detected; format-change alerts instead of unreliable results.
-  - Versioned recalculation engine (engine version + contract version saved with every result).
-  - Charges map: commission, payment fees, free-delivery campaigns, VAT, offers, net settlement, compensations, unclassified lines.
-  - Exceptions center: each difference becomes an exception with severity, source line, formula, owner and status (جديد ← قيد المراجعة ← تم التواصل ← تم الاعتراض ← تم الاسترداد).
-  - Compensation center: cashiers send order video/receipt photos in the branch Telegram group; the bot links evidence to the order number; dispute letters in Arabic and English; recovery tracking.
-  - Promotions ROI, branch comparison, period close and re-analysis, Tadqeeq AI (explains numbers, never changes them), team roles and permissions.
-- **Pricing**: plans are managed in the ops console (database), shown on the homepage pricing section.
+- **Products** (names from `src/lib/products.ts`; use them in all copy, first mention with the descriptor):
+  - **مُطابِق (Mutabiq) · مطابقة الفاتورة**: upload the platform invoice + merchant order file (Excel/CSV/PDF); platform, period and branches auto-detected; every line recalculated by a versioned engine (engine + contract version saved with each result); format-change alerts instead of unreliable results.
+  - **كاشِف (Kashif) · خريطة الرسوم**: commission, payment fees, free-delivery campaigns, VAT, offers, compensations and unclassified lines per platform and branch.
+  - **رادار (Radar) · مركز الاستثناءات**: each difference becomes an exception with severity, source line, formula, owner and status (جديد ← قيد المراجعة ← تم التواصل ← تم الاعتراض ← تم الاسترداد).
+  - **استرداد (Istirdad) · مركز التعويضات**: cashiers send order video/receipt photos in the branch Telegram group; the bot links evidence to the order number; dispute letters in Arabic and English; recovery tracking.
+  - **عائد (Aaid) · عائد العروض والإعلانات**: real profit per promotion/ad campaign after commission, discounts and ad spend.
+  - **رقيب (Raqeeb) · المراقب الذكي**: compares each branch with its history and similar branches after every upload, ranks unusual fees by SAR impact.
+  - **Tadqeeq AI · المساعد الذكي**: answers questions about the numbers in Arabic; never changes them. Also usable from Claude and ChatGPT (MCP) on the top plan or with the add-on.
+  - Also: branch comparison, period close and re-analysis, contracts, team roles and permissions, optional two-step sign-in.
+- **Pricing** (order-based, live in the database; homepage pricing section and `/pricing.md`): البداية 299 SAR/month up to 15,000 orders; النمو 499 SAR up to 45,000; الشاملة 799 SAR unlimited, includes استرداد + Tadqeeq AI + Claude/ChatGPT. Add-on (استرداد + Tadqeeq AI + MCP) 399 SAR every 4 months on the other plans. Yearly = 2 months free. Free trial: one upload. Prices exclude VAT; bank transfer after invoice.
+- **Public pages**: `/`, `/guides` (+ 3 guides), `/contact`, `/privacy`, `/terms`, `/refund-policy`, `/cookies`.
 
 ## Target Audience
 
@@ -82,3 +85,4 @@ Calm, precise, Saudi-friendly Modern Standard Arabic with light Gulf phrasing in
 ## Changelog
 
 - 1.0 (2026-09-27): initial context from the app, homepage and competitor scan.
+- 1.1 (2026-10-05): product names, order-based pricing and add-on, public pages.
