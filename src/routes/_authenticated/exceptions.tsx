@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { productPageTitle } from "@/lib/products";
+import { PRODUCTS, productPageTitle } from "@/lib/products";
 import { ProductName } from "@/components/ProductName";
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -25,7 +25,7 @@ import { EmptyState } from "@/components/AppShell";
 import { AI_UI_ENABLED } from "@/lib/ai/config";
 import { explainExceptionWithAi } from "@/lib/ai/exception-ai.functions";
 import type { ExceptionAiResult } from "@/lib/ai/exception-ai";
-import { StatCard } from "@/components/StatCard";
+import { ActionBar, ActionDivider, DetailPanel, ListDetail, NumberTiles, PageHeader } from "@/components/workspace/PageKit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -85,6 +85,7 @@ function ExceptionsPage() {
   const [status, setStatus] = useState("open");
   const [severity, setSeverity] = useState("all");
   const [selectedException, setSelectedException] = useState<AuditException | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const updateWorkflow = useMutation({
     mutationFn: ({ periodId, exceptionId, patch }: WorkflowMutation) =>
@@ -140,99 +141,112 @@ function ExceptionsPage() {
     );
   }
 
+  const active = filtered.find((item) => item.id === activeId) ?? filtered[0] ?? null;
+  const update = (item: AuditException, patch: Partial<ExceptionWorkflowEntry>) =>
+    updateWorkflow.mutate({ periodId: item.periodId, exceptionId: item.id, patch });
+  // From xl up the row fills the detail panel beside the list; on smaller screens it opens the sheet.
+  const openItem = (item: AuditException) => {
+    setActiveId(item.id);
+    if (typeof window !== "undefined" && !window.matchMedia("(min-width: 1280px)").matches) setSelectedException(item);
+  };
+
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="audit-heading"><ProductName product="radar" /></h1>
-          <p className="audit-subtitle">
-            {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)} ·{" "}
+    <div className="space-y-5">
+      <PageHeader
+        crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التدقيق" }, { label: PRODUCTS.radar.name }]}
+        title={<ProductName product="radar" />}
+        subtitle={
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            {selected.label} · {arabicDate(selected.period_start)} — {arabicDate(selected.period_end)} ·
             <PlatformName platform={selected.platform} iconClassName="size-4 rounded" />
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            يعرض فقط الفروقات المستقلة القابلة للإجراء في الملف المحدد؛ المجاميع الرقابية والبنود غير القابلة للتحقق تبقى في مطابقة الفاتورة.
-          </p>
+          </span>
+        }
+        aside={
+          <span className="rounded-full border border-border bg-card px-3 py-1 text-[12px] text-muted-foreground">
+            {exceptions.length} استثناء في الملف المحدد
+          </span>
+        }
+      />
+
+      <NumberTiles
+        items={[
+          {
+            label: "الاستثناءات المفتوحة",
+            value: String(summary.openCount),
+            hint: summary.criticalCount + " حرجة",
+            icon: ShieldAlert,
+            tone: summary.openCount ? "danger" : "plain",
+          },
+          {
+            label: "المبالغ محل المراجعة",
+            value: sar(summary.underReview),
+            hint: "بعد منع التكرار بين الإجمالي والفروع",
+            icon: AlertTriangle,
+          },
+          {
+            label: "قابلية الاسترداد المحتملة",
+            value: sar(summary.potentialRecovery),
+            hint: "الفروقات المستقلة ذات الاتجاه المالي الواضح",
+            icon: CircleDollarSign,
+            tone: "gold",
+          },
+          {
+            label: "تم استرداده",
+            value: sar(summary.recovered),
+            hint: "حسب المبالغ المسجلة في سير العمل",
+            icon: BadgeDollarSign,
+            tone: summary.recovered > 0 ? "success" : "plain",
+          },
+        ]}
+      />
+
+      <ActionBar>
+        <div className="relative min-w-0 flex-[1_1_240px]">
+          <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="بحث بالفترة أو الفرع أو البند…"
+            aria-label="بحث في الاستثناءات"
+            className="h-9 border-0 bg-transparent ps-9 shadow-none focus-visible:ring-1"
+          />
         </div>
-        <span className="rounded-[6px] border border-border bg-white px-2.5 py-1 text-[11.5px] text-muted-foreground">
-          {exceptions.length} استثناء في الملف المحدد
-        </span>
-      </header>
+        <ActionDivider />
+        <Select value={status} onValueChange={setStatus}>
+          <SelectTrigger aria-label="الحالة" className="h-9 w-auto min-w-36 gap-2 rounded-lg">
+            <SelectValue placeholder="الحالة" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="open">المفتوحة فقط</SelectItem>
+            <SelectItem value="all">كل الحالات</SelectItem>
+            {Object.entries(EXCEPTION_STATUS_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={severity} onValueChange={setSeverity}>
+          <SelectTrigger aria-label="الأهمية" className="h-9 w-auto min-w-36 gap-2 rounded-lg">
+            <SelectValue placeholder="الأهمية" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل مستويات الأهمية</SelectItem>
+            {Object.entries(EXCEPTION_SEVERITY_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </ActionBar>
 
-      <section className="audit-kpi-strip grid gap-0 sm:grid-cols-2 xl:grid-cols-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0">
-        <StatCard
-          label="الاستثناءات المفتوحة"
-          value={String(summary.openCount)}
-          hint={summary.criticalCount + " حرجة"}
-          icon={ShieldAlert}
-          tone={summary.openCount ? "negative" : "default"}
-        />
-        <StatCard
-          label="المبالغ محل المراجعة"
-          value={sar(summary.underReview)}
-          hint="بعد منع التكرار بين الإجمالي والفروع"
-          icon={AlertTriangle}
-          tone={summary.underReview > 0 ? "negative" : "default"}
-        />
-        <StatCard
-          label="قابلية الاسترداد المحتملة"
-          value={sar(summary.potentialRecovery)}
-          hint="فقط الفروقات المستقلة ذات اتجاه مالي واضح"
-          icon={CircleDollarSign}
-          tone="gold"
-        />
-        <StatCard
-          label="تم استرداده"
-          value={sar(summary.recovered)}
-          hint="حسب المبالغ المسجلة في سير العمل"
-          icon={BadgeDollarSign}
-        />
-      </section>
-
-      <section className="rounded-[10px] border border-border bg-white p-3.5">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <div className="relative xl:col-span-2">
-            <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="بحث بالفترة أو الفرع أو البند…"
-              className="ps-9"
-            />
-          </div>
-
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger>
-              <SelectValue placeholder="الحالة" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="open">المفتوحة فقط</SelectItem>
-              <SelectItem value="all">كل الحالات</SelectItem>
-              {Object.entries(EXCEPTION_STATUS_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={severity} onValueChange={setSeverity}>
-            <SelectTrigger>
-              <SelectValue placeholder="الأهمية" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">كل مستويات الأهمية</SelectItem>
-              {Object.entries(EXCEPTION_SEVERITY_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </section>
+      <p className="text-[12px] leading-6 text-muted-foreground">
+        يعرض فقط الفروقات المستقلة القابلة للإجراء في الملف المحدد؛ المجاميع الرقابية والبنود غير القابلة للتحقق تبقى في مطابقة الفاتورة.
+      </p>
 
       {exceptions.length === 0 ? (
-        <section className="panel px-6 py-14 text-center">
+        <section className="rounded-2xl border border-border bg-card px-6 py-14 text-center">
           <CheckCircle2 className="mx-auto mb-3 size-9 text-success" />
           <h2 className="text-lg font-bold">الملف نظيف</h2>
           <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
@@ -240,56 +254,27 @@ function ExceptionsPage() {
           </p>
         </section>
       ) : (
-      <section className="overflow-hidden rounded-[10px] border border-border bg-white">
-        <div data-scroll className="max-h-[72vh] overflow-auto">
-          <table className="w-full min-w-[1600px] border-collapse text-[13px]">
-            <thead className="sticky top-0 z-10 bg-surface-raised">
-              <tr className="text-xs text-muted-foreground">
-                <Th>الأهمية</Th>
-                <Th>الفترة</Th>
-                <Th>المنصة</Th>
-                <Th>الفرع</Th>
-                <Th>الفئة</Th>
-                <Th>الاستثناء</Th>
-                <Th>المحتسب</Th>
-                <Th>المنصة</Th>
-                <Th>الفرق</Th>
-                <Th>محل المراجعة</Th>
-                <Th>استرداد محتمل</Th>
-                <Th>الحالة</Th>
-                <Th>المسترد فعلياً</Th>
-                <Th>ملاحظة</Th>
-                <Th>الأدلة</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((item) => (
-                <ExceptionRow
-                  key={item.id}
-                  item={item}
-                  saving={updateWorkflow.isPending}
-                  onUpdate={(patch) =>
-                    updateWorkflow.mutate({
-                      periodId: item.periodId,
-                      exceptionId: item.id,
-                      patch,
-                    })
-                  }
-                  onDetails={() => setSelectedException(item)}
-                />
-              ))}
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={15} className="px-5 py-16 text-center text-muted-foreground">
-                    <CheckCircle2 className="mx-auto mb-3 size-7 text-success" />
-                    لا توجد استثناءات مطابقة للفلاتر الحالية.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </section>
+        <ListDetail
+          list={
+            <ExceptionList
+              items={filtered}
+              activeId={active?.id ?? null}
+              onOpen={openItem}
+            />
+          }
+          detail={
+            active ? (
+              <ExceptionDetail
+                key={active.id}
+                item={active}
+                period={selected}
+                saving={updateWorkflow.isPending}
+                onUpdate={(patch) => update(active, patch)}
+                onEvidence={() => setSelectedException(active)}
+              />
+            ) : null
+          }
+        />
       )}
 
       <EvidenceSheet
@@ -297,28 +282,205 @@ function ExceptionsPage() {
         onOpenChange={(open) => {
           if (!open) setSelectedException(null);
         }}
-        item={selectedException}
+        item={selectedException ? (exceptions.find((item) => item.id === selectedException.id) ?? selectedException) : null}
         period={selected}
+        saving={updateWorkflow.isPending}
+        onUpdate={(patch) => {
+          if (selectedException) update(selectedException, patch);
+        }}
       />
     </div>
   );
 }
 
-function ExceptionRow({
+const STATUS_PILL: Record<ExceptionStatus, string> = {
+  new: "bg-destructive-soft text-destructive",
+  reviewing: "bg-secondary text-primary-text",
+  contacted: "bg-muted text-muted-foreground",
+  disputed: "bg-ink/10 text-foreground",
+  recovered: "bg-success-soft text-success",
+  closed: "bg-muted text-muted-foreground",
+};
+
+const SEVERITY_MARK: Record<ExceptionSeverity, string> = {
+  critical: "bg-destructive",
+  high: "bg-warning",
+  medium: "bg-primary",
+  low: "bg-ink-muted",
+};
+
+function StatusPill({ status }: { status: ExceptionStatus }) {
+  return (
+    <span className={cn("inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold", STATUS_PILL[status])}>
+      {EXCEPTION_STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+/** Compact list: a table from md up, cards on phones. The row opens the detail panel or sheet. */
+function ExceptionList({
+  items,
+  activeId,
+  onOpen,
+}: {
+  items: AuditException[];
+  activeId: string | null;
+  onOpen: (item: AuditException) => void;
+}) {
+  if (!items.length) {
+    return (
+      <section className="rounded-2xl border border-border bg-card px-5 py-16 text-center text-sm text-muted-foreground">
+        <CheckCircle2 className="mx-auto mb-3 size-7 text-success" />
+        لا توجد استثناءات مطابقة للفلاتر الحالية.
+      </section>
+    );
+  }
+  return (
+    <>
+      <section className="hidden overflow-hidden rounded-2xl border border-border bg-card md:block">
+        <div data-scroll className="max-h-[72vh] overflow-auto">
+          <table className="w-full min-w-[760px] border-collapse text-[13px]">
+            <thead className="sticky top-0 z-10 bg-surface-raised">
+              <tr className="text-xs text-muted-foreground">
+                <Th>الاستثناء</Th>
+                <Th>الفرع</Th>
+                <Th>المنصة</Th>
+                <Th>الفرق</Th>
+                <Th>محل المراجعة</Th>
+                <Th>الحالة</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => {
+                const on = item.id === activeId;
+                return (
+                  <tr
+                    key={item.id}
+                    className={cn("align-top transition-colors hover:bg-secondary/35", on && "bg-secondary/50 shadow-[inset_-3px_0_0_var(--color-primary)]")}
+                  >
+                    <Td>
+                      <button type="button" onClick={() => onOpen(item)} className="flex max-w-80 items-start gap-2.5 text-start">
+                        <span
+                          title={EXCEPTION_SEVERITY_LABELS[item.severity]}
+                          className={cn("mt-1.5 size-2.5 shrink-0 rounded-[3px]", SEVERITY_MARK[item.severity])}
+                        />
+                        <span className="min-w-0 whitespace-normal">
+                          <span className="block font-semibold text-foreground hover:text-primary-text">{item.label}</span>
+                          <span className="mt-0.5 block text-[11.5px] text-muted-foreground">
+                            {EXCEPTION_SEVERITY_LABELS[item.severity]} · {item.categoryLabel}
+                            {item.rollup ? " · إجمالي رقابي" : ""}
+                          </span>
+                        </span>
+                      </button>
+                    </Td>
+                    <Td>
+                      {item.branch ? (
+                        <span className="block max-w-44 truncate" title={item.branch}>{item.branch}</span>
+                      ) : (
+                        <span className="text-muted-foreground">إجمالي الفترة</span>
+                      )}
+                    </Td>
+                    <Td><PlatformName platform={item.platform} /></Td>
+                    <MoneyCell value={item.difference} signed />
+                    <MoneyCell value={item.reviewAmount} />
+                    <Td><StatusPill status={item.status} /></Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <ul className="space-y-2 md:hidden">
+        {items.map((item) => (
+          <li key={item.id}>
+            <button
+              type="button"
+              onClick={() => onOpen(item)}
+              className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-start"
+            >
+              <span className={cn("size-2.5 shrink-0 rounded-[3px]", SEVERITY_MARK[item.severity])} />
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold">{item.label}</span>
+                <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
+                  {item.branch ?? "إجمالي الفترة"} · {EXCEPTION_STATUS_LABELS[item.status]}
+                </span>
+              </span>
+              <span className="num shrink-0 text-[13px] font-semibold">{sar(item.reviewAmount)}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+/** Detail panel beside the list: the amounts, the formula, the workflow fields and a link to the full evidence. */
+function ExceptionDetail({
+  item,
+  period,
+  saving,
+  onUpdate,
+  onEvidence,
+}: {
+  item: AuditException;
+  period: NonNullable<ReturnType<typeof useSelectedPeriod>["selected"]>;
+  saving: boolean;
+  onUpdate: (patch: Partial<ExceptionWorkflowEntry>) => void;
+  onEvidence: () => void;
+}) {
+  const evidence = buildExceptionEvidence(period, item);
+  return (
+    <DetailPanel
+      eyebrow={(item.branch ?? "إجمالي الفترة") + " · " + EXCEPTION_SEVERITY_LABELS[item.severity] + " · " + item.categoryLabel}
+      title={item.label}
+      value={sar(item.reviewAmount)}
+    >
+      <dl className="divide-y divide-border/70 rounded-xl border border-border text-[13px]">
+        {[
+          { label: "المحتسب حسب العقد", value: item.computed },
+          { label: "حسب المنصة", value: item.invoiced },
+          { label: "الفرق", value: item.difference, signed: true },
+        ].map((row) => (
+          <div key={row.label} className="flex items-center justify-between gap-3 px-3 py-2">
+            <dt className="text-muted-foreground">{row.label}</dt>
+            <dd
+              className={cn(
+                "num font-semibold",
+                row.signed && (row.value ?? 0) > 0 && "text-destructive",
+                row.signed && (row.value ?? 0) < 0 && "text-success",
+              )}
+            >
+              {row.value === undefined ? "—" : sar(row.value)}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <div>
+        <p className="text-[12px] font-semibold">طريقة الاحتساب</p>
+        <p className="mt-1.5 rounded-xl bg-surface-raised px-3 py-2.5 text-[12.5px] leading-6">{evidence.formula}</p>
+      </div>
+      <WorkflowFields item={item} saving={saving} onUpdate={onUpdate} />
+      <Button type="button" variant="outline" className="w-full gap-1.5" onClick={onEvidence}>
+        <Eye className="size-4" />
+        مسار الأدلة الكامل{AI_UI_ENABLED ? " وشرح Tadqeeq AI" : ""}
+      </Button>
+    </DetailPanel>
+  );
+}
+
+/** Status, recovered amount and follow-up note for one exception; saved on change or blur. */
+function WorkflowFields({
   item,
   saving,
   onUpdate,
-  onDetails,
 }: {
   item: AuditException;
   saving: boolean;
   onUpdate: (patch: Partial<ExceptionWorkflowEntry>) => void;
-  onDetails: () => void;
 }) {
   const [note, setNote] = useState(item.note ?? "");
-  const [recovered, setRecovered] = useState(
-    item.recoveredAmount ? String(item.recoveredAmount) : "",
-  );
+  const [recovered, setRecovered] = useState(item.recoveredAmount ? String(item.recoveredAmount) : "");
 
   useEffect(() => {
     setNote(item.note ?? "");
@@ -326,59 +488,11 @@ function ExceptionRow({
   }, [item.id, item.note, item.recoveredAmount]);
 
   return (
-    <tr className="align-top hover:bg-secondary/35">
-      <Td>
-        <SeverityBadge severity={item.severity} />
-      </Td>
-      <Td>
-        <div className="max-w-52">
-          <p className="font-semibold">{item.periodLabel}</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {arabicDate(item.periodStart)} — {arabicDate(item.periodEnd)}
-          </p>
-        </div>
-      </Td>
-      <Td><PlatformName platform={item.platform} /></Td>
-      <Td>
-        {item.branch ? (
-          <div className="max-w-48">
-            <p className="font-medium">{item.branch}</p>
-            {item.branchId ? (
-              <p className="text-[11px] text-muted-foreground">{item.branchId}</p>
-            ) : null}
-          </div>
-        ) : (
-          <span className="text-muted-foreground">إجمالي الفترة</span>
-        )}
-      </Td>
-      <Td>{item.categoryLabel}</Td>
-      <Td>
-        <div className="max-w-72">
-          <p className="font-medium">{item.label}</p>
-          {item.hint ? (
-            <p className="mt-1 whitespace-normal text-[11px] leading-5 text-muted-foreground">
-              {item.hint}
-            </p>
-          ) : null}
-          {item.rollup ? (
-            <span className="mt-1 inline-block rounded-full bg-secondary px-2 py-0.5 text-[10px] text-muted-foreground">
-              إجمالي رقابي — لا يدخل في جمع الأثر المالي
-            </span>
-          ) : null}
-        </div>
-      </Td>
-      <MoneyCell value={item.computed} />
-      <MoneyCell value={item.invoiced} />
-      <MoneyCell value={item.difference} signed />
-      <MoneyCell value={item.reviewAmount} />
-      <MoneyCell value={item.potentialRecovery} />
-      <Td>
-        <Select
-          value={item.status}
-          disabled={saving}
-          onValueChange={(value) => onUpdate({ status: value as ExceptionStatus })}
-        >
-          <SelectTrigger className="h-8 w-36 text-xs">
+    <div className="space-y-2.5">
+      <label className="block space-y-1">
+        <span className="text-[12px] text-muted-foreground">الحالة</span>
+        <Select value={item.status} disabled={saving} onValueChange={(value) => onUpdate({ status: value as ExceptionStatus })}>
+          <SelectTrigger className="h-9">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -389,8 +503,9 @@ function ExceptionRow({
             ))}
           </SelectContent>
         </Select>
-      </Td>
-      <Td>
+      </label>
+      <label className="block space-y-1">
+        <span className="text-[12px] text-muted-foreground">المسترد فعلياً (ر.س)</span>
         <Input
           inputMode="decimal"
           value={recovered}
@@ -409,10 +524,11 @@ function ExceptionRow({
             }
           }}
           placeholder="0.00"
-          className="h-8 w-28 text-xs"
+          className="h-9"
         />
-      </Td>
-      <Td>
+      </label>
+      <label className="block space-y-1">
+        <span className="text-[12px] text-muted-foreground">ملاحظة المتابعة</span>
         <Input
           disabled={saving}
           value={note}
@@ -422,31 +538,27 @@ function ExceptionRow({
             if (trimmed !== (item.note ?? "")) onUpdate({ note: trimmed || undefined });
           }}
           placeholder="ملاحظة المتابعة…"
-          className="h-8 w-52 text-xs"
+          className="h-9"
         />
-      </Td>
-      <Td>
-        <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={onDetails}>
-          <Eye className="size-3.5" />
-          التفاصيل
-        </Button>
-      </Td>
-    </tr>
+      </label>
+    </div>
   );
 }
-
-
 
 function EvidenceSheet({
   open,
   onOpenChange,
   item,
   period,
+  saving,
+  onUpdate,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: AuditException | null;
   period: NonNullable<ReturnType<typeof useSelectedPeriod>["selected"]>;
+  saving: boolean;
+  onUpdate: (patch: Partial<ExceptionWorkflowEntry>) => void;
 }) {
   if (!item) return null;
 
@@ -539,22 +651,9 @@ function EvidenceSheet({
               <History className="size-4 text-primary" />
               <h3 className="font-bold">سير العمل</h3>
             </div>
-            <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-secondary px-3 py-2.5 text-sm">
-              <span className="text-muted-foreground">الحالة الحالية</span>
-              <span className="font-bold">{EXCEPTION_STATUS_LABELS[item.status]}</span>
+            <div className="mt-3">
+              <WorkflowFields item={item} saving={saving} onUpdate={onUpdate} />
             </div>
-            {item.note ? (
-              <div className="mt-2 rounded-lg bg-secondary/60 px-3 py-2.5 text-sm">
-                <span className="text-muted-foreground">الملاحظة: </span>
-                {item.note}
-              </div>
-            ) : null}
-            {item.recoveredAmount > 0 ? (
-              <div className="mt-2 rounded-lg bg-secondary/60 px-3 py-2.5 text-sm">
-                <span className="text-muted-foreground">المسترد فعلياً: </span>
-                <span className="num font-semibold">{sar(item.recoveredAmount)}</span>
-              </div>
-            ) : null}
 
             {evidence.workflow.length ? (
               <ol className="mt-4 space-y-3">
@@ -830,22 +929,6 @@ function auditTimestamp(value: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
-}
-
-function SeverityBadge({ severity }: { severity: ExceptionSeverity }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold",
-        severity === "critical" && "bg-destructive/15 text-destructive",
-        severity === "high" && "bg-warning/15 text-warning",
-        severity === "medium" && "bg-primary/15 text-primary",
-        severity === "low" && "bg-secondary text-muted-foreground",
-      )}
-    >
-      {EXCEPTION_SEVERITY_LABELS[severity]}
-    </span>
-  );
 }
 
 function Th({ children }: { children: ReactNode }) {
