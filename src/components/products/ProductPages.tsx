@@ -1,30 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowLeft, Eye, FileSpreadsheet, Info, Megaphone, PieChart, Video, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Info } from "lucide-react";
 
 import { GuideShell, Section } from "@/components/guides/GuidePages";
 import { PlatformIcon } from "@/components/brand/PlatformLogo";
+import { ProductIcon } from "@/components/products/ProductIcon";
 import { guideBySlug } from "@/lib/guides";
 import { PRODUCT_PAGES, PRODUCTS_INDEX, type ProductPage } from "@/lib/product-pages";
-import { PRODUCTS, type ProductKey } from "@/lib/products";
+import { PRODUCTS } from "@/lib/products";
 import { formatArabicDate } from "@/lib/site-content";
-
-const ICONS: Partial<Record<ProductKey, LucideIcon>> = {
-  mutabiq: FileSpreadsheet,
-  kashif: PieChart,
-  radar: AlertTriangle,
-  istirdad: Video,
-  aaid: Megaphone,
-  raqeeb: Eye,
-};
-
-function ProductIcon({ product, className }: { product: ProductKey; className?: string }) {
-  const Icon = ICONS[product] ?? FileSpreadsheet;
-  return (
-    <span className={`grid shrink-0 place-items-center rounded-xl bg-secondary text-primary-text ${className ?? "size-10"}`}>
-      <Icon className="size-[18px]" />
-    </span>
-  );
-}
 
 export function ProductLandingPage({ page }: { page: ProductPage }) {
   const product = PRODUCTS[page.product];

@@ -14,6 +14,8 @@ export interface ProductPage {
   path: string;
   /** The page's H1. */
   title: string;
+  /** One short line for the header menu and cards. */
+  summary: string;
   metaTitle: string;
   description: string;
   updated: string;
@@ -34,6 +36,7 @@ export const PRODUCT_PAGES: ProductPage[] = [
     product: "mutabiq",
     slug: "invoice-reconciliation",
     path: "/products/invoice-reconciliation",
+    summary: "يعيد احتساب الفاتورة من طلباتك وعقدك ويكشف الفرق.",
     title: "مُطابِق: مطابقة فواتير هنقرستيشن وجاهز وكيتا مع طلباتك وعقدك",
     metaTitle: "مطابقة فواتير تطبيقات التوصيل مع الطلبات والعقد | مُطابِق من تدقيق",
     description:
@@ -89,6 +92,7 @@ export const PRODUCT_PAGES: ProductPage[] = [
     product: "kashif",
     slug: "delivery-fees-map",
     path: "/products/delivery-fees-map",
+    summary: "أين يذهب كل ريال تخصمه المنصة، لكل فرع.",
     title: "كاشِف: خريطة كل رسم تخصمه تطبيقات التوصيل من مطعمك",
     metaTitle: "رسوم وعمولات تطبيقات التوصيل لكل فرع | كاشِف من تدقيق",
     description:
@@ -132,6 +136,7 @@ export const PRODUCT_PAGES: ProductPage[] = [
     product: "radar",
     slug: "exceptions-center",
     path: "/products/exceptions-center",
+    summary: "كل فرق له حالة ومسؤول حتى يُغلق.",
     title: "رادار: متابعة فروقات فواتير التوصيل حتى تُسترد",
     metaTitle: "متابعة فروقات فواتير هنقرستيشن وجاهز وكيتا | رادار من تدقيق",
     description:
@@ -172,6 +177,7 @@ export const PRODUCT_PAGES: ProductPage[] = [
     product: "istirdad",
     slug: "compensation-claims",
     path: "/products/compensation-claims",
+    summary: "اعتراض على التعويضات بأدلة من قروب الفرع.",
     title: "استرداد: الاعتراض على تعويضات تطبيقات التوصيل بالأدلة",
     metaTitle: "استرداد تعويضات هنقرستيشن وجاهز وكيتا بالأدلة | استرداد من تدقيق",
     description:
@@ -218,6 +224,7 @@ export const PRODUCT_PAGES: ProductPage[] = [
     product: "aaid",
     slug: "promotions-roi",
     path: "/products/promotions-roi",
+    summary: "ربحك الحقيقي من كل حملة بعد العمولة والخصومات.",
     title: "عائد: الربح الحقيقي من عروض وإعلانات تطبيقات التوصيل",
     metaTitle: "عائد إعلانات وعروض هنقرستيشن الحقيقي (ROI) | عائد من تدقيق",
     description:
@@ -257,6 +264,7 @@ export const PRODUCT_PAGES: ProductPage[] = [
     product: "raqeeb",
     slug: "smart-alerts",
     path: "/products/smart-alerts",
+    summary: "تنبيه تلقائي لأي رسم غير معتاد في فروعك.",
     title: "رقيب: تنبيه تلقائي لأي رسم غير معتاد في فروعك",
     metaTitle: "تنبيهات رسوم تطبيقات التوصيل غير المعتادة لكل فرع | رقيب من تدقيق",
     description:
