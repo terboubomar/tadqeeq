@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { lovable } from "@/integrations/lovable/index";
 import { supabase } from "@/integrations/supabase/client";
 import { LogoLockup, LogoWordmark } from "@/components/brand/Logo";
-import { MfaCodeStep } from "@/components/TwoFactor";
+import { EmailCodeStep, MfaCodeStep } from "@/components/TwoFactor";
+import { getEmailCodeStatus } from "@/lib/email-signin.functions";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 import { PLATFORM_KEYS } from "@/lib/platforms";
 import { needsMfaCode } from "@/lib/mfa";
@@ -44,12 +45,16 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const next = search.next;
   const [mfaStep, setMfaStep] = useState(false);
+  const [emailStep, setEmailStep] = useState(false);
   const go = () => (next ? window.location.assign(next) : navigate({ to: "/dashboard", replace: true }));
   const returnUrl = () => window.location.origin + (next ?? "");
   // Accounts with two-step sign-in enter their authenticator code before going in.
   const finishSignIn = async () => {
     const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (needsMfaCode(data)) setMfaStep(true);
+    if (needsMfaCode(data)) return setMfaStep(true);
+    // Password sign-ins also confirm a code sent to the account's email.
+    const email = await getEmailCodeStatus().catch(() => ({ needed: false }));
+    if (email.needed) setEmailStep(true);
     else go();
   };
 
@@ -139,10 +144,18 @@ function AuthPage() {
         </div>
 
         <h2 className="mt-8 font-display text-xl font-semibold">
-          {mfaStep ? "التحقق بخطوتين" : mode === "signin" ? "تسجيل الدخول" : mode === "signup" ? "سجّل منشأتك" : "إعادة تعيين كلمة المرور"}
+          {mfaStep ? "التحقق بخطوتين" : emailStep ? "رمز التحقق من البريد" : mode === "signin" ? "تسجيل الدخول" : mode === "signup" ? "سجّل منشأتك" : "إعادة تعيين كلمة المرور"}
         </h2>
 
-        {mfaStep ? (
+        {emailStep ? (
+          <EmailCodeStep
+            onDone={go}
+            onCancel={async () => {
+              await supabase.auth.signOut();
+              setEmailStep(false);
+            }}
+          />
+        ) : mfaStep ? (
           <MfaCodeStep
             onDone={go}
             onCancel={async () => {
@@ -258,7 +271,7 @@ function AuthPage() {
           </>
         )}
 
-        {mfaStep ? null : (
+        {mfaStep || emailStep ? null : (
         <button
           type="button"
           onClick={() => {
