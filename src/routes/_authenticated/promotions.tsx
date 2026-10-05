@@ -1,9 +1,10 @@
+import { PageHeader } from "@/components/workspace/PageKit";
 import {
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { productPageTitle } from "@/lib/products";
+import { PRODUCTS, productPageTitle } from "@/lib/products";
 import { ProductName } from "@/components/ProductName";
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -59,13 +60,16 @@ export const Route = createFileRoute("/_authenticated/promotions")({
 function PromotionsPage() {
   return (
     <div className="space-y-6">
-      <header>
-        <p className="text-xs font-semibold text-primary-text">تحليل الإعلانات · هنقرستيشن</p>
-        <h1 className="audit-heading"><ProductName product="aaid" /></h1>
-        <p className="audit-subtitle">
-          ارفع تقرير الإعلانات من بوابة هنقرستيشن: كم صرفت، كم جاب الإعلان، وكم بقي لك بعد الضريبة والعمولة وتكلفة الطعام وعرض التوصيل.
-        </p>
-      </header>
+      <PageHeader
+        crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التدقيق" }, { label: PRODUCTS.aaid.name }]}
+        title={<ProductName product="aaid" />}
+        subtitle="ارفع تقرير الإعلانات من بوابة هنقرستيشن: كم صرفت، كم جاب الإعلان، وكم بقي لك بعد الضريبة والعمولة وتكلفة الطعام وعرض التوصيل."
+        aside={
+          <span className="rounded-full border border-border bg-card px-3 py-1 text-[12px] font-semibold text-primary-text">
+            تحليل الإعلانات · هنقرستيشن
+          </span>
+        }
+      />
 
       <AdsRoiPanel />
 

@@ -1,5 +1,6 @@
+import { PageHeader } from "@/components/workspace/PageKit";
 import { createFileRoute } from "@tanstack/react-router";
-import { productPageTitle } from "@/lib/products";
+import { PRODUCTS, productPageTitle } from "@/lib/products";
 import { ProductName } from "@/components/ProductName";
 import {
   AlertTriangle,
@@ -84,12 +85,11 @@ function MarketplaceChargesPage() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="audit-heading"><ProductName product="kashif" /></h1>
-        <p className="audit-subtitle">
-          {selected.label} · تصنيف حتمي للبنود الموجودة في نتيجة التدقيق بدون تغيير معادلات المحرك.
-        </p>
-      </header>
+      <PageHeader
+        crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التدقيق" }, { label: PRODUCTS.kashif.name }]}
+        title={<ProductName product="kashif" />}
+        subtitle={selected.label + " · تصنيف حتمي للبنود الموجودة في نتيجة التدقيق بدون تغيير معادلات المحرك."}
+      />
 
       <StatTiles
         cols={4}

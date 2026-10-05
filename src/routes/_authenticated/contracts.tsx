@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/workspace/PageKit";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -189,19 +190,17 @@ function ContractsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="audit-heading">العقود وشروط المنصات</h1>
-          <p className="audit-subtitle max-w-3xl">
-            المصدر التجاري المعتمد للعمولات والرسوم. النسخة المعتمدة تُقفل
-            للحفاظ على التاريخ، وأي تغيير لاحق يبدأ من نسخة جديدة.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 rounded-[9px] border border-success/20 bg-success/[0.06] px-3 py-2 text-xs text-success">
-          <ShieldCheck className="size-4" />
-          قواعد معتمدة وقابلة للتتبع
-        </div>
-      </header>
+      <PageHeader
+        crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "الإعداد" }, { label: "العقود وشروط المنصات" }]}
+        title="العقود وشروط المنصات"
+        subtitle="المصدر التجاري المعتمد للعمولات والرسوم. النسخة المعتمدة تُقفل للحفاظ على التاريخ، وأي تغيير لاحق يبدأ من نسخة جديدة."
+        aside={
+          <span className="flex items-center gap-2 rounded-full border border-success/20 bg-success-soft px-3 py-1.5 text-xs font-semibold text-success">
+            <ShieldCheck className="size-4" />
+            قواعد معتمدة وقابلة للتتبع
+          </span>
+        }
+      />
 
       {query.error ? (
         <div className="rounded-[10px] border border-destructive/30 bg-destructive/[0.04] p-4 text-sm text-destructive">

@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/workspace/PageKit";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { EmptyState } from "@/components/AppShell";
@@ -49,14 +50,15 @@ function DailyPage() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="audit-heading">التقرير اليومي</h1>
-        <p className="audit-subtitle">
-          {selected.platform === "jahez"
+      <PageHeader
+        crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التقارير" }, { label: "التقرير اليومي" }]}
+        title="التقرير اليومي"
+        subtitle={
+          selected.platform === "jahez"
             ? "يعرض حركة طلبات جاهز وتعويضاتها حسب تاريخ الحركة."
-            : "يعتمد على يوم التشغيل للطلبات الناجحة والفاشلة بعد الاستلام."}
-        </p>
-      </header>
+            : "يعتمد على يوم التشغيل للطلبات الناجحة والفاشلة بعد الاستلام."
+        }
+      />
       <ReportTable
         title={selected.label}
         rows={selected.daily as unknown as Record<string, unknown>[]}
