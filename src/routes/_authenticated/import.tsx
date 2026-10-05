@@ -41,6 +41,7 @@ import {
   uploadSizeError,
 } from "@/lib/upload-validation";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/workspace/PageKit";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 import { ColumnReviewDialog } from "@/components/smart-columns/ColumnReviewDialog";
 import type { ColumnAlias, ColumnReview } from "@/lib/smart-columns/match";
@@ -390,10 +391,11 @@ function ImportPage() {
   return (
     <div className="w-full space-y-6">
       <header>
-        <h1 className="audit-heading text-2xl sm:text-[28px]">رفع بيانات فترة جديدة</h1>
-        <p className="mt-1.5 text-[14px] leading-7 text-muted-foreground">
-          أكمل كل خطوة على حدة. لن ينتقل تدقيق للمرحلة التالية قبل اكتمال البيانات المطلوبة.
-        </p>
+        <PageHeader
+          crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "الإعداد" }, { label: "رفع البيانات" }]}
+          title="رفع بيانات فترة جديدة"
+          subtitle="أكمل كل خطوة على حدة. لن ينتقل تدقيق للمرحلة التالية قبل اكتمال البيانات المطلوبة."
+        />
         {search.mcp ? (
           <p className="mt-3 flex items-start gap-2 rounded-[10px] bg-secondary p-3 text-[13.5px] leading-6">
             <Info className="mt-0.5 size-4 shrink-0 text-primary-text" />
@@ -405,26 +407,27 @@ function ImportPage() {
         ) : null}
       </header>
 
-      <WorkflowHeader
-        step={step}
-        maxStepReached={maxStepReached}
-        onStepClick={goToStep}
-      />
+      <section className="flex flex-wrap overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-panel)]">
+        <WorkflowHeader
+          step={step}
+          maxStepReached={maxStepReached}
+          onStepClick={goToStep}
+        />
 
-      <section className="rounded-[12px] border border-border bg-white">
+        <div className="flex min-w-0 flex-[999_1_480px] flex-col">
         <div className="border-b border-border/80 px-5 py-4 sm:px-7 sm:py-5">
           <div className="flex items-center gap-3">
-            <span className="num grid size-8 shrink-0 place-items-center rounded-full bg-primary text-[13px] font-semibold text-white">
+            <span className="num grid size-8 shrink-0 place-items-center rounded-full bg-primary text-[13px] font-semibold text-primary-foreground">
               {step + 1}
             </span>
             <div className="min-w-0">
-              <h2 className="text-[17px] font-semibold">{STEPS[step]?.title}</h2>
+              <h2 className="font-display text-[18px] font-bold">{STEPS[step]?.title}</h2>
               <p className="mt-0.5 text-[13px] text-muted-foreground">{STEPS[step]?.note}</p>
             </div>
           </div>
         </div>
 
-        <div className="p-5 sm:p-7">
+        <div className="flex-1 p-5 sm:p-7">
           {step === 0 ? (
             <PlatformStep
               platform={platform}
@@ -526,7 +529,7 @@ function ImportPage() {
           }}
         />
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-border/80 bg-background/45 px-5 py-3.5">
+        <div className="flex flex-wrap items-center gap-2 border-t border-border/80 bg-surface-raised/40 px-5 py-3.5 [&_button]:rounded-full">
           {step > 0 ? (
             <Button
               type="button"
@@ -600,6 +603,7 @@ function ImportPage() {
               {busy ? "جارٍ التحليل…" : "بدء التحليل وحفظ الفترة"}
             </Button>
           )}
+        </div>
         </div>
       </section>
 
@@ -695,6 +699,7 @@ function HungerStationBranchMappingReviewPanel({
   );
 }
 
+/** Ink steps rail: a column beside the step on wide screens, a strip on top on phones. */
 function WorkflowHeader({
   step,
   maxStepReached,
@@ -705,61 +710,51 @@ function WorkflowHeader({
   onStepClick: (step: number) => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-[10px] border border-border bg-white">
-      <div className="grid sm:grid-cols-4">
+    <nav aria-label="خطوات الرفع" className="flex w-full flex-col bg-ink text-ink-muted lg:w-60 lg:shrink-0">
+      <ol className="flex gap-1 overflow-x-auto p-2 lg:flex-col lg:gap-1.5 lg:p-4">
         {STEPS.map((item, index) => {
           const active = index === step;
           const complete = index < step || index < maxStepReached;
           const available = index <= maxStepReached;
 
           return (
-            <button
-              key={item.title}
-              type="button"
-              disabled={!available}
-              onClick={() => onStepClick(index)}
-              className={cn(
-                "relative flex min-w-0 items-center gap-2.5 border-b border-border px-3.5 py-3 text-start transition-colors sm:border-b-0 sm:border-s",
-                index === 0 && "sm:border-s-0",
-                active && "bg-secondary",
-                !active && available && "hover:bg-muted",
-                !available && "cursor-not-allowed opacity-45",
-              )}
-            >
-              <span
+            <li key={item.title} className="shrink-0">
+              <button
+                type="button"
+                disabled={!available}
+                aria-current={active ? "step" : undefined}
+                onClick={() => onStepClick(index)}
                 className={cn(
-                  "num grid size-[24px] shrink-0 place-items-center rounded-full border text-[11px] font-semibold",
-                  active && "border-primary bg-primary text-white",
-                  complete && !active && "border-success bg-success text-white",
-                  !active && !complete && "border-input bg-white text-muted-foreground",
+                  "flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-start transition-colors",
+                  active && "bg-ink-2 text-ink-foreground",
+                  !active && available && "hover:bg-ink-2/60 hover:text-ink-foreground",
+                  !available && "cursor-not-allowed opacity-50",
                 )}
               >
-                {complete && !active ? <Check className="size-3.5" /> : index + 1}
-              </span>
-              <span className="min-w-0">
                 <span
                   className={cn(
-                    "block truncate text-[12.5px] font-semibold",
-                    active ? "text-secondary-foreground" : "text-foreground/85",
+                    "num grid size-7 shrink-0 place-items-center rounded-full text-[12px] font-semibold",
+                    active || complete ? "bg-primary text-primary-foreground" : "bg-ink-2 text-ink-muted",
                   )}
                 >
-                  {item.title}
+                  {complete && !active ? <Check className="size-3.5" /> : index + 1}
                 </span>
-                <span className="mt-0.5 hidden truncate text-[10.5px] text-muted-foreground lg:block">
-                  {item.note}
+                <span className="min-w-0">
+                  <span className={cn("block truncate text-[13px]", active ? "font-bold" : "font-medium")}>{item.title}</span>
+                  <span className="mt-0.5 hidden text-[11px] leading-5 text-ink-muted lg:block">{item.note}</span>
                 </span>
-              </span>
-            </button>
+              </button>
+            </li>
           );
         })}
-      </div>
-      <div className="h-1 bg-muted">
+      </ol>
+      <div className="mt-auto h-1 bg-ink-2 lg:hidden">
         <div
           className="h-full bg-primary transition-[width] duration-300"
           style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
         />
       </div>
-    </div>
+    </nav>
   );
 }
 
