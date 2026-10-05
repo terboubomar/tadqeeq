@@ -1,11 +1,13 @@
-import { Loader2, ShieldCheck, ShieldOff } from "lucide-react";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Loader2, Mail, ShieldCheck, ShieldOff } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { getEmailCodeStatus, requestEmailCode, submitEmailCode } from "@/lib/email-signin.functions";
 
 const WRONG_CODE = "الرمز غير صحيح أو انتهت صلاحيته. أدخل الرمز الظاهر الآن في التطبيق.";
 
@@ -213,5 +215,83 @@ export function TwoFactorSettings() {
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** Sign-in step after a password: enter the 6-digit code emailed to the account. */
+export function EmailCodeStep({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
+  const requestCode = useServerFn(requestEmailCode);
+  const checkCode = useServerFn(submitEmailCode);
+  const status = useServerFn(getEmailCodeStatus);
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [wait, setWait] = useState(0);
+  const started = useRef(false);
+
+  const send = useCallback(
+    async (force: boolean) => {
+      try {
+        const result = await requestCode({ data: { force } });
+        if (result.waitSeconds) setWait(result.waitSeconds);
+        if (result.sent) toast.success("أرسلنا الرمز إلى بريدك.");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "تعذّر إرسال الرمز.");
+      }
+    },
+    [requestCode],
+  );
+
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    void status().then((s) => setEmail(s.email));
+    void send(false);
+  }, [send, status]);
+
+  useEffect(() => {
+    if (wait <= 0) return;
+    const timer = window.setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [wait]);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      await checkCode({ data: { code } });
+      onDone();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : WRONG_CODE);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-5 space-y-4">
+      <p className="flex items-start gap-2 rounded-md bg-secondary p-3 text-sm leading-7">
+        <Mail className="mt-1 size-4 shrink-0 text-primary" />
+        <span>
+          أرسلنا رمزاً من 6 أرقام إلى <span dir="ltr" className="font-semibold">{email || "بريدك"}</span>. تحقق من صندوق الرسائل غير المرغوب فيها إن لم تجده.
+        </span>
+      </p>
+      <CodeInput value={code} onChange={setCode} />
+      <Button type="submit" className="w-full" disabled={busy || code.length !== 6}>
+        {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+        تحقق ودخول
+      </Button>
+      <button
+        type="button"
+        disabled={wait > 0}
+        onClick={() => void send(true)}
+        className="w-full text-xs text-muted-foreground hover:text-foreground disabled:opacity-60"
+      >
+        {wait > 0 ? `إعادة الإرسال بعد ${wait} ثانية` : "لم يصلك الرمز؟ أعد الإرسال"}
+      </button>
+      <button type="button" onClick={onCancel} className="w-full text-xs text-muted-foreground hover:text-foreground">
+        تسجيل الخروج
+      </button>
+    </form>
   );
 }

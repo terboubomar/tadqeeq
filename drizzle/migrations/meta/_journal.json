@@ -316,6 +316,13 @@
       "when": 1791563599573,
       "tag": "0044_optional_client_mfa",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1791649999573,
+      "tag": "0045_email_signin_code",
+      "breakpoints": true
     }
   ]
 }

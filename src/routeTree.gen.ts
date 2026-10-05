@@ -62,6 +62,7 @@ import { Route as OpsClientsWorkspaceIdRouteImport } from './routes/ops/clients_
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
 import { Route as ApiPublicCspReportRouteImport } from './routes/api/public/csp-report'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiCompensationEvidenceEvidenceIdMediaRouteImport } from './routes/api/compensation/evidence/$evidenceId/media'
@@ -334,6 +335,12 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
   id: '/lovable/email/auth/webhook',
   path: '/lovable/email/auth/webhook',
@@ -406,6 +413,7 @@ export interface FileRoutesByFullPath {
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/api/compensation/evidence/$evidenceId/media': typeof ApiCompensationEvidenceEvidenceIdMediaRoute
 }
 export interface FileRoutesByTo {
@@ -461,6 +469,7 @@ export interface FileRoutesByTo {
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/api/compensation/evidence/$evidenceId/media': typeof ApiCompensationEvidenceEvidenceIdMediaRoute
 }
 export interface FileRoutesById {
@@ -520,6 +529,7 @@ export interface FileRoutesById {
   '/ops/clients_/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/api/compensation/evidence/$evidenceId/media': typeof ApiCompensationEvidenceEvidenceIdMediaRoute
 }
 export interface FileRouteTypes {
@@ -579,6 +589,7 @@ export interface FileRouteTypes {
     | '/ops/clients/$workspaceId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
+    | '/lovable/email/transactional/preview'
     | '/api/compensation/evidence/$evidenceId/media'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -634,6 +645,7 @@ export interface FileRouteTypes {
     | '/ops/clients/$workspaceId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
+    | '/lovable/email/transactional/preview'
     | '/api/compensation/evidence/$evidenceId/media'
   id:
     | '__root__'
@@ -692,6 +704,7 @@ export interface FileRouteTypes {
     | '/ops/clients_/$workspaceId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
+    | '/lovable/email/transactional/preview'
     | '/api/compensation/evidence/$evidenceId/media'
   fileRoutesById: FileRoutesById
 }
@@ -719,6 +732,7 @@ export interface RootRouteChildren {
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
+  LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
   ApiCompensationEvidenceEvidenceIdMediaRoute: typeof ApiCompensationEvidenceEvidenceIdMediaRoute
 }
 
@@ -1095,6 +1109,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/auth/webhook': {
       id: '/lovable/email/auth/webhook'
       path: '/lovable/email/auth/webhook'
@@ -1235,6 +1256,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
+  LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
   ApiCompensationEvidenceEvidenceIdMediaRoute:
     ApiCompensationEvidenceEvidenceIdMediaRoute,
 }
