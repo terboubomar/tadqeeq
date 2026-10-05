@@ -54,7 +54,7 @@ import {
 import { cn } from "@/lib/utils";
 import { listPublicPlans } from "@/lib/plans.functions";
 import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
-import { LEGAL_DOCS } from "@/lib/legal";
+import { LEGAL_COMPANY, LEGAL_DOCS } from "@/lib/legal";
 import { PRODUCTS } from "@/lib/products";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { OG_IMAGE, SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
@@ -261,8 +261,17 @@ function homeSchema(plans: PublicPlan[]) {
       name: SITE_NAME,
       alternateName: SITE_NAME_EN,
       url: SITE_URL,
-      logo: `${SITE_URL}/apple-touch-icon.png`,
+      logo: `${SITE_URL}/icon-512.png`,
       areaServed: "SA",
+      email: LEGAL_COMPANY.email,
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "customer support",
+        email: LEGAL_COMPANY.email,
+        url: `${SITE_URL}/contact`,
+        areaServed: "SA",
+        availableLanguage: ["ar", "en"],
+      },
     },
     {
       "@type": "WebSite",
@@ -463,8 +472,8 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
                 </span>
                 تدقيق فواتير هنقرستيشن وكيتا وجاهز
               </p>
-              <h1 className="font-display text-4xl font-extrabold leading-[1.3] sm:text-5xl lg:text-[3.6rem]">
-                لا تدفع فاتورة المنصة قبل ما تتأكد منها.
+              <h1 className="font-display text-4xl font-extrabold leading-[1.3] sm:text-5xl lg:text-[3.15rem]">
+                لا تدفع فاتورة هنقرستيشن أو جاهز أو كيتا قبل ما تتأكد منها.
               </h1>
               <p className="max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
                 تدقيق يعيد احتساب كل بند في فاتورة تطبيق التوصيل من ملف طلباتك ومعادلات عقدك، يكشف الفرق لكل فرع، ويجهّز مطالبة التعويض بأدلتها.

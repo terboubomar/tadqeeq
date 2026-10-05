@@ -3,6 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { withSecurityHeaders } from "./lib/security-headers";
+import { trailingSlashRedirect } from "./lib/seo";
 import { isMcpBrowserVisit, renderMcpLandingPage } from "./lib/mcp/landing-page";
 
 type ServerEntry = {
@@ -59,6 +60,10 @@ export default {
             headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
           }),
         );
+      }
+      const slashTarget = trailingSlashRedirect(new URL(request.url), request.method);
+      if (slashTarget) {
+        return withSecurityHeaders(request, new Response(null, { status: 308, headers: { location: slashTarget } }));
       }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
