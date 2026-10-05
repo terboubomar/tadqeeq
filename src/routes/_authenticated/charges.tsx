@@ -17,7 +17,7 @@ import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/AppShell";
 import { Callout, ChartCard, SegmentBar, StatTiles } from "@/components/dash/DashKit";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { chargeLineSource } from "@/lib/charges-sources";
+import { branchBreakdown, chargeLineSource, combinedBranchBreakdown, type BranchBreakdown } from "@/lib/charges-sources";
 import type { StoredPeriod } from "@/lib/periods";
 import {
   MARKETPLACE_CHARGE_CATEGORY_LABELS,
@@ -216,7 +216,7 @@ function MarketplaceChargesPage() {
         />
       ) : null}
 
-      <SourceSheet focus={focus} period={selected} onClose={() => setFocus(null)} />
+      <SourceSheet focus={focus} period={selected} allLines={map.lines} onClose={() => setFocus(null)} />
     </div>
   );
 }
@@ -225,10 +225,12 @@ function MarketplaceChargesPage() {
 function SourceSheet({
   focus,
   period,
+  allLines,
   onClose,
 }: {
   focus: SourceFocus | null;
   period: StoredPeriod;
+  allLines: MarketplaceChargeLine[];
   onClose: () => void;
 }) {
   const total = focus?.lines.reduce((sum, line) => sum + line.amount, 0) ?? 0;
@@ -245,8 +247,9 @@ function SourceSheet({
               </SheetDescription>
             </SheetHeader>
             <div className="mt-5 space-y-4">
+              {focus.lines.length > 1 ? <CategoryBranches lines={focus.lines} period={period} allLines={allLines} /> : null}
               {focus.lines.map((line) => (
-                <SourceCard key={line.id} line={line} period={period} showTitle={focus.lines.length > 1} />
+                <SourceCard key={line.id} line={line} period={period} allLines={allLines} showTitle={focus.lines.length > 1} />
               ))}
             </div>
           </>
@@ -256,15 +259,19 @@ function SourceSheet({
   );
 }
 
-function SourceCard({ line, period, showTitle }: { line: MarketplaceChargeLine; period: StoredPeriod; showTitle: boolean }) {
+function SourceCard({
+  line,
+  period,
+  allLines,
+  showTitle,
+}: {
+  line: MarketplaceChargeLine;
+  period: StoredPeriod;
+  allLines: MarketplaceChargeLine[];
+  showTitle: boolean;
+}) {
   const source = chargeLineSource(line, period);
-  const branches =
-    source.branchValue && period.branches.length > 1
-      ? period.branches
-          .map((branch) => ({ name: branch.branch, value: source.branchValue!(branch) }))
-          .filter((row) => Math.abs(row.value) > 0.005)
-          .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
-      : [];
+  const split = branchBreakdown(line, period, allLines);
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
       {showTitle ? (
@@ -323,22 +330,58 @@ function SourceCard({ line, period, showTitle }: { line: MarketplaceChargeLine; 
         </div>
         {line.note ? <p className="rounded-xl bg-surface-raised px-3 py-2 text-[12px] leading-6 text-muted-foreground">{line.note}</p> : null}
       </dl>
-      {branches.length ? (
-        <div className="border-t border-border/70 px-4 py-3">
-          <p className="text-[11.5px] font-semibold text-muted-foreground">حسب الفرع</p>
-          <ul className="mt-2 space-y-1.5 text-[12.5px]">
-            {branches.slice(0, 12).map((row) => (
-              <li key={row.name} className="flex items-center justify-between gap-3">
-                <span className="truncate" title={row.name}>{row.name}</span>
-                <span className="num shrink-0">{money(row.value)}</span>
-              </li>
-            ))}
-          </ul>
-          {branches.length > 12 ? (
-            <p className="mt-1.5 text-[11px] text-muted-foreground">و{branches.length - 12} فروع أخرى في تقرير الفروع.</p>
-          ) : null}
-        </div>
-      ) : null}
+      <div className="border-t border-border/70 px-4 py-3">
+        <p className="text-[11.5px] font-semibold text-muted-foreground">حسب الفرع</p>
+        {split.caption ? <p className="mt-1 text-[11.5px] leading-5 text-muted-foreground">{split.caption}</p> : null}
+        {split.rows.length ? (
+          <BranchTable split={split} />
+        ) : (
+          <p className="mt-1.5 rounded-xl bg-surface-raised px-3 py-2 text-[12px] leading-6 text-muted-foreground">{split.unavailable}</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function BranchTable({ split }: { split: BranchBreakdown }) {
+  return (
+    <table className="mt-2 w-full text-[12.5px]">
+      <tbody>
+        {split.rows.map((row) => (
+          <tr key={row.name} className="border-b border-border/50 last:border-0">
+            <td className="py-1.5 pe-3">{row.name}</td>
+            <td className={"num py-1.5 text-end " + (Math.abs(row.value) < 0.005 ? "text-muted-foreground" : "font-medium")}>
+              {money(row.value)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+      <tfoot>
+        <tr className="border-t border-border">
+          <td className="pt-2 font-semibold">الإجمالي · {split.rows.length} فرع</td>
+          <td className="num pt-2 text-end font-semibold">{money(split.total)}</td>
+        </tr>
+      </tfoot>
+    </table>
+  );
+}
+
+/** Per-branch total for a whole category, shown above its lines when every line can be split by branch. */
+function CategoryBranches({
+  lines,
+  period,
+  allLines,
+}: {
+  lines: MarketplaceChargeLine[];
+  period: StoredPeriod;
+  allLines: MarketplaceChargeLine[];
+}) {
+  const split = combinedBranchBreakdown(lines, period, allLines);
+  if (!split) return null;
+  return (
+    <section className="rounded-2xl border border-primary/30 bg-secondary/40 px-4 py-3">
+      <p className="text-[12.5px] font-semibold">مجموع التصنيف حسب الفرع</p>
+      <BranchTable split={split} />
     </section>
   );
 }

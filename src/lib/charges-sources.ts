@@ -51,6 +51,7 @@ const SOURCES: Record<string, (period: StoredPeriod) => ChargeLineSource> = {
     file: HS_INVOICE,
     columns: [],
     formula: "بند رسوم مدفوعات المحافظ كما ورد في الفاتورة. لا يُعاد بناؤه من عمود Wallet Amount لأنه مبلغ تحصيل وليس أساس الرسوم.",
+    branchValue: (b) => b.walletFee ?? 0,
   }),
   "hs-rdf": () => ({
     file: HS_ORDERS,
@@ -177,6 +178,7 @@ const SOURCES: Record<string, (period: StoredPeriod) => ChargeLineSource> = {
       "مجموع هذه الأعمدة معاً (بدون رسوم جهاز POS المعروضة وحدها). " +
       KEETA_SIGN +
       " النتيجة المحفوظة تجمعها في رقم واحد، لذلك لا يُفترض نوعها.",
+    branchValue: (b) => (b.keetaOtherExpensesExVat ?? 0) - (b.keetaPosFeesExVat ?? 0),
   }),
   "keeta-input-vat": () => ({
     file: KEETA_FILE,
@@ -191,6 +193,7 @@ const SOURCES: Record<string, (period: StoredPeriod) => ChargeLineSource> = {
     sheet: "Jahez Order Details",
     columns: ["Jahez Commision"],
     formula: "مجموع عمولة جاهز لكل الطلبات (شامل الضريبة في الملف)، " + VAT_NOTE + ".",
+    branchValue: (b) => (b.jahezCommissionInclVat ?? 0) / 1.15,
   }),
   "jahez-payment-fees": () => ({
     file: JAHEZ_FILE,
@@ -226,12 +229,18 @@ const SOURCES: Record<string, (period: StoredPeriod) => ChargeLineSource> = {
     columns: ["Jahez Commision", "Payment Fees Vat", "Delivery Offer"],
     formula:
       "ضريبة العمولة (العمولة شامل الضريبة − بدونها) + مجموع Payment Fees Vat + ضريبة عروض التوصيل (المخصوم − مبلغ الفاتورة بدون الضريبة).",
+    branchValue: (b) =>
+      (b.jahezCommissionInclVat ?? 0) -
+      (b.jahezCommissionInclVat ?? 0) / 1.15 +
+      (b.jahezPaymentFeesVat ?? 0) +
+      ((b.jahezDeliveryOfferInclVat ?? 0) - (b.jahezDeliveryOfferInvoiceExVat ?? 0)),
   }),
   "jahez-compensation-net": () => ({
     file: "تقرير تعويضات جاهز",
     sheet: "Jahez Compensation Details",
     columns: ["Restaurant_Total_Debit_Amount", "Restaurant_Total_Credit_Amount"],
     formula: "مجموع الخصومات (Debit) − مجموع الإضافات (Credit) على المطعم في الفترة.",
+    branchValue: (b) => b.jahezCompensationNetImpact ?? 0,
   }),
 };
 
@@ -258,3 +267,113 @@ export function chargeLineSource(line: MarketplaceChargeLine, period: StoredPeri
 
 /** Ids `chargeLineSource` documents explicitly; used by the coverage test. */
 export const DOCUMENTED_CHARGE_LINE_IDS = Object.keys(SOURCES);
+
+export interface BranchBreakdown {
+  /** Every branch of the period, largest amount first; zeros included so no branch is hidden. */
+  rows: { name: string; value: number }[];
+  total: number;
+  /** Shown above the rows, e.g. when the split comes from the invoice and covers a group of lines. */
+  caption?: string;
+  /** Shown instead of rows when the files hold no per-branch figure for this line. */
+  unavailable?: string;
+  /** Lines that share one split (HungerStation invoice-only charges) carry the same key so a total counts it once. */
+  groupKey?: string;
+}
+
+const SPLIT_TOLERANCE = 0.05;
+
+function sortedRows(rows: { name: string; value: number }[]): BranchBreakdown["rows"] {
+  return rows.map((row) => ({ name: row.name, value: Math.round(row.value * 100) / 100 })).sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+}
+
+function rowsTotal(rows: { value: number }[]): number {
+  return Math.round(rows.reduce((sum, row) => sum + row.value, 0) * 100) / 100;
+}
+
+/**
+ * Which branch each amount belongs to. Uses the stored branch rows, the HungerStation invoice's own per-branch
+ * figures for invoice-only charges, or (for the closing difference) each branch's total minus its classified lines,
+ * and only when those per-branch values add up to the line's amount. Otherwise it says the split is not available
+ * rather than guessing.
+ */
+export function branchBreakdown(
+  line: MarketplaceChargeLine,
+  period: StoredPeriod,
+  allLines: MarketplaceChargeLine[],
+): BranchBreakdown {
+  const source = chargeLineSource(line, period);
+  if (source.branchValue && period.branches.length) {
+    const rows = sortedRows(period.branches.map((branch) => ({ name: branch.branch, value: source.branchValue!(branch) })));
+    const total = rowsTotal(rows);
+    if (Math.abs(total) > SPLIT_TOLERANCE || Math.abs(line.amount) <= SPLIT_TOLERANCE) return { rows, total };
+  }
+
+  if (line.id.startsWith("hs-unmapped-invoice-extra-")) {
+    const invoiceBranches = (period.invoice?.branches ?? []).filter((branch) => Math.abs(branch.invoiceOnlyCharges ?? 0) > 0.005);
+    if (invoiceBranches.length) {
+      const byInvoiceName = new Map(period.branches.filter((b) => b.invoiceBranchName).map((b) => [b.invoiceBranchName!, b.branch]));
+      // Start from every order branch at zero so branches without invoice-only charges still show.
+      const values = new Map(period.branches.map((b) => [b.branch, 0]));
+      for (const branch of invoiceBranches) {
+        const name = byInvoiceName.get(branch.branch ?? "") ?? branch.branch ?? "فرع في الفاتورة";
+        values.set(name, (values.get(name) ?? 0) + (branch.invoiceOnlyCharges ?? 0));
+      }
+      const rows = sortedRows([...values.entries()].map(([name, value]) => ({ name, value })));
+      const extrasCount = allLines.filter((other) => other.id.startsWith("hs-unmapped-invoice-extra-")).length;
+      return {
+        rows,
+        total: rowsTotal(rows),
+        groupKey: "hs-invoice-only",
+        caption:
+          extrasCount > 1
+            ? "من فاتورة هنقرستيشن: مجموع بنود «من الفاتورة فقط» لكل فرع (الفاتورة لا تفصلها حسب البند لكل فرع)."
+            : "من فاتورة هنقرستيشن: بنود «من الفاتورة فقط» لكل فرع.",
+      };
+    }
+    return { rows: [], total: 0, unavailable: "الفاتورة تذكر هذا البند على مستوى الحساب كاملاً ولا تفصله حسب الفرع." };
+  }
+
+  if (line.id.endsWith("-unmapped-reconciliation-residual") && period.branches.length) {
+    const classified = allLines.filter((other) => other.scope === "audit_total" && other.mapped);
+    const sources = classified.map((other) => chargeLineSource(other, period).branchValue);
+    if (sources.every(Boolean)) {
+      const rows = sortedRows(
+        period.branches.map((branch) => ({
+          name: branch.branch,
+          value: (branch.totalCharges ?? 0) - sources.reduce((sum, value) => sum + value!(branch), 0),
+        })),
+      );
+      const total = rowsTotal(rows);
+      if (Math.abs(total - line.amount) <= SPLIT_TOLERANCE * Math.max(1, period.branches.length)) {
+        return { rows, total, caption: "إجمالي رسوم كل فرع − بنوده المصنفة." };
+      }
+    }
+    return { rows: [], total: 0, unavailable: "هذا الفرق يظهر على مستوى إجمالي الفترة فقط، ولا تكفي أرقام الفروع المحفوظة لتوزيعه بدقة." };
+  }
+
+  return { rows: [], total: 0, unavailable: "لا يوجد لهذا البند تفصيل حسب الفرع في ملفات المنصة؛ يرد على مستوى الحساب كاملاً." };
+}
+
+/**
+ * Per-branch total for several lines (a category). Returns null when any line has no split, so a partial total is
+ * never shown as if it were the whole category.
+ */
+export function combinedBranchBreakdown(
+  lines: MarketplaceChargeLine[],
+  period: StoredPeriod,
+  allLines: MarketplaceChargeLine[],
+): BranchBreakdown | null {
+  const totals = new Map<string, number>();
+  const seenGroups = new Set<string>();
+  for (const line of lines) {
+    const split = branchBreakdown(line, period, allLines);
+    if (!split.rows.length) return null;
+    if (split.groupKey) {
+      if (seenGroups.has(split.groupKey)) continue;
+      seenGroups.add(split.groupKey);
+    }
+    for (const row of split.rows) totals.set(row.name, (totals.get(row.name) ?? 0) + row.value);
+  }
+  const rows = sortedRows([...totals.entries()].map(([name, value]) => ({ name, value })));
+  return { rows, total: rowsTotal(rows) };
+}
