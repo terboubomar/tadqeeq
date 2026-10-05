@@ -757,6 +757,42 @@ export type Database = {
           },
         ]
       }
+      email_signin_codes: {
+        Row: {
+          attempts: number
+          code_hash: string | null
+          created_at: string
+          expires_at: string | null
+          last_sent_at: string | null
+          sends: number
+          session_id: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          code_hash?: string | null
+          created_at?: string
+          expires_at?: string | null
+          last_sent_at?: string | null
+          sends?: number
+          session_id: string
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string | null
+          created_at?: string
+          expires_at?: string | null
+          last_sent_at?: string | null
+          sends?: number
+          session_id?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       exception_events: {
         Row: {
           created_at: string
