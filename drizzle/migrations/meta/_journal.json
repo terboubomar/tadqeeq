@@ -309,6 +309,13 @@
       "when": 1791477199573,
       "tag": "0043_request_limits_and_workspace_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1791563599573,
+      "tag": "0044_optional_client_mfa",
+      "breakpoints": true
     }
   ]
 }

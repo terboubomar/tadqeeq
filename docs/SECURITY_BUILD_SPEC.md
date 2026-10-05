@@ -212,6 +212,13 @@ Built:
 
 ---
 
+## Optional two-step sign-in for clients — ✅ built (migration 0044)
+
+- Any client user can turn it on at **أمان الحساب** (`/security`, also in the user menu): scan a QR code with an authenticator app and confirm a code. Off by default; turning it off needs the code session.
+- Once on, sign-in asks for the 6-digit code (`MfaCodeStep` on `/auth`). The app gate, every server function (`requireServerUserAnyStatus`) and the database (`private.mfa_satisfied` inside `has_workspace_permission`) refuse a password-only session for that user. Rule in `src/lib/mfa.ts`.
+- Claude / ChatGPT: Supabase OAuth tokens stay at `aal1` and carry `client_id`; they are accepted, and approving the connection (`/.lovable/oauth/consent`) requires the code first.
+- Lost phone: ops → client → المستخدمون → "إعادة تعيين" removes the user's authenticator (logged as `mfa.reset`). Confirm the person's identity first.
+
 ## Verify in dashboards (no code)
 
 | ID | Where | Check |

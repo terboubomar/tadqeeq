@@ -106,6 +106,7 @@ export const OPS_ACTION_LABELS: Record<string, string> = {
   "trial.upload": "رفع ملف التجربة",
   "plan.request": "طلب باقة من التطبيق",
   "reactivation.request": "طلب إعادة تفعيل",
+  "mfa.reset": "إعادة تعيين التحقق بخطوتين",
   user_invited: "دعوة مستخدم",
   user_access_changed: "تغيير صلاحيات مستخدم",
   user_suspended: "إيقاف مستخدم",

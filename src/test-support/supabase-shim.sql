@@ -1,5 +1,5 @@
 -- Minimal stand-in for the parts of Supabase the migrations rely on: the anon /
--- authenticated / service_role roles, auth.users + auth.uid(), and storage tables.
+-- authenticated / service_role roles, auth.users + auth.mfa_factors + auth.uid(), and storage tables.
 -- Test-only: lets the real migrations and row-level security run in PGlite.
 create role anon nologin;
 create role authenticated nologin;
@@ -13,6 +13,13 @@ create table auth.users (
   email text,
   raw_user_meta_data jsonb default '{}'::jsonb,
   raw_app_meta_data jsonb default '{}'::jsonb,
+  created_at timestamptz default now()
+);
+create table auth.mfa_factors (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  factor_type text not null default 'totp',
+  status text not null default 'unverified',
   created_at timestamptz default now()
 );
 create or replace function auth.uid() returns uuid language sql stable as $$

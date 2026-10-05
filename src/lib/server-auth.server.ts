@@ -11,6 +11,7 @@ import {
 } from "./workspace-access";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
+import { hasVerifiedFactor, MFA_REQUIRED_MESSAGE, mfaSatisfied, tokenClaims } from "./mfa";
 import { logEvent } from "./observability";
 import {
   featuresWithAddons,
@@ -310,6 +311,10 @@ export async function requireServerUserAnyStatus(): Promise<ServerUserAuth> {
 
   if (error || !data.user?.id) {
     throw new Error("الجلسة منتهية، سجّل الدخول مرة أخرى.");
+  }
+  // Optional two-step sign-in: a user who turned it on needs a session that passed the code.
+  if (!mfaSatisfied(tokenClaims(accessToken), hasVerifiedFactor(data.user.factors))) {
+    throw new Error(MFA_REQUIRED_MESSAGE);
   }
 
   const workspace = await loadWorkspaceContext(client, data.user.id);

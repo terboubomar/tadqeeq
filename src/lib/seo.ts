@@ -71,6 +71,7 @@ export const PRIVATE_PAGES = [
   "/mcp",
   "/promotions",
   "/reset-password",
+  "/security",
   "/subscribe",
   "/team",
 ];

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Bell, ChevronDown, CreditCard, LogOut, Users, type LucideIcon } from "lucide-react";
+import { Bell, ChevronDown, CreditCard, LogOut, ShieldCheck, Users, type LucideIcon } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -131,6 +131,11 @@ export function UserMenu({
             </Link>
           </DropdownMenuItem>
         ) : null}
+        <DropdownMenuItem asChild>
+          <Link to="/security">
+            <ShieldCheck className="size-4" /> أمان الحساب والتحقق بخطوتين
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/subscribe">
             <CreditCard className="size-4" /> الباقة والاشتراك
