@@ -37,6 +37,7 @@ import { Route as OpsSubscriptionsRouteImport } from './routes/ops/subscriptions
 import { Route as OpsStaffRouteImport } from './routes/ops/staff'
 import { Route as OpsPlansRouteImport } from './routes/ops/plans'
 import { Route as OpsPaymentsRouteImport } from './routes/ops/payments'
+import { Route as OpsMessagesRouteImport } from './routes/ops/messages'
 import { Route as OpsLogsRouteImport } from './routes/ops/logs'
 import { Route as OpsClientsRouteImport } from './routes/ops/clients'
 import { Route as OpsArchiveRouteImport } from './routes/ops/archive'
@@ -210,6 +211,11 @@ const OpsPlansRoute = OpsPlansRouteImport.update({
 const OpsPaymentsRoute = OpsPaymentsRouteImport.update({
   id: '/payments',
   path: '/payments',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsMessagesRoute = OpsMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
   getParentRoute: () => OpsRoute,
 } as any)
 const OpsLogsRoute = OpsLogsRouteImport.update({
@@ -440,6 +446,7 @@ export interface FileRoutesByFullPath {
   '/ops/archive': typeof OpsArchiveRoute
   '/ops/clients': typeof OpsClientsRoute
   '/ops/logs': typeof OpsLogsRoute
+  '/ops/messages': typeof OpsMessagesRoute
   '/ops/payments': typeof OpsPaymentsRoute
   '/ops/plans': typeof OpsPlansRoute
   '/ops/staff': typeof OpsStaffRoute
@@ -502,6 +509,7 @@ export interface FileRoutesByTo {
   '/ops/archive': typeof OpsArchiveRoute
   '/ops/clients': typeof OpsClientsRoute
   '/ops/logs': typeof OpsLogsRoute
+  '/ops/messages': typeof OpsMessagesRoute
   '/ops/payments': typeof OpsPaymentsRoute
   '/ops/plans': typeof OpsPlansRoute
   '/ops/staff': typeof OpsStaffRoute
@@ -568,6 +576,7 @@ export interface FileRoutesById {
   '/ops/archive': typeof OpsArchiveRoute
   '/ops/clients': typeof OpsClientsRoute
   '/ops/logs': typeof OpsLogsRoute
+  '/ops/messages': typeof OpsMessagesRoute
   '/ops/payments': typeof OpsPaymentsRoute
   '/ops/plans': typeof OpsPlansRoute
   '/ops/staff': typeof OpsStaffRoute
@@ -634,6 +643,7 @@ export interface FileRouteTypes {
     | '/ops/archive'
     | '/ops/clients'
     | '/ops/logs'
+    | '/ops/messages'
     | '/ops/payments'
     | '/ops/plans'
     | '/ops/staff'
@@ -696,6 +706,7 @@ export interface FileRouteTypes {
     | '/ops/archive'
     | '/ops/clients'
     | '/ops/logs'
+    | '/ops/messages'
     | '/ops/payments'
     | '/ops/plans'
     | '/ops/staff'
@@ -761,6 +772,7 @@ export interface FileRouteTypes {
     | '/ops/archive'
     | '/ops/clients'
     | '/ops/logs'
+    | '/ops/messages'
     | '/ops/payments'
     | '/ops/plans'
     | '/ops/staff'
@@ -1010,6 +1022,13 @@ declare module '@tanstack/react-router' {
       path: '/payments'
       fullPath: '/ops/payments'
       preLoaderRoute: typeof OpsPaymentsRouteImport
+      parentRoute: typeof OpsRoute
+    }
+    '/ops/messages': {
+      id: '/ops/messages'
+      path: '/messages'
+      fullPath: '/ops/messages'
+      preLoaderRoute: typeof OpsMessagesRouteImport
       parentRoute: typeof OpsRoute
     }
     '/ops/logs': {
@@ -1325,6 +1344,7 @@ interface OpsRouteChildren {
   OpsArchiveRoute: typeof OpsArchiveRoute
   OpsClientsRoute: typeof OpsClientsRoute
   OpsLogsRoute: typeof OpsLogsRoute
+  OpsMessagesRoute: typeof OpsMessagesRoute
   OpsPaymentsRoute: typeof OpsPaymentsRoute
   OpsPlansRoute: typeof OpsPlansRoute
   OpsStaffRoute: typeof OpsStaffRoute
@@ -1339,6 +1359,7 @@ const OpsRouteChildren: OpsRouteChildren = {
   OpsArchiveRoute: OpsArchiveRoute,
   OpsClientsRoute: OpsClientsRoute,
   OpsLogsRoute: OpsLogsRoute,
+  OpsMessagesRoute: OpsMessagesRoute,
   OpsPaymentsRoute: OpsPaymentsRoute,
   OpsPlansRoute: OpsPlansRoute,
   OpsStaffRoute: OpsStaffRoute,

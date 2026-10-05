@@ -21,6 +21,10 @@ export const getOpsClientProfile = createServerFn({ method: "POST" })
 export const resetMemberTwoFactor = createServerFn({ method: "POST" })
   .validator(z.object({ workspaceId: z.string().uuid(), membershipId: z.string().uuid() }))
   .handler(({ data }) => S.resetMemberTwoFactorOnServer(data));
+export const listContactMessages = createServerFn({ method: "POST" }).validator(empty).handler(() => S.listContactMessagesOnServer());
+export const setContactMessageHandled = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.string().uuid(), handled: z.boolean() }))
+  .handler(({ data }) => S.setContactMessageHandledOnServer(data));
 export const getOpsTasks =createServerFn({ method: "POST" }).validator(empty).handler(() => S.getOpsTasksOnServer());
 export const listOpsClients =createServerFn({ method: "POST" }).validator(empty).handler(() => S.listOpsClientsOnServer());
 export const setOpsClientStatus = createServerFn({ method: "POST" })
