@@ -21,7 +21,9 @@ export type LogEvent =
   | "workspace_isolation_violation_attempt"
   | "ai_request_started"
   | "ai_request_failed"
-  | "csp_violation";
+  | "csp_violation"
+  | "contact_message_received"
+  | "contact_message_failed";
 
 /** What kind of failure happened, so logs and support can tell them apart. */
 export type ErrorKind =

@@ -1004,6 +1004,58 @@ export async function resetMemberTwoFactorOnServer(input: { workspaceId: string;
   return { removed };
 }
 
+// ---------------- Contact messages (/contact) ----------------
+export interface OpsContactMessage {
+  id: string;
+  topic: string;
+  name: string;
+  company: string | null;
+  email: string;
+  mobile: string;
+  message: string;
+  status: "new" | "handled";
+  createdAt: string;
+  handledAt: string | null;
+  handledBy: string | null;
+}
+
+export async function listContactMessagesOnServer(): Promise<OpsContactMessage[]> {
+  await requireOps("clients");
+  const { data, error } = await db()
+    .from("contact_messages")
+    .select("id,topic,name,company,email,mobile,message,status,created_at,handled_at,handled_by")
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as Row[];
+  const handlerIds = [...new Set(rows.map((r) => r["handled_by"]).filter((v): v is string => typeof v === "string"))];
+  const { data: staff } = handlerIds.length ? await db().from("ops_staff").select("user_id,email,full_name").in("user_id", handlerIds) : { data: [] };
+  const staffName = new Map(((staff ?? []) as Row[]).map((r) => [String(r["user_id"]), String(r["full_name"] ?? r["email"] ?? "")]));
+  return rows.map((r) => ({
+    id: String(r["id"]),
+    topic: String(r["topic"]),
+    name: String(r["name"]),
+    company: typeof r["company"] === "string" ? r["company"] : null,
+    email: String(r["email"]),
+    mobile: String(r["mobile"]),
+    message: String(r["message"]),
+    status: r["status"] === "handled" ? "handled" : "new",
+    createdAt: String(r["created_at"]),
+    handledAt: typeof r["handled_at"] === "string" ? r["handled_at"] : null,
+    handledBy: typeof r["handled_by"] === "string" ? staffName.get(r["handled_by"]) || null : null,
+  }));
+}
+
+export async function setContactMessageHandledOnServer(input: { id: string; handled: boolean }): Promise<void> {
+  const actor = await requireOps("clients");
+  const { error } = await db()
+    .from("contact_messages")
+    .update(input.handled ? { status: "handled", handled_at: new Date().toISOString(), handled_by: actor.userId } : { status: "new", handled_at: null, handled_by: null })
+    .eq("id", input.id);
+  if (error) throw new Error(error.message);
+  await log(actor, input.handled ? "contact.handled" : "contact.reopened", "contact_message", input.id, null);
+}
+
 // ---------------- Tasks (action center) ----------------
 /** Last sign-in per user; one admin page covers every account the platform has today. */
 async function lastSignIns(): Promise<Map<string, string>> {
@@ -1013,7 +1065,7 @@ async function lastSignIns(): Promise<Map<string, string>> {
   return out;
 }
 
-export async function getOpsTasksOnServer(): Promise<{ tasks: OpsTask[]; finance: boolean; archivedCount: number }> {
+export async function getOpsTasksOnServer(): Promise<{ tasks: OpsTask[]; finance: boolean; archivedCount: number; newMessages: number }> {
   const actor = await requireOps("clients");
   const finance = opsCan(actor.role, "subscriptions");
   const [{ data: ws }, { data: onb }, { data: subs }, { data: members }, { data: trial }, archives, logins, planRequests, usage, { data: plans }] = await Promise.all([
@@ -1086,7 +1138,8 @@ export async function getOpsTasksOnServer(): Promise<{ tasks: OpsTask[]; finance
       })(),
     };
   });
-  return { tasks: buildOpsTasks(clients, new Date(), { finance }), finance, archivedCount };
+  const { count: newMessages } = await db().from("contact_messages").select("id", { count: "exact", head: true }).eq("status", "new");
+  return { tasks: buildOpsTasks(clients, new Date(), { finance }), finance, archivedCount, newMessages: newMessages ?? 0 };
 }
 
 export async function getOpsUsageOnServer() {

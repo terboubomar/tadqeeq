@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, Outlet, redirect, useRouterState } from "@tanstack/react-router";
-import { Activity, Archive, CreditCard, FileClock, LayoutDashboard, ListTodo, Loader2, LogOut, Menu, Package, Receipt, Users, UserCog, X } from "lucide-react";
+import { Activity, Archive, CreditCard, FileClock, Inbox, LayoutDashboard, ListTodo, Loader2, LogOut, Menu, Package, Receipt, Users, UserCog, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
@@ -36,7 +36,7 @@ export const Route = createFileRoute("/ops")({
 });
 
 
-type NavItem = { to: string; label: string; section: OpsSection; icon: typeof Users; badge?: "tasks" | "archived" };
+type NavItem = { to: string; label: string; section: OpsSection; icon: typeof Users; badge?: "tasks" | "archived" | "messages" };
 
 const NAV_GROUPS: { title: string | null; items: NavItem[] }[] = [
   {
@@ -44,6 +44,7 @@ const NAV_GROUPS: { title: string | null; items: NavItem[] }[] = [
     items: [
       { to: "/ops", label: "نظرة عامة", section: "overview", icon: LayoutDashboard },
       { to: "/ops/tasks", label: "مهام اليوم", section: "clients", icon: ListTodo, badge: "tasks" },
+      { to: "/ops/messages", label: "رسائل التواصل", section: "clients", icon: Inbox, badge: "messages" },
     ],
   },
   {
@@ -102,7 +103,7 @@ function OpsLayout() {
     return <OpsMfa email={me.data.email} onDone={() => void qc.invalidateQueries()} onSignOut={() => void signOut()} />;
   }
 
-  const badges = { tasks: tasks.data?.tasks.length ?? 0, archived: tasks.data?.archivedCount ?? 0 };
+  const badges = { tasks: tasks.data?.tasks.length ?? 0, archived: tasks.data?.archivedCount ?? 0, messages: tasks.data?.newMessages ?? 0 };
   const groups = NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((n) => opsCan(role, n.section)) })).filter((g) => g.items.length);
   const current = groups.flatMap((g) => g.items).find((n) => isActive(n.to, path));
 
@@ -135,7 +136,7 @@ function OpsLayout() {
                     {count ? (
                       <span
                         className={`num min-w-5 rounded-full px-1.5 py-0.5 text-center text-[11px] font-bold leading-none ${
-                          n.badge === "tasks" ? (active ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground") : "bg-background/15"
+                          n.badge === "tasks" || n.badge === "messages" ? (active ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground") : "bg-background/15"
                         }`}
                       >
                         {count}

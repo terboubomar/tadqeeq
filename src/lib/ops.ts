@@ -107,6 +107,8 @@ export const OPS_ACTION_LABELS: Record<string, string> = {
   "plan.request": "طلب باقة من التطبيق",
   "reactivation.request": "طلب إعادة تفعيل",
   "mfa.reset": "إعادة تعيين التحقق بخطوتين",
+  "contact.handled": "معالجة رسالة تواصل",
+  "contact.reopened": "إعادة فتح رسالة تواصل",
   user_invited: "دعوة مستخدم",
   user_access_changed: "تغيير صلاحيات مستخدم",
   user_suspended: "إيقاف مستخدم",
