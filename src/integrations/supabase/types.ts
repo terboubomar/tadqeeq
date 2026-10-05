@@ -493,6 +493,51 @@ export type Database = {
           },
         ]
       }
+      contact_messages: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          handled_at: string | null
+          handled_by: string | null
+          id: string
+          ip_hash: string | null
+          message: string
+          mobile: string
+          name: string
+          status: string
+          topic: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          ip_hash?: string | null
+          message: string
+          mobile: string
+          name: string
+          status?: string
+          topic: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          ip_hash?: string | null
+          message?: string
+          mobile?: string
+          name?: string
+          status?: string
+          topic?: string
+        }
+        Relationships: []
+      }
       contract_documents: {
         Row: {
           contract_id: string
