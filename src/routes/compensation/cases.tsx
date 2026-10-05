@@ -171,7 +171,7 @@ function CasesPage() {
         ) : null}
       </CompHeader>
 
-      <div role="tablist" aria-label="حالة الطلب" className="flex gap-1 overflow-x-auto border-b border-border">
+      <div role="tablist" aria-label="حالة الطلب" className="flex gap-1.5 overflow-x-auto pb-1">
         {(["all", ...CASE_STATUSES] as const).map((s) => (
           <button
             key={s}
@@ -183,17 +183,20 @@ function CasesPage() {
               setPage(0);
             }}
             className={cn(
-              "-mb-px shrink-0 border-b-2 px-3 py-2.5 text-sm",
-              status === s ? "border-foreground font-semibold" : "border-transparent text-muted-foreground",
+              "shrink-0 rounded-full border px-3.5 py-1.5 text-[13px] transition-colors",
+              status === s
+                ? "border-ink bg-ink font-semibold text-ink-foreground"
+                : "border-border bg-card text-muted-foreground hover:text-foreground",
             )}
           >
-            {s === "all" ? "الكل" : caseStatusLabel(s)} <span className="num text-muted-foreground">{count(tabCount(s))}</span>
+            {s === "all" ? "الكل" : caseStatusLabel(s)}{" "}
+            <span className={cn("num", status === s ? "text-ink-muted" : "text-muted-foreground")}>{count(tabCount(s))}</span>
           </button>
         ))}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <div className="relative min-w-[240px] flex-1">
+      <div className="mt-3 flex flex-wrap gap-2 rounded-xl border border-border bg-card p-1.5">
+        <div className="relative min-w-[220px] flex-1">
           <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
@@ -204,7 +207,7 @@ function CasesPage() {
               setPage(0);
             }}
             placeholder="ابحث برقم الطلب أو الفرع أو مرجع المنصة"
-            className="bg-card ps-9"
+            className="border-0 bg-transparent ps-9 shadow-none"
           />
         </div>
         <select
@@ -258,7 +261,7 @@ function CasesPage() {
         </button>
       </div>
 
-      <section className="mt-4 overflow-hidden rounded-xl border border-border bg-card">
+      <section className="mt-3 overflow-hidden rounded-2xl border border-border bg-card">
         {cases.isLoading ? (
           <div className="p-8">
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
@@ -268,7 +271,32 @@ function CasesPage() {
         ) : visible.length === 0 ? (
           <p className="p-10 text-center text-sm text-muted-foreground">لا توجد حالات مطابقة.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <ul className="divide-y divide-border/70 md:hidden">
+            {visible.map((r) => (
+              <li key={r.id}>
+                <button
+                  type="button"
+                  onClick={() => setDialog({ id: r.id, mode: "view" })}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-start"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="num block font-semibold" dir="ltr">
+                      {r.orderNumber}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
+                      {[PLATFORM_LABELS[r.platform], r.branchName || "—", r.evidenceId ? "دليل مرفق" : "بلا دليل"].join(" · ")}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="num text-[13px] font-semibold">{money(r.compensationAmount)}</span>
+                    <StatusBadge status={r.status} />
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[1100px] text-sm">
               <thead className="bg-muted/50 text-xs text-muted-foreground">
                 <tr>
@@ -361,6 +389,7 @@ function CasesPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
         {filtered.length > PAGE_SIZE ? (
           <div className="flex items-center justify-between border-t border-border px-4 py-3 text-xs text-muted-foreground">
