@@ -93,12 +93,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Kufi+Arabic:wght@600;700;800&display=swap",
-      },
+      // Fonts are self-hosted (src/fonts.css); preload the two the first screen needs.
+      { rel: "preload", href: "/fonts/ibm-plex-sans-arabic-400-arabic.woff2", as: "font", type: "font/woff2", crossOrigin: "anonymous" },
+      { rel: "preload", href: "/fonts/noto-kufi-arabic-arabic.woff2", as: "font", type: "font/woff2", crossOrigin: "anonymous" },
       { rel: "icon", href: "https://tadqeeq.app/icon-192.png", type: "image/png", sizes: "192x192" },
       { rel: "icon", href: "https://tadqeeq.app/icon-96.png", type: "image/png", sizes: "96x96" },
       { rel: "icon", href: "https://tadqeeq.app/icon-48.png", type: "image/png", sizes: "48x48" },

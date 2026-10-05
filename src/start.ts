@@ -1,7 +1,17 @@
 import { createStart, createCsrfMiddleware, createMiddleware } from "@tanstack/react-start";
 
 import { renderErrorPage } from "./lib/error-page";
-import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
+import { loadSupabase } from "@/integrations/supabase/lazy-client";
+
+// Same as the generated attachSupabaseAuth (src/integrations/supabase/auth-attacher.ts), but with the client loaded
+// on first use so it stays out of the JavaScript every public page downloads.
+const attachSupabaseAuth = createMiddleware({ type: "function" }).client(async ({ next }) => {
+  const { data } = await (await loadSupabase()).auth.getSession();
+  const token = data.session?.access_token;
+  return next({
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+});
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {

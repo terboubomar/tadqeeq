@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 import { AppShell } from "@/components/AppShell";
 import { WorkspaceAccessProvider } from "@/components/WorkspaceAccessProvider";
-import { supabase } from "@/integrations/supabase/client";
+import { loadSupabase } from "@/integrations/supabase/lazy-client";
 import { getEmailCodeStatus } from "@/lib/email-signin.functions";
 import { needsMfaCode } from "@/lib/mfa";
 import { isOpsHost } from "@/lib/ops";
@@ -13,6 +13,7 @@ export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async ({ location }) => {
     if (isOpsHost(window.location.host)) throw redirect({ to: "/ops" });
+    const supabase = await loadSupabase();
     const { data, error } = await supabase.auth.getUser();
     // Come back to the same page after signing in (e.g. an upload link from an AI assistant).
     const back = location.href !== "/" ? { next: location.href } : {};
