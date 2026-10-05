@@ -95,6 +95,7 @@ const NAV = [
   ["#compensation", "مركز التعويضات"],
   ["#pricing", "الخطط والأسعار"],
   ["#faq", "الأسئلة"],
+  ["/contact", "تواصل معنا"],
 ] as const;
 
 const FOOTER_GROUPS = [
@@ -124,6 +125,7 @@ const FOOTER_GROUPS = [
       ["#who", "لمن تدقيق"],
       ["#pricing", "الخطط والأسعار"],
       ["#faq", "الأسئلة الشائعة"],
+      ["/contact", "تواصل معنا"],
     ],
   },
 ] as const;
@@ -400,12 +402,12 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
               التوصيل
             </span>
           </Link>
-          <nav aria-label="الرئيسية" className="hidden items-center gap-1 rounded-full bg-background p-1 text-sm lg:flex">
+          <nav aria-label="الرئيسية" className="hidden items-center gap-1 rounded-full bg-background p-1 text-sm xl:flex">
             {navItems.map(([href, label]) => (
               <a
                 key={href}
                 href={href}
-                className="rounded-full px-4 py-2 text-foreground/75 transition-colors hover:bg-card hover:text-foreground hover:shadow-sm"
+                className="whitespace-nowrap rounded-full px-4 py-2 text-foreground/75 transition-colors hover:bg-card hover:text-foreground hover:shadow-sm"
               >
                 {label}
               </a>
@@ -428,14 +430,14 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
               aria-label={menuOpen ? "إغلاق القائمة" : "فتح القائمة"}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
-              className="grid size-11 place-items-center rounded-full hover:bg-muted lg:hidden"
+              className="grid size-11 place-items-center rounded-full hover:bg-muted xl:hidden"
             >
               {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
             </button>
           </div>
         </header>
         {menuOpen ? (
-          <nav aria-label="القائمة" className="mx-auto mt-2 flex max-w-7xl flex-col rounded-2xl border border-border bg-card p-2 shadow-lg lg:hidden">
+          <nav aria-label="القائمة" className="mx-auto mt-2 flex max-w-7xl flex-col rounded-2xl border border-border bg-card p-2 shadow-lg xl:hidden">
             {navItems.map(([href, label]) => (
               <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-muted">
                 {label}

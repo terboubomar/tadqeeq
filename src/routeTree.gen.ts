@@ -22,6 +22,7 @@ import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as EmailConfirmedRouteImport } from './routes/email-confirmed'
 import { Route as CookiesRouteImport } from './routes/cookies'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CompensationRouteImport } from './routes/compensation'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
@@ -135,6 +136,11 @@ const EmailConfirmedRoute = EmailConfirmedRouteImport.update({
 const CookiesRoute = CookiesRouteImport.update({
   id: '/cookies',
   path: '/cookies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompensationRoute = CompensationRouteImport.update({
@@ -393,6 +399,7 @@ export interface FileRoutesByFullPath {
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
   '/compensation': typeof CompensationRouteWithChildren
+  '/contact': typeof ContactRoute
   '/cookies': typeof CookiesRoute
   '/email-confirmed': typeof EmailConfirmedRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
@@ -455,6 +462,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
+  '/contact': typeof ContactRoute
   '/cookies': typeof CookiesRoute
   '/email-confirmed': typeof EmailConfirmedRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
@@ -519,6 +527,7 @@ export interface FileRoutesById {
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
   '/compensation': typeof CompensationRouteWithChildren
+  '/contact': typeof ContactRoute
   '/cookies': typeof CookiesRoute
   '/email-confirmed': typeof EmailConfirmedRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
@@ -584,6 +593,7 @@ export interface FileRouteTypes {
     | '/accept-invite'
     | '/auth'
     | '/compensation'
+    | '/contact'
     | '/cookies'
     | '/email-confirmed'
     | '/llms-full.txt'
@@ -646,6 +656,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accept-invite'
     | '/auth'
+    | '/contact'
     | '/cookies'
     | '/email-confirmed'
     | '/llms-full.txt'
@@ -709,6 +720,7 @@ export interface FileRouteTypes {
     | '/accept-invite'
     | '/auth'
     | '/compensation'
+    | '/contact'
     | '/cookies'
     | '/email-confirmed'
     | '/llms-full.txt'
@@ -774,6 +786,7 @@ export interface RootRouteChildren {
   AcceptInviteRoute: typeof AcceptInviteRoute
   AuthRoute: typeof AuthRoute
   CompensationRoute: typeof CompensationRouteWithChildren
+  ContactRoute: typeof ContactRoute
   CookiesRoute: typeof CookiesRoute
   EmailConfirmedRoute: typeof EmailConfirmedRoute
   LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
@@ -892,6 +905,13 @@ declare module '@tanstack/react-router' {
       path: '/cookies'
       fullPath: '/cookies'
       preLoaderRoute: typeof CookiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/compensation': {
@@ -1337,6 +1357,7 @@ const rootRouteChildren: RootRouteChildren = {
   AcceptInviteRoute: AcceptInviteRoute,
   AuthRoute: AuthRoute,
   CompensationRoute: CompensationRouteWithChildren,
+  ContactRoute: ContactRoute,
   CookiesRoute: CookiesRoute,
   EmailConfirmedRoute: EmailConfirmedRoute,
   LlmsFullDottxtRoute: LlmsFullDottxtRoute,
