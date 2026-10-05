@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { needsMfaCode } from "@/lib/mfa";
 
 type OAuthResult = { data: { redirect_url?: string; redirect_to?: string; client?: { name?: string } } | null; error: { message: string } | null };
 type OAuthApi = {
@@ -22,6 +23,9 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
     if (!search.authorization_id) throw new Error("Missing authorization_id");
     const { data } = await supabase.auth.getSession();
     if (!data.session) throw redirect({ to: "/auth", search: { next: location.pathname + location.searchStr } });
+    // Claude / ChatGPT tokens stay at aal1, so approving them must pass the code for accounts that use it.
+    const { data: levels } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (needsMfaCode(levels)) throw redirect({ to: "/auth", search: { next: location.pathname + location.searchStr } });
   },
   loader: async ({ location }) => {
     const id = new URLSearchParams(location.search).get("authorization_id")!;

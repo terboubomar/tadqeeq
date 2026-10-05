@@ -18,7 +18,7 @@ import {
   type SuspensionReason,
 } from "@/lib/onboarding";
 import { CYCLE_LABELS, opsActionLabel, opsCan, opsEventSummary, sarFmt, SUBSCRIPTION_STATUS_LABELS } from "@/lib/ops";
-import { addClientNote, getOpsClientProfile, getReceiptUrl, listClientNotes, setOpsClientArchived, setOpsClientStatus } from "@/lib/ops.functions";
+import { addClientNote, getOpsClientProfile, getReceiptUrl, listClientNotes, resetMemberTwoFactor, setOpsClientArchived, setOpsClientStatus } from "@/lib/ops.functions";
 import type { OpsClientProfile } from "@/lib/ops.server";
 import { PLAN_ADDONS } from "@/lib/plans";
 import { WORKSPACE_ROLE_LABELS, type WorkspaceRole } from "@/lib/workspace-access";
@@ -540,13 +540,22 @@ function BillingTab({ p }: { p: OpsClientProfile }) {
 }
 
 function TeamTab({ p }: { p: OpsClientProfile }) {
+  const qc = useQueryClient();
+  const reset = useMutation({
+    mutationFn: (membershipId: string) => resetMemberTwoFactor({ data: { workspaceId: p.client.workspaceId, membershipId } }),
+    onSuccess: () => {
+      toast.success("تمت إعادة التعيين — يدخل المستخدم بكلمة المرور ويمكنه تفعيله من جديد.");
+      void qc.invalidateQueries({ queryKey: ["ops-client", p.client.workspaceId] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
   return (
     <div className="space-y-4">
       <Card title={`المستخدمون (${p.members.length})`}>
         {!p.members.length ? (
           <Empty text="لا يوجد مستخدمون." />
         ) : (
-          <Table head={["المستخدم", "الدور", "الحالة", "انضم", "آخر دخول"]}>
+          <Table head={["المستخدم", "الدور", "الحالة", "انضم", "آخر دخول", "التحقق بخطوتين"]}>
             {p.members.map((m) => (
               <tr key={m.id} className="border-t border-border">
                 <td className="px-4 py-2.5">
@@ -557,6 +566,25 @@ function TeamTab({ p }: { p: OpsClientProfile }) {
                 <td className="px-4 py-2.5">{MEMBER_STATUS[m.status] ?? m.status}</td>
                 <td className="px-4 py-2.5 text-xs">{fmtDate(m.joinedAt)}</td>
                 <td className="px-4 py-2.5 text-xs">{m.lastLogin ? fmtDateTime(m.lastLogin) : "لم يدخل"}</td>
+                <td className="px-4 py-2.5 text-xs">
+                  {m.twoFactor ? (
+                    <span className="flex items-center gap-2">
+                      مفعّل
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={reset.isPending}
+                        onClick={() => {
+                          if (window.confirm(`إعادة تعيين التحقق بخطوتين لـ ${m.email ?? m.fullName ?? "المستخدم"}؟ تأكد من هويته أولاً (اتصال من رقم الشركة المسجّل).`)) reset.mutate(m.id);
+                        }}
+                      >
+                        إعادة تعيين
+                      </Button>
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">غير مفعّل</span>
+                  )}
+                </td>
               </tr>
             ))}
           </Table>

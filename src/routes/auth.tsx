@@ -9,8 +9,10 @@ import { Label } from "@/components/ui/label";
 import { lovable } from "@/integrations/lovable/index";
 import { supabase } from "@/integrations/supabase/client";
 import { LogoLockup, LogoWordmark } from "@/components/brand/Logo";
+import { MfaCodeStep } from "@/components/TwoFactor";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 import { PLATFORM_KEYS } from "@/lib/platforms";
+import { needsMfaCode } from "@/lib/mfa";
 import { safeNextPath } from "@/lib/redirects";
 
 export const Route = createFileRoute("/auth")({
@@ -41,12 +43,19 @@ function AuthPage() {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const next = search.next;
+  const [mfaStep, setMfaStep] = useState(false);
   const go = () => (next ? window.location.assign(next) : navigate({ to: "/dashboard", replace: true }));
   const returnUrl = () => window.location.origin + (next ?? "");
+  // Accounts with two-step sign-in enter their authenticator code before going in.
+  const finishSignIn = async () => {
+    const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (needsMfaCode(data)) setMfaStep(true);
+    else go();
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) go();
+      if (data.session) void finishSignIn();
     });
   }, [navigate]);
 
@@ -75,12 +84,12 @@ function AuthPage() {
           setMode("signin");
           return;
         }
-        if (data.session) go();
+        if (data.session) await finishSignIn();
         else toast.success("تم إنشاء الحساب — تحقق من بريدك (وصندوق الرسائل غير المرغوب فيها) لتأكيد التسجيل.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        go();
+        await finishSignIn();
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذّر إتمام العملية");
@@ -98,7 +107,7 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    go();
+    await finishSignIn();
   }
 
   async function apple() {
@@ -110,7 +119,7 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    go();
+    await finishSignIn();
   }
 
   return (
@@ -130,10 +139,18 @@ function AuthPage() {
         </div>
 
         <h2 className="mt-8 font-display text-xl font-semibold">
-          {mode === "signin" ? "تسجيل الدخول" : mode === "signup" ? "سجّل منشأتك" : "إعادة تعيين كلمة المرور"}
+          {mfaStep ? "التحقق بخطوتين" : mode === "signin" ? "تسجيل الدخول" : mode === "signup" ? "سجّل منشأتك" : "إعادة تعيين كلمة المرور"}
         </h2>
 
-        {mode === "reset" ? (
+        {mfaStep ? (
+          <MfaCodeStep
+            onDone={go}
+            onCancel={async () => {
+              await supabase.auth.signOut();
+              setMfaStep(false);
+            }}
+          />
+        ) : mode === "reset" ? (
           resetSentTo ? (
             <div className="mt-5 space-y-4">
               <p className="rounded-md bg-secondary p-4 text-sm leading-7">
@@ -241,6 +258,7 @@ function AuthPage() {
           </>
         )}
 
+        {mfaStep ? null : (
         <button
           type="button"
           onClick={() => {
@@ -251,6 +269,7 @@ function AuthPage() {
         >
           {mode === "signin" ? "ليس لديك حساب؟ أنشئ حساباً" : mode === "signup" ? "لديك حساب؟ سجّل الدخول" : "رجوع لتسجيل الدخول"}
         </button>
+        )}
       </div>
       </main>
     </div>

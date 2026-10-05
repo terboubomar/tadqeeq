@@ -3,6 +3,7 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 import { dataUrlBytes, sniffFile } from "./file-sniff";
+import { hasVerifiedFactor, tokenClaims } from "./mfa";
 import { buildOpsTasks, type OpsTask, type OpsTaskClient } from "./ops-tasks";
 import { isPlanAddon, PLAN_ADDONS, PLAN_REQUEST_EVENT, TRIAL_UPLOAD_EVENT, type PlanAddon, type PlanFeature } from "./plans";
 import {
@@ -39,16 +40,6 @@ function opsMfaRequired(): boolean {
 }
 
 /** The assurance level ("aal1" / "aal2") in a token that Supabase has already verified. */
-function tokenAal(token: string): string | undefined {
-  try {
-    const payload = token.split(".")[1] ?? "";
-    const json = JSON.parse(Buffer.from(payload.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")) as { aal?: unknown };
-    return typeof json.aal === "string" ? json.aal : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 export function getRequestHostOnServer(): string {
   return getRequestHeader("host") ?? "";
 }
@@ -59,7 +50,7 @@ async function currentUser() {
   if (!token) return null;
   const { data, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !data.user) return null;
-  return { user: data.user, aal: tokenAal(token) };
+  return { user: data.user, aal: tokenClaims(token).aal };
 }
 
 export async function getOpsMeOnServer(): Promise<OpsActor | null> {
@@ -808,7 +799,7 @@ export interface OpsClientProfile {
   client: OpsClient;
   journey: { signedUpAt: string; submittedAt: string | null; meetingAt: string | null; meetingNote: string | null; paidAt: string | null; activatedAt: string | null };
   usage: { audits: number; uploads: number; aiCalls30d: number; evidence: number; trialUploads: number; lastUpload: string | null; lastLogin: string | null };
-  members: { id: string; email: string | null; fullName: string | null; role: string; status: string; joinedAt: string | null; lastLogin: string | null; isOwner: boolean }[];
+  members: { id: string; email: string | null; fullName: string | null; role: string; status: string; joinedAt: string | null; lastLogin: string | null; isOwner: boolean; twoFactor: boolean }[];
   branches: { id: string; name: string; active: boolean; hungerstation: boolean; jahez: boolean; keeta: boolean }[];
   periods: { id: string; label: string | null; platform: string; start: string | null; end: string | null; createdAt: string; superseded: boolean }[];
   /** null when the viewer's role cannot see subscriptions or payments. */
@@ -880,6 +871,7 @@ export async function getOpsClientProfileOnServer(workspaceId: string): Promise<
   const activeLogins = memberRows.filter((m) => m["status"] === "active").map((m) => logins.get(String(m["user_id"]))).filter(Boolean) as string[];
 
   const suspension = client.status === "suspended" ? await loadSuspension(workspaceId, text(onb as Row, "updated_at")) : null;
+  const twoFactor = await usersWithTwoFactor(memberRows.map((m) => String(m["user_id"])));
 
   return {
     client,
@@ -912,6 +904,7 @@ export async function getOpsClientProfileOnServer(workspaceId: string): Promise<
         joinedAt: text(m, "joined_at") ?? text(m, "created_at"),
         lastLogin: logins.get(String(m["user_id"])) ?? null,
         isOwner: String(m["user_id"]) === ownerId,
+        twoFactor: twoFactor.has(String(m["user_id"])),
       };
     }),
     branches: ((branches ?? []) as Row[]).map((b) => ({
@@ -974,6 +967,41 @@ export async function getOpsClientProfileOnServer(workspaceId: string): Promise<
       })),
     ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
   };
+}
+
+/** Users (of the given ids) who turned on the optional two-step sign-in. */
+async function usersWithTwoFactor(userIds: string[]): Promise<Set<string>> {
+  const results = await Promise.all(
+    userIds.map(async (userId) => {
+      const { data } = await supabaseAdmin.auth.admin.mfa.listFactors({ userId });
+      return hasVerifiedFactor(data?.factors) ? userId : null;
+    }),
+  );
+  return new Set(results.filter((id): id is string => id !== null));
+}
+
+/** A client lost their phone: remove their authenticator so they can sign in with the password and set it up again. */
+export async function resetMemberTwoFactorOnServer(input: { workspaceId: string; membershipId: string }): Promise<{ removed: number }> {
+  const actor = await requireOps("clients");
+  const { data: member } = await db()
+    .from("workspace_members")
+    .select("user_id")
+    .eq("id", input.membershipId)
+    .eq("workspace_id", input.workspaceId)
+    .maybeSingle();
+  if (!member) throw new Error("المستخدم غير موجود في هذا العميل.");
+  const userId = String(member.user_id);
+  const { data, error } = await supabaseAdmin.auth.admin.mfa.listFactors({ userId });
+  if (error) throw new Error(error.message);
+  let removed = 0;
+  for (const factor of data?.factors ?? []) {
+    const { error: deleteError } = await supabaseAdmin.auth.admin.mfa.deleteFactor({ id: factor.id, userId });
+    if (deleteError) throw new Error(deleteError.message);
+    removed += 1;
+  }
+  const { data: profile } = await db().from("profiles").select("email").eq("id", userId).maybeSingle();
+  await log(actor, "mfa.reset", "user", userId, input.workspaceId, { email: (profile?.email as string | undefined) ?? null, removed });
+  return { removed };
 }
 
 // ---------------- Tasks (action center) ----------------

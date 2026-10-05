@@ -18,6 +18,9 @@ export const getOpsOverview = createServerFn({ method: "POST" }).validator(empty
 export const getOpsClientProfile = createServerFn({ method: "POST" })
   .validator(z.object({ workspaceId: z.string().uuid() }))
   .handler(({ data }) => S.getOpsClientProfileOnServer(data.workspaceId));
+export const resetMemberTwoFactor = createServerFn({ method: "POST" })
+  .validator(z.object({ workspaceId: z.string().uuid(), membershipId: z.string().uuid() }))
+  .handler(({ data }) => S.resetMemberTwoFactorOnServer(data));
 export const getOpsTasks =createServerFn({ method: "POST" }).validator(empty).handler(() => S.getOpsTasksOnServer());
 export const listOpsClients =createServerFn({ method: "POST" }).validator(empty).handler(() => S.listOpsClientsOnServer());
 export const setOpsClientStatus = createServerFn({ method: "POST" })
