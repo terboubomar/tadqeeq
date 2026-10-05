@@ -9,15 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingDotmdRouteImport } from './routes/pricing[.]md'
 import { Route as OpsRouteImport } from './routes/ops'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as EmailConfirmedRouteImport } from './routes/email-confirmed'
+import { Route as CookiesRouteImport } from './routes/cookies'
 import { Route as CompensationRouteImport } from './routes/compensation'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
@@ -68,6 +72,11 @@ import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/em
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiCompensationEvidenceEvidenceIdMediaRouteImport } from './routes/api/compensation/evidence/$evidenceId/media'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -81,6 +90,16 @@ const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefundPolicyRoute = RefundPolicyRouteImport.update({
+  id: '/refund-policy',
+  path: '/refund-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PricingDotmdRoute = PricingDotmdRouteImport.update({
@@ -111,6 +130,11 @@ const LlmsFullDottxtRoute = LlmsFullDottxtRouteImport.update({
 const EmailConfirmedRoute = EmailConfirmedRouteImport.update({
   id: '/email-confirmed',
   path: '/email-confirmed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CookiesRoute = CookiesRouteImport.update({
+  id: '/cookies',
+  path: '/cookies',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompensationRoute = CompensationRouteImport.update({
@@ -369,15 +393,19 @@ export interface FileRoutesByFullPath {
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
   '/compensation': typeof CompensationRouteWithChildren
+  '/cookies': typeof CookiesRoute
   '/email-confirmed': typeof EmailConfirmedRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/mcp': typeof McpRoute
   '/ops': typeof OpsRouteWithChildren
   '/pricing.md': typeof PricingDotmdRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terms': typeof TermsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/ai': typeof AuthenticatedAiRoute
   '/ask': typeof AuthenticatedAskRoute
@@ -427,14 +455,18 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
+  '/cookies': typeof CookiesRoute
   '/email-confirmed': typeof EmailConfirmedRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/mcp': typeof McpRoute
   '/pricing.md': typeof PricingDotmdRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terms': typeof TermsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/ai': typeof AuthenticatedAiRoute
   '/ask': typeof AuthenticatedAskRoute
@@ -487,15 +519,19 @@ export interface FileRoutesById {
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
   '/compensation': typeof CompensationRouteWithChildren
+  '/cookies': typeof CookiesRoute
   '/email-confirmed': typeof EmailConfirmedRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
   '/mcp': typeof McpRoute
   '/ops': typeof OpsRouteWithChildren
   '/pricing.md': typeof PricingDotmdRoute
+  '/privacy': typeof PrivacyRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terms': typeof TermsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/ai': typeof AuthenticatedAiRoute
   '/_authenticated/ask': typeof AuthenticatedAskRoute
@@ -548,15 +584,19 @@ export interface FileRouteTypes {
     | '/accept-invite'
     | '/auth'
     | '/compensation'
+    | '/cookies'
     | '/email-confirmed'
     | '/llms-full.txt'
     | '/llms.txt'
     | '/mcp'
     | '/ops'
     | '/pricing.md'
+    | '/privacy'
+    | '/refund-policy'
     | '/reset-password'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/terms'
     | '/.well-known/oauth-protected-resource'
     | '/ai'
     | '/ask'
@@ -606,14 +646,18 @@ export interface FileRouteTypes {
     | '/'
     | '/accept-invite'
     | '/auth'
+    | '/cookies'
     | '/email-confirmed'
     | '/llms-full.txt'
     | '/llms.txt'
     | '/mcp'
     | '/pricing.md'
+    | '/privacy'
+    | '/refund-policy'
     | '/reset-password'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/terms'
     | '/.well-known/oauth-protected-resource'
     | '/ai'
     | '/ask'
@@ -665,15 +709,19 @@ export interface FileRouteTypes {
     | '/accept-invite'
     | '/auth'
     | '/compensation'
+    | '/cookies'
     | '/email-confirmed'
     | '/llms-full.txt'
     | '/llms.txt'
     | '/mcp'
     | '/ops'
     | '/pricing.md'
+    | '/privacy'
+    | '/refund-policy'
     | '/reset-password'
     | '/robots.txt'
     | '/sitemap.xml'
+    | '/terms'
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/ai'
     | '/_authenticated/ask'
@@ -726,15 +774,19 @@ export interface RootRouteChildren {
   AcceptInviteRoute: typeof AcceptInviteRoute
   AuthRoute: typeof AuthRoute
   CompensationRoute: typeof CompensationRouteWithChildren
+  CookiesRoute: typeof CookiesRoute
   EmailConfirmedRoute: typeof EmailConfirmedRoute
   LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
   McpRoute: typeof McpRoute
   OpsRoute: typeof OpsRouteWithChildren
   PricingDotmdRoute: typeof PricingDotmdRoute
+  PrivacyRoute: typeof PrivacyRoute
+  RefundPolicyRoute: typeof RefundPolicyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  TermsRoute: typeof TermsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   GuidesHungerstationCompensationRoute: typeof GuidesHungerstationCompensationRoute
   GuidesJahezCommissionRoute: typeof GuidesJahezCommissionRoute
@@ -751,6 +803,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -770,6 +829,20 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund-policy': {
+      id: '/refund-policy'
+      path: '/refund-policy'
+      fullPath: '/refund-policy'
+      preLoaderRoute: typeof RefundPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pricing.md': {
@@ -812,6 +885,13 @@ declare module '@tanstack/react-router' {
       path: '/email-confirmed'
       fullPath: '/email-confirmed'
       preLoaderRoute: typeof EmailConfirmedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookies': {
+      id: '/cookies'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof CookiesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/compensation': {
@@ -1257,15 +1337,19 @@ const rootRouteChildren: RootRouteChildren = {
   AcceptInviteRoute: AcceptInviteRoute,
   AuthRoute: AuthRoute,
   CompensationRoute: CompensationRouteWithChildren,
+  CookiesRoute: CookiesRoute,
   EmailConfirmedRoute: EmailConfirmedRoute,
   LlmsFullDottxtRoute: LlmsFullDottxtRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
   McpRoute: McpRoute,
   OpsRoute: OpsRouteWithChildren,
   PricingDotmdRoute: PricingDotmdRoute,
+  PrivacyRoute: PrivacyRoute,
+  RefundPolicyRoute: RefundPolicyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  TermsRoute: TermsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   GuidesHungerstationCompensationRoute: GuidesHungerstationCompensationRoute,
