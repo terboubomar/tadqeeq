@@ -130,5 +130,6 @@ export const EXPLAINER_VIDEO = {
   preview: "/video/tadqeeq-explainer-preview.mp4",
   previewPoster: "/video/tadqeeq-explainer-preview.jpg",
   durationIso: "PT1M55S",
-  uploadDate: "2026-10-04",
+  // Full date-time with the Riyadh offset: Google rejects a bare date for VideoObject.uploadDate.
+  uploadDate: "2026-10-04T12:00:00+03:00",
 };
