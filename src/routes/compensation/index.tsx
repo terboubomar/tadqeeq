@@ -92,7 +92,7 @@ function CompensationOverviewPage() {
         ) : null}
       </CompHeader>
 
-      <section aria-label="المؤشرات الرئيسية" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="المؤشرات الرئيسية" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Kpi
           featured
           label="المبلغ المسترَد"

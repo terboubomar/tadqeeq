@@ -7,7 +7,10 @@ import { copyText } from "@/components/compensation/queries";
 import { fetchEvidenceMedia, saveEvidenceFile, type EvidenceMediaFile } from "@/components/compensation/evidence-media";
 import { caseStatusLabel } from "@/lib/compensation-overview";
 import { cn } from "@/lib/utils";
+import { ActionBar, PageHeader } from "@/components/workspace/PageKit";
+import { PRODUCTS } from "@/lib/products";
 
+/** Page header for «استرداد» pages: breadcrumb, title and subtitle, with the page's commands in an action bar. */
 export function CompHeader({
   title,
   sub,
@@ -18,16 +21,18 @@ export function CompHeader({
   children?: ReactNode;
 }) {
   return (
-    <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="audit-heading">{title}</h1>
-        {sub ? <p className="audit-subtitle">{sub}</p> : null}
-      </div>
-      {children ? <div className="flex flex-wrap items-center gap-2">{children}</div> : null}
-    </header>
+    <div className="mb-5 space-y-4">
+      <PageHeader
+        crumbs={[{ label: PRODUCTS.istirdad.name, to: "/compensation" }, { label: title }]}
+        title={title}
+        subtitle={sub}
+      />
+      {children ? <ActionBar>{children}</ActionBar> : null}
+    </div>
   );
 }
 
+/** Number card in the page-kit tile style: `featured` is the gold headline, `good` green, `bad` red. */
 export function Kpi({
   label,
   value,
@@ -46,23 +51,35 @@ export function Kpi({
   return (
     <div
       className={cn(
-        "rounded-xl border p-4",
-        featured ? "border-ink bg-ink text-ink-foreground" : "border-border bg-card",
+        "min-w-0 rounded-xl border p-3.5",
+        featured
+          ? "border-primary bg-primary text-primary-foreground"
+          : tone === "good"
+            ? "border-success/25 bg-success-soft"
+            : tone === "bad"
+              ? "border-destructive/25 bg-destructive-soft"
+              : "border-border bg-card",
       )}
     >
-      <p className={cn("text-xs", featured ? "text-ink-muted" : "text-muted-foreground")}>{label}</p>
       <p
         className={cn(
-          "num mt-2 text-2xl font-bold",
-          featured && "text-primary",
-          tone === "good" && "text-success",
-          tone === "bad" && "text-destructive",
+          "text-[12.5px]",
+          featured ? "text-primary-foreground/80" : tone === "good" ? "text-success/85" : tone === "bad" ? "text-destructive/85" : "text-muted-foreground",
+        )}
+      >
+        {label}
+      </p>
+      <p
+        className={cn(
+          "num mt-2 truncate text-right text-[20px] font-semibold sm:text-2xl",
+          tone === "good" && !featured && "text-success",
+          tone === "bad" && !featured && "text-destructive",
         )}
       >
         {value}
       </p>
       {hint ? (
-        <p className={cn("mt-1.5 text-xs", featured ? "text-ink-muted" : "text-muted-foreground")}>{hint}</p>
+        <p className={cn("mt-1.5 text-xs", featured ? "text-primary-foreground/80" : "text-muted-foreground")}>{hint}</p>
       ) : null}
       {children}
     </div>
