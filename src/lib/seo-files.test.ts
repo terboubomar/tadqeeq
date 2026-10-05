@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 
-import { NOINDEX_PAGES, PRIVATE_PAGES, PRIVATE_PREFIXES, PUBLIC_PAGES, SITE_URL } from "./seo";
+import { NOINDEX_PAGES, PRIVATE_PAGES, PRIVATE_PREFIXES, PUBLIC_PAGES, SITE_URL, trailingSlashRedirect } from "./seo";
 import { buildLlmsFullTxt, buildLlmsTxt, buildPricingMd, buildRobots, buildSitemap } from "./seo-files";
 import { FAQS, FEATURES } from "./site-content";
 
@@ -146,5 +146,20 @@ describe("pricing.md with order-based plans", () => {
     expect(md).toContain("- Orders checked per month: unlimited");
     expect(md).toContain("- Includes the add-on: «استرداد» للتعويضات");
     expect(md).toContain("399 SAR every 4 months (included in الشاملة)");
+  });
+});
+
+describe("trailing slash", () => {
+  test("page URLs redirect permanently to the version without the slash", () => {
+    expect(trailingSlashRedirect(new URL("https://tadqeeq.app/guides/"), "GET")).toBe("/guides");
+    expect(trailingSlashRedirect(new URL("https://tadqeeq.app/guides/keeta-invoice//?a=1"), "HEAD")).toBe("/guides/keeta-invoice?a=1");
+  });
+
+  test("leaves the root, clean paths, other methods and API paths alone", () => {
+    expect(trailingSlashRedirect(new URL("https://tadqeeq.app/"), "GET")).toBeNull();
+    expect(trailingSlashRedirect(new URL("https://tadqeeq.app/guides"), "GET")).toBeNull();
+    expect(trailingSlashRedirect(new URL("https://tadqeeq.app/guides/"), "POST")).toBeNull();
+    expect(trailingSlashRedirect(new URL("https://tadqeeq.app/api/public/csp-report/"), "GET")).toBeNull();
+    expect(trailingSlashRedirect(new URL("https://tadqeeq.app/.well-known/oauth/"), "GET")).toBeNull();
   });
 });

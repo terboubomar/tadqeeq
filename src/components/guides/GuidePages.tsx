@@ -204,10 +204,10 @@ export function GuidesIndexPage() {
           <li key={guide.slug}>
             <a href={guide.path} className="flex items-start gap-4 rounded-2xl border border-border bg-card p-5 hover:border-primary">
               <PlatformIcon platform={guide.platform} className="size-10 shrink-0 rounded-full" />
-              <span>
-                <span className="block font-display text-lg font-bold leading-8">{guide.title}</span>
-                <span className="mt-1 block text-sm leading-7 text-muted-foreground">{guide.description}</span>
-              </span>
+              <div>
+                <h2 className="font-display text-lg font-bold leading-8">{guide.title}</h2>
+                <p className="mt-1 text-sm leading-7 text-muted-foreground">{guide.description}</p>
+              </div>
             </a>
           </li>
         ))}

@@ -4,8 +4,8 @@ import { ContactPage } from "@/components/ContactPage";
 import { LEGAL_COMPANY } from "@/lib/legal";
 import { SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
 
-const TITLE = "تواصل معنا | تدقيق";
-const DESCRIPTION = "تواصل مع فريق تدقيق للاستفسار عن الباقات، طلب عرض توضيحي لمراجعة فواتير هنقرستيشن وكيتا وجاهز، أو الدعم الفني لحسابك.";
+const TITLE = "تواصل معنا: عرض توضيحي ودعم لتدقيق فواتير التوصيل | تدقيق";
+const DESCRIPTION = "تواصل مع فريق تدقيق لطلب عرض توضيحي لمراجعة فواتير هنقرستيشن وجاهز وكيتا، أو للاستفسار عن الباقات والأسعار، أو للدعم الفني لحسابك. نرد خلال يوم عمل.";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({

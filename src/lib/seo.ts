@@ -44,7 +44,7 @@ export type PublicPage = {
 /** Every page that should be indexed. Adding a public page here adds it to sitemap.xml and llms.txt. */
 export const PUBLIC_PAGES: PublicPage[] = [
   { path: "/", title: "Home", lastmod: "2026-10-05", changefreq: "weekly", priority: 1 },
-  { path: "/guides", title: "أدلة مراجعة فواتير تطبيقات التوصيل", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.7 },
+  { path: "/guides", title: "أدلة مراجعة فواتير تطبيقات التوصيل", lastmod: "2026-10-05", changefreq: "monthly", priority: 0.7 },
   { path: "/guides/keeta-invoice", title: "كيف تراجع فاتورة كيتا؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
   { path: "/guides/hungerstation-compensation", title: "كيف تعترض على تعويضات هنقرستيشن؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
   { path: "/guides/jahez-commission", title: "كيف تتأكد من عمولة جاهز وصافي المطعم؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
@@ -98,3 +98,15 @@ export const AI_CRAWLERS = [
   "Google-Extended",
   "Applebot-Extended",
 ];
+
+/**
+ * Pages are canonical without a trailing slash (/guides, not /guides/). The router's own redirect is a temporary
+ * 307; this returns the target for a permanent one, or null. API, Lovable and .well-known paths are left alone.
+ */
+export function trailingSlashRedirect(url: URL, method: string): string | null {
+  if (method !== "GET" && method !== "HEAD") return null;
+  const path = url.pathname;
+  if (path === "/" || !path.endsWith("/")) return null;
+  if (/^\/(api|lovable|\.lovable|\.well-known)\//.test(path)) return null;
+  return path.replace(/\/+$/, "") + url.search;
+}
