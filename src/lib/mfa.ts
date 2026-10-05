@@ -11,7 +11,12 @@ export const MFA_REQUIRED_MESSAGE = "أدخل رمز التحقق من تطبي�
 export interface TokenClaims {
   aal?: string;
   clientId?: string;
+  /** Sign-in methods of this session (JWT amr), e.g. ["password"]. */
+  amr?: string[];
+  sessionId?: string;
 }
+
+export const EMAIL_CODE_REQUIRED_MESSAGE = "أدخل الرمز المرسل إلى بريدك لإكمال تسجيل الدخول.";
 
 /** Reads the claims of an already verified Supabase access token (no signature check here). */
 export function tokenClaims(token: string): TokenClaims {
@@ -22,6 +27,10 @@ export function tokenClaims(token: string): TokenClaims {
     return {
       ...(typeof json["aal"] === "string" ? { aal: json["aal"] } : {}),
       ...(typeof json["client_id"] === "string" && json["client_id"] ? { clientId: json["client_id"] } : {}),
+      ...(Array.isArray(json["amr"])
+        ? { amr: (json["amr"] as unknown[]).map((entry) => (entry as { method?: unknown })?.method).filter((m): m is string => typeof m === "string") }
+        : {}),
+      ...(typeof json["session_id"] === "string" ? { sessionId: json["session_id"] } : {}),
     };
   } catch {
     return {};
@@ -40,4 +49,14 @@ export function needsMfaCode(levels: { currentLevel: string | null; nextLevel: s
 
 export function hasVerifiedFactor(factors: { status?: string }[] | null | undefined): boolean {
   return (factors ?? []).some((factor) => factor.status === "verified");
+}
+
+/**
+ * Every password sign-in also needs the 6-digit code emailed to the account (same rule as
+ * private.email_code_satisfied, migration 0045). Not for Google/Apple sign-ins, OAuth tokens of AI assistants,
+ * or accounts with the authenticator app (they enter that code instead).
+ */
+export function emailCodeRequired(claims: TokenClaims, hasVerifiedFactor: boolean): boolean {
+  if (claims.clientId || claims.aal === "aal2" || hasVerifiedFactor) return false;
+  return (claims.amr ?? []).includes("password");
 }
