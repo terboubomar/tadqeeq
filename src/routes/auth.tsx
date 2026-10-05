@@ -163,7 +163,8 @@ function AuthPage() {
       <div className="w-full max-w-[430px] rounded-[16px] border border-border bg-card p-7 shadow-panel sm:p-9">
         <div>
           <h1>
-            <LogoWordmark title="تدقيق" className="h-9 text-ink" />
+            <span className="sr-only">تسجيل الدخول إلى تدقيق — مراجعة فواتير تطبيقات التوصيل</span>
+            <LogoWordmark title="تدقيق" aria-hidden="true" className="h-9 text-ink" />
           </h1>
           <p className="mt-2 text-xs text-muted-foreground">مراجعة فواتير تطبيقات التوصيل</p>
         </div>
