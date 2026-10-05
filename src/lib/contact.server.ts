@@ -2,7 +2,8 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-import { CONTACT_LIMIT_PER_EMAIL_HOUR, CONTACT_LIMIT_PER_IP_HOUR, validateContact, type ContactInput } from "./contact";
+import { sendTemplateEmail } from "./email-templates/send-email";
+import { CONTACT_LIMIT_PER_EMAIL_HOUR, CONTACT_LIMIT_PER_IP_HOUR, contactTopicLabel, validateContact, type ContactInput } from "./contact";
 import { logEvent } from "./observability";
 
 // contact_messages is not in the generated Supabase types yet.
@@ -46,5 +47,14 @@ export async function submitContactMessageOnServer(input: ContactInput & { websi
     throw new Error("تعذّر إرسال الرسالة. حاول مرة أخرى أو راسلنا على hello@tadqeeq.app.");
   }
   logEvent("contact_message_received", { topic: message.topic });
+  try {
+    await sendTemplateEmail("contact-message", "hello@tadqeeq.app", {
+      templateData: { ...message, topic: contactTopicLabel(message.topic) },
+      replyTo: message.email,
+    });
+  } catch (error) {
+    // The message is already saved for the ops team; a failed notification must not fail the form.
+    logEvent("contact_message_email_failed", { error: String(error) }, "error");
+  }
   return { ok: true };
 }

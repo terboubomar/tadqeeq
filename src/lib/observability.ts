@@ -23,7 +23,8 @@ export type LogEvent =
   | "ai_request_failed"
   | "csp_violation"
   | "contact_message_received"
-  | "contact_message_failed";
+  | "contact_message_failed"
+  | "contact_message_email_failed";
 
 /** What kind of failure happened, so logs and support can tell them apart. */
 export type ErrorKind =
