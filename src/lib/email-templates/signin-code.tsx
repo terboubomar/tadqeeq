@@ -1,0 +1,47 @@
+import * as React from 'react'
+import { Body, Container, Head, Heading, Html, Preview, Text } from '@react-email/components'
+import type { TemplateEntry } from './registry'
+
+interface Props {
+  code?: string
+}
+
+const SignInCodeEmail = ({ code }: Props) => (
+  <Html lang="ar" dir="rtl">
+    <Head />
+    <Preview>رمز تسجيل الدخول إلى تدقيق</Preview>
+    <Body style={main}>
+      <Container style={container}>
+        <Heading style={h1}>رمز تسجيل الدخول</Heading>
+        <Text style={text}>أدخل هذا الرمز في صفحة تسجيل الدخول لإكمال الدخول إلى حسابك في تدقيق:</Text>
+        <Text style={codeStyle}>{code ?? '------'}</Text>
+        <Text style={footer}>
+          ينتهي الرمز خلال 10 دقائق. إذا لم تحاول تسجيل الدخول، غيّر كلمة المرور فوراً لأن أحداً يعرفها.
+        </Text>
+      </Container>
+    </Body>
+  </Html>
+)
+
+export const template = {
+  component: SignInCodeEmail,
+  subject: (data: Record<string, any>) => `رمز الدخول إلى تدقيق: ${data['code'] ?? ''}`,
+  displayName: 'رمز تسجيل الدخول',
+  previewData: { code: '482913' },
+} satisfies TemplateEntry
+
+const main = { backgroundColor: '#ffffff', fontFamily: "'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif" }
+const container = { padding: '20px 25px', textAlign: 'right' as const }
+const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#1f3a44', margin: '0 0 20px' }
+const text = { fontSize: '14px', color: '#55575d', lineHeight: '1.7', margin: '0 0 25px' }
+const codeStyle = {
+  fontFamily: 'Courier, monospace',
+  fontSize: '30px',
+  letterSpacing: '8px',
+  fontWeight: 'bold' as const,
+  color: '#1f3a44',
+  direction: 'ltr' as const,
+  textAlign: 'center' as const,
+  margin: '0 0 30px',
+}
+const footer = { fontSize: '12px', color: '#999999', lineHeight: '1.7', margin: '30px 0 0' }
