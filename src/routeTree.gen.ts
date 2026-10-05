@@ -9,160 +9,81 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as CompensationRouteImport } from './routes/compensation'
-import { Route as ContactRouteImport } from './routes/contact'
-import { Route as CookiesRouteImport } from './routes/cookies'
-import { Route as EmailConfirmedRouteImport } from './routes/email-confirmed'
-import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
-import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
-import { Route as McpRouteImport } from './routes/mcp'
-import { Route as OpsRouteImport } from './routes/ops'
-import { Route as PricingDotmdRouteImport } from './routes/pricing[.]md'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
-import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
-import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
-import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
-import { Route as AuthenticatedBranchesRouteImport } from './routes/_authenticated/branches'
-import { Route as AuthenticatedBreakdownRouteImport } from './routes/_authenticated/breakdown'
-import { Route as AuthenticatedChargesRouteImport } from './routes/_authenticated/charges'
-import { Route as AuthenticatedContractsRouteImport } from './routes/_authenticated/contracts'
-import { Route as AuthenticatedDailyRouteImport } from './routes/_authenticated/daily'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedExceptionsRouteImport } from './routes/_authenticated/exceptions'
-import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
-import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
-import { Route as AuthenticatedInvoiceCheckRouteImport } from './routes/_authenticated/invoice-check'
-import { Route as AuthenticatedPromotionsRouteImport } from './routes/_authenticated/promotions'
-import { Route as AuthenticatedSecurityRouteImport } from './routes/_authenticated/security'
-import { Route as AuthenticatedSubscribeRouteImport } from './routes/_authenticated/subscribe'
-import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
-import { Route as CompensationIndexRouteImport } from './routes/compensation/index'
-import { Route as CompensationBranchesRouteImport } from './routes/compensation/branches'
-import { Route as CompensationCasesRouteImport } from './routes/compensation/cases'
-import { Route as CompensationEvidenceRouteImport } from './routes/compensation/evidence'
-import { Route as CompensationScannerRouteImport } from './routes/compensation/scanner'
-import { Route as GuidesIndexRouteImport } from './routes/guides/index'
-import { Route as GuidesHungerstationCompensationRouteImport } from './routes/guides/hungerstation-compensation'
-import { Route as GuidesJahezCommissionRouteImport } from './routes/guides/jahez-commission'
-import { Route as GuidesKeetaInvoiceRouteImport } from './routes/guides/keeta-invoice'
-import { Route as OpsIndexRouteImport } from './routes/ops/index'
-import { Route as OpsArchiveRouteImport } from './routes/ops/archive'
-import { Route as OpsClientsRouteImport } from './routes/ops/clients'
-import { Route as OpsLogsRouteImport } from './routes/ops/logs'
-import { Route as OpsMessagesRouteImport } from './routes/ops/messages'
-import { Route as OpsPaymentsRouteImport } from './routes/ops/payments'
-import { Route as OpsPlansRouteImport } from './routes/ops/plans'
-import { Route as OpsStaffRouteImport } from './routes/ops/staff'
-import { Route as OpsSubscriptionsRouteImport } from './routes/ops/subscriptions'
-import { Route as OpsTasksRouteImport } from './routes/ops/tasks'
-import { Route as OpsUsageRouteImport } from './routes/ops/usage'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PricingDotmdRouteImport } from './routes/pricing[.]md'
+import { Route as OpsRouteImport } from './routes/ops'
+import { Route as McpRouteImport } from './routes/mcp'
+import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
+import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
+import { Route as EmailConfirmedRouteImport } from './routes/email-confirmed'
+import { Route as CookiesRouteImport } from './routes/cookies'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as CompensationRouteImport } from './routes/compensation'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductsIndexRouteImport } from './routes/products/index'
-import { Route as ProductsCompensationClaimsRouteImport } from './routes/products/compensation-claims'
-import { Route as ProductsDeliveryFeesMapRouteImport } from './routes/products/delivery-fees-map'
-import { Route as ProductsExceptionsCenterRouteImport } from './routes/products/exceptions-center'
-import { Route as ProductsInvoiceReconciliationRouteImport } from './routes/products/invoice-reconciliation'
-import { Route as ProductsPromotionsRoiRouteImport } from './routes/products/promotions-roi'
+import { Route as OpsIndexRouteImport } from './routes/ops/index'
+import { Route as GuidesIndexRouteImport } from './routes/guides/index'
+import { Route as CompensationIndexRouteImport } from './routes/compensation/index'
 import { Route as ProductsSmartAlertsRouteImport } from './routes/products/smart-alerts'
-import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
-import { Route as ApiPublicCspReportRouteImport } from './routes/api/public/csp-report'
-import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
+import { Route as ProductsPromotionsRoiRouteImport } from './routes/products/promotions-roi'
+import { Route as ProductsInvoiceReconciliationRouteImport } from './routes/products/invoice-reconciliation'
+import { Route as ProductsExceptionsCenterRouteImport } from './routes/products/exceptions-center'
+import { Route as ProductsDeliveryFeesMapRouteImport } from './routes/products/delivery-fees-map'
+import { Route as ProductsCompensationClaimsRouteImport } from './routes/products/compensation-claims'
+import { Route as OpsUsageRouteImport } from './routes/ops/usage'
+import { Route as OpsTasksRouteImport } from './routes/ops/tasks'
+import { Route as OpsSubscriptionsRouteImport } from './routes/ops/subscriptions'
+import { Route as OpsStaffRouteImport } from './routes/ops/staff'
+import { Route as OpsPlansRouteImport } from './routes/ops/plans'
+import { Route as OpsPaymentsRouteImport } from './routes/ops/payments'
+import { Route as OpsMessagesRouteImport } from './routes/ops/messages'
+import { Route as OpsLogsRouteImport } from './routes/ops/logs'
+import { Route as OpsClientsRouteImport } from './routes/ops/clients'
+import { Route as OpsArchiveRouteImport } from './routes/ops/archive'
+import { Route as GuidesKeetaInvoiceRouteImport } from './routes/guides/keeta-invoice'
+import { Route as GuidesJahezCommissionRouteImport } from './routes/guides/jahez-commission'
+import { Route as GuidesHungerstationCompensationRouteImport } from './routes/guides/hungerstation-compensation'
+import { Route as CompensationScannerRouteImport } from './routes/compensation/scanner'
+import { Route as CompensationEvidenceRouteImport } from './routes/compensation/evidence'
+import { Route as CompensationCasesRouteImport } from './routes/compensation/cases'
+import { Route as CompensationBranchesRouteImport } from './routes/compensation/branches'
+import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
+import { Route as AuthenticatedSubscribeRouteImport } from './routes/_authenticated/subscribe'
+import { Route as AuthenticatedSecurityRouteImport } from './routes/_authenticated/security'
+import { Route as AuthenticatedPromotionsRouteImport } from './routes/_authenticated/promotions'
+import { Route as AuthenticatedInvoiceCheckRouteImport } from './routes/_authenticated/invoice-check'
+import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
+import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
+import { Route as AuthenticatedExceptionsRouteImport } from './routes/_authenticated/exceptions'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedDailyRouteImport } from './routes/_authenticated/daily'
+import { Route as AuthenticatedContractsRouteImport } from './routes/_authenticated/contracts'
+import { Route as AuthenticatedChargesRouteImport } from './routes/_authenticated/charges'
+import { Route as AuthenticatedBreakdownRouteImport } from './routes/_authenticated/breakdown'
+import { Route as AuthenticatedBranchesRouteImport } from './routes/_authenticated/branches'
+import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
+import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as OpsClientsWorkspaceIdRouteImport } from './routes/ops/clients_.$workspaceId'
-import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
-import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
+import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
+import { Route as ApiPublicCspReportRouteImport } from './routes/api/public/csp-report'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
+import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
+import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiCompensationEvidenceEvidenceIdMediaRouteImport } from './routes/api/compensation/evidence/$evidenceId/media'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AcceptInviteRoute = AcceptInviteRouteImport.update({
-  id: '/accept-invite',
-  path: '/accept-invite',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CompensationRoute = CompensationRouteImport.update({
-  id: '/compensation',
-  path: '/compensation',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContactRoute = ContactRouteImport.update({
-  id: '/contact',
-  path: '/contact',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CookiesRoute = CookiesRouteImport.update({
-  id: '/cookies',
-  path: '/cookies',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EmailConfirmedRoute = EmailConfirmedRouteImport.update({
-  id: '/email-confirmed',
-  path: '/email-confirmed',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LlmsFullDottxtRoute = LlmsFullDottxtRouteImport.update({
-  id: '/llms-full.txt',
-  path: '/llms-full.txt',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
-  id: '/llms.txt',
-  path: '/llms.txt',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OpsRoute = OpsRouteImport.update({
-  id: '/ops',
-  path: '/ops',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PricingDotmdRoute = PricingDotmdRouteImport.update({
-  id: '/pricing.md',
-  path: '/pricing.md',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RefundPolicyRoute = RefundPolicyRouteImport.update({
-  id: '/refund-policy',
-  path: '/refund-policy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
-  id: '/robots.txt',
-  path: '/robots.txt',
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -170,142 +91,93 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91DotwellKnownChar93OauthProtectedResourceRoute =
-  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const AuthenticatedAiRoute = AuthenticatedAiRouteImport.update({
-  id: '/ai',
-  path: '/ai',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedAskRoute = AuthenticatedAskRouteImport.update({
-  id: '/ask',
-  path: '/ask',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const RefundPolicyRoute = RefundPolicyRouteImport.update({
+  id: '/refund-policy',
+  path: '/refund-policy',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedBranchesRoute = AuthenticatedBranchesRouteImport.update({
-  id: '/branches',
-  path: '/branches',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedBreakdownRoute = AuthenticatedBreakdownRouteImport.update({
-  id: '/breakdown',
-  path: '/breakdown',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const PricingDotmdRoute = PricingDotmdRouteImport.update({
+  id: '/pricing.md',
+  path: '/pricing.md',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedChargesRoute = AuthenticatedChargesRouteImport.update({
-  id: '/charges',
-  path: '/charges',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const OpsRoute = OpsRouteImport.update({
+  id: '/ops',
+  path: '/ops',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedContractsRoute = AuthenticatedContractsRouteImport.update({
-  id: '/contracts',
-  path: '/contracts',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedDailyRoute = AuthenticatedDailyRouteImport.update({
-  id: '/daily',
-  path: '/daily',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
+  id: '/llms.txt',
+  path: '/llms.txt',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const LlmsFullDottxtRoute = LlmsFullDottxtRouteImport.update({
+  id: '/llms-full.txt',
+  path: '/llms-full.txt',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedExceptionsRoute = AuthenticatedExceptionsRouteImport.update({
-  id: '/exceptions',
-  path: '/exceptions',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const EmailConfirmedRoute = EmailConfirmedRouteImport.update({
+  id: '/email-confirmed',
+  path: '/email-confirmed',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedHistoryRoute = AuthenticatedHistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const CookiesRoute = CookiesRouteImport.update({
+  id: '/cookies',
+  path: '/cookies',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
-  id: '/import',
-  path: '/import',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedInvoiceCheckRoute =
-  AuthenticatedInvoiceCheckRouteImport.update({
-    id: '/invoice-check',
-    path: '/invoice-check',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedPromotionsRoute = AuthenticatedPromotionsRouteImport.update({
-  id: '/promotions',
-  path: '/promotions',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const CompensationRoute = CompensationRouteImport.update({
+  id: '/compensation',
+  path: '/compensation',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedSecurityRoute = AuthenticatedSecurityRouteImport.update({
-  id: '/security',
-  path: '/security',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedSubscribeRoute = AuthenticatedSubscribeRouteImport.update({
-  id: '/subscribe',
-  path: '/subscribe',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const AcceptInviteRoute = AcceptInviteRouteImport.update({
+  id: '/accept-invite',
+  path: '/accept-invite',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedTeamRoute = AuthenticatedTeamRouteImport.update({
-  id: '/team',
-  path: '/team',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const CompensationIndexRoute = CompensationIndexRouteImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => CompensationRoute,
-} as any)
-const CompensationBranchesRoute = CompensationBranchesRouteImport.update({
-  id: '/branches',
-  path: '/branches',
-  getParentRoute: () => CompensationRoute,
-} as any)
-const CompensationCasesRoute = CompensationCasesRouteImport.update({
-  id: '/cases',
-  path: '/cases',
-  getParentRoute: () => CompensationRoute,
-} as any)
-const CompensationEvidenceRoute = CompensationEvidenceRouteImport.update({
-  id: '/evidence',
-  path: '/evidence',
-  getParentRoute: () => CompensationRoute,
-} as any)
-const CompensationScannerRoute = CompensationScannerRouteImport.update({
-  id: '/scanner',
-  path: '/scanner',
-  getParentRoute: () => CompensationRoute,
-} as any)
-const GuidesIndexRoute = GuidesIndexRouteImport.update({
-  id: '/guides/',
-  path: '/guides/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const GuidesHungerstationCompensationRoute =
-  GuidesHungerstationCompensationRouteImport.update({
-    id: '/guides/hungerstation-compensation',
-    path: '/guides/hungerstation-compensation',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const GuidesJahezCommissionRoute = GuidesJahezCommissionRouteImport.update({
-  id: '/guides/jahez-commission',
-  path: '/guides/jahez-commission',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GuidesKeetaInvoiceRoute = GuidesKeetaInvoiceRouteImport.update({
-  id: '/guides/keeta-invoice',
-  path: '/guides/keeta-invoice',
+const ProductsIndexRoute = ProductsIndexRouteImport.update({
+  id: '/products/',
+  path: '/products/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OpsIndexRoute = OpsIndexRouteImport.update({
@@ -313,59 +185,41 @@ const OpsIndexRoute = OpsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => OpsRoute,
 } as any)
-const OpsArchiveRoute = OpsArchiveRouteImport.update({
-  id: '/archive',
-  path: '/archive',
-  getParentRoute: () => OpsRoute,
+const GuidesIndexRoute = GuidesIndexRouteImport.update({
+  id: '/guides/',
+  path: '/guides/',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const OpsClientsRoute = OpsClientsRouteImport.update({
-  id: '/clients',
-  path: '/clients',
-  getParentRoute: () => OpsRoute,
+const CompensationIndexRoute = CompensationIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CompensationRoute,
 } as any)
-const OpsLogsRoute = OpsLogsRouteImport.update({
-  id: '/logs',
-  path: '/logs',
-  getParentRoute: () => OpsRoute,
+const ProductsSmartAlertsRoute = ProductsSmartAlertsRouteImport.update({
+  id: '/products/smart-alerts',
+  path: '/products/smart-alerts',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const OpsMessagesRoute = OpsMessagesRouteImport.update({
-  id: '/messages',
-  path: '/messages',
-  getParentRoute: () => OpsRoute,
+const ProductsPromotionsRoiRoute = ProductsPromotionsRoiRouteImport.update({
+  id: '/products/promotions-roi',
+  path: '/products/promotions-roi',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const OpsPaymentsRoute = OpsPaymentsRouteImport.update({
-  id: '/payments',
-  path: '/payments',
-  getParentRoute: () => OpsRoute,
-} as any)
-const OpsPlansRoute = OpsPlansRouteImport.update({
-  id: '/plans',
-  path: '/plans',
-  getParentRoute: () => OpsRoute,
-} as any)
-const OpsStaffRoute = OpsStaffRouteImport.update({
-  id: '/staff',
-  path: '/staff',
-  getParentRoute: () => OpsRoute,
-} as any)
-const OpsSubscriptionsRoute = OpsSubscriptionsRouteImport.update({
-  id: '/subscriptions',
-  path: '/subscriptions',
-  getParentRoute: () => OpsRoute,
-} as any)
-const OpsTasksRoute = OpsTasksRouteImport.update({
-  id: '/tasks',
-  path: '/tasks',
-  getParentRoute: () => OpsRoute,
-} as any)
-const OpsUsageRoute = OpsUsageRouteImport.update({
-  id: '/usage',
-  path: '/usage',
-  getParentRoute: () => OpsRoute,
-} as any)
-const ProductsIndexRoute = ProductsIndexRouteImport.update({
-  id: '/products/',
-  path: '/products/',
+const ProductsInvoiceReconciliationRoute =
+  ProductsInvoiceReconciliationRouteImport.update({
+    id: '/products/invoice-reconciliation',
+    path: '/products/invoice-reconciliation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ProductsExceptionsCenterRoute =
+  ProductsExceptionsCenterRouteImport.update({
+    id: '/products/exceptions-center',
+    path: '/products/exceptions-center',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ProductsDeliveryFeesMapRoute = ProductsDeliveryFeesMapRouteImport.update({
+  id: '/products/delivery-fees-map',
+  path: '/products/delivery-fees-map',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductsCompensationClaimsRoute =
@@ -374,47 +228,177 @@ const ProductsCompensationClaimsRoute =
     path: '/products/compensation-claims',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ProductsDeliveryFeesMapRoute = ProductsDeliveryFeesMapRouteImport.update({
-  id: '/products/delivery-fees-map',
-  path: '/products/delivery-fees-map',
+const OpsUsageRoute = OpsUsageRouteImport.update({
+  id: '/usage',
+  path: '/usage',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsTasksRoute = OpsTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsSubscriptionsRoute = OpsSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsStaffRoute = OpsStaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsPlansRoute = OpsPlansRouteImport.update({
+  id: '/plans',
+  path: '/plans',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsPaymentsRoute = OpsPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsMessagesRoute = OpsMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsLogsRoute = OpsLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsClientsRoute = OpsClientsRouteImport.update({
+  id: '/clients',
+  path: '/clients',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsArchiveRoute = OpsArchiveRouteImport.update({
+  id: '/archive',
+  path: '/archive',
+  getParentRoute: () => OpsRoute,
+} as any)
+const GuidesKeetaInvoiceRoute = GuidesKeetaInvoiceRouteImport.update({
+  id: '/guides/keeta-invoice',
+  path: '/guides/keeta-invoice',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProductsExceptionsCenterRoute =
-  ProductsExceptionsCenterRouteImport.update({
-    id: '/products/exceptions-center',
-    path: '/products/exceptions-center',
+const GuidesJahezCommissionRoute = GuidesJahezCommissionRouteImport.update({
+  id: '/guides/jahez-commission',
+  path: '/guides/jahez-commission',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuidesHungerstationCompensationRoute =
+  GuidesHungerstationCompensationRouteImport.update({
+    id: '/guides/hungerstation-compensation',
+    path: '/guides/hungerstation-compensation',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ProductsInvoiceReconciliationRoute =
-  ProductsInvoiceReconciliationRouteImport.update({
-    id: '/products/invoice-reconciliation',
-    path: '/products/invoice-reconciliation',
-    getParentRoute: () => rootRouteImport,
+const CompensationScannerRoute = CompensationScannerRouteImport.update({
+  id: '/scanner',
+  path: '/scanner',
+  getParentRoute: () => CompensationRoute,
+} as any)
+const CompensationEvidenceRoute = CompensationEvidenceRouteImport.update({
+  id: '/evidence',
+  path: '/evidence',
+  getParentRoute: () => CompensationRoute,
+} as any)
+const CompensationCasesRoute = CompensationCasesRouteImport.update({
+  id: '/cases',
+  path: '/cases',
+  getParentRoute: () => CompensationRoute,
+} as any)
+const CompensationBranchesRoute = CompensationBranchesRouteImport.update({
+  id: '/branches',
+  path: '/branches',
+  getParentRoute: () => CompensationRoute,
+} as any)
+const AuthenticatedTeamRoute = AuthenticatedTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSubscribeRoute = AuthenticatedSubscribeRouteImport.update({
+  id: '/subscribe',
+  path: '/subscribe',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSecurityRoute = AuthenticatedSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPromotionsRoute = AuthenticatedPromotionsRouteImport.update({
+  id: '/promotions',
+  path: '/promotions',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedInvoiceCheckRoute =
+  AuthenticatedInvoiceCheckRouteImport.update({
+    id: '/invoice-check',
+    path: '/invoice-check',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const ProductsPromotionsRoiRoute = ProductsPromotionsRoiRouteImport.update({
-  id: '/products/promotions-roi',
-  path: '/products/promotions-roi',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ProductsSmartAlertsRoute = ProductsSmartAlertsRouteImport.update({
-  id: '/products/smart-alerts',
-  path: '/products/smart-alerts',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedHistoryRoute = AuthenticatedHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
-  id: '/.lovable/oauth/consent',
-  path: '/.lovable/oauth/consent',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedExceptionsRoute = AuthenticatedExceptionsRouteImport.update({
+  id: '/exceptions',
+  path: '/exceptions',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPublicCspReportRoute = ApiPublicCspReportRouteImport.update({
-  id: '/api/public/csp-report',
-  path: '/api/public/csp-report',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPublicTelegramWebhookRoute =
-  ApiPublicTelegramWebhookRouteImport.update({
-    id: '/api/public/telegram-webhook',
-    path: '/api/public/telegram-webhook',
+const AuthenticatedDailyRoute = AuthenticatedDailyRouteImport.update({
+  id: '/daily',
+  path: '/daily',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedContractsRoute = AuthenticatedContractsRouteImport.update({
+  id: '/contracts',
+  path: '/contracts',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedChargesRoute = AuthenticatedChargesRouteImport.update({
+  id: '/charges',
+  path: '/charges',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBreakdownRoute = AuthenticatedBreakdownRouteImport.update({
+  id: '/breakdown',
+  path: '/breakdown',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBranchesRoute = AuthenticatedBranchesRouteImport.update({
+  id: '/branches',
+  path: '/branches',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAskRoute = AuthenticatedAskRouteImport.update({
+  id: '/ask',
+  path: '/ask',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAiRoute = AuthenticatedAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
 const OpsClientsWorkspaceIdRoute = OpsClientsWorkspaceIdRouteImport.update({
@@ -422,14 +406,20 @@ const OpsClientsWorkspaceIdRoute = OpsClientsWorkspaceIdRouteImport.update({
   path: '/clients/$workspaceId',
   getParentRoute: () => OpsRoute,
 } as any)
-const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
-  id: '/lovable/email/auth/preview',
-  path: '/lovable/email/auth/preview',
+const ApiPublicTelegramWebhookRoute =
+  ApiPublicTelegramWebhookRouteImport.update({
+    id: '/api/public/telegram-webhook',
+    path: '/api/public/telegram-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCspReportRoute = ApiPublicCspReportRouteImport.update({
+  id: '/api/public/csp-report',
+  path: '/api/public/csp-report',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
-  id: '/lovable/email/auth/webhook',
-  path: '/lovable/email/auth/webhook',
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LovableEmailTransactionalPreviewRoute =
@@ -438,6 +428,16 @@ const LovableEmailTransactionalPreviewRoute =
     path: '/lovable/email/transactional/preview',
     getParentRoute: () => rootRouteImport,
   } as any)
+const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
+  id: '/lovable/email/auth/webhook',
+  path: '/lovable/email/auth/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
+  id: '/lovable/email/auth/preview',
+  path: '/lovable/email/auth/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCompensationEvidenceEvidenceIdMediaRoute =
   ApiCompensationEvidenceEvidenceIdMediaRouteImport.update({
     id: '/api/compensation/evidence/$evidenceId/media',
@@ -922,123 +922,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated': {
-      id: '/_authenticated'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/accept-invite': {
-      id: '/accept-invite'
-      path: '/accept-invite'
-      fullPath: '/accept-invite'
-      preLoaderRoute: typeof AcceptInviteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/compensation': {
-      id: '/compensation'
-      path: '/compensation'
-      fullPath: '/compensation'
-      preLoaderRoute: typeof CompensationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contact': {
-      id: '/contact'
-      path: '/contact'
-      fullPath: '/contact'
-      preLoaderRoute: typeof ContactRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cookies': {
-      id: '/cookies'
-      path: '/cookies'
-      fullPath: '/cookies'
-      preLoaderRoute: typeof CookiesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/email-confirmed': {
-      id: '/email-confirmed'
-      path: '/email-confirmed'
-      fullPath: '/email-confirmed'
-      preLoaderRoute: typeof EmailConfirmedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/llms-full.txt': {
-      id: '/llms-full.txt'
-      path: '/llms-full.txt'
-      fullPath: '/llms-full.txt'
-      preLoaderRoute: typeof LlmsFullDottxtRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/llms.txt': {
-      id: '/llms.txt'
-      path: '/llms.txt'
-      fullPath: '/llms.txt'
-      preLoaderRoute: typeof LlmsDottxtRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ops': {
-      id: '/ops'
-      path: '/ops'
-      fullPath: '/ops'
-      preLoaderRoute: typeof OpsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pricing.md': {
-      id: '/pricing.md'
-      path: '/pricing.md'
-      fullPath: '/pricing.md'
-      preLoaderRoute: typeof PricingDotmdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/refund-policy': {
-      id: '/refund-policy'
-      path: '/refund-policy'
-      fullPath: '/refund-policy'
-      preLoaderRoute: typeof RefundPolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/robots.txt': {
-      id: '/robots.txt'
-      path: '/robots.txt'
-      fullPath: '/robots.txt'
-      preLoaderRoute: typeof RobotsDottxtRouteImport
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -1048,193 +936,130 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.well-known/oauth-protected-resource': {
-      id: '/.well-known/oauth-protected-resource'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource'
-      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/ai': {
-      id: '/_authenticated/ai'
-      path: '/ai'
-      fullPath: '/ai'
-      preLoaderRoute: typeof AuthenticatedAiRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/refund-policy': {
+      id: '/refund-policy'
+      path: '/refund-policy'
+      fullPath: '/refund-policy'
+      preLoaderRoute: typeof RefundPolicyRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/ask': {
-      id: '/_authenticated/ask'
-      path: '/ask'
-      fullPath: '/ask'
-      preLoaderRoute: typeof AuthenticatedAskRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/branches': {
-      id: '/_authenticated/branches'
-      path: '/branches'
-      fullPath: '/branches'
-      preLoaderRoute: typeof AuthenticatedBranchesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/pricing.md': {
+      id: '/pricing.md'
+      path: '/pricing.md'
+      fullPath: '/pricing.md'
+      preLoaderRoute: typeof PricingDotmdRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/breakdown': {
-      id: '/_authenticated/breakdown'
-      path: '/breakdown'
-      fullPath: '/breakdown'
-      preLoaderRoute: typeof AuthenticatedBreakdownRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/ops': {
+      id: '/ops'
+      path: '/ops'
+      fullPath: '/ops'
+      preLoaderRoute: typeof OpsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/charges': {
-      id: '/_authenticated/charges'
-      path: '/charges'
-      fullPath: '/charges'
-      preLoaderRoute: typeof AuthenticatedChargesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/contracts': {
-      id: '/_authenticated/contracts'
-      path: '/contracts'
-      fullPath: '/contracts'
-      preLoaderRoute: typeof AuthenticatedContractsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/llms.txt': {
+      id: '/llms.txt'
+      path: '/llms.txt'
+      fullPath: '/llms.txt'
+      preLoaderRoute: typeof LlmsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/daily': {
-      id: '/_authenticated/daily'
-      path: '/daily'
-      fullPath: '/daily'
-      preLoaderRoute: typeof AuthenticatedDailyRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/llms-full.txt': {
+      id: '/llms-full.txt'
+      path: '/llms-full.txt'
+      fullPath: '/llms-full.txt'
+      preLoaderRoute: typeof LlmsFullDottxtRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/email-confirmed': {
+      id: '/email-confirmed'
+      path: '/email-confirmed'
+      fullPath: '/email-confirmed'
+      preLoaderRoute: typeof EmailConfirmedRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/exceptions': {
-      id: '/_authenticated/exceptions'
-      path: '/exceptions'
-      fullPath: '/exceptions'
-      preLoaderRoute: typeof AuthenticatedExceptionsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/cookies': {
+      id: '/cookies'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof CookiesRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/history': {
-      id: '/_authenticated/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof AuthenticatedHistoryRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/import': {
-      id: '/_authenticated/import'
-      path: '/import'
-      fullPath: '/import'
-      preLoaderRoute: typeof AuthenticatedImportRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/compensation': {
+      id: '/compensation'
+      path: '/compensation'
+      fullPath: '/compensation'
+      preLoaderRoute: typeof CompensationRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/invoice-check': {
-      id: '/_authenticated/invoice-check'
-      path: '/invoice-check'
-      fullPath: '/invoice-check'
-      preLoaderRoute: typeof AuthenticatedInvoiceCheckRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/promotions': {
-      id: '/_authenticated/promotions'
-      path: '/promotions'
-      fullPath: '/promotions'
-      preLoaderRoute: typeof AuthenticatedPromotionsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/accept-invite': {
+      id: '/accept-invite'
+      path: '/accept-invite'
+      fullPath: '/accept-invite'
+      preLoaderRoute: typeof AcceptInviteRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/security': {
-      id: '/_authenticated/security'
-      path: '/security'
-      fullPath: '/security'
-      preLoaderRoute: typeof AuthenticatedSecurityRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/subscribe': {
-      id: '/_authenticated/subscribe'
-      path: '/subscribe'
-      fullPath: '/subscribe'
-      preLoaderRoute: typeof AuthenticatedSubscribeRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/team': {
-      id: '/_authenticated/team'
-      path: '/team'
-      fullPath: '/team'
-      preLoaderRoute: typeof AuthenticatedTeamRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/compensation/': {
-      id: '/compensation/'
+    '/': {
+      id: '/'
       path: '/'
-      fullPath: '/compensation/'
-      preLoaderRoute: typeof CompensationIndexRouteImport
-      parentRoute: typeof CompensationRoute
-    }
-    '/compensation/branches': {
-      id: '/compensation/branches'
-      path: '/branches'
-      fullPath: '/compensation/branches'
-      preLoaderRoute: typeof CompensationBranchesRouteImport
-      parentRoute: typeof CompensationRoute
-    }
-    '/compensation/cases': {
-      id: '/compensation/cases'
-      path: '/cases'
-      fullPath: '/compensation/cases'
-      preLoaderRoute: typeof CompensationCasesRouteImport
-      parentRoute: typeof CompensationRoute
-    }
-    '/compensation/evidence': {
-      id: '/compensation/evidence'
-      path: '/evidence'
-      fullPath: '/compensation/evidence'
-      preLoaderRoute: typeof CompensationEvidenceRouteImport
-      parentRoute: typeof CompensationRoute
-    }
-    '/compensation/scanner': {
-      id: '/compensation/scanner'
-      path: '/scanner'
-      fullPath: '/compensation/scanner'
-      preLoaderRoute: typeof CompensationScannerRouteImport
-      parentRoute: typeof CompensationRoute
-    }
-    '/guides/': {
-      id: '/guides/'
-      path: '/guides'
-      fullPath: '/guides/'
-      preLoaderRoute: typeof GuidesIndexRouteImport
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/guides/hungerstation-compensation': {
-      id: '/guides/hungerstation-compensation'
-      path: '/guides/hungerstation-compensation'
-      fullPath: '/guides/hungerstation-compensation'
-      preLoaderRoute: typeof GuidesHungerstationCompensationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/guides/jahez-commission': {
-      id: '/guides/jahez-commission'
-      path: '/guides/jahez-commission'
-      fullPath: '/guides/jahez-commission'
-      preLoaderRoute: typeof GuidesJahezCommissionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/guides/keeta-invoice': {
-      id: '/guides/keeta-invoice'
-      path: '/guides/keeta-invoice'
-      fullPath: '/guides/keeta-invoice'
-      preLoaderRoute: typeof GuidesKeetaInvoiceRouteImport
+    '/products/': {
+      id: '/products/'
+      path: '/products'
+      fullPath: '/products/'
+      preLoaderRoute: typeof ProductsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ops/': {
@@ -1244,109 +1069,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OpsIndexRouteImport
       parentRoute: typeof OpsRoute
     }
-    '/ops/archive': {
-      id: '/ops/archive'
-      path: '/archive'
-      fullPath: '/ops/archive'
-      preLoaderRoute: typeof OpsArchiveRouteImport
-      parentRoute: typeof OpsRoute
-    }
-    '/ops/clients': {
-      id: '/ops/clients'
-      path: '/clients'
-      fullPath: '/ops/clients'
-      preLoaderRoute: typeof OpsClientsRouteImport
-      parentRoute: typeof OpsRoute
-    }
-    '/ops/logs': {
-      id: '/ops/logs'
-      path: '/logs'
-      fullPath: '/ops/logs'
-      preLoaderRoute: typeof OpsLogsRouteImport
-      parentRoute: typeof OpsRoute
-    }
-    '/ops/messages': {
-      id: '/ops/messages'
-      path: '/messages'
-      fullPath: '/ops/messages'
-      preLoaderRoute: typeof OpsMessagesRouteImport
-      parentRoute: typeof OpsRoute
-    }
-    '/ops/payments': {
-      id: '/ops/payments'
-      path: '/payments'
-      fullPath: '/ops/payments'
-      preLoaderRoute: typeof OpsPaymentsRouteImport
-      parentRoute: typeof OpsRoute
-    }
-    '/ops/plans': {
-      id: '/ops/plans'
-      path: '/plans'
-      fullPath: '/ops/plans'
-      preLoaderRoute: typeof OpsPlansRouteImport
-      parentRoute: typeof OpsRoute
-    }
-    '/ops/staff': {
-      id: '/ops/staff'
-      path: '/staff'
-      fullPath: '/ops/staff'
-      preLoaderRoute: typeof OpsStaffRouteImport
-      parentRoute: typeof OpsRoute
-    }
-    '/ops/subscriptions': {
-      id: '/ops/subscriptions'
-      path: '/subscriptions'
-      fullPath: '/ops/subscriptions'
-      preLoaderRoute: typeof OpsSubscriptionsRouteImport
-      parentRoute: typeof OpsRoute
-    }
-    '/ops/tasks': {
-      id: '/ops/tasks'
-      path: '/tasks'
-      fullPath: '/ops/tasks'
-      preLoaderRoute: typeof OpsTasksRouteImport
-      parentRoute: typeof OpsRoute
-    }
-    '/ops/usage': {
-      id: '/ops/usage'
-      path: '/usage'
-      fullPath: '/ops/usage'
-      preLoaderRoute: typeof OpsUsageRouteImport
-      parentRoute: typeof OpsRoute
-    }
-    '/products/': {
-      id: '/products/'
-      path: '/products'
-      fullPath: '/products/'
-      preLoaderRoute: typeof ProductsIndexRouteImport
+    '/guides/': {
+      id: '/guides/'
+      path: '/guides'
+      fullPath: '/guides/'
+      preLoaderRoute: typeof GuidesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/products/compensation-claims': {
-      id: '/products/compensation-claims'
-      path: '/products/compensation-claims'
-      fullPath: '/products/compensation-claims'
-      preLoaderRoute: typeof ProductsCompensationClaimsRouteImport
-      parentRoute: typeof rootRouteImport
+    '/compensation/': {
+      id: '/compensation/'
+      path: '/'
+      fullPath: '/compensation/'
+      preLoaderRoute: typeof CompensationIndexRouteImport
+      parentRoute: typeof CompensationRoute
     }
-    '/products/delivery-fees-map': {
-      id: '/products/delivery-fees-map'
-      path: '/products/delivery-fees-map'
-      fullPath: '/products/delivery-fees-map'
-      preLoaderRoute: typeof ProductsDeliveryFeesMapRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/products/exceptions-center': {
-      id: '/products/exceptions-center'
-      path: '/products/exceptions-center'
-      fullPath: '/products/exceptions-center'
-      preLoaderRoute: typeof ProductsExceptionsCenterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/products/invoice-reconciliation': {
-      id: '/products/invoice-reconciliation'
-      path: '/products/invoice-reconciliation'
-      fullPath: '/products/invoice-reconciliation'
-      preLoaderRoute: typeof ProductsInvoiceReconciliationRouteImport
+    '/products/smart-alerts': {
+      id: '/products/smart-alerts'
+      path: '/products/smart-alerts'
+      fullPath: '/products/smart-alerts'
+      preLoaderRoute: typeof ProductsSmartAlertsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/products/promotions-roi': {
@@ -1356,32 +1097,270 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductsPromotionsRoiRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/products/smart-alerts': {
-      id: '/products/smart-alerts'
-      path: '/products/smart-alerts'
-      fullPath: '/products/smart-alerts'
-      preLoaderRoute: typeof ProductsSmartAlertsRouteImport
+    '/products/invoice-reconciliation': {
+      id: '/products/invoice-reconciliation'
+      path: '/products/invoice-reconciliation'
+      fullPath: '/products/invoice-reconciliation'
+      preLoaderRoute: typeof ProductsInvoiceReconciliationRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.lovable/oauth/consent': {
-      id: '/.lovable/oauth/consent'
-      path: '/.lovable/oauth/consent'
-      fullPath: '/.lovable/oauth/consent'
-      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+    '/products/exceptions-center': {
+      id: '/products/exceptions-center'
+      path: '/products/exceptions-center'
+      fullPath: '/products/exceptions-center'
+      preLoaderRoute: typeof ProductsExceptionsCenterRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/csp-report': {
-      id: '/api/public/csp-report'
-      path: '/api/public/csp-report'
-      fullPath: '/api/public/csp-report'
-      preLoaderRoute: typeof ApiPublicCspReportRouteImport
+    '/products/delivery-fees-map': {
+      id: '/products/delivery-fees-map'
+      path: '/products/delivery-fees-map'
+      fullPath: '/products/delivery-fees-map'
+      preLoaderRoute: typeof ProductsDeliveryFeesMapRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/telegram-webhook': {
-      id: '/api/public/telegram-webhook'
-      path: '/api/public/telegram-webhook'
-      fullPath: '/api/public/telegram-webhook'
-      preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
+    '/products/compensation-claims': {
+      id: '/products/compensation-claims'
+      path: '/products/compensation-claims'
+      fullPath: '/products/compensation-claims'
+      preLoaderRoute: typeof ProductsCompensationClaimsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ops/usage': {
+      id: '/ops/usage'
+      path: '/usage'
+      fullPath: '/ops/usage'
+      preLoaderRoute: typeof OpsUsageRouteImport
+      parentRoute: typeof OpsRoute
+    }
+    '/ops/tasks': {
+      id: '/ops/tasks'
+      path: '/tasks'
+      fullPath: '/ops/tasks'
+      preLoaderRoute: typeof OpsTasksRouteImport
+      parentRoute: typeof OpsRoute
+    }
+    '/ops/subscriptions': {
+      id: '/ops/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/ops/subscriptions'
+      preLoaderRoute: typeof OpsSubscriptionsRouteImport
+      parentRoute: typeof OpsRoute
+    }
+    '/ops/staff': {
+      id: '/ops/staff'
+      path: '/staff'
+      fullPath: '/ops/staff'
+      preLoaderRoute: typeof OpsStaffRouteImport
+      parentRoute: typeof OpsRoute
+    }
+    '/ops/plans': {
+      id: '/ops/plans'
+      path: '/plans'
+      fullPath: '/ops/plans'
+      preLoaderRoute: typeof OpsPlansRouteImport
+      parentRoute: typeof OpsRoute
+    }
+    '/ops/payments': {
+      id: '/ops/payments'
+      path: '/payments'
+      fullPath: '/ops/payments'
+      preLoaderRoute: typeof OpsPaymentsRouteImport
+      parentRoute: typeof OpsRoute
+    }
+    '/ops/messages': {
+      id: '/ops/messages'
+      path: '/messages'
+      fullPath: '/ops/messages'
+      preLoaderRoute: typeof OpsMessagesRouteImport
+      parentRoute: typeof OpsRoute
+    }
+    '/ops/logs': {
+      id: '/ops/logs'
+      path: '/logs'
+      fullPath: '/ops/logs'
+      preLoaderRoute: typeof OpsLogsRouteImport
+      parentRoute: typeof OpsRoute
+    }
+    '/ops/clients': {
+      id: '/ops/clients'
+      path: '/clients'
+      fullPath: '/ops/clients'
+      preLoaderRoute: typeof OpsClientsRouteImport
+      parentRoute: typeof OpsRoute
+    }
+    '/ops/archive': {
+      id: '/ops/archive'
+      path: '/archive'
+      fullPath: '/ops/archive'
+      preLoaderRoute: typeof OpsArchiveRouteImport
+      parentRoute: typeof OpsRoute
+    }
+    '/guides/keeta-invoice': {
+      id: '/guides/keeta-invoice'
+      path: '/guides/keeta-invoice'
+      fullPath: '/guides/keeta-invoice'
+      preLoaderRoute: typeof GuidesKeetaInvoiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guides/jahez-commission': {
+      id: '/guides/jahez-commission'
+      path: '/guides/jahez-commission'
+      fullPath: '/guides/jahez-commission'
+      preLoaderRoute: typeof GuidesJahezCommissionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guides/hungerstation-compensation': {
+      id: '/guides/hungerstation-compensation'
+      path: '/guides/hungerstation-compensation'
+      fullPath: '/guides/hungerstation-compensation'
+      preLoaderRoute: typeof GuidesHungerstationCompensationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compensation/scanner': {
+      id: '/compensation/scanner'
+      path: '/scanner'
+      fullPath: '/compensation/scanner'
+      preLoaderRoute: typeof CompensationScannerRouteImport
+      parentRoute: typeof CompensationRoute
+    }
+    '/compensation/evidence': {
+      id: '/compensation/evidence'
+      path: '/evidence'
+      fullPath: '/compensation/evidence'
+      preLoaderRoute: typeof CompensationEvidenceRouteImport
+      parentRoute: typeof CompensationRoute
+    }
+    '/compensation/cases': {
+      id: '/compensation/cases'
+      path: '/cases'
+      fullPath: '/compensation/cases'
+      preLoaderRoute: typeof CompensationCasesRouteImport
+      parentRoute: typeof CompensationRoute
+    }
+    '/compensation/branches': {
+      id: '/compensation/branches'
+      path: '/branches'
+      fullPath: '/compensation/branches'
+      preLoaderRoute: typeof CompensationBranchesRouteImport
+      parentRoute: typeof CompensationRoute
+    }
+    '/_authenticated/team': {
+      id: '/_authenticated/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof AuthenticatedTeamRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/subscribe': {
+      id: '/_authenticated/subscribe'
+      path: '/subscribe'
+      fullPath: '/subscribe'
+      preLoaderRoute: typeof AuthenticatedSubscribeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/security': {
+      id: '/_authenticated/security'
+      path: '/security'
+      fullPath: '/security'
+      preLoaderRoute: typeof AuthenticatedSecurityRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/promotions': {
+      id: '/_authenticated/promotions'
+      path: '/promotions'
+      fullPath: '/promotions'
+      preLoaderRoute: typeof AuthenticatedPromotionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/invoice-check': {
+      id: '/_authenticated/invoice-check'
+      path: '/invoice-check'
+      fullPath: '/invoice-check'
+      preLoaderRoute: typeof AuthenticatedInvoiceCheckRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/import': {
+      id: '/_authenticated/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof AuthenticatedImportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/history': {
+      id: '/_authenticated/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof AuthenticatedHistoryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/exceptions': {
+      id: '/_authenticated/exceptions'
+      path: '/exceptions'
+      fullPath: '/exceptions'
+      preLoaderRoute: typeof AuthenticatedExceptionsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/daily': {
+      id: '/_authenticated/daily'
+      path: '/daily'
+      fullPath: '/daily'
+      preLoaderRoute: typeof AuthenticatedDailyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/contracts': {
+      id: '/_authenticated/contracts'
+      path: '/contracts'
+      fullPath: '/contracts'
+      preLoaderRoute: typeof AuthenticatedContractsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/charges': {
+      id: '/_authenticated/charges'
+      path: '/charges'
+      fullPath: '/charges'
+      preLoaderRoute: typeof AuthenticatedChargesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/breakdown': {
+      id: '/_authenticated/breakdown'
+      path: '/breakdown'
+      fullPath: '/breakdown'
+      preLoaderRoute: typeof AuthenticatedBreakdownRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/branches': {
+      id: '/_authenticated/branches'
+      path: '/branches'
+      fullPath: '/branches'
+      preLoaderRoute: typeof AuthenticatedBranchesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/ask': {
+      id: '/_authenticated/ask'
+      path: '/ask'
+      fullPath: '/ask'
+      preLoaderRoute: typeof AuthenticatedAskRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/ai': {
+      id: '/_authenticated/ai'
+      path: '/ai'
+      fullPath: '/ai'
+      preLoaderRoute: typeof AuthenticatedAiRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ops/clients_/$workspaceId': {
@@ -1391,11 +1370,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OpsClientsWorkspaceIdRouteImport
       parentRoute: typeof OpsRoute
     }
-    '/lovable/email/auth/preview': {
-      id: '/lovable/email/auth/preview'
-      path: '/lovable/email/auth/preview'
-      fullPath: '/lovable/email/auth/preview'
-      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+    '/api/public/telegram-webhook': {
+      id: '/api/public/telegram-webhook'
+      path: '/api/public/telegram-webhook'
+      fullPath: '/api/public/telegram-webhook'
+      preLoaderRoute: typeof ApiPublicTelegramWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/csp-report': {
+      id: '/api/public/csp-report'
+      path: '/api/public/csp-report'
+      fullPath: '/api/public/csp-report'
+      preLoaderRoute: typeof ApiPublicCspReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lovable/email/auth/webhook': {
@@ -1405,11 +1405,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/transactional/preview': {
-      id: '/lovable/email/transactional/preview'
-      path: '/lovable/email/transactional/preview'
-      fullPath: '/lovable/email/transactional/preview'
-      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+    '/lovable/email/auth/preview': {
+      id: '/lovable/email/auth/preview'
+      path: '/lovable/email/auth/preview'
+      fullPath: '/lovable/email/auth/preview'
+      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/compensation/evidence/$evidenceId/media': {
