@@ -39,6 +39,7 @@ function AuthPage() {
   const search = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "signup" | "reset">(search.mode ?? "signin");
   const [resetSentTo, setResetSentTo] = useState<string | null>(null);
+  const [signupSentTo, setSignupSentTo] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -90,7 +91,11 @@ function AuthPage() {
           return;
         }
         if (data.session) await finishSignIn();
-        else toast.success("تم إنشاء الحساب — تحقق من بريدك (وصندوق الرسائل غير المرغوب فيها) لتأكيد التسجيل.");
+        else {
+          setSignupSentTo(email.trim());
+          setPassword("");
+          setName("");
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -163,6 +168,23 @@ function AuthPage() {
               setMfaStep(false);
             }}
           />
+        ) : mode === "signup" && signupSentTo ? (
+          <div className="mt-5 space-y-4" role="status">
+            <p className="rounded-md bg-success-soft p-4 text-sm leading-7">
+              تم إنشاء حسابك ✅ تحقق من بريدك <span dir="ltr" className="font-semibold">{signupSentTo}</span> واضغط على رابط التأكيد لتفعيل الحساب. إن لم تجده
+              خلال دقائق، تحقق من صندوق الرسائل غير المرغوب فيها.
+            </p>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setSignupSentTo(null);
+                setMode("signin");
+              }}
+            >
+              العودة لتسجيل الدخول
+            </Button>
+          </div>
         ) : mode === "reset" ? (
           resetSentTo ? (
             <div className="mt-5 space-y-4">
