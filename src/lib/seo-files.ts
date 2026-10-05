@@ -20,6 +20,7 @@ import {
   type PublicPlan,
 } from "./plans";
 import { GUIDES, guideMarkdown } from "./guides";
+import { PRODUCT_PAGES } from "./product-pages";
 import { CONTENT_UPDATED, EXPLAINER_VIDEO, FAQS, FEATURES } from "./site-content";
 
 export function buildSitemap(pages: PublicPage[] = PUBLIC_PAGES) {
@@ -182,6 +183,10 @@ ${FEATURES.map((feature) => `### ${feature.nameEn} (${feature.name})\n\n${featur
 ## Explainer video
 
 Arabic, 1 minute 55 seconds: ${SITE_URL}${EXPLAINER_VIDEO.src}
+
+## Product pages
+
+${PRODUCT_PAGES.map((page) => guideMarkdown(page, SITE_URL).replace(/^(#+) /gm, "#$1 ")).join("\n\n")}
 
 ## Guides
 
