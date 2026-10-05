@@ -50,7 +50,7 @@ export const APP_KNOWLEDGE: AppKnowledgeItem[] = [
   {
     key: "invoice_check",
     route: "/invoice-check",
-    label: "مطابقة الفاتورة",
+    label: "مُطابِق · مطابقة الفاتورة",
     purpose: "مقارنة كل بند محتسب من بيانات التشغيل بالقيمة المقابلة في الفاتورة أو المستند الرسمي.",
     contains: [
       "المحتسب من البيانات",
@@ -69,7 +69,7 @@ export const APP_KNOWLEDGE: AppKnowledgeItem[] = [
   {
     key: "exceptions",
     route: "/exceptions",
-    label: "مركز الاستثناءات",
+    label: "رادار · مركز الاستثناءات",
     purpose: "متابعة الفروقات المستقلة القابلة للإجراء وسير مراجعتها.",
     contains: [
       "الاستثناءات المفتوحة",
@@ -82,7 +82,7 @@ export const APP_KNOWLEDGE: AppKnowledgeItem[] = [
     sourceOfTruth: "buildPeriodExceptions + Evidence Trail",
     boundaries: [
       "الاسترداد المحتمل ليس استرداداً مؤكداً.",
-      "المجاميع الرقابية والبنود غير القابلة للتحقق مستقلاً تبقى في مطابقة الفاتورة.",
+      "المجاميع الرقابية والبنود غير القابلة للتحقق مستقلاً تبقى في «مُطابِق» (مطابقة الفاتورة).",
       "ملاحظات سير العمل الداخلية ليست مصدراً للحقائق المالية.",
     ],
   },

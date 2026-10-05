@@ -25,7 +25,7 @@ import {
   PieChart,
   Play,
   Plus,
-  Radar,
+  Eye,
   Columns3,
   Sparkles,
   Upload,
@@ -55,6 +55,7 @@ import { cn } from "@/lib/utils";
 import { listPublicPlans } from "@/lib/plans.functions";
 import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
 import { LEGAL_DOCS } from "@/lib/legal";
+import { PRODUCTS } from "@/lib/products";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { OG_IMAGE, SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
 import { CONTENT_UPDATED, EXPLAINER_VIDEO, FAQS, FEATURES, formatArabicDate } from "@/lib/site-content";
@@ -92,7 +93,7 @@ const HOME_DESCRIPTION =
 const NAV = [
   ["#features", "المنتج"],
   ["#how", "كيف يعمل"],
-  ["#compensation", "مركز التعويضات"],
+  ["#compensation", "استرداد"],
   ["#pricing", "الخطط والأسعار"],
   ["#faq", "الأسئلة"],
   ["/contact", "تواصل معنا"],
@@ -102,8 +103,8 @@ const FOOTER_GROUPS = [
   {
     title: "المنتج",
     links: [
-      ["#features", "مطابقة الفاتورة"],
-      ["#compensation", "مركز التعويضات"],
+      ["#features", "مُطابِق · مطابقة الفاتورة"],
+      ["#compensation", "استرداد · التعويضات"],
       ["#products", "كل الأدوات"],
       ["#checks", "ما الذي نراجعه"],
     ],
@@ -546,14 +547,14 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
 
         <section id="features" className="bg-[oklch(0.975_0.018_85)]">
           <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:py-28">
-            <SectionIntro eyebrow="مطابقة الفاتورة" title="ما خصمته المنصة. ما يقوله عقدك. والفرق بينهما.">
+            <SectionIntro eyebrow="مُطابِق · مطابقة الفاتورة" title="ما خصمته المنصة. ما يقوله عقدك. والفرق بينهما.">
               ارفع الفاتورة ويعيد تدقيق بناءها بنداً بنداً من ملف الطلبات. عند الاختلاف ترى البند والنسبة المحتسبة والنسبة المتفق عليها.
               <Link
                 to="/auth"
                 search={{ mode: "signup" }}
                 className="mt-6 inline-flex h-11 w-fit items-center gap-2 rounded-full bg-ink px-5 text-sm font-semibold text-ink-foreground"
               >
-                جرّب مطابقة الفاتورة
+                جرّب مُطابِق
                 <ArrowLeft className="size-4" />
               </Link>
             </SectionIntro>
@@ -858,45 +859,51 @@ function ExplainerVideoLauncher() {
 const SHOWCASE: TourItem[] = [
   {
     key: "invoice",
-    name: "مطابقة الفاتورة",
+    name: PRODUCTS.mutabiq.name,
+    descriptor: PRODUCTS.mutabiq.descriptor,
     tagline: "ما خصمته المنصة، وما يقوله عقدك، والفرق.",
     body: "ارفع الفاتورة وملف الطلبات ويعيد تدقيق احتساب كل بند من عقدك. كل فرق يظهر باسمه ومبلغه ونسبته، وجاهز للمطالبة.",
     icon: FileSpreadsheet,
   },
   {
     key: "charges",
-    name: "خريطة الرسوم",
+    name: PRODUCTS.kashif.name,
+    descriptor: PRODUCTS.kashif.descriptor,
     tagline: "أين يذهب كل ريال تخصمه المنصة.",
     body: "كل خصم في الفاتورة مصنف: عمولة، رسوم دفع، حملات، ضريبة. وأي بند لا يطابق الخريطة يظهر كبند غير مصنف بدلاً من أن يختفي.",
     icon: PieChart,
   },
   {
     key: "exceptions",
-    name: "مركز الاستثناءات",
+    name: PRODUCTS.radar.name,
+    descriptor: PRODUCTS.radar.descriptor,
     tagline: "كل فرق له حالة ومسؤول حتى يُغلق.",
     body: "الفروقات تتحول إلى استثناءات بأولوية وحالة ومسؤول، مع سجل لكل إجراء حتى يبقى إغلاق الشهر قابلاً للمراجعة.",
     icon: AlertTriangle,
   },
   {
     key: "compensation",
-    name: "مركز التعويضات",
+    name: PRODUCTS.istirdad.name,
+    descriptor: PRODUCTS.istirdad.descriptor,
     tagline: "تعويضات لم تتسبب فيها، تُعترض بالدليل.",
     body: "الكاشير يرسل فيديو الطلب في قروب الفرع على Telegram، وتدقيق يربطه برقم الطلب ويجهز ملف الاعتراض بالعربي والإنجليزي.",
     icon: Video,
   },
   {
     key: "promotions",
-    name: "عائد الإعلانات الحقيقي",
+    name: PRODUCTS.aaid.name,
+    descriptor: PRODUCTS.aaid.descriptor,
     tagline: "الربح بعد العمولة والخصومات، لا رقم المنصة.",
     body: "لكل حملة ما دفعته فيها وما بقي لك فعلاً بعد العمولة والخصومات والإعلان، مع الحملات الخاسرة وأين تنقل ميزانيتك.",
     icon: Megaphone,
   },
   {
     key: "watch",
-    name: "المراقب الذكي",
+    name: PRODUCTS.raqeeb.name,
+    descriptor: PRODUCTS.raqeeb.descriptor,
     tagline: "يقارن كل فرع بتاريخه، وينبّهك لما هو غير معتاد.",
     body: "بعد كل رفع يقارن تدقيق العمولة والرسوم والتعويضات لكل فرع بأشهره السابقة وبالفروع المشابهة، ويرتب التنبيهات حسب أثرها بالريال.",
-    icon: Radar,
+    icon: Eye,
   },
   {
     key: "columns",
@@ -907,14 +914,15 @@ const SHOWCASE: TourItem[] = [
   },
   {
     key: "ai",
-    name: "Tadqeeq AI",
+    name: PRODUCTS.ai.name,
+    descriptor: PRODUCTS.ai.descriptor,
     tagline: "أرقامك، مشروحة بلغة بسيطة.",
     body: "اسأل عن أي فترة واحصل على إجابة من الحقائق المدققة. الأرقام من المحرك المحاسبي، والصياغة من الذكاء الاصطناعي، ولا يغيّر أي رقم.",
     icon: Sparkles,
   },
 ];
 
-type TourItem = { key: string; name: string; tagline: string; body: string; icon: LucideIcon; points?: string[] };
+type TourItem = { key: string; name: string; descriptor?: string; tagline: string; body: string; icon: LucideIcon; points?: string[] };
 
 /** Scroll-pinned tour: the section stays on screen while scrolling moves through the items. */
 function PinnedTour({
@@ -1012,7 +1020,10 @@ function PinnedTour({
                     {counter(state.index)}
                   </span>
                 </div>
-                <h3 className="mt-5 font-display text-5xl font-extrabold leading-[1.25]">{current.name}</h3>
+                <h3 className="mt-5 font-display text-5xl font-extrabold leading-[1.25]">
+                  {current.name}
+                  {current.descriptor ? <span className="ms-3 align-middle text-lg font-semibold text-primary-text">{current.descriptor}</span> : null}
+                </h3>
                 <p className="mt-4 text-xl font-medium text-foreground/85">{current.tagline}</p>
                 <p className="mt-3 max-w-lg text-base leading-8 text-muted-foreground">{current.body}</p>
                 {current.points ? (
@@ -1105,7 +1116,10 @@ function PinnedTour({
                   {counter(index)}
                 </span>
               </div>
-              <h3 className="mt-2 font-display text-2xl font-extrabold">{item.name}</h3>
+              <h3 className="mt-2 font-display text-2xl font-extrabold">
+                {item.name}
+                {item.descriptor ? <span className="ms-2 align-middle text-sm font-semibold text-primary-text">{item.descriptor}</span> : null}
+              </h3>
               <p className="mt-1 text-[15px] font-medium">{item.tagline}</p>
               <p className="mt-1 text-[13px] leading-6 text-muted-foreground">{item.body}</p>
               {item.points ? (
@@ -1447,7 +1461,7 @@ function ShowcaseVisual({ kind, active }: { kind: string; active: boolean }) {
       <div className={card}>
         <div className="flex items-center justify-between">
           <p className="flex items-center gap-2 text-sm font-semibold">
-            <Radar className="size-4 text-primary-text" /> المراقب الذكي
+            <Eye className="size-4 text-primary-text" /> رقيب <span className="font-normal text-muted-foreground">· المراقب الذكي</span>
           </p>
           <span className="rounded-full bg-destructive/12 px-2.5 py-0.5 text-[11px] font-semibold text-destructive">تنبيه واحد</span>
         </div>
@@ -2210,7 +2224,7 @@ const COMP_FLOW: FlowStep[] = [
   },
   {
     title: "متابعة حتى الاسترداد",
-    who: "في مركز التعويضات",
+    who: "في «استرداد»",
     body: "كل حالة تتنقل من مرسلة إلى مقبولة ثم مسترَدة، مع مرجع المنصة ولوحة تعرض ما استرددته فعلاً.",
     detail: "المبالغ المسترَدة ونسبة الاسترداد لكل فرع ومنصة في مكان واحد.",
     icon: HandCoins,
@@ -2410,7 +2424,7 @@ function CompensationFlow() {
   return (
     <ScrollFlow
       id="compensation"
-      eyebrow="مركز التعويضات"
+      eyebrow="استرداد · مركز التعويضات"
       title="تعويض لم تتسبب فيه؟ اعترض عليه بالدليل."
       tone="success"
       className="bg-success-soft"
@@ -2437,7 +2451,7 @@ const HOW_FLOW: FlowStep[] = [
   },
   {
     title: "راجع الفروقات",
-    who: "مركز الاستثناءات",
+    who: "في «رادار»",
     body: "كل فرق يتحول إلى استثناء بخطورته ومصدره ومعادلته والسطر المقابل في الفاتورة، ويُسند لمسؤول بحالة واضحة.",
     detail: "الحالات: جديد ← قيد المراجعة ← تم التواصل ← تم الاعتراض ← تم الاسترداد، ويشرح Tadqeeq AI أي فرق دون أن يغيّر رقمه.",
     icon: SearchCheck,
@@ -2958,7 +2972,7 @@ function PlanCardFeatures({ plans, index, dark, addonOffered }: { plans: PublicP
             <span className="block font-semibold">
               إضافة اختيارية · <span className="num">{addon.price.toLocaleString("en-US")}</span> ر.س كل {addon.months} أشهر
             </span>
-            <span className="block">مركز التعويضات، و Tadqeeq AI، والتدقيق من Claude و ChatGPT</span>
+            <span className="block">«استرداد» للتعويضات، و Tadqeeq AI، والتدقيق من Claude و ChatGPT</span>
           </span>
         </p>
       ) : null}

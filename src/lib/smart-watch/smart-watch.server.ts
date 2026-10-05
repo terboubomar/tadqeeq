@@ -11,7 +11,7 @@ type LooseClient = { from: (table: string) => any };
 
 const TABLE = "smart_watch_acceptances";
 
-export const SMART_WATCH_TABLE_MISSING = "حفظ إجابات المراقب الذكي يحتاج تحديث قاعدة البيانات (migration 0034).";
+export const SMART_WATCH_TABLE_MISSING = "حفظ إجابات «رقيب» يحتاج تحديث قاعدة البيانات (migration 0034).";
 
 function isTableMissing(error: { code?: string; message: string }): boolean {
   return error.code === "42P01" || (/smart_watch_/.test(error.message) && /does not exist|schema cache/i.test(error.message));

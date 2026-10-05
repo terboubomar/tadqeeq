@@ -28,7 +28,7 @@ export function accessMessage(access: McpAccess): string {
       return "حساب تدقيق موقوف حالياً. تواصل مع فريق تدقيق لإعادة التفعيل. / This Tadqeeq account is suspended.";
     case "trial":
     case "plan":
-      return `استخدام تدقيق من Claude و ChatGPT متاح في باقة «الشاملة»، أو مع الإضافة (مركز التعويضات و Tadqeeq AI) في أي باقة${access.plan_name ? ` (باقتك الحالية: ${access.plan_name})` : " (حسابك في التجربة المجانية)"}. اطلبها من ${APP_URL}/subscribe / Available on the الشاملة plan or with the add-on on any plan.`;
+      return `استخدام تدقيق من Claude و ChatGPT متاح في باقة «الشاملة»، أو مع إضافة «استرداد» و Tadqeeq AI في أي باقة${access.plan_name ? ` (باقتك الحالية: ${access.plan_name})` : " (حسابك في التجربة المجانية)"}. اطلبها من ${APP_URL}/subscribe / Available on the الشاملة plan or with the add-on on any plan.`;
     default:
       return "";
   }

@@ -24,12 +24,20 @@ import { latestPeriod, useSelectedPeriod } from "@/lib/use-period";
 import { ordersMonthLabel } from "@/lib/plans";
 import { PLATFORM_BRANDS, PLATFORM_KEYS, type PlatformKey } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
+import { PRODUCTS, type ProductKey } from "@/lib/products";
 import { WORKSPACE_ROLE_LABELS, type WorkspacePermission } from "@/lib/workspace-access";
 import { LogoWordmark } from "@/components/brand/Logo";
 import { PlatformIcon } from "@/components/brand/PlatformLogo";
 import { NotificationBell, UserMenu, type AppNotice } from "@/components/dash/TopBarMenus";
 
-type NavItem = { to: string; label: string; permission: WorkspacePermission; adminOnly?: boolean };
+type NavItem = { to: string; label: string; hint?: string; permission: WorkspacePermission; adminOnly?: boolean };
+
+const productNav = (key: ProductKey, permission: WorkspacePermission): NavItem => ({
+  to: PRODUCTS[key].path,
+  label: PRODUCTS[key].name,
+  hint: PRODUCTS[key].descriptor,
+  permission,
+});
 
 const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
   {
@@ -44,11 +52,11 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
   {
     title: "التدقيق",
     items: [
-      { to: "/invoice-check", label: "مطابقة الفاتورة", permission: "financials.read" },
-      { to: "/charges", label: "خريطة الرسوم", permission: "financials.read" },
-      { to: "/promotions", label: "تحليل العروض و ROI", permission: "financials.read" },
-      { to: "/exceptions", label: "مركز الاستثناءات", permission: "exceptions.read" },
-      { to: "/compensation", label: "مركز التعويضات", permission: "compensation.read" },
+      productNav("mutabiq", "financials.read"),
+      productNav("kashif", "financials.read"),
+      productNav("aaid", "financials.read"),
+      productNav("radar", "exceptions.read"),
+      productNav("istirdad", "compensation.read"),
     ],
   },
   {
@@ -313,7 +321,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                                 : "border-transparent text-ink-muted hover:bg-ink-2 hover:text-ink-foreground",
                             )}
                           >
-                            <span className={cn(item.locked && "opacity-60")}>{item.label}</span>
+                            <span className={cn("flex min-w-0 items-baseline gap-1.5", item.locked && "opacity-60")}>
+                              <span>{item.label}</span>
+                              {item.hint ? <span className="truncate text-[11px] font-normal opacity-60">{item.hint}</span> : null}
+                            </span>
                             {item.locked ? (
                               <Lock aria-label="متاح بعد الاشتراك" className="size-3.5 shrink-0 text-primary" />
                             ) : badge ? (

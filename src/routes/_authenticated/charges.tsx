@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { productPageTitle } from "@/lib/products";
+import { ProductName } from "@/components/ProductName";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -20,7 +22,7 @@ import { useSelectedPeriod } from "@/lib/use-period";
 export const Route = createFileRoute("/_authenticated/charges")({
   head: () => ({
     meta: [
-      { title: "خريطة رسوم المنصات · تدقيق" },
+      { title: productPageTitle("kashif") },
       {
         name: "description",
         content:
@@ -64,7 +66,7 @@ function MarketplaceChargesPage() {
     return (
       <EmptyState
         title="لا توجد فترة تدقيق"
-        body="ارفع بيانات منصة أولاً حتى يتم بناء خريطة الرسوم."
+        body="ارفع بيانات منصة أولاً حتى يبني «كاشِف» خريطة الرسوم."
       />
     );
   }
@@ -83,7 +85,7 @@ function MarketplaceChargesPage() {
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="audit-heading">خريطة رسوم المنصات</h1>
+        <h1 className="audit-heading"><ProductName product="kashif" /></h1>
         <p className="audit-subtitle">
           {selected.label} · تصنيف حتمي للبنود الموجودة في نتيجة التدقيق بدون تغيير معادلات المحرك.
         </p>
@@ -107,7 +109,7 @@ function MarketplaceChargesPage() {
 
       {map.unmappedAuditAmount > 0.05 ? (
         <Callout tone="danger" icon={AlertTriangle} title="يوجد مبلغ غير مصنف يحتاج مراجعة">
-          لم يضع Tadqeeq هذا المبلغ تلقائياً تحت “أخرى”. سيظهر أيضاً في مركز الاستثناءات كبند رقابي، لكن لن يُعامل كاسترداد محتمل حتى
+          لم يضع Tadqeeq هذا المبلغ تلقائياً تحت “أخرى”. سيظهر أيضاً في «رادار» كبند رقابي، لكن لن يُعامل كاسترداد محتمل حتى
           توجد قاعدة أو مستند يثبت التصنيف والحق المالي.
         </Callout>
       ) : (

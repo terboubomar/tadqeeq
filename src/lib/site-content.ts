@@ -5,7 +5,7 @@
  */
 
 /** Last meaningful change to the public content (YYYY-MM-DD). */
-export const CONTENT_UPDATED = "2026-10-04";
+export const CONTENT_UPDATED = "2026-10-05";
 
 /** "4 أكتوبر 2026" for visible last-updated lines. */
 export function formatArabicDate(date: string): string {
@@ -26,7 +26,11 @@ export const FAQS: Array<[question: string, answer: string]> = [
   [
     // Keep in step with the plans in the ops console (migration 0038 set these prices).
     "كم سعر تدقيق؟",
-    "تدفع حسب عدد طلباتك الشهرية من كل تطبيقات التوصيل: البداية 299 ر.س شهرياً حتى 15,000 طلب، والنمو 499 ر.س حتى 45,000 طلب، والشاملة 799 ر.س بطلبات بلا حدود ومعها Tadqeeq AI ومركز التعويضات. الفروع والمنصات والمستخدمون بلا حدود في كل الباقات، والاشتراك السنوي يوفر شهرين. تبدأ بتجربة مجانية، والأسعار لا تشمل ضريبة القيمة المضافة.",
+    "تدفع حسب عدد طلباتك الشهرية من كل تطبيقات التوصيل: البداية 299 ر.س شهرياً حتى 15,000 طلب، والنمو 499 ر.س حتى 45,000 طلب، والشاملة 799 ر.س بطلبات بلا حدود ومعها «استرداد» لمركز التعويضات و Tadqeeq AI. الفروع والمنصات والمستخدمون بلا حدود في كل الباقات، والاشتراك السنوي يوفر شهرين. تبدأ بتجربة مجانية، والأسعار لا تشمل ضريبة القيمة المضافة.",
+  ],
+  [
+    "ما منتجات تدقيق؟",
+    "مُطابِق لمطابقة الفاتورة مع طلباتك وعقدك، وكاشِف لخريطة كل رسم تخصمه المنصة، ورادار لمتابعة الفروقات حتى تُغلق، واسترداد للاعتراض على التعويضات بأدلة Telegram، وعائد لربح كل عرض وإعلان بعد العمولة، ورقيب لتنبيهك لما هو غير معتاد في كل فرع، و Tadqeeq AI للإجابة عن أسئلتك عن أرقامك.",
   ],
   [
     "ما المنصات التي يدعمها تدقيق؟",
@@ -39,7 +43,7 @@ export const FAQS: Array<[question: string, answer: string]> = [
   ],
   [
     "كيف أعترض على تعويض خصمته المنصة؟",
-    "الكاشير يصوّر الطلب والفاتورة قبل تسليمه ويرسلها في قروب الفرع على Telegram، وبوت تدقيق يربطها برقم الطلب. عند خصم تعويض يبحث موظفك برقم الطلب في مركز التعويضات، فيجد الدليل ويحصل على طلب مراجعة جاهز بالعربي والإنجليزي يرسله للمنصة.",
+    "الكاشير يصوّر الطلب والفاتورة قبل تسليمه ويرسلها في قروب الفرع على Telegram، وبوت تدقيق يربطها برقم الطلب. عند خصم تعويض يبحث موظفك برقم الطلب في «استرداد» (مركز التعويضات)، فيجد الدليل ويحصل على طلب مراجعة جاهز بالعربي والإنجليزي يرسله للمنصة.",
   ],
   ["هل يحتاج موظف الفرع تطبيقاً لإرسال الأدلة؟", "لا. يرسل الصورة أو الفيديو في قروب الفرع على Telegram، والبوت يربطه برقم الطلب."],
   [
@@ -47,8 +51,8 @@ export const FAQS: Array<[question: string, answer: string]> = [
     "فاتورة كيتا الضريبية تشمل عمولة الطلبات ورسوم الإعلانات، لكن كيتا تخصم من التحويل مبالغ أخرى خارج الفاتورة، مثل خصومات الأصناف التي تموّلها وأقساط أجهزة POS. تدقيق يعرض الفاتورة الضريبية والمصاريف الأخرى كلاً على حدة، فيطابق الرقم الأول فاتورتك تماماً.",
   ],
   [
-    "ما هو المراقب الذكي في تدقيق؟",
-    "بعد كل رفع يقارن المراقب الذكي العمولة والرسوم والتعويضات لكل فرع بأشهره السابقة وبالفروع المشابهة، وينبّهك لما هو غير معتاد مرتباً حسب أثره بالريال، مثل ارتفاع عمولة طلبات الاستلام في فرع واحد. التنبيه لا يغيّر الأرقام؛ يوجّهك لما يستحق المراجعة أولاً.",
+    "ما هو «رقيب» (المراقب الذكي) في تدقيق؟",
+    "بعد كل رفع يقارن «رقيب» العمولة والرسوم والتعويضات لكل فرع بأشهره السابقة وبالفروع المشابهة، وينبّهك لما هو غير معتاد مرتباً حسب أثره بالريال، مثل ارتفاع عمولة طلبات الاستلام في فرع واحد. التنبيه لا يغيّر الأرقام؛ يوجّهك لما يستحق المراجعة أولاً.",
   ],
   [
     "ماذا لو غيّرت المنصة صيغة ملفاتها؟",
@@ -65,36 +69,36 @@ export const FAQS: Array<[question: string, answer: string]> = [
 /** What the product does, one line each (structured data featureList and the AI files). */
 export const FEATURES: Array<{ name: string; nameEn: string; description: string }> = [
   {
-    name: "مطابقة الفاتورة",
-    nameEn: "Invoice check",
+    name: "مُطابِق · مطابقة الفاتورة",
+    nameEn: "Mutabiq · Invoice check",
     description:
       "Upload the platform invoice (PDF) and the merchant order file (Excel or CSV); every line is recalculated from the orders and the contract by a versioned engine, so the same files always give the same result.",
   },
   {
-    name: "خريطة الرسوم",
-    nameEn: "Charges map",
+    name: "كاشِف · خريطة الرسوم",
+    nameEn: "Kashif · Fee map",
     description:
       "Commission, payment fees, free-delivery campaigns, VAT on fees, offers, compensations and unclassified lines, per platform and branch. For Keeta, the tax invoice and the deductions outside it are shown separately.",
   },
   {
-    name: "مركز الاستثناءات",
-    nameEn: "Exceptions center",
+    name: "رادار · مركز الاستثناءات",
+    nameEn: "Radar · Exceptions center",
     description: "Each difference gets a severity, the source invoice line, the formula, an owner and a status until it is closed.",
   },
   {
-    name: "مركز التعويضات",
-    nameEn: "Compensation center",
+    name: "استرداد · مركز التعويضات",
+    nameEn: "Istirdad · Compensation center",
     description:
       "Branch staff send order videos or receipt photos in the branch Telegram group; the bot links them to the order number (read from the caption or the receipt photo); staff search by order number and get a review request in Arabic and English. Photos and videos stay in Telegram.",
   },
   {
-    name: "عائد الإعلانات الحقيقي",
-    nameEn: "Real ad return",
+    name: "عائد · عائد العروض والإعلانات",
+    nameEn: "Aaid · Promotion & ad ROI",
     description: "Profit per campaign after commission, discounts and ad spend, not the platform's reported return; losing campaigns and budget moves.",
   },
   {
-    name: "المراقب الذكي",
-    nameEn: "Smart Watch",
+    name: "رقيب · المراقب الذكي",
+    nameEn: "Raqeeb · Smart watch",
     description: "Compares each branch with its own history and similar branches after every upload, and ranks unusual fees by their impact in SAR.",
   },
   {

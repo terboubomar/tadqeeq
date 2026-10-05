@@ -3,6 +3,8 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { productPageTitle } from "@/lib/products";
+import { ProductName } from "@/components/ProductName";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   BadgePercent,
@@ -43,7 +45,7 @@ import { useSelectedPeriod } from "@/lib/use-period";
 export const Route = createFileRoute("/_authenticated/promotions")({
   head: () => ({
     meta: [
-      { title: "عائد الإعلانات الحقيقي · تدقيق" },
+      { title: productPageTitle("aaid") },
       {
         name: "description",
         content:
@@ -59,7 +61,7 @@ function PromotionsPage() {
     <div className="space-y-6">
       <header>
         <p className="text-xs font-semibold text-primary-text">تحليل الإعلانات · هنقرستيشن</p>
-        <h1 className="audit-heading">عائد الإعلانات الحقيقي</h1>
+        <h1 className="audit-heading"><ProductName product="aaid" /></h1>
         <p className="audit-subtitle">
           ارفع تقرير الإعلانات من بوابة هنقرستيشن: كم صرفت، كم جاب الإعلان، وكم بقي لك بعد الضريبة والعمولة وتكلفة الطعام وعرض التوصيل.
         </p>
@@ -267,7 +269,7 @@ function PromotionAuditPage() {
     return (
       <EmptyState
         title="لا توجد فترة تدقيق"
-        body="ارفع بيانات منصة أولاً حتى يمكن ربط تحليل العروض بنتيجة تدقيق موثقة."
+        body="ارفع بيانات منصة أولاً حتى يربط «عائد» العروض بنتيجة تدقيق موثقة."
       />
     );
   }
@@ -307,7 +309,7 @@ function PromotionAuditPage() {
             <h2 className="text-sm font-bold">قاعدة الحساب</h2>
             <p className="mt-1 text-xs leading-6 text-muted-foreground">
               لا ينسب Tadqeeq رسوم الفترة تلقائياً إلى حملة. القيم الموثقة أدناه
-              مجرد اقتراحات من خريطة الرسوم، ويجب تأكيد استخدامها عندما تكون
+              مجرد اقتراحات من «كاشِف»، ويجب تأكيد استخدامها عندما تكون
               الحملة تغطي نفس الفترة أو عندما يكون لديك توزيع موثوق.
             </p>
           </div>
