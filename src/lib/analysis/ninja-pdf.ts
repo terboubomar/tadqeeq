@@ -56,6 +56,18 @@ function invoiceRowExVat(page: string, ...labels: string[]): number | undefined 
   return undefined;
 }
 
+function vatAmount(page: string): number | undefined {
+  for (const label of ["VAT Rate Amount", "Total VAT Amount"]) {
+    const index = page.toLowerCase().lastIndexOf(label.toLowerCase());
+    if (index < 0) continue;
+    const tail = page.slice(index + label.length, index + label.length + 100);
+    const values = (tail.match(MONEY_RE) ?? []).map(number).filter((value): value is number => value !== undefined);
+    if (values.length >= 2) return values[1];
+    if (values.length === 1) return values[0];
+  }
+  return undefined;
+}
+
 function pageWith(pages: string[], label: string): string {
   return pages.find((page) => page.toLowerCase().includes(label.toLowerCase())) ?? "";
 }
@@ -89,9 +101,7 @@ export function parseNinjaInvoiceSummary(raw: string): NinjaInvoiceSummary {
   const invoiceDate = invoicePage.match(/\b20\d{2}-\d{2}-\d{2}\b/)?.[0];
 
   const totalExVat = amountAfterLast(invoicePage, "Total Amount Excl. VAT");
-  const vat =
-    amountAfterLast(invoicePage, "VAT Rate Amount 15.0%", "VAT Rate Amount 15%", "Total VAT Amount 15%") ??
-    amountAfterLast(invoicePage, "VAT Rate Amount 0.0%", "VAT Rate Amount 0%", "Total VAT Amount 0%");
+  const vat = vatAmount(invoicePage);
   const totalIncVat = amountAfterLast(invoicePage, "Total Amount Incl. VAT");
 
   return {
