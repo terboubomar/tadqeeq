@@ -1067,6 +1067,51 @@ export type Database = {
           },
         ]
       }
+      journal_account_settings: {
+        Row: {
+          account_code: string
+          account_key: string
+          account_name: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          account_code?: string
+          account_key: string
+          account_name?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+          workspace_id?: string
+        }
+        Update: {
+          account_code?: string
+          account_key?: string
+          account_name?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_account_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_account_settings_workspace_owner_fkey"
+            columns: ["workspace_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_user_id"]
+          },
+        ]
+      }
       mcp_audit_requests: {
         Row: {
           bank_fee_pct: number | null
