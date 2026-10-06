@@ -59,7 +59,7 @@ export interface AnalystChatResult {
   model: string;
   promptVersion: string;
   scope: {
-    platform: "hungerstation" | "keeta" | "jahez" | "ninja";
+    platform: "hungerstation" | "keeta" | "jahez";
     start: string | null;
     end: string | null;
     hasPreviousPeriod: boolean;

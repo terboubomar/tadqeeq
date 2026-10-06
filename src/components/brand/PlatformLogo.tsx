@@ -3,13 +3,6 @@ import { cn } from "@/lib/utils";
 
 /** Square app-icon logo of a delivery platform, for tables, chips and pickers. */
 export function PlatformIcon({ platform, className }: { platform: PlatformKey; className?: string }) {
-  if (platform === "ninja") {
-    return (
-      <span aria-hidden="true" className={cn("grid size-5 shrink-0 place-items-center rounded-[5px] bg-ink text-[10px] font-bold text-white", className)}>
-        N
-      </span>
-    );
-  }
   return (
     <img
       src={`/platforms/${platform}.webp`}

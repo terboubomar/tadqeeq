@@ -11,7 +11,6 @@ const PLATFORM_NAMES: Record<StoredPeriod["platform"], string> = {
   hungerstation: "HungerStation (هنقرستيشن)",
   keeta: "Keeta (كيتا)",
   jahez: "Jahez (جاهز)",
-  ninja: "Ninja (نينجا)",
 };
 
 const round = (value: number | undefined | null) => (typeof value === "number" && Number.isFinite(value) ? Math.round(value * 100) / 100 : null);

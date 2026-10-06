@@ -5,10 +5,6 @@ import { UnsupportedFormatError } from "./analysis/formats/types";
 import { analyzeHungerStation, analyzeHungerStationSheets, hungerStationProjection } from "./analysis/hungerstation";
 import { analyzeJahez } from "./analysis/jahez";
 import { analyzeKeeta, analyzeKeetaSheets } from "./analysis/keeta";
-import { analyzeNinjaPdfDocuments } from "./analysis/ninja";
-import { classifyNinjaPackageFiles, extractNinjaZip } from "./analysis/ninja-package";
-import type { NinjaPdfDocument } from "./analysis/ninja-files";
-import { parseNinjaInvoiceSummary } from "./analysis/ninja-pdf";
 import { readXlsxSheets, type SheetSource } from "./analysis/xlsx-stream";
 import {
   parseCpcInvoice,
@@ -137,23 +133,12 @@ function formFile(form: FormData, key: string): File | null {
   return value && typeof value !== "string" ? value : null;
 }
 
-function formFiles(form: FormData, key: string): File[] {
-  return form
-    .getAll(key)
-    .filter((value): value is File => typeof value !== "string");
-}
-
 function formBoolean(form: FormData, key: string): boolean {
   return formString(form, key) === "true";
 }
 
 function parsePlatform(value: string): Platform {
-  if (
-    value === "hungerstation" ||
-    value === "keeta" ||
-    value === "jahez" ||
-    value === "ninja"
-  ) {
+  if (value === "hungerstation" || value === "keeta" || value === "jahez") {
     return value;
   }
   throw new Error("منصة التدقيق غير صالحة.");
@@ -342,89 +327,6 @@ export async function buildAnalysis(
   const invoiceFile = formFile(form, "invoiceFile");
   const cpcFile = formFile(form, "cpcFile");
   const compensationFile = formFile(form, "compensationFile");
-  const ninjaSummaryFiles = formFiles(form, "ninjaSummaryFiles");
-  const ninjaInvoiceFiles = formFiles(form, "ninjaInvoiceFiles");
-  const ninjaPackageFiles = formFiles(form, "ninjaPackageFiles");
-  const ninjaZipFiles = formFiles(form, "ninjaZipFiles");
-
-  if (platform === "ninja") {
-    const directMode = ninjaSummaryFiles.length > 0 || ninjaInvoiceFiles.length > 0;
-    const folderMode = ninjaPackageFiles.length > 0;
-    const zipMode = ninjaZipFiles.length > 0;
-    const modes = [directMode, folderMode, zipMode].filter(Boolean).length;
-    if (modes === 0) {
-      throw new Error("ارفع ZIP أو مجلد Ninja أو ملفات PDF مباشرة.");
-    }
-    if (modes > 1) {
-      throw new Error("اختر طريقة رفع واحدة لـ Ninja: ZIP أو مجلد أو ملفات PDF مباشرة.");
-    }
-
-    let summaries = ninjaSummaryFiles;
-    let invoices = ninjaInvoiceFiles;
-
-    if (ninjaZipFiles.length) {
-      summaries = [];
-      invoices = [];
-      for (const zipFile of ninjaZipFiles) {
-        validateFile(zipFile, "Ninja ZIP", [".zip"], true);
-        const extracted = await extractNinjaZip(zipFile);
-        summaries.push(...extracted.summaryFiles);
-        invoices.push(...extracted.invoiceFiles);
-      }
-    } else if (ninjaPackageFiles.length) {
-      for (const file of ninjaPackageFiles) {
-        validateFile(file, "Ninja PDF", [".pdf"], true);
-      }
-      const classified = classifyNinjaPackageFiles(ninjaPackageFiles);
-      summaries = classified.summaryFiles;
-      invoices = classified.invoiceFiles;
-    } else {
-      for (const file of [...summaries, ...invoices]) {
-        validateFile(file, "Ninja PDF", [".pdf"], true);
-      }
-    }
-
-    if (!summaries.length) {
-      throw new Error("لم يتم العثور على ملفات Ninja Invoice Summary.");
-    }
-    if (!invoices.length) {
-      throw new Error("لم يتم العثور على فواتير Ninja المطابقة.");
-    }
-
-    const documents: NinjaPdfDocument[] = [];
-    for (const file of summaries) {
-      const raw = await extractPdfTextServer(await file.arrayBuffer(), 30);
-      documents.push({
-        fileName: file.name,
-        summary: parseNinjaInvoiceSummary(raw),
-      });
-    }
-
-    const result = analyzeNinjaPdfDocuments(
-      invoices.map((file) => file.name),
-      documents,
-      formString(form, "label"),
-    );
-
-    return {
-      result,
-      confirmedAliases: [],
-      appliedAliases: [],
-      analysedFile: new ArrayBuffer(0),
-      analysedSheets: null,
-      sources: [
-        ...summaries.map((file) => ({
-          kind: "data" as const,
-          file,
-          formatId: result.formatIds?.[0],
-        })),
-        ...invoices.map((file) => ({
-          kind: "invoice" as const,
-          file,
-        })),
-      ],
-    };
-  }
 
   validateFile(
     dataFile,
@@ -812,7 +714,7 @@ async function syncBranchRegistry(workspaceId: string, ownerUserId: string, plat
     // branch_registry is not fully in the generated types yet.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = supabaseAdmin as any;
-    const { data, error } = await db.from("branch_registry").select("id,name,hungerstation_id,keeta_id,jahez_id,ninja_id").eq("workspace_id", workspaceId);
+    const { data, error } = await db.from("branch_registry").select("id,name,hungerstation_id,keeta_id,jahez_id").eq("workspace_id", workspaceId);
     if (error) throw new Error(error.message);
     const plan = planRegistrySync((data ?? []) as RegistryBranch[], platform, branches);
     const now = new Date().toISOString();
@@ -956,24 +858,20 @@ async function runImportAudit(
     assertApprovedMappingsBelongToAnalysis(result, approvedMappings);
   }
 
-  if (platform !== "ninja") {
-    await saveColumnAliases(client, { workspaceId, ownerUserId: userId, actorUserId, platform, aliases: confirmedAliases });
-  }
+  await saveColumnAliases(client, { workspaceId, ownerUserId: userId, actorUserId, platform, aliases: confirmedAliases });
 
   // Compare the file's money columns with the workspace's earlier files; never blocks the upload.
   let columnChanges: ColumnChange[] = [];
   let nextSnapshots: ColumnSnapshot[] | null = null;
-  if (platform !== "ninja") {
-    try {
-      const snapshots = await loadColumnSnapshots(client, userId, platform);
-      if (snapshots) {
-        const profiles = profileColumns(platform, analysedFile, analysedSheets ?? undefined);
-        columnChanges = diffColumns(snapshots, profiles);
-        nextSnapshots = mergeSnapshots(snapshots, profiles);
-      }
-    } catch (cause) {
-      console.error("Failed to compare platform columns", cause);
+  try {
+    const snapshots = await loadColumnSnapshots(client, userId, platform);
+    if (snapshots) {
+      const profiles = profileColumns(platform, analysedFile, analysedSheets ?? undefined);
+      columnChanges = diffColumns(snapshots, profiles);
+      nextSnapshots = mergeSnapshots(snapshots, profiles);
     }
+  } catch (cause) {
+    console.error("Failed to compare platform columns", cause);
   }
 
   const duplicate = await findDuplicate(client, userId, result);

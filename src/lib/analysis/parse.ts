@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 
 export interface ParseContext {
-  platform?: "hungerstation" | "keeta" | "jahez" | "ninja";
+  platform?: "hungerstation" | "keeta" | "jahez";
   file?: string;
   sheet?: string;
   row?: number;
