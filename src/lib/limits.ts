@@ -7,11 +7,6 @@
 export const MAX_UPLOAD_SIZE_BYTES = 25 * 1024 * 1024;
 export const MAX_UPLOAD_SIZE_LABEL = "25 MB";
 
-/** Maximum entries inspected in one Ninja ZIP package. */
-export const NINJA_ZIP_MAX_ENTRIES = 500;
-/** Maximum total uncompressed bytes materialized from one Ninja ZIP. */
-export const NINJA_ZIP_MAX_TOTAL_UNCOMPRESSED_BYTES = 250 * 1024 * 1024;
-
 /** Largest file the standard Telegram Bot API lets a bot download (getFile). */
 export const TELEGRAM_GET_FILE_LIMIT_BYTES = 20 * 1024 * 1024;
 
