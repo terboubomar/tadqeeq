@@ -182,6 +182,68 @@ function FileField({
   );
 }
 
+function MultiFileField({
+  id,
+  label,
+  hint,
+  files,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  files: File[];
+  onChange: (files: File[]) => void;
+}) {
+  return (
+    <div className="rounded-[12px] border border-border bg-white p-5 sm:p-6">
+      <div>
+        <Label htmlFor={id} className="text-[15px] font-semibold">{label}</Label>
+        <p className="mt-1.5 text-[13px] leading-6 text-muted-foreground">{hint}</p>
+      </div>
+      <input
+        id={id}
+        type="file"
+        accept=".pdf"
+        multiple
+        className="sr-only"
+        onChange={(event) => {
+          const selected = [...(event.target.files ?? [])];
+          const invalid = selected.find((file) => uploadSizeError(file.size));
+          if (invalid) {
+            toast.error(uploadSizeError(invalid.size) ?? "حجم الملف غير مسموح.");
+            event.currentTarget.value = "";
+            onChange([]);
+            return;
+          }
+          onChange(selected);
+        }}
+      />
+      <label
+        htmlFor={id}
+        className={cn(
+          "mt-4 flex min-h-[132px] cursor-pointer flex-col items-center justify-center gap-2 rounded-[12px] border-2 border-dashed px-4 py-7 text-center transition-colors sm:min-h-[160px]",
+          files.length ? "border-success/40 bg-success/[0.05]" : "border-input bg-background/70 hover:border-primary/50 hover:bg-secondary/40",
+        )}
+      >
+        <span className={cn("grid size-11 place-items-center rounded-full", files.length ? "bg-success/15 text-success" : "bg-secondary text-primary")}>
+          {files.length ? <Check className="size-5" /> : <Upload className="size-5" />}
+        </span>
+        <span className="text-[14px] font-semibold">
+          {files.length ? `${files.length} ملف PDF محدد` : "اختر عدة ملفات PDF"}
+        </span>
+        <span className="text-[11.5px] text-muted-foreground">PDF فقط · كل ملف حتى {MAX_UPLOAD_SIZE_LABEL}</span>
+        {files.length ? (
+          <span className="max-w-full text-[11px] leading-5 text-muted-foreground">
+            {files.slice(0, 3).map((file) => file.name).join(" · ")}
+            {files.length > 3 ? ` · +${files.length - 3}` : ""}
+          </span>
+        ) : null}
+      </label>
+    </div>
+  );
+}
+
 function ImportPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -193,6 +255,8 @@ function ImportPage() {
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [cpcFile, setCpcFile] = useState<File | null>(null);
   const [compensationFile, setCompensationFile] = useState<File | null>(null);
+  const [ninjaSummaryFiles, setNinjaSummaryFiles] = useState<File[]>([]);
+  const [ninjaInvoiceFiles, setNinjaInvoiceFiles] = useState<File[]>([]);
   const [bankRate, setBankRate] = useState(search.bankRate ?? "");
   const [label, setLabel] = useState(search.label ?? "");
   const [busy, setBusy] = useState(false);
@@ -254,6 +318,8 @@ function ImportPage() {
     setInvoiceFile(null);
     setCpcFile(null);
     setCompensationFile(null);
+    setNinjaSummaryFiles([]);
+    setNinjaInvoiceFiles([]);
     setBankRate("");
     setMappingReview(null);
     setMappingSelections({});
@@ -268,7 +334,11 @@ function ImportPage() {
   }
 
   function nextStep() {
-    if (step === 1 && !dataFile) {
+    if (step === 1 && platform === "ninja" && !ninjaSummaryFiles.length) {
+      toast.error("ارفع ملفات Ninja Invoice Summary قبل الانتقال للخطوة التالية.");
+      return;
+    }
+    if (step === 1 && platform !== "ninja" && !dataFile) {
       toast.error("ارفع ملف البيانات الأساسي قبل الانتقال للخطوة التالية.");
       return;
     }
@@ -289,7 +359,13 @@ function ImportPage() {
       columnAliases?: ColumnAlias[];
     } = {},
   ) {
-    if (!dataFile) {
+    if (platform === "ninja") {
+      if (!ninjaSummaryFiles.length || !ninjaInvoiceFiles.length) {
+        setNotice({ kind: "missing" });
+        setStep(!ninjaSummaryFiles.length ? 1 : 2);
+        return;
+      }
+    } else if (!dataFile) {
       setNotice({ kind: "missing" });
       setStep(1);
       return;
@@ -307,7 +383,12 @@ function ImportPage() {
     try {
       const form = new FormData();
       form.set("platform", platform);
-      form.set("dataFile", dataFile);
+      if (platform === "ninja") {
+        ninjaSummaryFiles.forEach((file) => form.append("ninjaSummaryFiles", file));
+        ninjaInvoiceFiles.forEach((file) => form.append("ninjaInvoiceFiles", file));
+      } else if (dataFile) {
+        form.set("dataFile", dataFile);
+      }
       if (label.trim()) form.set("label", label.trim());
       if (invoiceFile) form.set("invoiceFile", invoiceFile);
       if (cpcFile) form.set("cpcFile", cpcFile);
@@ -441,6 +522,8 @@ function ImportPage() {
             <DataFileStep
               platform={platform}
               dataFile={dataFile}
+              ninjaSummaryFiles={ninjaSummaryFiles}
+              onNinjaSummaryFilesChange={setNinjaSummaryFiles}
               onChange={(file) => {
                 setDataFile(file);
                 setConfirmedColumns([]);
@@ -456,6 +539,7 @@ function ImportPage() {
               invoiceFile={invoiceFile}
               cpcFile={cpcFile}
               compensationFile={compensationFile}
+              ninjaInvoiceFiles={ninjaInvoiceFiles}
               bankRate={bankRate}
               bankRateInterpretation={bankRateInterpretation}
               bankRateValidationError={bankRateValidationError}
@@ -474,6 +558,7 @@ function ImportPage() {
                 setMappingReview(null);
                 setMappingSelections({});
               }}
+              onNinjaInvoiceFilesChange={setNinjaInvoiceFiles}
               onBankRateChange={setBankRate}
             />
           ) : null}
@@ -498,6 +583,8 @@ function ImportPage() {
               invoiceFile={invoiceFile}
               cpcFile={cpcFile}
               compensationFile={compensationFile}
+              ninjaSummaryFiles={ninjaSummaryFiles}
+              ninjaInvoiceFiles={ninjaInvoiceFiles}
               bankRate={bankRate}
               onEdit={setStep}
             />
@@ -597,7 +684,12 @@ function ImportPage() {
             <Button
               type="button"
               onClick={() => void run()}
-              disabled={busy || !dataFile}
+              disabled={
+                busy ||
+                (platform === "ninja"
+                  ? !ninjaSummaryFiles.length || !ninjaInvoiceFiles.length
+                  : !dataFile)
+              }
             >
               {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
               {busy ? "جارٍ التحليل…" : "بدء التحليل وحفظ الفترة"}
@@ -773,7 +865,7 @@ function PlatformStep({
     <div className="space-y-5">
       <div>
         <p className="mb-2 text-[13px] font-semibold">اختر المنصة</p>
-        <div className="grid gap-2.5 sm:grid-cols-3">
+        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
           {[
             {
               id: "hungerstation" as Platform,
@@ -789,6 +881,11 @@ function PlatformStep({
               id: "jahez" as Platform,
               label: "جاهز",
               note: "Restaurant Financial Report بصيغة CSV مع الفاتورة الضريبية PDF.",
+            },
+            {
+              id: "ninja" as Platform,
+              label: "نينجا",
+              note: "عدة ملفات Invoice Summary PDF مع الفواتير المطابقة مباشرة — بدون ZIP.",
             },
           ].map((item) => (
             <button
@@ -843,12 +940,33 @@ function PlatformStep({
 function DataFileStep({
   platform,
   dataFile,
+  ninjaSummaryFiles,
+  onNinjaSummaryFilesChange,
   onChange,
 }: {
   platform: Platform;
   dataFile: File | null;
+  ninjaSummaryFiles: File[];
+  onNinjaSummaryFilesChange: (files: File[]) => void;
   onChange: (file: File | null) => void;
 }) {
+  if (platform === "ninja") {
+    return (
+      <div className="space-y-4">
+        <MultiFileField
+          id="ninja-summaries"
+          label="ملفات Ninja Invoice Summary (PDF)"
+          hint="اختر كل ملفات Invoice Summary للفترة مباشرة. Tadqeeq يقرأ رقم SINV واسم الفرع ويجمعها تلقائياً؛ لا تستخدم ZIP."
+          files={ninjaSummaryFiles}
+          onChange={onNinjaSummaryFilesChange}
+        />
+        <div className="rounded-[9px] border border-primary/15 bg-secondary/55 px-4 py-3 text-[12px] leading-6 text-foreground/80">
+          هذه الملخصات هي مصدر أرقام الطلبات والعمولات ورسوم الدفع والرسوم الثابتة والتعويضات والإعلانات في تدقيق Ninja.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <FileField
@@ -886,26 +1004,47 @@ function DocumentsStep({
   invoiceFile,
   cpcFile,
   compensationFile,
+  ninjaInvoiceFiles,
   bankRate,
   bankRateInterpretation,
   bankRateValidationError,
   onInvoiceChange,
   onCpcChange,
   onCompensationChange,
+  onNinjaInvoiceFilesChange,
   onBankRateChange,
 }: {
   platform: Platform;
   invoiceFile: File | null;
   cpcFile: File | null;
   compensationFile: File | null;
+  ninjaInvoiceFiles: File[];
   bankRate: string;
   bankRateInterpretation: string;
   bankRateValidationError: string;
   onInvoiceChange: (file: File | null) => void;
   onCpcChange: (file: File | null) => void;
   onCompensationChange: (file: File | null) => void;
+  onNinjaInvoiceFilesChange: (files: File[]) => void;
   onBankRateChange: (value: string) => void;
 }) {
+  if (platform === "ninja") {
+    return (
+      <div className="space-y-3">
+        <MultiFileField
+          id="ninja-invoices"
+          label="فواتير Ninja المطابقة (PDF)"
+          hint="اختر كل فواتير Ninja الأصلية لنفس الفترة. تتم المطابقة مع ملفات Invoice Summary حسب رقم SINV؛ أي ملف ناقص أو مكرر يوقف الحفظ بدلاً من التخمين."
+          files={ninjaInvoiceFiles}
+          onChange={onNinjaInvoiceFilesChange}
+        />
+        <div className="rounded-[9px] border border-primary/15 bg-secondary/55 px-4 py-3 text-[12px] leading-6 text-foreground/80">
+          يجب أن يكون لكل Invoice Summary فاتورة تحمل نفس رقم SINV، والعكس.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <FileField
@@ -1001,6 +1140,8 @@ function ReviewStep({
   invoiceFile,
   cpcFile,
   compensationFile,
+  ninjaSummaryFiles,
+  ninjaInvoiceFiles,
   bankRate,
   onEdit,
 }: {
@@ -1010,6 +1151,8 @@ function ReviewStep({
   invoiceFile: File | null;
   cpcFile: File | null;
   compensationFile: File | null;
+  ninjaSummaryFiles: File[];
+  ninjaInvoiceFiles: File[];
   bankRate: string;
   onEdit: (step: number) => void;
 }) {
@@ -1031,38 +1174,62 @@ function ReviewStep({
         <ReviewRow
           label="المنصة"
           value={
-            platform === "hungerstation" ? "هنقرستيشن" : platform === "keeta" ? "كيتا" : "جاهز"
+            platform === "hungerstation"
+              ? "هنقرستيشن"
+              : platform === "keeta"
+                ? "كيتا"
+                : platform === "jahez"
+                  ? "جاهز"
+                  : "نينجا"
           }
         />
         <ReviewRow label="اسم الفترة" value={label.trim() || "سيُستخرج من الملف"} />
       </ReviewSection>
 
       <ReviewSection title="ملف البيانات" icon={FileSpreadsheet} onEdit={() => onEdit(1)}>
-        <ReviewRow
-          label={
-            platform === "hungerstation"
-              ? "ملف الطلبات"
-              : platform === "keeta"
-                ? "Order Summary"
-                : "Restaurant Financial Report"
-          }
-          value={dataFile?.name ?? "غير مرفق"}
-          required
-          ready={Boolean(dataFile)}
-        />
+        {platform === "ninja" ? (
+          <ReviewRow
+            label="Ninja Invoice Summary"
+            value={ninjaSummaryFiles.length ? `${ninjaSummaryFiles.length} ملف PDF` : "غير مرفق"}
+            required
+            ready={ninjaSummaryFiles.length > 0}
+          />
+        ) : (
+          <ReviewRow
+            label={
+              platform === "hungerstation"
+                ? "ملف الطلبات"
+                : platform === "keeta"
+                  ? "Order Summary"
+                  : "Restaurant Financial Report"
+            }
+            value={dataFile?.name ?? "غير مرفق"}
+            required
+            ready={Boolean(dataFile)}
+          />
+        )}
       </ReviewSection>
 
       <ReviewSection title="المستندات والإعدادات" icon={FileText} onEdit={() => onEdit(2)}>
-        <ReviewRow
-          label="فاتورة المنصة"
-          value={
-            invoiceFile?.name ??
-            (platform === "keeta"
-              ? "غير مرفقة — سيستخدم Tadqeeq ضوابط Excel الرسمية إذا كانت موجودة"
-              : "غير مرفقة — سيعمل التحليل بدون المطابقة الرسمية")
-          }
-          ready={Boolean(invoiceFile)}
-        />
+        {platform === "ninja" ? (
+          <ReviewRow
+            label="فواتير Ninja"
+            value={ninjaInvoiceFiles.length ? `${ninjaInvoiceFiles.length} ملف PDF` : "غير مرفقة"}
+            required
+            ready={ninjaInvoiceFiles.length > 0}
+          />
+        ) : (
+          <ReviewRow
+            label="فاتورة المنصة"
+            value={
+              invoiceFile?.name ??
+              (platform === "keeta"
+                ? "غير مرفقة — سيستخدم Tadqeeq ضوابط Excel الرسمية إذا كانت موجودة"
+                : "غير مرفقة — سيعمل التحليل بدون المطابقة الرسمية")
+            }
+            ready={Boolean(invoiceFile)}
+          />
+        )}
         {platform === "jahez" ? (
           <ReviewRow
             label="ملف التعويضات"
@@ -1085,8 +1252,8 @@ function ReviewStep({
       <div className="rounded-[9px] border border-border bg-background/60 px-4 py-3">
         <p className="text-[12.5px] font-semibold">بعد الضغط على بدء التحليل</p>
         <ol className="mt-2 list-decimal space-y-1 ps-5 text-[12px] leading-6 text-foreground/75">
-          <li>إعادة احتساب بنود المنصة من ملف البيانات الخام.</li>
-          <li>قراءة الفاتورة والمطابقة الرسمية إذا تم إرفاق PDF.</li>
+          <li>{platform === "ninja" ? "قراءة وتجميع ملفات Invoice Summary مباشرة." : "إعادة احتساب بنود المنصة من ملف البيانات الخام."}</li>
+          <li>{platform === "ninja" ? "مطابقة كل Summary مع فاتورته حسب رقم SINV." : "قراءة الفاتورة والمطابقة الرسمية إذا تم إرفاق PDF."}</li>
           <li>حفظ الفترة وتحديث التقارير و«رادار» تلقائياً.</li>
         </ol>
       </div>
@@ -1266,11 +1433,11 @@ function RunDialog({
               <Info className="mt-0.5 size-6 shrink-0 text-primary-text" />
               <div className="min-w-0 flex-1 space-y-1.5">
                 <DialogTitle className="text-base">
-                  {notice.kind === "missing" ? "ملف البيانات مطلوب" : "راجع مطابقة الفروع"}
+                  {notice.kind === "missing" ? "ملفات التدقيق مطلوبة" : "راجع مطابقة الفروع"}
                 </DialogTitle>
                 <DialogDescription className="text-sm leading-6">
                   {notice.kind === "missing"
-                    ? "اختر ملف بيانات الطلبات أولاً ثم اضغط بدء التحليل."
+                    ? "أكمل ملفات التدقيق المطلوبة أولاً ثم اضغط بدء التحليل."
                     : "خطوة أخيرة قبل الحفظ: اختر اسم كل فرع كما يظهر في فاتورة هنقرستيشن ثم «تأكيد الربط وإعادة التحليل»، أو «متابعة بدون ربط» لحفظ الفترة الآن. نحفظ اختيارك فلا نسألك عنه مرة أخرى."}
                 </DialogDescription>
               </div>
