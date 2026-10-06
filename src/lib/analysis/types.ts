@@ -1,4 +1,4 @@
-export type Platform = "hungerstation" | "keeta" | "jahez" | "ninja";
+export type Platform = "hungerstation" | "keeta" | "jahez";
 
 export interface BranchRow {
   branch: string;
@@ -124,16 +124,6 @@ export interface BranchRow {
   jahezCompensationNetImpact?: number;
   jahezCompensationDuplicateAmount?: number;
   jahezCompensationUnknownAmount?: number;
-
-  // Ninja invoice-summary decomposition (source-reported).
-  ninjaCommissionExVat?: number;
-  ninjaPaymentFeesExVat?: number;
-  ninjaFixedFeesExVat?: number;
-  ninjaAdvertisingExVat?: number;
-  ninjaCompensationExVat?: number;
-  ninjaNcrBookingFeeExVat?: number;
-  ninjaInputVat?: number;
-  ninjaInvoiceTotalInclVat?: number;
 }
 
 export interface DailyRow {
@@ -255,16 +245,6 @@ export interface Summary {
   jahezCompensationUnknownOrders?: number;
   jahezCompensationDuplicateCandidates?: number;
   jahezCompensationDuplicateAmount?: number;
-
-  // Ninja invoice-summary decomposition (source-reported).
-  ninjaCommissionExVat?: number;
-  ninjaPaymentFeesExVat?: number;
-  ninjaFixedFeesExVat?: number;
-  ninjaAdvertisingExVat?: number;
-  ninjaCompensationExVat?: number;
-  ninjaNcrBookingFeeExVat?: number;
-  ninjaInputVat?: number;
-  ninjaInvoiceTotalInclVat?: number;
 }
 
 export interface HungerInvoiceBranch {
@@ -373,38 +353,6 @@ export interface JahezOrderReference {
   periodLabel?: string;
 }
 
-export interface NinjaInvoiceSummary {
-  invoiceNo?: string;
-  invoiceDate?: string;
-  branch?: string;
-  successfulOrders?: number;
-  rejectedOrders?: number;
-  successfulOrdersValue?: number;
-  successfulCommissionableValue?: number;
-  successfulCommission?: number;
-  successfulOnlinePaymentFee?: number;
-  successfulFixedFee?: number;
-  successfulTotalExVat?: number;
-  rejectedOrdersValue?: number;
-  rejectedCommissionableValue?: number;
-  rejectedCommission?: number;
-  rejectedOnlinePaymentFee?: number;
-  rejectedFixedFee?: number;
-  rejectedTotalExVat?: number;
-  cancelledCommission?: number;
-  cancelledOnlinePaymentFee?: number;
-  missingItemCompensation?: number;
-  lateDeliveryCompensation?: number;
-  advertisementBookings?: number;
-  advertisementActiveDays?: number;
-  photoSessions?: number;
-  posDevices?: number;
-  ncrBookingFee?: number;
-  totalExVat?: number;
-  vat?: number;
-  totalIncVat?: number;
-}
-
 export interface InvoiceFigures {
   /** Arabic label -> amount, in display order */
   lines: { label: string; amount: number }[];
@@ -459,7 +407,6 @@ export interface InvoiceFigures {
   jahezDeliveryOfferRows?: { unitExVat: number; quantity: number; amountExVat: number }[];
   jahezCompensation?: JahezCompensationReport;
   jahezOrderIndex?: Record<string, JahezOrderReference>;
-  ninjaSummaries?: NinjaInvoiceSummary[];
   invoiceNo?: string;
 }
 
