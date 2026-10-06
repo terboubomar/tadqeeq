@@ -4,10 +4,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { BookOpenCheck } from "lucide-react";
 import { useState } from "react";
 
-import { JournalEntryDialog } from "@/components/journal/JournalEntryDialog";
+import { BranchJournalsDialog, JournalEntryDialog, type BranchJournal } from "@/components/journal/JournalEntryDialog";
 import { useJournalAccounts } from "@/components/journal/use-journal-accounts";
 import { Button } from "@/components/ui/button";
-import { branchJournalEntry, periodJournalEntry, type JournalEntry } from "@/lib/journal-entries";
+import { branchJournalEntry, type JournalEntry } from "@/lib/journal-entries";
 
 import { listBranchRegistry, resolveBranchName } from "@/lib/branch-registry";
 
@@ -134,6 +134,7 @@ function BranchesPage() {
   const { data: registry = [] } = useQuery({ queryKey: ["branch-registry"], queryFn: listBranchRegistry });
   const accounts = useJournalAccounts();
   const [entry, setEntry] = useState<JournalEntry | null>(null);
+  const [journals, setJournals] = useState<BranchJournal[] | null>(null);
 
   if (isLoading) {
     return <p className="py-20 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>;
@@ -150,16 +151,26 @@ function BranchesPage() {
       b.keetaOtherExpensesExVat === undefined ? undefined : b.keetaOtherExpensesExVat - (b.keetaPosFeesExVat ?? 0),
   }));
 
+  const period = selected;
+  function openAllBranches() {
+    setJournals(
+      rows.map((row) => ({
+        branch: row.branch,
+        entry: branchJournalEntry(period, { ...period.branches[row.journalIndex]!, branch: row.branch }, accounts),
+      })),
+    );
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
         crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التقارير" }, { label: "تقرير الفروع" }]}
         title="تقرير الفروع"
-        subtitle="اضغط على اسم أي فرع لعرض قيده المحاسبي، أو على عنوان عمود للترتيب."
+        subtitle="اضغط على اسم أي فرع لعرض قيده المحاسبي، أو «قيود كل الفروع» لقيد مستقل لكل فرع، أو على عنوان عمود للترتيب."
         aside={
-          <Button type="button" variant="outline" size="sm" className="gap-1.5 rounded-full" onClick={() => setEntry(periodJournalEntry(selected, accounts))}>
+          <Button type="button" variant="outline" size="sm" className="gap-1.5 rounded-full" onClick={openAllBranches}>
             <BookOpenCheck className="size-4" />
-            قيد الفترة لكل الفروع
+            قيود كل الفروع
           </Button>
         }
       />
@@ -192,6 +203,7 @@ function BranchesPage() {
         }
       />
       <JournalEntryDialog entry={entry} onClose={() => setEntry(null)} />
+      <BranchJournalsDialog title={selected.label} journals={journals} onClose={() => setJournals(null)} />
     </div>
   );
 }
