@@ -86,4 +86,15 @@ describe("Ninja invoice summary parser", () => {
     expect(parsed.ncrBookingFee).toBeCloseTo(12400, 6);
     expect(parsed.totalExVat).toBeCloseTo(12620.62, 6);
   });
+  test("extracts the branch name from Branch Summary pages", () => {
+    const parsed = parseNinjaInvoiceSummary(
+      "Invoice summary SINV260000000373113 Invoice Date 2026-09-07 Total Amount Excl. VAT 34.52 VAT Rate Amount 15.0% 5.18 Total Amount Incl. VAT 39.70" +
+        "\nBranch Summary (Burger Waqf - Dammam - Al Jamiyin (Cloud Successful Orders 2 Rejected Orders 0 Total 2" +
+        "\nBranch Collected Amounts Successful Orders Value 105.20 Successful Orders Commissionable Value 91.47 Successful Orders Commission 11.89",
+    );
+
+    expect(parsed.branch).toBe("Burger Waqf - Dammam - Al Jamiyin (Cloud");
+    expect(parsed.successfulOrdersValue).toBeCloseTo(105.2, 6);
+  });
+
 });
