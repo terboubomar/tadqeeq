@@ -30,7 +30,8 @@ function download(blob: Blob, filename: string) {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  // Revoking at once can cancel the download in some browsers; give it time to start.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 /**
@@ -70,5 +71,9 @@ export function exportXlsx<T>(
     ws["!cols"] = sheet.columns.map((column) => ({ wch: Math.max(14, column.header.length + 4) }));
     XLSX.utils.book_append_sheet(wb, ws, sheet.name.slice(0, 31));
   }
-  XLSX.writeFile(wb, `${filename}.xlsx`);
+  const data = XLSX.write(wb, { type: "array", bookType: "xlsx", compression: true }) as ArrayBuffer;
+  download(
+    new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+    `${filename}.xlsx`,
+  );
 }

@@ -42,10 +42,10 @@ export function isBalanced(entry: JournalEntry): boolean {
 export const TREATMENT_NOTE =
   "الإيراد صافي المبيعات بدون الضريبة، وعمولة المنصة ورسومها مصروفات مستقلة (المنصة وكيل للمطعم). الأرقام من نتيجة التدقيق المحفوظة دون أي تعديل.";
 
-/** One workbook: a ledger sheet with every line (entry number and branch on each) plus one sheet per branch. */
-export function exportBranchJournals(title: string, journals: BranchJournal[]) {
+/** One workbook: a ledger sheet with every line (entry number and branch on each) plus one sheet per branch. Entries are numbered from `firstNumber`. */
+export function exportBranchJournals(title: string, journals: BranchJournal[], firstNumber = 1) {
   const ledger: EntryRow[] = journals.flatMap((journal, index) =>
-    entryRows(journal.entry).map((row) => ({ entryNo: index + 1, branch: journal.branch, ...row })),
+    entryRows(journal.entry).map((row) => ({ entryNo: index + firstNumber, branch: journal.branch, ...row })),
   );
   exportXlsx(
     [
@@ -55,7 +55,7 @@ export function exportBranchJournals(title: string, journals: BranchJournal[]) {
         columns: [{ key: "entryNo", header: "رقم القيد" }, { key: "branch", header: "الفرع", type: "text" }, ...ENTRY_COLUMNS],
       },
       ...journals.map((journal, index) => ({
-        name: sheetName(index, journal.branch),
+        name: sheetName(index + firstNumber - 1, journal.branch),
         rows: [
           ...entryRows(journal.entry),
           { code: "", account: "الإجمالي", debit: journal.entry.totalDebit, credit: journal.entry.totalCredit, memo: journal.entry.description },

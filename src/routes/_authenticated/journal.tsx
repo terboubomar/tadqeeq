@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { BookOpenCheck, Download, Layers, Scale } from "lucide-react";
+import { BookOpenCheck, Check, ChevronsUpDown, Download, Layers, Scale } from "lucide-react";
+import { toast } from "sonner";
 import { useMemo, useState } from "react";
 
 import { EmptyState } from "@/components/AppShell";
@@ -8,6 +9,8 @@ import { AccountsButton, AccountsDialog, EntryNotes, EntryTable } from "@/compon
 import { exportBranchJournals, isBalanced, TREATMENT_NOTE, type BranchJournal } from "@/components/journal/journal-export";
 import { useJournalAccounts } from "@/components/journal/use-journal-accounts";
 import { Button } from "@/components/ui/button";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ActionBar, NumberTiles, PageHeader } from "@/components/workspace/PageKit";
 import { listBranchRegistry, resolveBranchName } from "@/lib/branch-registry";
 import { arabicDate, money } from "@/lib/format";
@@ -64,6 +67,16 @@ function JournalReport({ title, journals, combined }: { title: string; journals:
   const shown = current?.entry ?? combined;
   const unbalanced = journals.filter((journal) => !isBalanced(journal.entry)).length;
 
+  function exportSelection() {
+    try {
+      if (current) exportBranchJournals(title + " · " + current.branch, [current], (selection as number) + 1);
+      else exportBranchJournals(title, journals);
+      toast.success("تم تجهيز ملف Excel");
+    } catch (error) {
+      toast.error("تعذّر تصدير الملف: " + (error instanceof Error ? error.message : String(error)));
+    }
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -73,9 +86,10 @@ function JournalReport({ title, journals, combined }: { title: string; journals:
       />
 
       <ActionBar>
-        <Button type="button" size="sm" className="gap-1.5" disabled={!journals.length} onClick={() => exportBranchJournals(title, journals)}>
+        <BranchPicker journals={journals} combined={combined} selection={selection} onSelect={setSelection} />
+        <Button type="button" size="sm" className="gap-1.5" disabled={!journals.length} onClick={exportSelection}>
           <Download className="size-4" />
-          تصدير كل القيود Excel
+          {current ? "تصدير قيد الفرع Excel" : "تصدير كل الفروع Excel"}
         </Button>
         <AccountsButton onClick={() => setEditing(true)} />
       </ActionBar>
@@ -100,29 +114,7 @@ function JournalReport({ title, journals, combined }: { title: string; journals:
         ]}
       />
 
-      <div className="grid items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <nav aria-label="الفروع" className="flex gap-2 overflow-x-auto pb-1 lg:sticky lg:top-4 lg:flex-col lg:overflow-visible lg:pb-0">
-          <EntryChoice
-            active={selection === "all"}
-            onClick={() => setSelection("all")}
-            title="كل الفروع (مجمّع)"
-            amount={lineAmount(combined, "platform_receivable", "debit")}
-            balanced={isBalanced(combined)}
-          />
-          {journals.map((journal, index) => (
-            <EntryChoice
-              key={index}
-              active={selection === index}
-              onClick={() => setSelection(index)}
-              number={index + 1}
-              title={journal.branch}
-              amount={lineAmount(journal.entry, "platform_receivable", "debit")}
-              balanced={isBalanced(journal.entry)}
-            />
-          ))}
-        </nav>
-
-        <section className="min-w-0 space-y-3 rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <section className="min-w-0 space-y-3 rounded-2xl border border-border bg-card p-4 sm:p-5">
           <header className="flex flex-wrap items-start justify-between gap-2">
             <div className="space-y-0.5">
               <h2 className="flex items-center gap-2 font-display text-[16px] font-bold">
@@ -142,60 +134,123 @@ function JournalReport({ title, journals, combined }: { title: string; journals:
           </header>
           {current ? null : (
             <p className="rounded-xl bg-surface-raised px-3 py-2 text-[12px] leading-6 text-muted-foreground">
-              هذا مجموع قيود الفروع سطراً بسطر، للمراجعة فقط. التصدير يعطي قيداً مستقلاً لكل فرع.
+              هذا مجموع قيود الفروع سطراً بسطر، للمراجعة. التصدير هنا يعطي ملفاً فيه قيد مستقل لكل فرع؛ اختر فرعاً لتصدير قيده وحده.
             </p>
           )}
           <EntryTable entry={shown} />
           <EntryNotes notes={shown.notes} />
           <p className="text-[11.5px] leading-5 text-muted-foreground">{TREATMENT_NOTE}</p>
         </section>
-      </div>
 
       <AccountsDialog open={editing} onClose={() => setEditing(false)} />
     </div>
   );
 }
 
-function EntryChoice({
+/** Drop-down list of the entries (combined + every branch) with a search box, like a validation list in Excel. */
+function BranchPicker({
+  journals,
+  combined,
+  selection,
+  onSelect,
+}: {
+  journals: BranchJournal[];
+  combined: JournalEntry;
+  selection: Selection;
+  onSelect: (selection: Selection) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const current = selection === "all" ? null : journals[selection];
+  const choose = (value: Selection) => {
+    onSelect(value);
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          role="combobox"
+          aria-expanded={open}
+          aria-label="اختر الفرع"
+          className="flex h-9 w-full min-w-0 items-center gap-2 rounded-lg border border-border bg-card px-3 text-start text-[13px] hover:border-primary/60 sm:w-[320px]"
+        >
+          {current ? (
+            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-surface-raised text-[10.5px] text-muted-foreground">
+              <span className="num">{(selection as number) + 1}</span>
+            </span>
+          ) : (
+            <Layers className="size-4 shrink-0 text-primary-text" />
+          )}
+          <span className="min-w-0 flex-1 truncate font-medium">{current ? current.branch : "كل الفروع (مجمّع)"}</span>
+          <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent dir="rtl" align="start" className="w-[var(--radix-popover-trigger-width)] min-w-[280px] p-0">
+        <Command>
+          <CommandInput placeholder="ابحث عن فرع…" />
+          <CommandList>
+            <CommandEmpty>لا يوجد فرع بهذا الاسم.</CommandEmpty>
+            <CommandGroup>
+              <PickerItem
+                value="كل الفروع مجمع"
+                active={selection === "all"}
+                onSelect={() => choose("all")}
+                title="كل الفروع (مجمّع)"
+                amount={lineAmount(combined, "platform_receivable", "debit")}
+                balanced={isBalanced(combined)}
+              />
+              {journals.map((journal, index) => (
+                <PickerItem
+                  key={index}
+                  value={index + 1 + " " + journal.branch}
+                  active={selection === index}
+                  onSelect={() => choose(index)}
+                  number={index + 1}
+                  title={journal.branch}
+                  amount={lineAmount(journal.entry, "platform_receivable", "debit")}
+                  balanced={isBalanced(journal.entry)}
+                />
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function PickerItem({
+  value,
   active,
-  onClick,
+  onSelect,
   number,
   title,
   amount,
   balanced,
 }: {
+  value: string;
   active: boolean;
-  onClick: () => void;
+  onSelect: () => void;
   number?: number;
   title: string;
   amount: number;
   balanced: boolean;
 }) {
   return (
-    <button
-      type="button"
-      aria-current={active ? "true" : undefined}
-      onClick={onClick}
-      className={cn(
-        "flex min-w-[180px] shrink-0 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-start transition-colors lg:min-w-0",
-        active ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/60",
-        !balanced && "border-destructive/50",
-      )}
-    >
-      {number ? (
-        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-surface-raised text-[11px] text-muted-foreground">
-          <span className="num">{number}</span>
-        </span>
-      ) : (
-        <Layers className="size-4 shrink-0 text-primary-text" />
-      )}
+    <CommandItem value={value} onSelect={onSelect} className="gap-2.5 py-2">
+      <Check className={cn("size-4 shrink-0 text-primary-text", active ? "opacity-100" : "opacity-0")} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-medium">{title}</span>
+        <span className="flex items-center gap-1.5">
+          {number ? <span className="num text-[11px] text-muted-foreground">{number}</span> : null}
+          <span className="truncate text-[13px] font-medium">{title}</span>
+        </span>
         <span className={cn("block text-[11.5px]", balanced ? "text-muted-foreground" : "text-destructive")}>
           {balanced ? "مستحق " : "غير متوازن · "}
           <span className="num">{money(amount)}</span>
         </span>
       </span>
-    </button>
+    </CommandItem>
   );
 }
