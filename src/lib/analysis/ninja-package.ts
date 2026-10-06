@@ -23,11 +23,15 @@ function safeEntryName(raw: string): string {
   return normalized;
 }
 
+function arrayBuffer(data: Uint8Array): ArrayBuffer {
+  return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
+}
+
 async function inflateRaw(data: Uint8Array): Promise<Uint8Array> {
   if (typeof DecompressionStream === "undefined") {
     throw new Error("فك ZIP غير مدعوم في بيئة الخادم الحالية.");
   }
-  const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  const stream = new Blob([arrayBuffer(data)]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
@@ -113,7 +117,7 @@ export async function extractNinjaZip(file: File): Promise<NinjaPackageFiles> {
           if (output.byteLength !== uncompressedSize) {
             throw new Error("حجم ملف داخل ZIP لا يطابق بيانات الأرشيف.");
           }
-          pdfs.push(new File([output], name, { type: "application/pdf" }));
+          pdfs.push(new File([arrayBuffer(output)], name, { type: "application/pdf" }));
         }
       }
 
