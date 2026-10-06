@@ -1,8 +1,8 @@
 import type { BranchRow } from "./analysis/types";
 import type { RegistryBranch } from "./branch-registry";
 
-type Platform = "hungerstation" | "keeta" | "jahez";
-export type RegistryIdKey = "hungerstation_id" | "keeta_id" | "jahez_id";
+type Platform = "hungerstation" | "keeta" | "jahez" | "ninja";
+export type RegistryIdKey = "hungerstation_id" | "keeta_id" | "jahez_id" | "ninja_id";
 
 export interface RegistrySyncPlan {
   inserts: Array<{ name: string } & Partial<Record<RegistryIdKey, string>>>;
@@ -38,7 +38,7 @@ export function planRegistrySync(existing: RegistryBranch[], platform: Platform,
     }
 
     plan.inserts.push({ name, [key]: platformId });
-    known.push({ id: `new:${known.length}`, name, hungerstation_id: null, keeta_id: null, jahez_id: null, [key]: platformId });
+    known.push({ id: `new:${known.length}`, name, hungerstation_id: null, keeta_id: null, jahez_id: null, ninja_id: null, [key]: platformId });
   }
   return plan;
 }
