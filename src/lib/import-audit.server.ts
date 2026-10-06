@@ -6,6 +6,7 @@ import { analyzeHungerStation, analyzeHungerStationSheets, hungerStationProjecti
 import { analyzeJahez } from "./analysis/jahez";
 import { analyzeKeeta, analyzeKeetaSheets } from "./analysis/keeta";
 import { analyzeNinjaPdfDocuments } from "./analysis/ninja";
+import { classifyNinjaPackageFiles, extractNinjaZip } from "./analysis/ninja-package";
 import type { NinjaPdfDocument } from "./analysis/ninja-files";
 import { parseNinjaInvoiceSummary } from "./analysis/ninja-pdf";
 import { readXlsxSheets, type SheetSource } from "./analysis/xlsx-stream";
@@ -343,20 +344,51 @@ export async function buildAnalysis(
   const compensationFile = formFile(form, "compensationFile");
   const ninjaSummaryFiles = formFiles(form, "ninjaSummaryFiles");
   const ninjaInvoiceFiles = formFiles(form, "ninjaInvoiceFiles");
+  const ninjaPackageFiles = formFiles(form, "ninjaPackageFiles");
+  const ninjaZipFile = formFile(form, "ninjaZipFile");
 
   if (platform === "ninja") {
-    if (!ninjaSummaryFiles.length) {
-      throw new Error("ارفع ملفات Ninja Invoice Summary بصيغة PDF.");
+    const directMode = ninjaSummaryFiles.length > 0 || ninjaInvoiceFiles.length > 0;
+    const folderMode = ninjaPackageFiles.length > 0;
+    const zipMode = Boolean(ninjaZipFile);
+    const modes = [directMode, folderMode, zipMode].filter(Boolean).length;
+    if (modes === 0) {
+      throw new Error("ارفع ZIP أو مجلد Ninja أو ملفات PDF مباشرة.");
     }
-    if (!ninjaInvoiceFiles.length) {
-      throw new Error("ارفع ملفات فواتير Ninja بصيغة PDF.");
+    if (modes > 1) {
+      throw new Error("اختر طريقة رفع واحدة لـ Ninja: ZIP أو مجلد أو ملفات PDF مباشرة.");
     }
-    for (const file of [...ninjaSummaryFiles, ...ninjaInvoiceFiles]) {
-      validateFile(file, "Ninja PDF", [".pdf"], true);
+
+    let summaries = ninjaSummaryFiles;
+    let invoices = ninjaInvoiceFiles;
+
+    if (ninjaZipFile) {
+      validateFile(ninjaZipFile, "Ninja ZIP", [".zip"], true);
+      const extracted = await extractNinjaZip(ninjaZipFile);
+      summaries = extracted.summaryFiles;
+      invoices = extracted.invoiceFiles;
+    } else if (ninjaPackageFiles.length) {
+      for (const file of ninjaPackageFiles) {
+        validateFile(file, "Ninja PDF", [".pdf"], true);
+      }
+      const classified = classifyNinjaPackageFiles(ninjaPackageFiles);
+      summaries = classified.summaryFiles;
+      invoices = classified.invoiceFiles;
+    } else {
+      for (const file of [...summaries, ...invoices]) {
+        validateFile(file, "Ninja PDF", [".pdf"], true);
+      }
+    }
+
+    if (!summaries.length) {
+      throw new Error("لم يتم العثور على ملفات Ninja Invoice Summary.");
+    }
+    if (!invoices.length) {
+      throw new Error("لم يتم العثور على فواتير Ninja المطابقة.");
     }
 
     const documents: NinjaPdfDocument[] = [];
-    for (const file of ninjaSummaryFiles) {
+    for (const file of summaries) {
       const raw = await extractPdfTextServer(await file.arrayBuffer(), 30);
       documents.push({
         fileName: file.name,
@@ -365,7 +397,7 @@ export async function buildAnalysis(
     }
 
     const result = analyzeNinjaPdfDocuments(
-      ninjaInvoiceFiles.map((file) => file.name),
+      invoices.map((file) => file.name),
       documents,
       formString(form, "label"),
     );
@@ -377,12 +409,12 @@ export async function buildAnalysis(
       analysedFile: new ArrayBuffer(0),
       analysedSheets: null,
       sources: [
-        ...ninjaSummaryFiles.map((file) => ({
+        ...summaries.map((file) => ({
           kind: "data" as const,
           file,
           formatId: result.formatIds?.[0],
         })),
-        ...ninjaInvoiceFiles.map((file) => ({
+        ...invoices.map((file) => ({
           kind: "invoice" as const,
           file,
         })),
