@@ -68,6 +68,12 @@ function vatAmount(page: string): number | undefined {
   return undefined;
 }
 
+function ninjaBranchName(page: string): string | undefined {
+  const match = page.match(/Branch Summary\s+\(?(.+?)\s+(?:Successful Orders|Rejected Orders|Count|Description)/i);
+  if (!match?.[1]) return undefined;
+  return match[1].replace(/^\(+|\)+$/g, "").replace(/\s+/g, " ").trim() || undefined;
+}
+
 function pageWith(pages: string[], label: string): string {
   return pages.find((page) => page.toLowerCase().includes(label.toLowerCase())) ?? "";
 }
@@ -93,7 +99,8 @@ export function parseNinjaInvoiceSummary(raw: string): NinjaInvoiceSummary {
 
   const invoicePage = pageWith(pages, "Invoice summary") || pages[0] || "";
   const restaurantSummary = pageWith(pages, "Restaurant Summary");
-  const collected = pageWith(pages, "Restaurant Collected Amounts");
+  const branchSummary = pageWith(pages, "Branch Summary");
+  const collected = pageWith(pages, "Branch Collected Amounts") || pageWith(pages, "Restaurant Collected Amounts");
 
   const invoiceNo =
     invoicePage.match(/SINV\d{12,}/i)?.[0] ??
@@ -107,6 +114,7 @@ export function parseNinjaInvoiceSummary(raw: string): NinjaInvoiceSummary {
   return {
     ...(invoiceNo ? { invoiceNo } : {}),
     ...(invoiceDate ? { invoiceDate } : {}),
+    ...(ninjaBranchName(branchSummary) ? { branch: ninjaBranchName(branchSummary) } : {}),
     successfulOrders: integerAfterLast(restaurantSummary, "Successful Orders"),
     rejectedOrders: integerAfterLast(restaurantSummary, "Rejected Orders"),
     successfulOrdersValue: amountAfterLast(collected, "Successful Orders Value"),
