@@ -136,13 +136,6 @@ const LEGACY_CHECKS: Record<
       controlOnly: true,
     },
   },
-  ninja: {
-    "إجمالي ملخصات فواتير نينجا": {
-      code: "NINJA_INVOICE_SUMMARY_CONTROL",
-      category: "invoice_total",
-      controlOnly: true,
-    },
-  },
   jahez: {
     "إجمالي الطلبات مقابل ملخص جاهز": {
       code: "JAHEZ_ORDERS_SUMMARY_CONTROL",
