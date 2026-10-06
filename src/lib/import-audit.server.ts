@@ -345,12 +345,12 @@ export async function buildAnalysis(
   const ninjaSummaryFiles = formFiles(form, "ninjaSummaryFiles");
   const ninjaInvoiceFiles = formFiles(form, "ninjaInvoiceFiles");
   const ninjaPackageFiles = formFiles(form, "ninjaPackageFiles");
-  const ninjaZipFile = formFile(form, "ninjaZipFile");
+  const ninjaZipFiles = formFiles(form, "ninjaZipFiles");
 
   if (platform === "ninja") {
     const directMode = ninjaSummaryFiles.length > 0 || ninjaInvoiceFiles.length > 0;
     const folderMode = ninjaPackageFiles.length > 0;
-    const zipMode = Boolean(ninjaZipFile);
+    const zipMode = ninjaZipFiles.length > 0;
     const modes = [directMode, folderMode, zipMode].filter(Boolean).length;
     if (modes === 0) {
       throw new Error("ارفع ZIP أو مجلد Ninja أو ملفات PDF مباشرة.");
@@ -362,11 +362,15 @@ export async function buildAnalysis(
     let summaries = ninjaSummaryFiles;
     let invoices = ninjaInvoiceFiles;
 
-    if (ninjaZipFile) {
-      validateFile(ninjaZipFile, "Ninja ZIP", [".zip"], true);
-      const extracted = await extractNinjaZip(ninjaZipFile);
-      summaries = extracted.summaryFiles;
-      invoices = extracted.invoiceFiles;
+    if (ninjaZipFiles.length) {
+      summaries = [];
+      invoices = [];
+      for (const zipFile of ninjaZipFiles) {
+        validateFile(zipFile, "Ninja ZIP", [".zip"], true);
+        const extracted = await extractNinjaZip(zipFile);
+        summaries.push(...extracted.summaryFiles);
+        invoices.push(...extracted.invoiceFiles);
+      }
     } else if (ninjaPackageFiles.length) {
       for (const file of ninjaPackageFiles) {
         validateFile(file, "Ninja PDF", [".pdf"], true);
