@@ -5,7 +5,8 @@ export interface RegistryBranch {
   name: string;
   hungerstation_id: string | null;
   keeta_id: string | null;
-  jahez_id: string | null;\n  ninja_id: string | null;
+  jahez_id: string | null;
+  ninja_id: string | null;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
