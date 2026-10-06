@@ -71,9 +71,9 @@ function Payments() {
           <tbody>
             {rows.map((p) => (
               <tr key={p.id} className="border-t border-border">
-                <td className="num p-3">{p.paidOn}</td>
+                <td className="p-3"><span className="num">{p.paidOn}</span></td>
                 <td className="p-3 font-medium">{p.workspaceName}</td>
-                <td className="num p-3">{sarFmt(p.amount)}</td>
+                <td className="p-3"><span className="num">{sarFmt(p.amount)}</span></td>
                 <td className="p-3">{p.reference ?? "—"}</td>
                 <td className="p-3 text-muted-foreground">{p.notes ?? ""}</td>
                 <td className="flex gap-1 p-3">

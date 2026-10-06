@@ -264,12 +264,12 @@ function CompensationOverviewPage() {
                 {o.branches.slice(0, 8).map((b) => (
                   <tr key={b.name} className="border-b border-border/60 last:border-0">
                     <td className="py-2.5 font-semibold">{b.name}</td>
-                    <td className="num">{count(b.count)}</td>
-                    <td className="num">{money(b.claimed)}</td>
-                    <td className="num">{money(b.recovered)}</td>
-                    <td className={cn("num", b.recoveryRate !== null && b.recoveryRate < 0.5 ? "text-destructive" : "text-success")}>
+                    <td><span className="num">{count(b.count)}</span></td>
+                    <td><span className="num">{money(b.claimed)}</span></td>
+                    <td><span className="num">{money(b.recovered)}</span></td>
+                    <td className={cn(b.recoveryRate !== null && b.recoveryRate < 0.5 ? "text-destructive" : "text-success")}><span className="num">
                       {b.recoveryRate === null ? "—" : percent(b.recoveryRate, 0)}
-                    </td>
+                    </span></td>
                     {can("telegram.read") ? (
                       <td className={b.telegramLinked ? "text-success" : "text-destructive"}>
                         {b.telegramLinked ? "مربوط" : "غير مربوط"}

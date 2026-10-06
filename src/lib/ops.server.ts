@@ -383,6 +383,7 @@ const OWNED_TABLES_DELETE_ORDER = [
   "promotion_audits",
   "ads_roi_analyses",
   "ads_roi_brand_settings",
+  "journal_account_settings",
   "smart_watch_acceptances",
   "ai_usage",
   "hungerstation_branch_mappings",

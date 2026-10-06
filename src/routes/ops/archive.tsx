@@ -85,14 +85,14 @@ function ArchivePage() {
                     <p className="font-semibold">{d.name}</p>
                     {d.legalName ? <p className="text-xs text-muted-foreground">{d.legalName}</p> : null}
                   </td>
-                  <td className="num px-4 py-3">{d.crNumber ?? "—"}</td>
+                  <td className="px-4 py-3"><span className="num">{d.crNumber ?? "—"}</span></td>
                   <td className="px-4 py-3 text-xs" dir="ltr">
                     <p>{d.ownerEmail ?? d.contactEmail ?? "—"}</p>
                     {d.contactMobile ? <p className="text-muted-foreground">{d.contactMobile}</p> : null}
                   </td>
                   <td className="px-4 py-3 text-xs">{when(d.deletedAt)}</td>
                   <td className="px-4 py-3 text-xs" dir="ltr">{d.deletedBy ?? "—"}</td>
-                  <td className="num px-4 py-3 text-xs text-muted-foreground">{d.usersDeleted} مستخدم · {d.filesRemoved} ملف</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground"><span className="num">{d.usersDeleted}</span> مستخدم · <span className="num">{d.filesRemoved}</span> ملف</td>
                 </tr>
               ))}
             </tbody>

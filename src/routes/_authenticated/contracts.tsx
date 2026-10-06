@@ -2039,11 +2039,10 @@ function Td({
     <td
       className={cn(
         "whitespace-nowrap px-3.5 py-2.5",
-        mono && "num",
         className,
       )}
     >
-      {children}
+      {mono ? <span className="num">{children}</span> : children}
     </td>
   );
 }

@@ -37,7 +37,7 @@ function Logs() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.source + r.id} className="border-t border-border align-top">
-                  <td className="num whitespace-nowrap p-3">{new Date(r.createdAt).toLocaleString("ar-SA-u-ca-gregory-nu-latn", { timeZone: "Asia/Riyadh" })}</td>
+                  <td className="whitespace-nowrap p-3"><span className="num">{new Date(r.createdAt).toLocaleString("ar-SA-u-ca-gregory-nu-latn", { timeZone: "Asia/Riyadh" })}</span></td>
                   <td className="p-3">{r.source === "ops" ? "العمليات" : "العميل"}</td>
                   <td className="p-3"><span className="font-medium">{opsActionLabel(r.action)}</span>{opsActionLabel(r.action) !== r.action ? <span className="block font-mono text-[10px] text-muted-foreground">{r.action}</span> : null}</td>
                   <td className="p-3 text-xs" dir="ltr">{r.actor}</td>
