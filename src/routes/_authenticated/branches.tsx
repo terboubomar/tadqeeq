@@ -1,6 +1,13 @@
 import { PageHeader } from "@/components/workspace/PageKit";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { BookOpenCheck } from "lucide-react";
+import { useState } from "react";
+
+import { JournalEntryDialog } from "@/components/journal/JournalEntryDialog";
+import { useJournalAccounts } from "@/components/journal/use-journal-accounts";
+import { Button } from "@/components/ui/button";
+import { branchJournalEntry, periodJournalEntry, type JournalEntry } from "@/lib/journal-entries";
 
 import { listBranchRegistry, resolveBranchName } from "@/lib/branch-registry";
 
@@ -125,6 +132,8 @@ const JAHEZ_COLUMNS: Column<BranchRow>[] = [
 function BranchesPage() {
   const { selected, isLoading } = useSelectedPeriod();
   const { data: registry = [] } = useQuery({ queryKey: ["branch-registry"], queryFn: listBranchRegistry });
+  const accounts = useJournalAccounts();
+  const [entry, setEntry] = useState<JournalEntry | null>(null);
 
   if (isLoading) {
     return <p className="py-20 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>;
@@ -133,8 +142,9 @@ function BranchesPage() {
     return <EmptyState title="لا توجد فترات محفوظة" body="ارفع ملفات الفترة لعرض تقرير الفروع." />;
   }
 
-  const rows = selected.branches.map((b) => ({
+  const rows = selected.branches.map((b, index) => ({
     ...b,
+    journalIndex: index,
     branch: resolveBranchName(registry, selected.platform, b.branchId, b.branch) ?? b.branch,
     keetaOtherExclPosExVat:
       b.keetaOtherExpensesExVat === undefined ? undefined : b.keetaOtherExpensesExVat - (b.keetaPosFeesExVat ?? 0),
@@ -145,7 +155,13 @@ function BranchesPage() {
       <PageHeader
         crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التقارير" }, { label: "تقرير الفروع" }]}
         title="تقرير الفروع"
-        subtitle="اضغط على عنوان أي عمود للترتيب تصاعدياً أو تنازلياً."
+        subtitle="اضغط على اسم أي فرع لعرض قيده المحاسبي، أو على عنوان عمود للترتيب."
+        aside={
+          <Button type="button" variant="outline" size="sm" className="gap-1.5 rounded-full" onClick={() => setEntry(periodJournalEntry(selected, accounts))}>
+            <BookOpenCheck className="size-4" />
+            قيد الفترة لكل الفروع
+          </Button>
+        }
       />
       <ReportTable
         title={selected.label}
@@ -159,6 +175,14 @@ function BranchesPage() {
         }
         filename={`branches-${selected.period_start ?? "period"}`}
         searchKey="branch"
+        cellAction={{
+          key: "branch",
+          label: "عرض القيد المحاسبي للفرع",
+          onClick: (row) => {
+            const branch = selected.branches[row["journalIndex"] as number];
+            if (branch) setEntry(branchJournalEntry(selected, { ...branch, branch: String(row["branch"]) }, accounts));
+          },
+        }}
         caption={
           selected.platform === "hungerstation"
             ? "حالة المطابقة تقارن كل فرع في ملف الطلبات مع صفحات تفاصيل فاتورة هنقرستيشن. الفروق الصغيرة قد تكون تقريباً من المنصة."
@@ -167,6 +191,7 @@ function BranchesPage() {
               : "جاهز لا يوفّر تفاصيل فاتورة حسب الفرع في الملفات الحالية؛ يتم التحقق من Restaurant Amount لكل فرع، ويُضاف تقرير التعويضات حسب الفرع مع كشف التكرار والطلبات غير المعروفة. مطابقة الفاتورة الضريبية تبقى على إجمالي التاجر."
         }
       />
+      <JournalEntryDialog entry={entry} onClose={() => setEntry(null)} />
     </div>
   );
 }

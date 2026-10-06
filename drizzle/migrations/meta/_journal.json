@@ -330,6 +330,13 @@
       "when": 1791736399573,
       "tag": "0046_contact_messages",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1791822799573,
+      "tag": "0047_journal_accounts",
+      "breakpoints": true
     }
   ]
 }

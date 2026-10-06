@@ -404,8 +404,8 @@ function BranchTable({ split }: { split: BranchBreakdown }) {
         {split.rows.map((row) => (
           <tr key={row.name} className="border-b border-border/50 last:border-0">
             <td className="py-1.5 pe-3">{row.name}</td>
-            <td className={"num py-1.5 text-end " + (Math.abs(row.value) < 0.005 ? "text-muted-foreground" : "font-medium")}>
-              {money(row.value)}
+            <td className={"py-1.5 text-end " + (Math.abs(row.value) < 0.005 ? "text-muted-foreground" : "font-medium")}>
+              <span className="num">{money(row.value)}</span>
             </td>
           </tr>
         ))}
@@ -413,7 +413,9 @@ function BranchTable({ split }: { split: BranchBreakdown }) {
       <tfoot>
         <tr className="border-t border-border">
           <td className="pt-2 font-semibold">الإجمالي · {split.rows.length} فرع</td>
-          <td className="num pt-2 text-end font-semibold">{money(split.total)}</td>
+          <td className="pt-2 text-end font-semibold">
+            <span className="num">{money(split.total)}</span>
+          </td>
         </tr>
       </tfoot>
     </table>
