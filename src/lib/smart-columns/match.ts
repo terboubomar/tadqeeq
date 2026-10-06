@@ -58,6 +58,7 @@ export const FINGERPRINTS: Record<Platform, FormatFingerprint[]> = {
   hungerstation: [HUNGERSTATION_ORDER_FORMAT],
   keeta: [KEETA_ORDER_FORMAT],
   jahez: [JAHEZ_SUMMARY_FORMAT, JAHEZ_DETAIL_FORMAT],
+  ninja: [],
 };
 
 /** Value type and extra names for each required column (keyed by its first expected name). */
@@ -269,6 +270,7 @@ export function sourceRows(
   maxRows: number = SAMPLE_ROWS,
   sheets?: SheetSource,
 ): { headers: string[]; rows: Iterable<unknown[]> } | null {
+  if (platform === "ninja") return null;
   if (platform === "jahez") {
     const text = new TextDecoder("utf-8").decode(file).replace(/^\uFEFF/, "");
     const cursor = { end: 0 };
@@ -446,7 +448,7 @@ export function applyColumnAliases(
   file: ArrayBuffer,
   aliases: ColumnAlias[],
 ): { file: ArrayBuffer; applied: ColumnAlias[] } {
-  if (aliases.length === 0) return { file, applied: [] };
+  if (platform === "ninja" || aliases.length === 0) return { file, applied: [] };
   const applied: ColumnAlias[] = [];
 
   if (platform === "jahez") {
@@ -491,7 +493,7 @@ export function applyColumnAliases(
  * in place, with the same rules (only when the expected name is missing).
  */
 export function applyAliasesToSheets(platform: Platform, sheets: SheetSource, aliases: ColumnAlias[]): ColumnAlias[] {
-  if (aliases.length === 0 || platform === "jahez") return [];
+  if (aliases.length === 0 || platform === "jahez" || platform === "ninja") return [];
   const applied: ColumnAlias[] = [];
   for (const fingerprint of FINGERPRINTS[platform]) {
     const matrix = sourceMatrix(sheets, platform, fingerprint.source);

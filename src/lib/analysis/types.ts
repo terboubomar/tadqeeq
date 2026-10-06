@@ -1,4 +1,4 @@
-export type Platform = "hungerstation" | "keeta" | "jahez";
+export type Platform = "hungerstation" | "keeta" | "jahez" | "ninja";
 
 export interface BranchRow {
   branch: string;
@@ -124,6 +124,16 @@ export interface BranchRow {
   jahezCompensationNetImpact?: number;
   jahezCompensationDuplicateAmount?: number;
   jahezCompensationUnknownAmount?: number;
+
+  // Ninja invoice-summary decomposition (source-reported).
+  ninjaCommissionExVat?: number;
+  ninjaPaymentFeesExVat?: number;
+  ninjaFixedFeesExVat?: number;
+  ninjaAdvertisingExVat?: number;
+  ninjaCompensationExVat?: number;
+  ninjaNcrBookingFeeExVat?: number;
+  ninjaInputVat?: number;
+  ninjaInvoiceTotalInclVat?: number;
 }
 
 export interface DailyRow {
@@ -245,6 +255,16 @@ export interface Summary {
   jahezCompensationUnknownOrders?: number;
   jahezCompensationDuplicateCandidates?: number;
   jahezCompensationDuplicateAmount?: number;
+
+  // Ninja invoice-summary decomposition (source-reported).
+  ninjaCommissionExVat?: number;
+  ninjaPaymentFeesExVat?: number;
+  ninjaFixedFeesExVat?: number;
+  ninjaAdvertisingExVat?: number;
+  ninjaCompensationExVat?: number;
+  ninjaNcrBookingFeeExVat?: number;
+  ninjaInputVat?: number;
+  ninjaInvoiceTotalInclVat?: number;
 }
 
 export interface HungerInvoiceBranch {
@@ -439,6 +459,7 @@ export interface InvoiceFigures {
   jahezDeliveryOfferRows?: { unitExVat: number; quantity: number; amountExVat: number }[];
   jahezCompensation?: JahezCompensationReport;
   jahezOrderIndex?: Record<string, JahezOrderReference>;
+  ninjaSummaries?: NinjaInvoiceSummary[];
   invoiceNo?: string;
 }
 

@@ -85,6 +85,7 @@ const PLATFORM_NAMES: Record<StoredPeriod["platform"], string> = {
   hungerstation: "هنقرستيشن",
   keeta: "كيتا",
   jahez: "جاهز",
+  ninja: "نينجا",
 };
 
 /** The period label, prefixed with the platform name unless the label already carries it. */
@@ -201,10 +202,41 @@ function jahezAmounts(b: BranchRow): Amounts {
   };
 }
 
+function ninjaAmounts(b: BranchRow): Amounts {
+  const revenue = b.grossSales / (1 + VAT_RATE);
+  const outputVat = b.grossSales - revenue;
+  return {
+    revenue,
+    outputVat,
+    commission: b.ninjaCommissionExVat ?? b.commission,
+    paymentFees: b.ninjaPaymentFeesExVat ?? 0,
+    marketing: b.ninjaAdvertisingExVat ?? 0,
+    compensation: b.ninjaCompensationExVat ?? 0,
+    otherFees: (b.ninjaFixedFeesExVat ?? 0) + (b.ninjaNcrBookingFeeExVat ?? 0),
+    inputVat: b.ninjaInputVat ?? 0,
+    reportedReceivable: b.netSales,
+    memos: {
+      sales_revenue: "Successful Orders Value بدون ضريبة المبيعات",
+      output_vat: "ضريبة المبيعات المقدرة من Successful Orders Value",
+      commission_expense: "عمولة Ninja من Invoice Summary",
+      payment_fee_expense: "Online Payment Fee من Invoice Summary",
+      marketing_expense: "Advertisement Bookings",
+      compensation_expense: "Missing Item + Late Delivery Compensation",
+      other_platform_fee_expense: "Fixed Fees + NCR Booking Fee",
+      input_vat: "VAT Amount على رسوم Ninja",
+      platform_receivable: "قيمة الطلبات الناجحة ناقص إجمالي رسوم Ninja شامل الضريبة",
+    },
+    notes: [
+      "قيد Ninja مبني على ملفات Invoice Summary؛ صافي المستحق هنا تقديري من المبيعات الناجحة ناقص فواتير الرسوم، وليس كشف تحويل بنكي مستقل.",
+    ],
+  };
+}
+
 function amountsFor(platform: StoredPeriod["platform"], branch: BranchRow): Amounts {
   if (platform === "hungerstation") return hungerStationAmounts(branch);
   if (platform === "keeta") return keetaAmounts(branch);
-  return jahezAmounts(branch);
+  if (platform === "jahez") return jahezAmounts(branch);
+  return ninjaAmounts(branch);
 }
 
 function buildEntry(

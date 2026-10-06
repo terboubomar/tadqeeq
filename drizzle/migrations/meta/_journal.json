@@ -337,6 +337,13 @@
       "when": 1791822799573,
       "tag": "0047_journal_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1791909199573,
+      "tag": "0048_ninja_platform",
+      "breakpoints": true
     }
   ]
 }

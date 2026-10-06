@@ -6,6 +6,7 @@ export interface RegistryBranch {
   hungerstation_id: string | null;
   keeta_id: string | null;
   jahez_id: string | null;
+  ninja_id: string | null;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -13,7 +14,7 @@ const table = () => (supabase as any).from("branch_registry");
 
 export async function listBranchRegistry(): Promise<RegistryBranch[]> {
   const { data, error } = await table()
-    .select("id,name,hungerstation_id,keeta_id,jahez_id")
+    .select("id,name,hungerstation_id,keeta_id,jahez_id,ninja_id")
     .order("name");
   if (error) throw new Error(error.message);
   return (data ?? []) as RegistryBranch[];
@@ -24,7 +25,7 @@ const norm = (v: unknown) => String(v ?? "").trim().toLocaleLowerCase();
 /** Returns the unified branch name for a platform row, matching by ID first then by name. */
 export function resolveBranchName(
   registry: RegistryBranch[],
-  platform: "hungerstation" | "keeta" | "jahez",
+  platform: "hungerstation" | "keeta" | "jahez" | "ninja",
   branchId: unknown,
   branchName: unknown,
 ): string | null {
