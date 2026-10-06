@@ -30,9 +30,9 @@ export function fileSlug(text: string): string {
   return text.replace(/[^\p{L}\p{N}]+/gu, "-").slice(0, 60);
 }
 
-/** Excel sheet names: at most 31 characters, none of : \ / ? * [ ], unique within the workbook. */
+/** Sheet name for the entry: its number and branch (exportXlsx makes it valid and unique for Excel). */
 export function sheetName(index: number, label: string): string {
-  return (index + 1 + " - " + label.replace(/[:\\/?*[\]]+/g, " ")).slice(0, 31).trim();
+  return index + 1 + " - " + label;
 }
 
 export function isBalanced(entry: JournalEntry): boolean {
