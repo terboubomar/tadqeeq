@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyWorkspaceContext } from "@/lib/workspace-access.functions";
 import type { WorkspaceClientContext } from "@/lib/workspace-access.server";
 import type { WorkspacePermission } from "@/lib/workspace-access";
+import { EMAIL_CODE_REQUIRED_MESSAGE, MFA_REQUIRED_MESSAGE } from "@/lib/mfa";
 
 interface WorkspaceAccessValue {
   context: WorkspaceClientContext;
@@ -30,7 +31,18 @@ export function WorkspaceAccessProvider({ children }: { children: ReactNode }) {
     };
   }, [query.data]);
 
-  if (query.isLoading) {
+  // The session still needs its sign-in code (e.g. the authenticator app was just turned on):
+  // send the user to finish the code step instead of showing an error screen.
+  const codeStep =
+    query.error instanceof Error &&
+    (query.error.message === MFA_REQUIRED_MESSAGE || query.error.message === EMAIL_CODE_REQUIRED_MESSAGE);
+  useEffect(() => {
+    if (!codeStep) return;
+    const next = window.location.pathname + window.location.search;
+    window.location.href = `/auth?next=${encodeURIComponent(next)}`;
+  }, [codeStep]);
+
+  if (query.isLoading || codeStep) {
     return (
       <div className="grid min-h-screen place-items-center bg-background" dir="rtl">
         <p className="text-sm text-muted-foreground">جارٍ تحميل صلاحيات الحساب…</p>
