@@ -22,6 +22,8 @@ interface ReportTableProps<T> {
   searchKey?: keyof T & string;
   totals?: boolean;
   caption?: string;
+  /** Makes one column's cells a button, e.g. a branch name that opens its journal entry. */
+  cellAction?: { key: keyof T & string; label: string; onClick: (row: T) => void };
 }
 
 function render<T>(row: T, column: Column<T>) {
@@ -42,6 +44,7 @@ export function ReportTable<T extends Record<string, unknown>>({
   searchKey,
   totals = true,
   caption,
+  cellAction,
 }: ReportTableProps<T>) {
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -169,7 +172,18 @@ export function ReportTable<T extends Record<string, unknown>>({
                       column.className,
                     )}
                   >
-                    {render(row, column)}
+                    {cellAction && cellAction.key === column.key ? (
+                      <button
+                        type="button"
+                        title={cellAction.label}
+                        onClick={() => cellAction.onClick(row)}
+                        className="text-start font-medium underline decoration-border decoration-dashed underline-offset-4 hover:text-primary-text hover:decoration-primary"
+                      >
+                        {render(row, column)}
+                      </button>
+                    ) : (
+                      render(row, column)
+                    )}
                   </td>
                 ))}
               </tr>
