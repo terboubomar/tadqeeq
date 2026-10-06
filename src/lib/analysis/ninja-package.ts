@@ -1,6 +1,8 @@
-const MAX_ZIP_ENTRIES = 500;
-const MAX_TOTAL_UNCOMPRESSED = 250 * 1024 * 1024;
-const MAX_ENTRY_UNCOMPRESSED = 25 * 1024 * 1024;
+import {
+  MAX_UPLOAD_SIZE_BYTES,
+  NINJA_ZIP_MAX_ENTRIES,
+  NINJA_ZIP_NINJA_ZIP_MAX_TOTAL_UNCOMPRESSED_BYTES_BYTES,
+} from "../limits";
 
 export interface NinjaPackageFiles {
   summaryFiles: File[];
@@ -74,7 +76,7 @@ export async function extractNinjaZip(file: File): Promise<NinjaPackageFiles> {
     if (signature === 0x04034b50) {
       if (offset + 30 > bytes.length) throw new Error("ملف ZIP غير مكتمل.");
       entries += 1;
-      if (entries > MAX_ZIP_ENTRIES) throw new Error("يحتوي ZIP على عدد ملفات أكبر من الحد المسموح.");
+      if (entries > NINJA_ZIP_MAX_ENTRIES) throw new Error("يحتوي ZIP على عدد ملفات أكبر من الحد المسموح.");
 
       const flags = u16(view, offset + 6);
       const method = u16(view, offset + 8);
@@ -103,11 +105,11 @@ export async function extractNinjaZip(file: File): Promise<NinjaPackageFiles> {
       const isDirectory = name.endsWith("/");
 
       if (!isDirectory) {
-        if (uncompressedSize > MAX_ENTRY_UNCOMPRESSED) {
+        if (uncompressedSize > MAX_UPLOAD_SIZE_BYTES) {
           throw new Error("أحد ملفات ZIP يتجاوز الحد المسموح لكل PDF.");
         }
         totalUncompressed += uncompressedSize;
-        if (totalUncompressed > MAX_TOTAL_UNCOMPRESSED) {
+        if (totalUncompressed > NINJA_ZIP_MAX_TOTAL_UNCOMPRESSED_BYTES) {
           throw new Error("الحجم الإجمالي بعد فك ZIP يتجاوز الحد المسموح.");
         }
 
