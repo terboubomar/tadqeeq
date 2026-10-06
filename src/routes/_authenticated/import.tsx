@@ -245,27 +245,65 @@ function MultiFileField({
 }
 
 function NinjaPackagePicker({
-  zipFile,
+  zipFiles,
   folderFiles,
   onZipChange,
   onFolderChange,
 }: {
-  zipFile: File | null;
+  zipFiles: File[];
   folderFiles: File[];
-  onZipChange: (file: File | null) => void;
+  onZipChange: (files: File[]) => void;
   onFolderChange: (files: File[]) => void;
 }) {
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      <FileField
-        id="ninja-zip"
-        label="حزمة Ninja الشهرية (ZIP)"
-        hint="ارفع ملف ZIP كما هو إذا كان يحتوي عدة فروع ومجلدات. سيقرأ Tadqeeq جميع ملفات PDF داخله تلقائياً."
-        accept=".zip"
-        tag="موصى به"
-        file={zipFile}
-        onChange={onZipChange}
-      />
+      <div className="rounded-[12px] border border-border bg-white p-5 sm:p-6">
+        <div>
+          <Label htmlFor="ninja-zip" className="text-[15px] font-semibold">حزم Ninja الشهرية (ZIP)</Label>
+          <p className="mt-1.5 text-[13px] leading-6 text-muted-foreground">
+            اختر ZIP الفواتير وZIP الـInvoice Summaries معاً. يمكن اختيار أكثر من ZIP في نفس المرة.
+          </p>
+        </div>
+        <input
+          id="ninja-zip"
+          type="file"
+          accept=".zip"
+          multiple
+          className="sr-only"
+          onChange={(event) => {
+            const selected = [...(event.target.files ?? [])];
+            const invalid = selected.find((file) => uploadSizeError(file.size));
+            if (invalid) {
+              toast.error(uploadSizeError(invalid.size) ?? "حجم ملف ZIP غير مسموح.");
+              event.currentTarget.value = "";
+              onZipChange([]);
+              return;
+            }
+            onZipChange(selected);
+          }}
+        />
+        <label
+          htmlFor="ninja-zip"
+          className={cn(
+            "mt-4 flex min-h-[132px] cursor-pointer flex-col items-center justify-center gap-2 rounded-[12px] border-2 border-dashed px-4 py-7 text-center transition-colors sm:min-h-[160px]",
+            zipFiles.length ? "border-success/40 bg-success/[0.05]" : "border-input bg-background/70 hover:border-primary/50 hover:bg-secondary/40",
+          )}
+        >
+          <span className={cn("grid size-11 place-items-center rounded-full", zipFiles.length ? "bg-success/15 text-success" : "bg-secondary text-primary")}>
+            {zipFiles.length ? <Check className="size-5" /> : <Upload className="size-5" />}
+          </span>
+          <span className="text-[14px] font-semibold">
+            {zipFiles.length ? `${zipFiles.length} ملف ZIP محدد` : "اختر ZIP الفواتير وZIP الملخصات"}
+          </span>
+          {zipFiles.length ? (
+            <span className="max-w-full text-[11px] leading-5 text-muted-foreground">
+              {zipFiles.map((file) => file.name).join(" · ")}
+            </span>
+          ) : (
+            <span className="text-[11.5px] text-muted-foreground">يدعم عدة فروع ومجلدات داخل كل ZIP</span>
+          )}
+        </label>
+      </div>
 
       <div className="rounded-[12px] border border-border bg-white p-5 sm:p-6">
         <div>
@@ -331,7 +369,7 @@ function ImportPage() {
   const [ninjaSummaryFiles, setNinjaSummaryFiles] = useState<File[]>([]);
   const [ninjaInvoiceFiles, setNinjaInvoiceFiles] = useState<File[]>([]);
   const [ninjaPackageFiles, setNinjaPackageFiles] = useState<File[]>([]);
-  const [ninjaZipFile, setNinjaZipFile] = useState<File | null>(null);
+  const [ninjaZipFiles, setNinjaZipFiles] = useState<File[]>([]);
   const [bankRate, setBankRate] = useState(search.bankRate ?? "");
   const [label, setLabel] = useState(search.label ?? "");
   const [busy, setBusy] = useState(false);
@@ -396,7 +434,7 @@ function ImportPage() {
     setNinjaSummaryFiles([]);
     setNinjaInvoiceFiles([]);
     setNinjaPackageFiles([]);
-    setNinjaZipFile(null);
+    setNinjaZipFiles([]);
     setBankRate("");
     setMappingReview(null);
     setMappingSelections({});
@@ -414,7 +452,7 @@ function ImportPage() {
     if (
       step === 1 &&
       platform === "ninja" &&
-      !ninjaZipFile &&
+      !ninjaZipFiles.length &&
       !ninjaPackageFiles.length &&
       !ninjaSummaryFiles.length
     ) {
@@ -443,7 +481,7 @@ function ImportPage() {
     } = {},
   ) {
     if (platform === "ninja") {
-      const packageMode = Boolean(ninjaZipFile) || ninjaPackageFiles.length > 0;
+      const packageMode = ninjaZipFiles.length > 0 || ninjaPackageFiles.length > 0;
       const directReady = ninjaSummaryFiles.length > 0 && ninjaInvoiceFiles.length > 0;
       if (!packageMode && !directReady) {
         setNotice({ kind: "missing" });
@@ -469,8 +507,8 @@ function ImportPage() {
       const form = new FormData();
       form.set("platform", platform);
       if (platform === "ninja") {
-        if (ninjaZipFile) {
-          form.set("ninjaZipFile", ninjaZipFile);
+        if (ninjaZipFiles.length) {
+          ninjaZipFiles.forEach((file) => form.append("ninjaZipFiles", file));
         } else if (ninjaPackageFiles.length) {
           ninjaPackageFiles.forEach((file) => form.append("ninjaPackageFiles", file));
         } else {
@@ -615,12 +653,12 @@ function ImportPage() {
               dataFile={dataFile}
               ninjaSummaryFiles={ninjaSummaryFiles}
               ninjaPackageFiles={ninjaPackageFiles}
-              ninjaZipFile={ninjaZipFile}
+              ninjaZipFiles={ninjaZipFiles}
               onNinjaSummaryFilesChange={(files) => {
                 setNinjaSummaryFiles(files);
                 if (files.length) {
                   setNinjaPackageFiles([]);
-                  setNinjaZipFile(null);
+                  setNinjaZipFiles([]);
                 }
               }}
               onNinjaPackageFilesChange={(files) => {
@@ -631,9 +669,9 @@ function ImportPage() {
                   setNinjaZipFile(null);
                 }
               }}
-              onNinjaZipChange={(file) => {
-                setNinjaZipFile(file);
-                if (file) {
+              onNinjaZipChange={(files) => {
+                setNinjaZipFiles(files);
+                if (files.length) {
                   setNinjaSummaryFiles([]);
                   setNinjaInvoiceFiles([]);
                   setNinjaPackageFiles([]);
@@ -655,7 +693,7 @@ function ImportPage() {
               cpcFile={cpcFile}
               compensationFile={compensationFile}
               ninjaInvoiceFiles={ninjaInvoiceFiles}
-              ninjaPackageMode={Boolean(ninjaZipFile) || ninjaPackageFiles.length > 0}
+              ninjaPackageMode={ninjaZipFiles.length > 0 || ninjaPackageFiles.length > 0}
               bankRate={bankRate}
               bankRateInterpretation={bankRateInterpretation}
               bankRateValidationError={bankRateValidationError}
@@ -702,7 +740,7 @@ function ImportPage() {
               ninjaSummaryFiles={ninjaSummaryFiles}
               ninjaInvoiceFiles={ninjaInvoiceFiles}
               ninjaPackageFiles={ninjaPackageFiles}
-              ninjaZipFile={ninjaZipFile}
+              ninjaZipFiles={ninjaZipFiles}
               bankRate={bankRate}
               onEdit={setStep}
             />
@@ -805,7 +843,7 @@ function ImportPage() {
               disabled={
                 busy ||
                 (platform === "ninja"
-                  ? !ninjaZipFile &&
+                  ? !ninjaZipFiles.length &&
                     !ninjaPackageFiles.length &&
                     (!ninjaSummaryFiles.length || !ninjaInvoiceFiles.length)
                   : !dataFile)
@@ -1062,7 +1100,7 @@ function DataFileStep({
   dataFile,
   ninjaSummaryFiles,
   ninjaPackageFiles,
-  ninjaZipFile,
+  ninjaZipFiles,
   onNinjaSummaryFilesChange,
   onNinjaPackageFilesChange,
   onNinjaZipChange,
@@ -1072,10 +1110,10 @@ function DataFileStep({
   dataFile: File | null;
   ninjaSummaryFiles: File[];
   ninjaPackageFiles: File[];
-  ninjaZipFile: File | null;
+  ninjaZipFiles: File[];
   onNinjaSummaryFilesChange: (files: File[]) => void;
   onNinjaPackageFilesChange: (files: File[]) => void;
-  onNinjaZipChange: (file: File | null) => void;
+  onNinjaZipChange: (files: File[]) => void;
   onChange: (file: File | null) => void;
 }) {
   if (platform === "ninja") {
@@ -1085,7 +1123,7 @@ function DataFileStep({
           <span className="font-semibold">الطريقة المفضلة:</span> ارفع ZIP الشهري أو مجلد Ninja الكامل إذا كان يحتوي عدة فروع. يمكنك أيضاً استخدام الرفع المباشر للـPDF أدناه.
         </div>
         <NinjaPackagePicker
-          zipFile={ninjaZipFile}
+          zipFiles={ninjaZipFiles}
           folderFiles={ninjaPackageFiles}
           onZipChange={onNinjaZipChange}
           onFolderChange={onNinjaPackageFilesChange}
@@ -1289,7 +1327,7 @@ function ReviewStep({
   ninjaSummaryFiles,
   ninjaInvoiceFiles,
   ninjaPackageFiles,
-  ninjaZipFile,
+  ninjaZipFiles,
   bankRate,
   onEdit,
 }: {
@@ -1302,7 +1340,7 @@ function ReviewStep({
   ninjaSummaryFiles: File[];
   ninjaInvoiceFiles: File[];
   ninjaPackageFiles: File[];
-  ninjaZipFile: File | null;
+  ninjaZipFiles: File[];
   bankRate: string;
   onEdit: (step: number) => void;
 }) {
@@ -1341,8 +1379,8 @@ function ReviewStep({
           <ReviewRow
             label="مصدر Ninja"
             value={
-              ninjaZipFile
-                ? `ZIP · ${ninjaZipFile.name}`
+              ninjaZipFiles.length
+                ? `ZIP · ${ninjaZipFiles.length} ملف`
                 : ninjaPackageFiles.length
                   ? `مجلد · ${ninjaPackageFiles.length} ملف PDF`
                   : ninjaSummaryFiles.length
@@ -1350,7 +1388,7 @@ function ReviewStep({
                     : "غير مرفق"
             }
             required
-            ready={Boolean(ninjaZipFile) || ninjaPackageFiles.length > 0 || ninjaSummaryFiles.length > 0}
+            ready={ninjaZipFiles.length > 0 || ninjaPackageFiles.length > 0 || ninjaSummaryFiles.length > 0}
           />
         ) : (
           <ReviewRow
@@ -1373,14 +1411,14 @@ function ReviewStep({
           <ReviewRow
             label="مطابقة الفواتير"
             value={
-              ninjaZipFile || ninjaPackageFiles.length
+              ninjaZipFiles.length || ninjaPackageFiles.length
                 ? "ستُكتشف تلقائياً من الحزمة"
                 : ninjaInvoiceFiles.length
                   ? `${ninjaInvoiceFiles.length} ملف PDF`
                   : "غير مرفقة"
             }
             required
-            ready={Boolean(ninjaZipFile) || ninjaPackageFiles.length > 0 || ninjaInvoiceFiles.length > 0}
+            ready={ninjaZipFiles.length > 0 || ninjaPackageFiles.length > 0 || ninjaInvoiceFiles.length > 0}
           />
         ) : (
           <ReviewRow
