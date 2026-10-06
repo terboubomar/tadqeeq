@@ -8,7 +8,7 @@ import type { ColumnChange } from "./smart-columns/changes";
 export interface StoredPeriod {
   id: string;
   label: string;
-  platform: "hungerstation" | "keeta" | "jahez";
+  platform: "hungerstation" | "keeta" | "jahez" | "ninja";
   period_start: string | null;
   period_end: string | null;
   created_at: string;
