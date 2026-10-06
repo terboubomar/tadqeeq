@@ -8,7 +8,7 @@ import {
   undoSmartWatchAcceptanceOnServer,
 } from "./smart-watch.server";
 
-const platform = z.enum(["hungerstation", "keeta", "jahez", "ninja"]);
+const platform = z.enum(["hungerstation", "keeta", "jahez"]);
 const metric = z.enum(["commission", "payment_fees", "delivery", "compensation", "total_cost"]) satisfies z.ZodType<WatchMetric>;
 const branchKey = z.string().trim().min(1).max(300);
 const rate = z.number().finite().min(0).max(10);
