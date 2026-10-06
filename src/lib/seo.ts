@@ -81,6 +81,7 @@ export const PRIVATE_PAGES = [
   "/history",
   "/import",
   "/invoice-check",
+  "/journal",
   "/mcp",
   "/promotions",
   "/reset-password",
