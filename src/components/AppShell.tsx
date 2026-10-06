@@ -63,6 +63,7 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
     title: "التقارير",
     items: [
       { to: "/branches", label: "تقرير الفروع", permission: "reports.read" },
+      { to: "/journal", label: "القيود المحاسبية", permission: "reports.read" },
       { to: "/daily", label: "التقرير اليومي", permission: "reports.read" },
       { to: "/breakdown", label: "تفصيل البنود", permission: "reports.read" },
       { to: "/history", label: "الفترات السابقة", permission: "reports.read" },
@@ -90,6 +91,7 @@ const ROUTE_PERMISSIONS: Record<string, WorkspacePermission> = {
   "/promotions": "financials.read",
   "/exceptions": "exceptions.read",
   "/branches": "reports.read",
+  "/journal": "reports.read",
   "/daily": "reports.read",
   "/breakdown": "reports.read",
   "/history": "reports.read",

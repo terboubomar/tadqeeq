@@ -4,7 +4,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { BookOpenCheck } from "lucide-react";
 import { useState } from "react";
 
-import { BranchJournalsDialog, JournalEntryDialog, type BranchJournal } from "@/components/journal/JournalEntryDialog";
+import { BranchJournalsDialog, JournalEntryDialog } from "@/components/journal/JournalEntryDialog";
+import type { BranchJournal } from "@/components/journal/journal-export";
 import { useJournalAccounts } from "@/components/journal/use-journal-accounts";
 import { Button } from "@/components/ui/button";
 import { branchJournalEntry, type JournalEntry } from "@/lib/journal-entries";
