@@ -1,9 +1,9 @@
-export type PlatformKey = "hungerstation" | "jahez" | "keeta";
+export type PlatformKey = "hungerstation" | "jahez" | "keeta" | "ninja";
 
 export const PLATFORM_BRANDS: Record<PlatformKey, { name: string; nameEn: string }> = {
   hungerstation: { name: "هنقرستيشن", nameEn: "HungerStation" },
   jahez: { name: "جاهز", nameEn: "Jahez" },
-  keeta: { name: "كيتا", nameEn: "Keeta" },
+  keeta: { name: "كيتا", nameEn: "Keeta" },\n  ninja: { name: "نينجا", nameEn: "Ninja" },
 };
 
 export const PLATFORM_KEYS = Object.keys(PLATFORM_BRANDS) as PlatformKey[];
