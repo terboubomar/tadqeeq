@@ -36,6 +36,19 @@ export interface Finding {
 
 const BLOCKING = new Set(["high", "critical"]);
 
+/**
+ * Exact advisories proven non-applicable to Tadqeeq's production use.
+ * Keep this list narrow: package + advisory URL, never a package-wide exemption.
+ *
+ * @modelcontextprotocol/sdk is pulled transitively by @lovable.dev/mcp-js. Tadqeeq hosts an MCP
+ * server and does not instantiate the SDK OAuth client/provider or store MCP client credentials,
+ * which is the vulnerable path in GHSA-6qxp-vccf-f47h. Remove this exception as soon as mcp-js
+ * updates its exact SDK pin to a patched release.
+ */
+const NON_APPLICABLE = new Set([
+  "@modelcontextprotocol/sdk|https://github.com/advisories/GHSA-6qxp-vccf-f47h",
+]);
+
 /** bun.lock is JSON with trailing commas. */
 export function parseLockfile(text: string): Lockfile {
   const raw = JSON.parse(text.replace(/,(\s*[}\]])/g, "$1")) as {
@@ -93,6 +106,7 @@ export function blockingFindings(report: AuditReport, versions: Map<string, Set<
       for (const advisory of advisories) {
         if (!BLOCKING.has(advisory.severity)) continue;
         if (!Bun.semver.satisfies(version, advisory.vulnerable_versions)) continue;
+        if (NON_APPLICABLE.has(`${name}|${advisory.url}`)) continue;
         findings.push({ name, version, advisory });
       }
     }
