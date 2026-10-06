@@ -123,6 +123,11 @@ function sourceForm(period: StoredPeriod, sources: SourceFile[]): FormData {
   form.set("label", period.label);
 
   for (const source of sources) {
+    if (period.platform === "ninja") {
+      if (source.kind === "data") form.append("ninjaSummaryFiles", source.file);
+      if (source.kind === "invoice") form.append("ninjaInvoiceFiles", source.file);
+      continue;
+    }
     if (source.kind === "data") form.set("dataFile", source.file);
     if (source.kind === "invoice") form.set("invoiceFile", source.file);
     if (source.kind === "cpc_invoice") form.set("cpcFile", source.file);
