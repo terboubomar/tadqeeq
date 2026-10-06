@@ -353,6 +353,38 @@ export interface JahezOrderReference {
   periodLabel?: string;
 }
 
+export interface NinjaInvoiceSummary {
+  invoiceNo?: string;
+  invoiceDate?: string;
+  branch?: string;
+  successfulOrders?: number;
+  rejectedOrders?: number;
+  successfulOrdersValue?: number;
+  successfulCommissionableValue?: number;
+  successfulCommission?: number;
+  successfulOnlinePaymentFee?: number;
+  successfulFixedFee?: number;
+  successfulTotalExVat?: number;
+  rejectedOrdersValue?: number;
+  rejectedCommissionableValue?: number;
+  rejectedCommission?: number;
+  rejectedOnlinePaymentFee?: number;
+  rejectedFixedFee?: number;
+  rejectedTotalExVat?: number;
+  cancelledCommission?: number;
+  cancelledOnlinePaymentFee?: number;
+  missingItemCompensation?: number;
+  lateDeliveryCompensation?: number;
+  advertisementBookings?: number;
+  advertisementActiveDays?: number;
+  photoSessions?: number;
+  posDevices?: number;
+  ncrBookingFee?: number;
+  totalExVat?: number;
+  vat?: number;
+  totalIncVat?: number;
+}
+
 export interface InvoiceFigures {
   /** Arabic label -> amount, in display order */
   lines: { label: string; amount: number }[];
