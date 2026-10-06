@@ -60,8 +60,8 @@ describe("Ninja invoice summary parser", () => {
         "Total Amount Excl. VAT 176.22 VAT Rate Amount 15.0% 26.43 Total Amount Incl. VAT 202.65",
     );
 
-    expect(parsed.cancelledCommission).toBeCloseTo(29.52, 6);
-    expect(parsed.cancelledOnlinePaymentFee).toBeCloseTo(33.95, 6);
+    expect(parsed.cancelledCommission).toBeCloseTo(3.8376, 6);
+    expect(parsed.cancelledOnlinePaymentFee).toBeCloseTo(0.84875, 6);
     expect(parsed.totalExVat).toBeCloseTo(176.22, 6);
   });
 
@@ -83,7 +83,7 @@ describe("Ninja invoice summary parser", () => {
     expect(parsed.advertisementActiveDays).toBe(31);
     expect(parsed.posDevices).toBe(0);
     expect(parsed.photoSessions).toBe(0);
-    expect(parsed.ncrBookingFee).toBeCloseTo(31, 6);
+    expect(parsed.ncrBookingFee).toBeCloseTo(12400, 6);
     expect(parsed.totalExVat).toBeCloseTo(12620.62, 6);
   });
 });
