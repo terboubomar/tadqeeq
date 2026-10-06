@@ -244,6 +244,79 @@ function MultiFileField({
   );
 }
 
+function NinjaPackagePicker({
+  zipFile,
+  folderFiles,
+  onZipChange,
+  onFolderChange,
+}: {
+  zipFile: File | null;
+  folderFiles: File[];
+  onZipChange: (file: File | null) => void;
+  onFolderChange: (files: File[]) => void;
+}) {
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <FileField
+        id="ninja-zip"
+        label="حزمة Ninja الشهرية (ZIP)"
+        hint="ارفع ملف ZIP كما هو إذا كان يحتوي عدة فروع ومجلدات. سيقرأ Tadqeeq جميع ملفات PDF داخله تلقائياً."
+        accept=".zip"
+        tag="موصى به"
+        file={zipFile}
+        onChange={onZipChange}
+      />
+
+      <div className="rounded-[12px] border border-border bg-white p-5 sm:p-6">
+        <div>
+          <Label htmlFor="ninja-folder" className="text-[15px] font-semibold">مجلد Ninja كامل</Label>
+          <p className="mt-1.5 text-[13px] leading-6 text-muted-foreground">
+            اختر المجلد الذي يحتوي فروع Ninja. سيتم تجاهل الملفات غير PDF وقراءة المجلدات الفرعية تلقائياً.
+          </p>
+        </div>
+        <input
+          id="ninja-folder"
+          ref={(node) => {
+            if (node) node.setAttribute("webkitdirectory", "");
+          }}
+          type="file"
+          accept=".pdf"
+          multiple
+          className="sr-only"
+          onChange={(event) => {
+            const selected = [...(event.target.files ?? [])].filter((file) =>
+              file.name.toLowerCase().endsWith(".pdf"),
+            );
+            const invalid = selected.find((file) => uploadSizeError(file.size));
+            if (invalid) {
+              toast.error(uploadSizeError(invalid.size) ?? "حجم الملف غير مسموح.");
+              event.currentTarget.value = "";
+              onFolderChange([]);
+              return;
+            }
+            onFolderChange(selected);
+          }}
+        />
+        <label
+          htmlFor="ninja-folder"
+          className={cn(
+            "mt-4 flex min-h-[132px] cursor-pointer flex-col items-center justify-center gap-2 rounded-[12px] border-2 border-dashed px-4 py-7 text-center transition-colors sm:min-h-[160px]",
+            folderFiles.length ? "border-success/40 bg-success/[0.05]" : "border-input bg-background/70 hover:border-primary/50 hover:bg-secondary/40",
+          )}
+        >
+          <span className={cn("grid size-11 place-items-center rounded-full", folderFiles.length ? "bg-success/15 text-success" : "bg-secondary text-primary")}>
+            {folderFiles.length ? <Check className="size-5" /> : <Upload className="size-5" />}
+          </span>
+          <span className="text-[14px] font-semibold">
+            {folderFiles.length ? `${folderFiles.length} ملف PDF داخل المجلد` : "اختر مجلد Ninja"}
+          </span>
+          <span className="text-[11.5px] text-muted-foreground">يدعم المجلدات الفرعية والفروع المتعددة</span>
+        </label>
+      </div>
+    </div>
+  );
+}
+
 function ImportPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -257,6 +330,8 @@ function ImportPage() {
   const [compensationFile, setCompensationFile] = useState<File | null>(null);
   const [ninjaSummaryFiles, setNinjaSummaryFiles] = useState<File[]>([]);
   const [ninjaInvoiceFiles, setNinjaInvoiceFiles] = useState<File[]>([]);
+  const [ninjaPackageFiles, setNinjaPackageFiles] = useState<File[]>([]);
+  const [ninjaZipFile, setNinjaZipFile] = useState<File | null>(null);
   const [bankRate, setBankRate] = useState(search.bankRate ?? "");
   const [label, setLabel] = useState(search.label ?? "");
   const [busy, setBusy] = useState(false);
@@ -320,6 +395,8 @@ function ImportPage() {
     setCompensationFile(null);
     setNinjaSummaryFiles([]);
     setNinjaInvoiceFiles([]);
+    setNinjaPackageFiles([]);
+    setNinjaZipFile(null);
     setBankRate("");
     setMappingReview(null);
     setMappingSelections({});
@@ -334,8 +411,14 @@ function ImportPage() {
   }
 
   function nextStep() {
-    if (step === 1 && platform === "ninja" && !ninjaSummaryFiles.length) {
-      toast.error("ارفع ملفات Ninja Invoice Summary قبل الانتقال للخطوة التالية.");
+    if (
+      step === 1 &&
+      platform === "ninja" &&
+      !ninjaZipFile &&
+      !ninjaPackageFiles.length &&
+      !ninjaSummaryFiles.length
+    ) {
+      toast.error("اختر ZIP أو مجلد Ninja أو ملفات Invoice Summary مباشرة.");
       return;
     }
     if (step === 1 && platform !== "ninja" && !dataFile) {
@@ -360,7 +443,9 @@ function ImportPage() {
     } = {},
   ) {
     if (platform === "ninja") {
-      if (!ninjaSummaryFiles.length || !ninjaInvoiceFiles.length) {
+      const packageMode = Boolean(ninjaZipFile) || ninjaPackageFiles.length > 0;
+      const directReady = ninjaSummaryFiles.length > 0 && ninjaInvoiceFiles.length > 0;
+      if (!packageMode && !directReady) {
         setNotice({ kind: "missing" });
         setStep(!ninjaSummaryFiles.length ? 1 : 2);
         return;
@@ -384,8 +469,14 @@ function ImportPage() {
       const form = new FormData();
       form.set("platform", platform);
       if (platform === "ninja") {
-        ninjaSummaryFiles.forEach((file) => form.append("ninjaSummaryFiles", file));
-        ninjaInvoiceFiles.forEach((file) => form.append("ninjaInvoiceFiles", file));
+        if (ninjaZipFile) {
+          form.set("ninjaZipFile", ninjaZipFile);
+        } else if (ninjaPackageFiles.length) {
+          ninjaPackageFiles.forEach((file) => form.append("ninjaPackageFiles", file));
+        } else {
+          ninjaSummaryFiles.forEach((file) => form.append("ninjaSummaryFiles", file));
+          ninjaInvoiceFiles.forEach((file) => form.append("ninjaInvoiceFiles", file));
+        }
       } else if (dataFile) {
         form.set("dataFile", dataFile);
       }
@@ -523,7 +614,31 @@ function ImportPage() {
               platform={platform}
               dataFile={dataFile}
               ninjaSummaryFiles={ninjaSummaryFiles}
-              onNinjaSummaryFilesChange={setNinjaSummaryFiles}
+              ninjaPackageFiles={ninjaPackageFiles}
+              ninjaZipFile={ninjaZipFile}
+              onNinjaSummaryFilesChange={(files) => {
+                setNinjaSummaryFiles(files);
+                if (files.length) {
+                  setNinjaPackageFiles([]);
+                  setNinjaZipFile(null);
+                }
+              }}
+              onNinjaPackageFilesChange={(files) => {
+                setNinjaPackageFiles(files);
+                if (files.length) {
+                  setNinjaSummaryFiles([]);
+                  setNinjaInvoiceFiles([]);
+                  setNinjaZipFile(null);
+                }
+              }}
+              onNinjaZipChange={(file) => {
+                setNinjaZipFile(file);
+                if (file) {
+                  setNinjaSummaryFiles([]);
+                  setNinjaInvoiceFiles([]);
+                  setNinjaPackageFiles([]);
+                }
+              }}
               onChange={(file) => {
                 setDataFile(file);
                 setConfirmedColumns([]);
@@ -540,6 +655,7 @@ function ImportPage() {
               cpcFile={cpcFile}
               compensationFile={compensationFile}
               ninjaInvoiceFiles={ninjaInvoiceFiles}
+              ninjaPackageMode={Boolean(ninjaZipFile) || ninjaPackageFiles.length > 0}
               bankRate={bankRate}
               bankRateInterpretation={bankRateInterpretation}
               bankRateValidationError={bankRateValidationError}
@@ -585,6 +701,8 @@ function ImportPage() {
               compensationFile={compensationFile}
               ninjaSummaryFiles={ninjaSummaryFiles}
               ninjaInvoiceFiles={ninjaInvoiceFiles}
+              ninjaPackageFiles={ninjaPackageFiles}
+              ninjaZipFile={ninjaZipFile}
               bankRate={bankRate}
               onEdit={setStep}
             />
@@ -687,7 +805,9 @@ function ImportPage() {
               disabled={
                 busy ||
                 (platform === "ninja"
-                  ? !ninjaSummaryFiles.length || !ninjaInvoiceFiles.length
+                  ? !ninjaZipFile &&
+                    !ninjaPackageFiles.length &&
+                    (!ninjaSummaryFiles.length || !ninjaInvoiceFiles.length)
                   : !dataFile)
               }
             >
@@ -941,28 +1061,45 @@ function DataFileStep({
   platform,
   dataFile,
   ninjaSummaryFiles,
+  ninjaPackageFiles,
+  ninjaZipFile,
   onNinjaSummaryFilesChange,
+  onNinjaPackageFilesChange,
+  onNinjaZipChange,
   onChange,
 }: {
   platform: Platform;
   dataFile: File | null;
   ninjaSummaryFiles: File[];
+  ninjaPackageFiles: File[];
+  ninjaZipFile: File | null;
   onNinjaSummaryFilesChange: (files: File[]) => void;
+  onNinjaPackageFilesChange: (files: File[]) => void;
+  onNinjaZipChange: (file: File | null) => void;
   onChange: (file: File | null) => void;
 }) {
   if (platform === "ninja") {
     return (
       <div className="space-y-4">
+        <div className="rounded-[9px] border border-primary/15 bg-secondary/55 px-4 py-3 text-[12px] leading-6 text-foreground/80">
+          <span className="font-semibold">الطريقة المفضلة:</span> ارفع ZIP الشهري أو مجلد Ninja الكامل إذا كان يحتوي عدة فروع. يمكنك أيضاً استخدام الرفع المباشر للـPDF أدناه.
+        </div>
+        <NinjaPackagePicker
+          zipFile={ninjaZipFile}
+          folderFiles={ninjaPackageFiles}
+          onZipChange={onNinjaZipChange}
+          onFolderChange={onNinjaPackageFilesChange}
+        />
+        <div className="relative py-1 text-center text-[11.5px] text-muted-foreground">
+          <span className="bg-background px-3">أو رفع مباشر</span>
+        </div>
         <MultiFileField
           id="ninja-summaries"
           label="ملفات Ninja Invoice Summary (PDF)"
-          hint="اختر كل ملفات Invoice Summary للفترة مباشرة. Tadqeeq يقرأ رقم SINV واسم الفرع ويجمعها تلقائياً؛ لا تستخدم ZIP."
+          hint="استخدم هذا الخيار فقط إذا كنت تريد تحديد ملفات Summary يدوياً بدلاً من ZIP أو المجلد."
           files={ninjaSummaryFiles}
           onChange={onNinjaSummaryFilesChange}
         />
-        <div className="rounded-[9px] border border-primary/15 bg-secondary/55 px-4 py-3 text-[12px] leading-6 text-foreground/80">
-          هذه الملخصات هي مصدر أرقام الطلبات والعمولات ورسوم الدفع والرسوم الثابتة والتعويضات والإعلانات في تدقيق Ninja.
-        </div>
       </div>
     );
   }
@@ -1005,6 +1142,7 @@ function DocumentsStep({
   cpcFile,
   compensationFile,
   ninjaInvoiceFiles,
+  ninjaPackageMode,
   bankRate,
   bankRateInterpretation,
   bankRateValidationError,
@@ -1019,6 +1157,7 @@ function DocumentsStep({
   cpcFile: File | null;
   compensationFile: File | null;
   ninjaInvoiceFiles: File[];
+  ninjaPackageMode: boolean;
   bankRate: string;
   bankRateInterpretation: string;
   bankRateValidationError: string;
@@ -1029,12 +1168,19 @@ function DocumentsStep({
   onBankRateChange: (value: string) => void;
 }) {
   if (platform === "ninja") {
+    if (ninjaPackageMode) {
+      return (
+        <div className="rounded-[10px] border border-success/25 bg-success/[0.04] px-4 py-4 text-[13px] leading-6">
+          ZIP/المجلد سيُقرأ بالكامل تلقائياً. لا تحتاج لاختيار الفواتير مرة ثانية؛ سيطابق Tadqeeq كل Invoice Summary مع فاتورته حسب رقم SINV.
+        </div>
+      );
+    }
     return (
       <div className="space-y-3">
         <MultiFileField
           id="ninja-invoices"
           label="فواتير Ninja المطابقة (PDF)"
-          hint="اختر كل فواتير Ninja الأصلية لنفس الفترة. تتم المطابقة مع ملفات Invoice Summary حسب رقم SINV؛ أي ملف ناقص أو مكرر يوقف الحفظ بدلاً من التخمين."
+          hint="للرفع المباشر فقط: اختر كل الفواتير الأصلية لنفس ملفات Summary. أي ملف ناقص أو مكرر يوقف الحفظ بدلاً من التخمين."
           files={ninjaInvoiceFiles}
           onChange={onNinjaInvoiceFilesChange}
         />
@@ -1142,6 +1288,8 @@ function ReviewStep({
   compensationFile,
   ninjaSummaryFiles,
   ninjaInvoiceFiles,
+  ninjaPackageFiles,
+  ninjaZipFile,
   bankRate,
   onEdit,
 }: {
@@ -1153,6 +1301,8 @@ function ReviewStep({
   compensationFile: File | null;
   ninjaSummaryFiles: File[];
   ninjaInvoiceFiles: File[];
+  ninjaPackageFiles: File[];
+  ninjaZipFile: File | null;
   bankRate: string;
   onEdit: (step: number) => void;
 }) {
@@ -1189,10 +1339,18 @@ function ReviewStep({
       <ReviewSection title="ملف البيانات" icon={FileSpreadsheet} onEdit={() => onEdit(1)}>
         {platform === "ninja" ? (
           <ReviewRow
-            label="Ninja Invoice Summary"
-            value={ninjaSummaryFiles.length ? `${ninjaSummaryFiles.length} ملف PDF` : "غير مرفق"}
+            label="مصدر Ninja"
+            value={
+              ninjaZipFile
+                ? `ZIP · ${ninjaZipFile.name}`
+                : ninjaPackageFiles.length
+                  ? `مجلد · ${ninjaPackageFiles.length} ملف PDF`
+                  : ninjaSummaryFiles.length
+                    ? `رفع مباشر · ${ninjaSummaryFiles.length} Summary`
+                    : "غير مرفق"
+            }
             required
-            ready={ninjaSummaryFiles.length > 0}
+            ready={Boolean(ninjaZipFile) || ninjaPackageFiles.length > 0 || ninjaSummaryFiles.length > 0}
           />
         ) : (
           <ReviewRow
@@ -1213,10 +1371,16 @@ function ReviewStep({
       <ReviewSection title="المستندات والإعدادات" icon={FileText} onEdit={() => onEdit(2)}>
         {platform === "ninja" ? (
           <ReviewRow
-            label="فواتير Ninja"
-            value={ninjaInvoiceFiles.length ? `${ninjaInvoiceFiles.length} ملف PDF` : "غير مرفقة"}
+            label="مطابقة الفواتير"
+            value={
+              ninjaZipFile || ninjaPackageFiles.length
+                ? "ستُكتشف تلقائياً من الحزمة"
+                : ninjaInvoiceFiles.length
+                  ? `${ninjaInvoiceFiles.length} ملف PDF`
+                  : "غير مرفقة"
+            }
             required
-            ready={ninjaInvoiceFiles.length > 0}
+            ready={Boolean(ninjaZipFile) || ninjaPackageFiles.length > 0 || ninjaInvoiceFiles.length > 0}
           />
         ) : (
           <ReviewRow
