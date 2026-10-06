@@ -20,36 +20,132 @@ import {
 } from "@/lib/journal-entries";
 import { cn } from "@/lib/utils";
 
+const ENTRY_COLUMNS = [
+  { key: "code", header: "رمز الحساب", type: "text" },
+  { key: "account", header: "الحساب", type: "text" },
+  { key: "debit", header: "مدين" },
+  { key: "credit", header: "دائن" },
+  { key: "memo", header: "البيان", type: "text" },
+] as const;
+
+type EntryRow = { entryNo?: number; branch?: string; code: string; account: string; debit?: number; credit?: number; memo: string };
+
+function entryRows(entry: JournalEntry): EntryRow[] {
+  return entry.lines.map((line) => ({
+    code: line.account.code,
+    account: line.account.name,
+    debit: line.debit || undefined,
+    credit: line.credit || undefined,
+    memo: line.memo,
+  }));
+}
+
+function fileSlug(text: string): string {
+  return text.replace(/[^\p{L}\p{N}]+/gu, "-").slice(0, 60);
+}
+
+/** Excel sheet names: at most 31 characters, none of : \ / ? * [ ], unique within the workbook. */
+function sheetName(index: number, label: string): string {
+  return (index + 1 + " - " + label.replace(/[:\\/?*[\]]+/g, " ")).slice(0, 31).trim();
+}
+
+function isBalanced(entry: JournalEntry): boolean {
+  return Math.abs(entry.totalDebit - entry.totalCredit) < 0.01;
+}
+
+/** The entry's lines with debit, credit, memo and a totals row. */
+function EntryTable({ entry }: { entry: JournalEntry }) {
+  const balanced = isBalanced(entry);
+  return (
+    <div className="overflow-x-auto rounded-xl border border-border">
+      <table className="w-full text-[13px] sm:min-w-[620px]">
+        <thead className="bg-surface-raised text-[11.5px] text-muted-foreground">
+          <tr>
+            <th className="px-3 py-2.5 text-start font-semibold">الحساب</th>
+            <th className="px-3 py-2.5 text-right font-semibold">مدين</th>
+            <th className="px-3 py-2.5 text-right font-semibold">دائن</th>
+            <th className="hidden px-3 py-2.5 text-start font-semibold sm:table-cell">البيان</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entry.lines.map((line) => (
+            <tr key={line.account.key} className="border-t border-border/70 align-top">
+              <td className={cn("px-3 py-2.5", line.credit > 0 && "ps-8")}>
+                <span className="inline-flex flex-wrap items-baseline gap-x-2">
+                  {line.account.code ? (
+                    <span className="num text-[11.5px] text-muted-foreground">{line.account.code}</span>
+                  ) : null}
+                  <span className="font-medium">{line.account.name}</span>
+                </span>
+              </td>
+              <td className="px-3 py-2.5 text-right">{line.debit ? <span className="num">{money(line.debit)}</span> : null}</td>
+              <td className="px-3 py-2.5 text-right">{line.credit ? <span className="num">{money(line.credit)}</span> : null}</td>
+              <td className="hidden px-3 py-2.5 text-[12px] text-muted-foreground sm:table-cell">{line.memo}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="border-t-2 border-border bg-surface-raised/50 font-semibold">
+            <td className="px-3 py-2.5">الإجمالي</td>
+            <td className="px-3 py-2.5 text-right"><span className="num">{money(entry.totalDebit)}</span></td>
+            <td className="px-3 py-2.5 text-right"><span className="num">{money(entry.totalCredit)}</span></td>
+            <td className="hidden px-3 py-2.5 sm:table-cell">
+              {balanced ? (
+                <span className="inline-flex items-center gap-1 text-[12px] text-success">
+                  <CheckCircle2 className="size-3.5" />
+                  متوازن
+                </span>
+              ) : (
+                <span className="text-[12px] text-destructive">غير متوازن</span>
+              )}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
+function EntryNotes({ notes }: { notes: string[] }) {
+  if (!notes.length) return null;
+  return (
+    <ul className="space-y-1.5 rounded-xl bg-surface-raised px-4 py-3 text-[12px] leading-6 text-muted-foreground">
+      {notes.map((note) => (
+        <li key={note}>{note}</li>
+      ))}
+    </ul>
+  );
+}
+
+const TREATMENT_NOTE =
+  "الإيراد صافي المبيعات بدون الضريبة، وعمولة المنصة ورسومها مصروفات مستقلة (المنصة وكيل للمطعم). الأرقام من نتيجة التدقيق المحفوظة دون أي تعديل.";
+
+function AccountsButton({ onClick }: { onClick: () => void }) {
+  const { can } = useWorkspaceAccess();
+  if (!can("contracts.manage")) return null;
+  return (
+    <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={onClick}>
+      <Settings2 className="size-4" />
+      دليل الحسابات
+    </Button>
+  );
+}
+
 /** Pop-up with one journal entry: accounts, debit, credit, memo, totals, notes, Excel export. */
 export function JournalEntryDialog({ entry, onClose }: { entry: JournalEntry | null; onClose: () => void }) {
-  const { can } = useWorkspaceAccess();
   const [editing, setEditing] = useState(false);
-  const balanced = entry ? Math.abs(entry.totalDebit - entry.totalCredit) < 0.01 : false;
 
   function exportEntry() {
     if (!entry) return;
-    const rows = entry.lines.map((line) => ({
-      code: line.account.code,
-      account: line.account.name,
-      debit: line.debit || undefined,
-      credit: line.credit || undefined,
-      memo: line.memo,
-    }));
     exportXlsx(
       [
         {
           name: "القيد",
-          rows: [...rows, { code: "", account: "الإجمالي", debit: entry.totalDebit, credit: entry.totalCredit, memo: entry.description }],
-          columns: [
-            { key: "code", header: "رمز الحساب", type: "text" },
-            { key: "account", header: "الحساب", type: "text" },
-            { key: "debit", header: "مدين" },
-            { key: "credit", header: "دائن" },
-            { key: "memo", header: "البيان", type: "text" },
-          ],
+          rows: [...entryRows(entry), { code: "", account: "الإجمالي", debit: entry.totalDebit, credit: entry.totalCredit, memo: entry.description }],
+          columns: [...ENTRY_COLUMNS],
         },
       ],
-      "journal-" + entry.description.replace(/[^\p{L}\p{N}]+/gu, "-").slice(0, 60),
+      "journal-" + fileSlug(entry.description),
     );
   }
 
@@ -69,76 +165,144 @@ export function JournalEntryDialog({ entry, onClose }: { entry: JournalEntry | n
               </DialogDescription>
             </DialogHeader>
 
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full text-[13px] sm:min-w-[620px]">
-                <thead className="bg-surface-raised text-[11.5px] text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2.5 text-start font-semibold">الحساب</th>
-                    <th className="px-3 py-2.5 text-right font-semibold">مدين</th>
-                    <th className="px-3 py-2.5 text-right font-semibold">دائن</th>
-                    <th className="hidden px-3 py-2.5 text-start font-semibold sm:table-cell">البيان</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {entry.lines.map((line) => (
-                    <tr key={line.account.key} className="border-t border-border/70 align-top">
-                      <td className={cn("px-3 py-2.5", line.credit > 0 && "ps-8")}>
-                        <span className="inline-flex flex-wrap items-baseline gap-x-2">
-                          {line.account.code ? (
-                            <span className="num text-[11.5px] text-muted-foreground">{line.account.code}</span>
-                          ) : null}
-                          <span className="font-medium">{line.account.name}</span>
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5 text-right">{line.debit ? <span className="num">{money(line.debit)}</span> : null}</td>
-                      <td className="px-3 py-2.5 text-right">{line.credit ? <span className="num">{money(line.credit)}</span> : null}</td>
-                      <td className="hidden px-3 py-2.5 text-[12px] text-muted-foreground sm:table-cell">{line.memo}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-border bg-surface-raised/50 font-semibold">
-                    <td className="px-3 py-2.5">الإجمالي</td>
-                    <td className="px-3 py-2.5 text-right"><span className="num">{money(entry.totalDebit)}</span></td>
-                    <td className="px-3 py-2.5 text-right"><span className="num">{money(entry.totalCredit)}</span></td>
-                    <td className="hidden px-3 py-2.5 sm:table-cell">
-                      {balanced ? (
-                        <span className="inline-flex items-center gap-1 text-[12px] text-success">
-                          <CheckCircle2 className="size-3.5" />
-                          متوازن
-                        </span>
-                      ) : (
-                        <span className="text-[12px] text-destructive">غير متوازن</span>
-                      )}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            {entry.notes.length ? (
-              <ul className="space-y-1.5 rounded-xl bg-surface-raised px-4 py-3 text-[12px] leading-6 text-muted-foreground">
-                {entry.notes.map((note) => (
-                  <li key={note}>{note}</li>
-                ))}
-              </ul>
-            ) : null}
-            <p className="text-[11.5px] leading-5 text-muted-foreground">
-              الإيراد صافي المبيعات بدون الضريبة، وعمولة المنصة ورسومها مصروفات مستقلة (المنصة وكيل للمطعم). الأرقام من نتيجة التدقيق المحفوظة دون أي تعديل.
-            </p>
+            <EntryTable entry={entry} />
+            <EntryNotes notes={entry.notes} />
+            <p className="text-[11.5px] leading-5 text-muted-foreground">{TREATMENT_NOTE}</p>
 
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={exportEntry}>
                 <Download className="size-4" />
                 تصدير Excel
               </Button>
-              {can("contracts.manage") ? (
-                <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setEditing(true)}>
-                  <Settings2 className="size-4" />
-                  دليل الحسابات
-                </Button>
-              ) : null}
+              <AccountsButton onClick={() => setEditing(true)} />
             </div>
+          </>
+        ) : null}
+      </DialogContent>
+      <AccountsDialog open={editing} onClose={() => setEditing(false)} />
+    </Dialog>
+  );
+}
+
+export interface BranchJournal {
+  branch: string;
+  entry: JournalEntry;
+}
+
+/** Pop-up with one separate journal entry per branch, a jump list, and one Excel workbook for all of them. */
+export function BranchJournalsDialog({
+  title,
+  journals,
+  onClose,
+}: {
+  title: string;
+  journals: BranchJournal[] | null;
+  onClose: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const unbalanced = journals?.filter((journal) => !isBalanced(journal.entry)).length ?? 0;
+
+  function exportAll() {
+    if (!journals?.length) return;
+    const ledger: EntryRow[] = journals.flatMap((journal, index) =>
+      entryRows(journal.entry).map((row) => ({ entryNo: index + 1, branch: journal.branch, ...row })),
+    );
+    exportXlsx(
+      [
+        {
+          name: "القيود",
+          rows: ledger,
+          columns: [
+            { key: "entryNo", header: "رقم القيد" },
+            { key: "branch", header: "الفرع", type: "text" },
+            ...ENTRY_COLUMNS,
+          ],
+        },
+        ...journals.map((journal, index) => ({
+          name: sheetName(index, journal.branch),
+          rows: [
+            ...entryRows(journal.entry),
+            { code: "", account: "الإجمالي", debit: journal.entry.totalDebit, credit: journal.entry.totalCredit, memo: journal.entry.description },
+          ],
+          columns: [...ENTRY_COLUMNS],
+        })),
+      ],
+      "journals-" + fileSlug(title),
+    );
+  }
+
+  function jumpTo(index: number) {
+    document.getElementById("branch-journal-" + index)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  return (
+    <Dialog open={Boolean(journals)} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+        {journals ? (
+          <>
+            <DialogHeader className="text-start sm:text-start">
+              <DialogTitle className="flex items-center gap-2 font-display text-lg">
+                <BookOpenCheck className="size-5 text-primary-text" />
+                القيود المحاسبية لكل فرع
+              </DialogTitle>
+              <DialogDescription>
+                {title} · {journals.length} {journals.length === 1 ? "قيد" : "قيود"}، قيد مستقل لكل فرع
+                {unbalanced ? " · " + unbalanced + " غير متوازن" : ""}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="sm" className="gap-1.5" onClick={exportAll} disabled={!journals.length}>
+                <Download className="size-4" />
+                تصدير كل القيود Excel
+              </Button>
+              <AccountsButton onClick={() => setEditing(true)} />
+            </div>
+
+            {journals.length > 1 ? (
+              <nav aria-label="الفروع" className="flex flex-wrap gap-1.5">
+                {journals.map((journal, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => jumpTo(index)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-[12px] hover:border-primary hover:text-primary-text",
+                      !isBalanced(journal.entry) && "border-destructive/50 text-destructive",
+                    )}
+                  >
+                    <span className="num text-[11px] text-muted-foreground">{index + 1}</span>
+                    <span>{journal.branch}</span>
+                  </button>
+                ))}
+              </nav>
+            ) : null}
+
+            {journals.length ? (
+              <div className="space-y-6">
+                {journals.map((journal, index) => (
+                  <section key={index} id={"branch-journal-" + index} className="scroll-mt-4 space-y-2.5">
+                    <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border pb-2">
+                      <h3 className="flex items-center gap-2 font-display text-[15px] font-semibold">
+                        <span className="rounded-full bg-surface-raised px-2 py-0.5 font-sans text-[11px] font-medium text-muted-foreground">
+                          قيد <span className="num">{index + 1}</span>
+                        </span>
+                        <span>{journal.branch}</span>
+                      </h3>
+                      <span className="text-[12px] text-muted-foreground">
+                        {journal.entry.date ? "بتاريخ " + arabicDate(journal.entry.date) : ""}
+                      </span>
+                    </header>
+                    <EntryTable entry={journal.entry} />
+                    <EntryNotes notes={journal.entry.notes} />
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <p className="py-10 text-center text-sm text-muted-foreground">لا توجد فروع في هذه الفترة.</p>
+            )}
+
+            <p className="text-[11.5px] leading-5 text-muted-foreground">{TREATMENT_NOTE}</p>
           </>
         ) : null}
       </DialogContent>
