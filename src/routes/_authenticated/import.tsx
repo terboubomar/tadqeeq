@@ -666,7 +666,7 @@ function ImportPage() {
                 if (files.length) {
                   setNinjaSummaryFiles([]);
                   setNinjaInvoiceFiles([]);
-                  setNinjaZipFile(null);
+                  setNinjaZipFiles([]);
                 }
               }}
               onNinjaZipChange={(files) => {
