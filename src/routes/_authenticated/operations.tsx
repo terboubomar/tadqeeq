@@ -140,6 +140,7 @@ function OperationsPage() {
       uploaded.length > 0 && uploaded.every((row) => row.forecastCharges !== null);
     return {
       orders: platforms.reduce((sum, row) => sum + row.orderCount, 0),
+      sales: platforms.reduce((sum, row) => sum + row.grossSales, 0),
       charges: platforms.reduce((sum, row) => sum + row.chargesToDate, 0),
       forecast: forecastAvailable
         ? uploaded.reduce((sum, row) => sum + (row.forecastCharges ?? 0), 0)
@@ -261,9 +262,17 @@ function OperationsPage() {
 
       <NumberTiles
         items={[
-          { label: "طلبات الشهر حتى الآن", value: count(totals.orders) },
+          {
+            label: "المبيعات حتى الآن",
+            value: sar(totals.sales),
+            hint: `${count(totals.orders)} طلب`,
+          },
           { label: "الخصومات والرسوم حتى الآن", value: sar(totals.charges) },
-          { label: "الاستردادات المسجلة", value: sar(totals.refunds) },
+          {
+            label: "الاستردادات المسجلة",
+            value: sar(totals.refunds),
+            hint: "ملف كيتا يوفّر العدد دون مبلغ الاسترداد",
+          },
           {
             label: "الرسوم المتوقعة لنهاية الشهر",
             value: totals.forecast === null ? "—" : sar(totals.forecast),
@@ -289,15 +298,19 @@ function OperationsPage() {
           ) : null}
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[780px] text-[12.5px]">
+          <table className="w-full min-w-[1240px] text-[12.5px]">
             <thead className="bg-muted/55 text-muted-foreground">
               <tr>
                 <th className="px-4 py-2.5 text-start font-medium">المنصة</th>
                 <th className="px-4 py-2.5 text-end font-medium">أيام مرفوعة</th>
                 <th className="px-4 py-2.5 text-end font-medium">الطلبات</th>
+                <th className="px-4 py-2.5 text-end font-medium">المبيعات</th>
                 <th className="px-4 py-2.5 text-end font-medium">التوصيل</th>
-                <th className="px-4 py-2.5 text-end font-medium">شكاوى / استردادات</th>
-                <th className="px-4 py-2.5 text-end font-medium">الرسوم الحالية</th>
+                <th className="px-4 py-2.5 text-end font-medium">الخصومات</th>
+                <th className="px-4 py-2.5 text-end font-medium">الاسترداد</th>
+                <th className="px-4 py-2.5 text-end font-medium">العمولة</th>
+                <th className="px-4 py-2.5 text-end font-medium">رسوم الدفع</th>
+                <th className="px-4 py-2.5 text-end font-medium">إجمالي الخصومات والرسوم</th>
                 <th className="px-4 py-2.5 text-end font-medium">توقع نهاية الشهر</th>
               </tr>
             </thead>
@@ -314,10 +327,19 @@ function OperationsPage() {
                     {count(row.coveredDays)} / {count(overview?.daysInMonth)}
                   </td>
                   <td className="num px-4 py-3 text-end">{count(row.orderCount)}</td>
+                  <td className="num px-4 py-3 text-end">{sar(row.grossSales)}</td>
                   <td className="num px-4 py-3 text-end">{sar(row.deliveryAmount)}</td>
+                  <td className="num px-4 py-3 text-end">{sar(row.discountAmount)}</td>
                   <td className="num px-4 py-3 text-end">
-                    {count(row.complaintCount)} / {count(row.refundCount)}
+                    <span className="inline-flex flex-col items-end gap-0.5">
+                      <span>{sar(row.refundAmount)}</span>
+                      <span className="text-[10.5px] text-muted-foreground">
+                        {count(row.refundCount)} طلب
+                      </span>
+                    </span>
                   </td>
+                  <td className="num px-4 py-3 text-end">{sar(row.commissionAmount)}</td>
+                  <td className="num px-4 py-3 text-end">{sar(row.paymentFeeAmount)}</td>
                   <td className="num px-4 py-3 text-end">{sar(row.chargesToDate)}</td>
                   <td className="num px-4 py-3 text-end font-semibold">
                     {row.forecastCharges !== null ? (
@@ -337,6 +359,13 @@ function OperationsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="space-y-1 border-t border-border bg-muted/30 px-5 py-3 text-[11.5px] text-muted-foreground">
+          <p>
+            كيتا يجمع خصومات التوصيل والقسائم والعروض في حقل واحد؛ يظهر المبلغ ضمن الخصومات ولا
+            يتكرر في التوصيل.
+          </p>
+          <p>ملف هنقرستيشن لا يتضمن مبلغ توصيل منفصلاً، وملف كيتا لا يتضمن مبلغ الاسترداد.</p>
         </div>
       </section>
 

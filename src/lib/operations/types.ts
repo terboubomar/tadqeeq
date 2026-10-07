@@ -16,6 +16,9 @@ export interface OperationOrder {
   complaintReason: string | null;
   refundType: string | null;
   refundAmount: number | null;
+  discountAmount: number;
+  commissionAmount: number;
+  paymentFeeAmount: number;
   chargesTotal: number;
   settlementAmount: number;
   rawData: Record<string, string | number | boolean | null>;
@@ -40,6 +43,9 @@ export interface OperationImportSummary {
   complaintCount: number;
   refundCount: number;
   refundAmount: number;
+  discountAmount: number;
+  commissionAmount: number;
+  paymentFeeAmount: number;
   cancellationCount: number;
   chargesTotal: number;
   settlementAmount: number;
@@ -77,6 +83,9 @@ export interface OperationPlatformMonth {
   complaintCount: number;
   refundCount: number;
   refundAmount: number;
+  discountAmount: number;
+  commissionAmount: number;
+  paymentFeeAmount: number;
   cancellationCount: number;
   chargesToDate: number;
   settlementToDate: number;

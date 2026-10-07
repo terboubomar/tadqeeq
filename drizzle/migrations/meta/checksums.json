@@ -48,5 +48,6 @@
   "0046_contact_messages": "7320785c65460adc9eb2529b7af29bf902488232f405c07f03c7495139274c34",
   "0047_journal_accounts": "18ad3430dddb1957f82e6bd7066dbe0aa94f371e23ec838a106139054f496da5",
   "0048_ninja_platform": "a7993bf97cc6b42b0a4dcb808ac794164239d19be57a1c4e0eb06ccd0345ef46",
-  "0049_daily_operations": "f10ba6f97fbac56c35d18512ade194d8316c7add6daaba1c469b48c8dfe564d5"
+  "0049_daily_operations": "f10ba6f97fbac56c35d18512ade194d8316c7add6daaba1c469b48c8dfe564d5",
+  "0050_refresh_operation_summaries": "319e46bf6df5d226eb3d6eca1f14112dc11707cfe7b527faf0ce84560a888f89"
 }

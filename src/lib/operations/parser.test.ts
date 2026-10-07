@@ -27,6 +27,10 @@ describe("daily Operations parsers", () => {
         "Commission",
         "Payout amount",
         "Vendor refunds",
+        "Discount Funded by you",
+        "Voucher Funded by you",
+        "Commission",
+        "Online payment fee",
       ],
       [
         "H-1",
@@ -41,6 +45,10 @@ describe("daily Operations parsers", () => {
         20,
         75,
         5,
+        10,
+        2,
+        20,
+        3,
       ],
     ]);
     const result = await parseOperationFile(file, "hungerstation_orders");
@@ -50,6 +58,9 @@ describe("daily Operations parsers", () => {
       complaintCount: 1,
       refundCount: 1,
       refundAmount: 5,
+      discountAmount: 12,
+      commissionAmount: 20,
+      paymentFeeAmount: 3,
     });
     expect(result.orders[0]?.deliveryMode).toBe("Platform delivery");
   });
@@ -87,7 +98,14 @@ describe("daily Operations parsers", () => {
     ]);
     const result = await parseOperationFile(file, "keeta_orders");
     expect(result.orders[0]?.orderId).toBe("5456824293009583");
-    expect(result.summary).toMatchObject({ refundCount: 1, deliveryAmount: 10, chargesTotal: 32 });
+    expect(result.summary).toMatchObject({
+      refundCount: 1,
+      deliveryAmount: 0,
+      discountAmount: 10,
+      commissionAmount: 20,
+      paymentFeeAmount: 2,
+      chargesTotal: 32,
+    });
   });
 
   test("reads Jahez delivery amounts from its daily financial report", async () => {
@@ -108,6 +126,9 @@ describe("daily Operations parsers", () => {
     expect(result.summary).toMatchObject({
       orderCount: 1,
       deliveryAmount: 12,
+      discountAmount: 0,
+      commissionAmount: 20,
+      paymentFeeAmount: 3,
       chargesTotal: 35,
       settlementAmount: 65,
     });

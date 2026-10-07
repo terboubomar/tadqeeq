@@ -19,6 +19,9 @@ const EMPTY_SUMMARY: OperationImportSummary = {
   complaintCount: 0,
   refundCount: 0,
   refundAmount: 0,
+  discountAmount: 0,
+  commissionAmount: 0,
+  paymentFeeAmount: 0,
   cancellationCount: 0,
   chargesTotal: 0,
   settlementAmount: 0,
@@ -137,6 +140,9 @@ function summarize(
       refundCount:
         summary.refundCount + (order.refundType || (order.refundAmount ?? 0) !== 0 ? 1 : 0),
       refundAmount: round(summary.refundAmount + (order.refundAmount ?? 0)),
+      discountAmount: round(summary.discountAmount + order.discountAmount),
+      commissionAmount: round(summary.commissionAmount + order.commissionAmount),
+      paymentFeeAmount: round(summary.paymentFeeAmount + order.paymentFeeAmount),
       cancellationCount: summary.cancellationCount + (/cancel/i.test(order.status ?? "") ? 1 : 0),
       chargesTotal: round(summary.chargesTotal + order.chargesTotal),
       settlementAmount: round(summary.settlementAmount + order.settlementAmount),
@@ -208,6 +214,12 @@ function parseHungerstation(matrix: Matrix): ParsedOperationImport {
         complaintReason: complaint ? clean(row["Complaint reason"]) || null : null,
         refundType: money(row["Vendor refunds"]) !== 0 ? "vendor_refund" : null,
         refundAmount: money(row["Vendor refunds"]) || null,
+        discountAmount: round(
+          Math.abs(money(row["Discount Funded by you"])) +
+            Math.abs(money(row["Voucher Funded by you"])),
+        ),
+        commissionAmount: round(Math.abs(money(row["Commission"]))),
+        paymentFeeAmount: round(Math.abs(money(row["Online payment fee"]))),
         chargesTotal: round(charges.reduce((sum, column) => sum + money(row[column]), 0)),
         settlementAmount: round(money(row["Payout amount"])),
         rawData: rawRecord(row),
@@ -246,12 +258,15 @@ function parseKeeta(matrix: Matrix): ParsedOperationImport {
         status: clean(row["Order status"]) || null,
         deliveryMode: /delivery/i.test(campaign) ? "delivery" : null,
         grossSales: round(money(row["Original price"]) || money(row["Customer paid"])),
-        deliveryAmount: /delivery/i.test(campaign) ? round(Math.abs(merchantPromotion)) : 0,
+        deliveryAmount: 0,
         complaint: Boolean(clean(row["Refund type"])),
         complaintReason:
           clean(row["Determination reason"]) || clean(row["Order cancellation reason"]) || null,
         refundType: clean(row["Refund type"]) || null,
         refundAmount: null,
+        discountAmount: round(Math.abs(merchantPromotion)),
+        commissionAmount: round(Math.abs(money(row["Basic commission"]))),
+        paymentFeeAmount: round(Math.abs(money(row["Online payment fee"]))),
         chargesTotal: round(
           chargeValues.reduce((sum, value) => sum + (value < 0 ? -value : value), 0),
         ),
@@ -306,6 +321,13 @@ function parseJahezOrders(matrix: Matrix): ParsedOperationImport {
         complaintReason: null,
         refundType: null,
         refundAmount: null,
+        discountAmount: round(
+          Math.abs(money(row["Offer Amount"])) + Math.abs(money(row["Delivery Coupon"])),
+        ),
+        commissionAmount: round(Math.abs(money(row["Jahez Commision"]))),
+        paymentFeeAmount: round(
+          Math.abs(money(row["Payment Fees"])) + Math.abs(money(row["Payment Fees Vat"])),
+        ),
         chargesTotal: round(charges),
         settlementAmount: round(money(row["Restaurant Amount"])),
         rawData: rawRecord(row),
