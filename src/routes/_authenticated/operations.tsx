@@ -268,12 +268,12 @@ function OperationsPage() {
             <thead className="bg-muted/55 text-muted-foreground">
               <tr>
                 <th className="px-4 py-2.5 text-start font-medium">المنصة</th>
-                <th className="px-4 py-2.5 text-end font-medium">أيام مرفوعة</th>
-                <th className="px-4 py-2.5 text-end font-medium">الطلبات</th>
-                <th className="px-4 py-2.5 text-end font-medium">التوصيل</th>
-                <th className="px-4 py-2.5 text-end font-medium">شكاوى / استردادات</th>
-                <th className="px-4 py-2.5 text-end font-medium">الرسوم الحالية</th>
-                <th className="px-4 py-2.5 text-end font-medium">توقع نهاية الشهر</th>
+                <th className="px-4 py-2.5 text-center whitespace-nowrap font-medium">أيام مرفوعة</th>
+                <th className="px-4 py-2.5 text-center whitespace-nowrap font-medium">الطلبات</th>
+                <th className="px-4 py-2.5 text-center whitespace-nowrap font-medium">التوصيل</th>
+                <th className="px-4 py-2.5 text-center whitespace-nowrap font-medium">شكاوى / استردادات</th>
+                <th className="px-4 py-2.5 text-center whitespace-nowrap font-medium">الرسوم الحالية</th>
+                <th className="px-4 py-2.5 text-center whitespace-nowrap font-medium">توقع نهاية الشهر</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -285,16 +285,16 @@ function OperationsPage() {
                       <PlatformName platform={row.platform} />
                     </span>
                   </td>
-                  <td className="num px-4 py-3 text-end">
+                  <td className="num px-4 py-3 text-center whitespace-nowrap">
                     {count(row.coveredDays)} / {count(overview?.daysInMonth)}
                   </td>
-                  <td className="num px-4 py-3 text-end">{count(row.orderCount)}</td>
-                  <td className="num px-4 py-3 text-end">{sar(row.deliveryAmount)}</td>
-                  <td className="num px-4 py-3 text-end">
+                  <td className="num px-4 py-3 text-center whitespace-nowrap">{count(row.orderCount)}</td>
+                  <td className="num px-4 py-3 text-center whitespace-nowrap">{sar(row.deliveryAmount)}</td>
+                  <td className="num px-4 py-3 text-center whitespace-nowrap">
                     {count(row.complaintCount)} / {count(row.refundCount)}
                   </td>
-                  <td className="num px-4 py-3 text-end">{sar(row.chargesToDate)}</td>
-                  <td className="num px-4 py-3 text-end font-semibold">
+                  <td className="num px-4 py-3 text-center whitespace-nowrap">{sar(row.chargesToDate)}</td>
+                  <td className="num px-4 py-3 text-center whitespace-nowrap font-semibold">
                     {row.coveredDays ? sar(row.forecastCharges) : "—"}
                   </td>
                 </tr>
