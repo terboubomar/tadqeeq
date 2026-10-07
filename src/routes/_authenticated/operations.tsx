@@ -302,16 +302,24 @@ function OperationsPage() {
             <thead className="bg-muted/55 text-muted-foreground">
               <tr>
                 <th className="px-4 py-2.5 text-start font-medium">المنصة</th>
-                <th className="px-4 py-2.5 text-end font-medium">أيام مرفوعة</th>
-                <th className="px-4 py-2.5 text-end font-medium">الطلبات</th>
-                <th className="px-4 py-2.5 text-end font-medium">المبيعات</th>
-                <th className="px-4 py-2.5 text-end font-medium">التوصيل</th>
-                <th className="px-4 py-2.5 text-end font-medium">الخصومات</th>
-                <th className="px-4 py-2.5 text-end font-medium">الاسترداد</th>
-                <th className="px-4 py-2.5 text-end font-medium">العمولة</th>
-                <th className="px-4 py-2.5 text-end font-medium">رسوم الدفع</th>
-                <th className="px-4 py-2.5 text-end font-medium">إجمالي الخصومات والرسوم</th>
-                <th className="px-4 py-2.5 text-end font-medium">توقع نهاية الشهر</th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">
+                  أيام مرفوعة
+                </th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">الطلبات</th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">المبيعات</th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">التوصيل</th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">الخصومات</th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">الاسترداد</th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">العمولة</th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">
+                  رسوم الدفع
+                </th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">
+                  إجمالي الخصومات والرسوم
+                </th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">
+                  توقع نهاية الشهر
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -323,37 +331,55 @@ function OperationsPage() {
                       <PlatformName platform={row.platform} />
                     </span>
                   </td>
-                  <td className="num px-4 py-3 text-end">
-                    {count(row.coveredDays)} / {count(overview?.daysInMonth)}
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num">
+                      {count(row.coveredDays)} / {count(overview?.daysInMonth)}
+                    </span>
                   </td>
-                  <td className="num px-4 py-3 text-end">{count(row.orderCount)}</td>
-                  <td className="num px-4 py-3 text-end">{sar(row.grossSales)}</td>
-                  <td className="num px-4 py-3 text-end">{sar(row.deliveryAmount)}</td>
-                  <td className="num px-4 py-3 text-end">{sar(row.discountAmount)}</td>
-                  <td className="num px-4 py-3 text-end">
-                    <span className="inline-flex flex-col items-end gap-0.5">
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num">{count(row.orderCount)}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num">{sar(row.grossSales)}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num">{sar(row.deliveryAmount)}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num">{sar(row.discountAmount)}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num inline-flex flex-col items-center gap-0.5">
                       <span>{sar(row.refundAmount)}</span>
                       <span className="text-[10.5px] text-muted-foreground">
                         {count(row.refundCount)} طلب
                       </span>
                     </span>
                   </td>
-                  <td className="num px-4 py-3 text-end">{sar(row.commissionAmount)}</td>
-                  <td className="num px-4 py-3 text-end">{sar(row.paymentFeeAmount)}</td>
-                  <td className="num px-4 py-3 text-end">{sar(row.chargesToDate)}</td>
-                  <td className="num px-4 py-3 text-end font-semibold">
-                    {row.forecastCharges !== null ? (
-                      sar(row.forecastCharges)
-                    ) : row.forecastMissingDays.length ? (
-                      <span className="inline-flex flex-col items-end gap-0.5">
-                        <span>غير متاح</span>
-                        <span className="text-[10.5px] font-normal text-muted-foreground">
-                          الأيام الناقصة: {dayRanges(row.forecastMissingDays)}
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num">{sar(row.commissionAmount)}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num">{sar(row.paymentFeeAmount)}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num">{sar(row.chargesToDate)}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center font-semibold">
+                    <span className="num">
+                      {row.forecastCharges !== null ? (
+                        sar(row.forecastCharges)
+                      ) : row.forecastMissingDays.length ? (
+                        <span className="inline-flex flex-col items-center gap-0.5">
+                          <span>غير متاح</span>
+                          <span className="text-[10.5px] font-normal text-muted-foreground">
+                            الأيام الناقصة: {dayRanges(row.forecastMissingDays)}
+                          </span>
                         </span>
-                      </span>
-                    ) : (
-                      "—"
-                    )}
+                      ) : (
+                        "—"
+                      )}
+                    </span>
                   </td>
                 </tr>
               ))}
