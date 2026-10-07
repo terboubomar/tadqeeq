@@ -285,18 +285,18 @@ function OperationsPage() {
                       <PlatformName platform={row.platform} />
                     </span>
                   </td>
-                  <td className="num px-4 py-3 text-center whitespace-nowrap">
+                  <td className="px-4 py-3 text-center whitespace-nowrap"><span className="num">
                     {count(row.coveredDays)} / {count(overview?.daysInMonth)}
-                  </td>
-                  <td className="num px-4 py-3 text-center whitespace-nowrap">{count(row.orderCount)}</td>
-                  <td className="num px-4 py-3 text-center whitespace-nowrap">{sar(row.deliveryAmount)}</td>
-                  <td className="num px-4 py-3 text-center whitespace-nowrap">
+                  </span></td>
+                  <td className="px-4 py-3 text-center whitespace-nowrap"><span className="num">{count(row.orderCount)}</span></td>
+                  <td className="px-4 py-3 text-center whitespace-nowrap"><span className="num">{sar(row.deliveryAmount)}</span></td>
+                  <td className="px-4 py-3 text-center whitespace-nowrap"><span className="num">
                     {count(row.complaintCount)} / {count(row.refundCount)}
-                  </td>
-                  <td className="num px-4 py-3 text-center whitespace-nowrap">{sar(row.chargesToDate)}</td>
-                  <td className="num px-4 py-3 text-center whitespace-nowrap font-semibold">
+                  </span></td>
+                  <td className="px-4 py-3 text-center whitespace-nowrap"><span className="num">{sar(row.chargesToDate)}</span></td>
+                  <td className="px-4 py-3 text-center whitespace-nowrap font-semibold"><span className="num">
                     {row.coveredDays ? sar(row.forecastCharges) : "—"}
-                  </td>
+                  </span></td>
                 </tr>
               ))}
             </tbody>
