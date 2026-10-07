@@ -250,7 +250,7 @@ function AuthPage() {
             )
           ) : (
             <>
-              <form onSubmit={submit} className="space-y-5">
+              <form onSubmit={submit} className="mt-9 space-y-5">
                 {mode === "signup" ? (
                   <div className="space-y-2">
                     <Label htmlFor="name">الاسم</Label>
