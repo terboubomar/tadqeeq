@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { lovable } from "@/integrations/lovable/index";
 import { supabase } from "@/integrations/supabase/client";
-import { LogoLockup, LogoWordmark } from "@/components/brand/Logo";
+import { LogoWordmark } from "@/components/brand/Logo";
 import { EmailCodeStep, MfaCodeStep } from "@/components/TwoFactor";
 import { getEmailCodeStatus } from "@/lib/email-signin.functions";
 import { needsMfaCode } from "@/lib/mfa";
@@ -151,120 +151,43 @@ function AuthPage() {
   }
 
   return (
-    <div
-      dir="rtl"
-      className="grid min-h-screen bg-background lg:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]"
-    >
-      <aside className="relative hidden min-h-screen overflow-hidden border-l border-white/10 bg-ink px-12 py-10 text-ink-foreground lg:flex lg:flex-col xl:px-16 xl:py-12">
-        <Link
-          to="/"
-          aria-label="العودة إلى الصفحة الرئيسية"
-          className="relative w-fit rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-ink"
-        >
-          <LogoLockup title="تدقيق" className="h-16 text-ink-foreground" />
-        </Link>
-
-        <div className="relative my-auto max-w-lg">
-          <h2 className="font-display text-4xl font-semibold leading-[1.55] tracking-[-0.025em] xl:text-5xl">
-            راجع فواتيرك بثقة.
-          </h2>
-          <p className="mt-5 max-w-md text-base leading-8 text-ink-muted">
-            طابق فواتير منصات التوصيل، وتابع الفروقات من مكان واحد.
-          </p>
-        </div>
-
-        <div className="relative flex items-center gap-2 border-t border-white/10 pt-6 text-sm text-ink-muted">
-          <ShieldCheck className="size-4 text-primary" />
-          بيانات منشأتك محمية
-        </div>
-      </aside>
-
-      <main className="relative flex min-h-screen items-center justify-center px-5 py-8 sm:px-10 lg:px-12 xl:px-20">
-        <div
-          aria-hidden="true"
-          className="absolute inset-x-5 top-0 h-px bg-border sm:inset-x-10 lg:hidden"
-        />
+    <div dir="rtl" className="min-h-screen bg-background">
+      <main className="flex min-h-screen justify-center px-5 py-12 sm:px-8 sm:py-16 lg:py-20">
         <div className="w-full max-w-[440px]">
-          <div className="flex items-center justify-between gap-6 border-b border-border pb-5 lg:hidden">
-            <h1>
-              <span className="sr-only">
-                تسجيل الدخول إلى تدقيق — مراجعة فواتير تطبيقات التوصيل
-              </span>
+          <header className="text-center">
+            <h1 className="flex justify-center">
+              <span className="sr-only">تدقيق</span>
               <Link
                 to="/"
                 aria-label="العودة إلى الصفحة الرئيسية"
-                className="block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4"
+                className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4"
               >
-                <LogoWordmark aria-hidden="true" className="h-8 text-ink" />
+                <LogoWordmark aria-hidden="true" className="h-11 text-ink sm:h-12" />
               </Link>
             </h1>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <LockKeyhole className="size-4 text-primary" />
-              دخول محمي
-            </div>
-          </div>
-
-          <div className="hidden lg:block">
-            <h1>
-              <span className="sr-only">
-                تسجيل الدخول إلى تدقيق — مراجعة فواتير تطبيقات التوصيل
-              </span>
-              <Link
-                to="/"
-                aria-label="العودة إلى الصفحة الرئيسية"
-                className="block w-fit rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4"
-              >
-                <LogoWordmark aria-hidden="true" className="h-9 text-ink" />
-              </Link>
-            </h1>
-            <p className="mt-2 text-xs text-muted-foreground">مراجعة فواتير تطبيقات التوصيل</p>
-          </div>
-
-          <div className="mt-9 sm:mt-11">
-            <h2 className="font-display text-2xl font-semibold leading-relaxed text-ink">
+            <h2 className="mt-8 font-display text-2xl font-semibold leading-relaxed text-ink sm:text-[1.75rem]">
               {mfaStep
                 ? "التحقق بخطوتين"
                 : emailStep
                   ? "رمز التحقق من البريد"
-                  : mode === "signin"
-                    ? "مرحباً بعودتك"
-                    : mode === "signup"
-                      ? "ابدأ مع تدقيق"
-                      : "إعادة تعيين كلمة المرور"}
+                  : signupSentTo
+                    ? "تحقق من بريدك"
+                    : mode === "signin"
+                      ? "تسجيل الدخول إلى حسابك"
+                      : mode === "signup"
+                        ? "إنشاء حساب جديد"
+                        : "إعادة تعيين كلمة المرور"}
             </h2>
-            {!mfaStep && !emailStep && mode !== "reset" ? (
-              <p className="mt-1.5 text-sm leading-7 text-muted-foreground">
+            {!mfaStep && !emailStep && !signupSentTo ? (
+              <p className="mt-2 text-sm leading-7 text-muted-foreground">
                 {mode === "signin"
-                  ? "ادخل إلى مساحة عمل منشأتك وتابع آخر التدقيقات."
-                  : "أنشئ حساب منشأتك، ثم أكمل بياناتها واحجز اجتماع التعريف."}
+                  ? "أدخل بريدك الإلكتروني وكلمة المرور للمتابعة."
+                  : mode === "signup"
+                    ? "أدخل بياناتك لإنشاء حساب منشأتك."
+                    : "سنرسل إلى بريدك رابطاً لتعيين كلمة مرور جديدة."}
               </p>
             ) : null}
-          </div>
-
-          {!mfaStep && !emailStep && mode !== "reset" && !signupSentTo ? (
-            <div
-              className="mt-7 grid grid-cols-2 border border-border bg-secondary/45 p-1"
-              role="group"
-              aria-label="اختيار تسجيل الدخول أو إنشاء حساب"
-            >
-              <button
-                type="button"
-                aria-pressed={mode === "signin"}
-                onClick={() => setMode("signin")}
-                className={`min-h-10 px-4 text-sm font-semibold transition-colors ${mode === "signin" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                تسجيل الدخول
-              </button>
-              <button
-                type="button"
-                aria-pressed={mode === "signup"}
-                onClick={() => setMode("signup")}
-                className={`min-h-10 px-4 text-sm font-semibold transition-colors ${mode === "signup" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                إنشاء حساب
-              </button>
-            </div>
-          ) : null}
+          </header>
 
           {emailStep ? (
             <EmailCodeStep
@@ -283,8 +206,8 @@ function AuthPage() {
               }}
             />
           ) : mode === "signup" && signupSentTo ? (
-            <div className="mt-5 space-y-4" role="status">
-              <p className="rounded-md bg-success-soft p-4 text-sm leading-7">
+            <div className="mt-8 space-y-4" role="status">
+              <p className="rounded-md border border-border bg-success-soft p-4 text-sm leading-7">
                 تم إنشاء حسابك ✅ تحقق من بريدك{" "}
                 <span dir="ltr" className="font-semibold">
                   {signupSentTo}
@@ -293,7 +216,7 @@ function AuthPage() {
                 غير المرغوب فيها.
               </p>
               <Button
-                className="w-full"
+                className="h-12 w-full"
                 disabled={busy || resendWait > 0}
                 onClick={() => void resendConfirmation(signupSentTo)}
               >
@@ -304,7 +227,7 @@ function AuthPage() {
               </Button>
               <Button
                 variant="outline"
-                className="w-full"
+                className="h-12 w-full bg-card"
                 onClick={() => {
                   setSignupSentTo(null);
                   setMode("signin");
@@ -315,8 +238,8 @@ function AuthPage() {
             </div>
           ) : mode === "reset" ? (
             resetSentTo ? (
-              <div className="mt-5 space-y-4">
-                <p className="rounded-md bg-secondary p-4 text-sm leading-7">
+              <div className="mt-8 space-y-4">
+                <p className="rounded-md border border-border bg-card p-4 text-sm leading-7">
                   إذا كان{" "}
                   <span dir="ltr" className="font-semibold">
                     {resetSentTo}
@@ -324,15 +247,12 @@ function AuthPage() {
                   مسجّلاً لدينا، سيصلك خلال دقائق رابط لتعيين كلمة مرور جديدة. تحقق من صندوق الرسائل
                   غير المرغوب فيها إن لم تجده.
                 </p>
-                <Button variant="outline" className="w-full" onClick={() => setResetSentTo(null)}>
+                <Button variant="outline" className="h-12 w-full bg-card" onClick={() => setResetSentTo(null)}>
                   إرسال الرابط مرة أخرى
                 </Button>
               </div>
             ) : (
-              <form onSubmit={submit} className="mt-5 space-y-4">
-                <p className="text-xs leading-5 text-muted-foreground">
-                  اكتب بريدك الذي تسجّل به، وسنرسل لك رابطاً لتعيين كلمة مرور جديدة.
-                </p>
+              <form onSubmit={submit} className="mt-8 space-y-5">
                 <div className="space-y-2">
                   <Label htmlFor="reset-email">البريد الإلكتروني</Label>
                   <Input
@@ -343,10 +263,11 @@ function AuthPage() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="you@company.com"
+                    className="h-12 bg-card"
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={busy}>
+                <Button type="submit" className="h-12 w-full" disabled={busy}>
                   {busy ? <Loader2 className="size-4 animate-spin" /> : null}
                   أرسل رابط إعادة التعيين
                 </Button>
@@ -354,7 +275,22 @@ function AuthPage() {
             )
           ) : (
             <>
-              <form onSubmit={submit} className="mt-6 space-y-5">
+              <div className="mt-9 grid gap-3">
+                <Button variant="outline" className="h-12 w-full bg-card" onClick={google}>
+                  المتابعة باستخدام جوجل
+                </Button>
+                <Button variant="outline" className="h-12 w-full bg-card" onClick={apple}>
+                  المتابعة باستخدام Apple
+                </Button>
+              </div>
+
+              <div className="my-7 flex items-center gap-4 text-xs text-muted-foreground">
+                <span className="h-px flex-1 bg-border" />
+                أو تابع بالبريد الإلكتروني
+                <span className="h-px flex-1 bg-border" />
+              </div>
+
+              <form onSubmit={submit} className="space-y-5">
                 {mode === "signup" ? (
                   <div className="space-y-2">
                     <Label htmlFor="name">الاسم</Label>
@@ -363,6 +299,7 @@ function AuthPage() {
                       value={name}
                       onChange={(event) => setName(event.target.value)}
                       placeholder="اسمك الكامل"
+                      className="h-12 bg-card"
                       required
                     />
                   </div>
@@ -376,6 +313,7 @@ function AuthPage() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="you@company.com"
+                    className="h-12 bg-card"
                     required
                   />
                 </div>
@@ -398,6 +336,8 @@ function AuthPage() {
                     dir="ltr"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
+                    placeholder="كلمة المرور"
+                    className="h-12 bg-card"
                     minLength={mode === "signup" ? 8 : undefined}
                     autoComplete={mode === "signup" ? "new-password" : "current-password"}
                     required
@@ -406,7 +346,7 @@ function AuthPage() {
                     <p className="text-xs text-muted-foreground">8 أحرف على الأقل.</p>
                   ) : null}
                 </div>
-                <Button type="submit" className="w-full" disabled={busy}>
+                <Button type="submit" className="h-12 w-full" disabled={busy}>
                   {busy ? <Loader2 className="size-4 animate-spin" /> : null}
                   {mode === "signin" ? "دخول" : "إنشاء الحساب"}
                 </Button>
@@ -433,20 +373,16 @@ function AuthPage() {
                 ) : null}
               </form>
 
-              <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="h-px flex-1 bg-border" />
-                أو تابع باستخدام
-                <span className="h-px flex-1 bg-border" />
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Button variant="outline" className="w-full bg-card" onClick={google}>
-                  جوجل
-                </Button>
-                <Button variant="outline" className="w-full bg-card" onClick={apple}>
-                  Apple
-                </Button>
-              </div>
+              <p className="mt-7 text-center text-sm text-muted-foreground">
+                {mode === "signin" ? "ليس لديك حساب؟" : "لديك حساب؟"}{" "}
+                <button
+                  type="button"
+                  onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+                  className="font-semibold text-foreground underline underline-offset-4 transition-colors hover:text-primary"
+                >
+                  {mode === "signin" ? "إنشاء حساب" : "تسجيل الدخول"}
+                </button>
+              </p>
             </>
           )}
 
@@ -462,14 +398,6 @@ function AuthPage() {
               رجوع لتسجيل الدخول
             </button>
           ) : null}
-
-          <div className="mt-10 flex items-center justify-between gap-4 border-t border-border pt-5 text-[11px] text-muted-foreground lg:hidden">
-            <span>مطابقة دقيقة. قرار أوضح.</span>
-            <div className="flex items-center gap-1.5">
-              <ShieldCheck className="size-3.5 text-primary" />
-              بيانات منشأتك محمية
-            </div>
-          </div>
         </div>
       </main>
     </div>
