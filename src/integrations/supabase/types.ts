@@ -265,6 +265,7 @@ export type Database = {
           jahez_id: string | null
           keeta_id: string | null
           name: string
+          ninja_id: string | null
           updated_at: string
           user_id: string
           workspace_id: string
@@ -277,6 +278,7 @@ export type Database = {
           jahez_id?: string | null
           keeta_id?: string | null
           name: string
+          ninja_id?: string | null
           updated_at?: string
           user_id?: string
           workspace_id?: string
@@ -289,6 +291,7 @@ export type Database = {
           jahez_id?: string | null
           keeta_id?: string | null
           name?: string
+          ninja_id?: string | null
           updated_at?: string
           user_id?: string
           workspace_id?: string
