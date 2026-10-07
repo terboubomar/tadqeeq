@@ -1172,6 +1172,230 @@ export type Database = {
           },
         ]
       }
+      operation_adjustments: {
+        Row: {
+          amount: number
+          branch_name: string | null
+          business_date: string
+          comment: string | null
+          fingerprint: string
+          order_id: string
+          platform: string
+          raw_data: Json
+          reason: string | null
+          source_import_id: string
+          transaction_type: string
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          amount: number
+          branch_name?: string | null
+          business_date: string
+          comment?: string | null
+          fingerprint: string
+          order_id: string
+          platform?: string
+          raw_data: Json
+          reason?: string | null
+          source_import_id: string
+          transaction_type: string
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          amount?: number
+          branch_name?: string | null
+          business_date?: string
+          comment?: string | null
+          fingerprint?: string
+          order_id?: string
+          platform?: string
+          raw_data?: Json
+          reason?: string | null
+          source_import_id?: string
+          transaction_type?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operation_adjustments_source_import_id_fkey"
+            columns: ["source_import_id"]
+            isOneToOne: false
+            referencedRelation: "operation_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operation_adjustments_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operation_adjustments_workspace_owner_fkey"
+            columns: ["workspace_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_user_id"]
+          },
+        ]
+      }
+      operation_imports: {
+        Row: {
+          business_date: string
+          created_at: string
+          created_by: string | null
+          id: string
+          original_name: string
+          platform: string
+          row_count: number
+          sha256: string
+          source_kind: string
+          summary: Json
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          business_date: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          original_name: string
+          platform: string
+          row_count: number
+          sha256: string
+          source_kind: string
+          summary: Json
+          user_id: string
+          workspace_id?: string
+        }
+        Update: {
+          business_date?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          original_name?: string
+          platform?: string
+          row_count?: number
+          sha256?: string
+          source_kind?: string
+          summary?: Json
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operation_imports_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operation_imports_workspace_owner_fkey"
+            columns: ["workspace_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_user_id"]
+          },
+        ]
+      }
+      operation_orders: {
+        Row: {
+          branch_id: string | null
+          branch_name: string | null
+          business_date: string
+          charges_total: number
+          complaint: boolean
+          complaint_reason: string | null
+          delivery_amount: number
+          delivery_mode: string | null
+          gross_sales: number
+          order_id: string
+          platform: string
+          raw_data: Json
+          refund_amount: number | null
+          refund_type: string | null
+          settlement_amount: number
+          source_import_id: string
+          status: string | null
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          branch_id?: string | null
+          branch_name?: string | null
+          business_date: string
+          charges_total?: number
+          complaint?: boolean
+          complaint_reason?: string | null
+          delivery_amount?: number
+          delivery_mode?: string | null
+          gross_sales?: number
+          order_id: string
+          platform: string
+          raw_data: Json
+          refund_amount?: number | null
+          refund_type?: string | null
+          settlement_amount?: number
+          source_import_id: string
+          status?: string | null
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          branch_id?: string | null
+          branch_name?: string | null
+          business_date?: string
+          charges_total?: number
+          complaint?: boolean
+          complaint_reason?: string | null
+          delivery_amount?: number
+          delivery_mode?: string | null
+          gross_sales?: number
+          order_id?: string
+          platform?: string
+          raw_data?: Json
+          refund_amount?: number | null
+          refund_type?: string | null
+          settlement_amount?: number
+          source_import_id?: string
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operation_orders_source_import_id_fkey"
+            columns: ["source_import_id"]
+            isOneToOne: false
+            referencedRelation: "operation_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operation_orders_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operation_orders_workspace_owner_fkey"
+            columns: ["workspace_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_user_id"]
+          },
+        ]
+      }
       ops_audit_log: {
         Row: {
           action: string
@@ -2427,6 +2651,19 @@ export type Database = {
         Returns: string
       }
       ensure_my_workspace: { Args: never; Returns: string }
+      import_operation_snapshot: {
+        Args: {
+          p_adjustments: Json
+          p_business_date: string
+          p_orders: Json
+          p_original_name: string
+          p_platform: string
+          p_sha256: string
+          p_source_kind: string
+          p_summary: Json
+        }
+        Returns: Json
+      }
       is_platform_admin: { Args: never; Returns: boolean }
       mcp_access: { Args: never; Returns: Json }
       mcp_complete_audit_request: {
