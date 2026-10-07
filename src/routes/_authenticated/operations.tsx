@@ -81,6 +81,23 @@ const sourceLabels = Object.fromEntries(
   SOURCES.map((source) => [source.kind, source.title]),
 ) as Record<OperationSourceKind, string>;
 
+function dayRanges(days: number[]): string {
+  const ranges: string[] = [];
+  for (const day of days) {
+    const previous = ranges.at(-1);
+    if (!previous) {
+      ranges.push(String(day));
+      continue;
+    }
+    const parts = previous.split("–");
+    const start = Number(parts[0] ?? day);
+    const end = Number(parts[1] ?? parts[0] ?? day);
+    if (day === end + 1) ranges[ranges.length - 1] = `${start}–${day}`;
+    else ranges.push(String(day));
+  }
+  return ranges.join("، ");
+}
+
 function OperationsPage() {
   const { can } = useWorkspaceAccess();
   const canUpload = can("imports.create");
@@ -118,10 +135,16 @@ function OperationsPage() {
   const overview = query.data;
   const totals = useMemo(() => {
     const platforms = overview?.platforms ?? [];
+    const uploaded = platforms.filter((row) => row.coveredDays > 0);
+    const forecastAvailable =
+      uploaded.length > 0 && uploaded.every((row) => row.forecastCharges !== null);
     return {
       orders: platforms.reduce((sum, row) => sum + row.orderCount, 0),
+      sales: platforms.reduce((sum, row) => sum + row.grossSales, 0),
       charges: platforms.reduce((sum, row) => sum + row.chargesToDate, 0),
-      forecast: platforms.reduce((sum, row) => sum + row.forecastCharges, 0),
+      forecast: forecastAvailable
+        ? uploaded.reduce((sum, row) => sum + (row.forecastCharges ?? 0), 0)
+        : null,
       refunds: platforms.reduce((sum, row) => sum + row.refundAmount, 0),
     };
   }, [overview]);
@@ -239,13 +262,24 @@ function OperationsPage() {
 
       <NumberTiles
         items={[
-          { label: "طلبات الشهر حتى الآن", value: count(totals.orders) },
+          {
+            label: "المبيعات حتى الآن",
+            value: sar(totals.sales),
+            hint: `${count(totals.orders)} طلب`,
+          },
           { label: "الخصومات والرسوم حتى الآن", value: sar(totals.charges) },
-          { label: "الاستردادات المسجلة", value: sar(totals.refunds) },
+          {
+            label: "الاستردادات المسجلة",
+            value: sar(totals.refunds),
+            hint: "ملف كيتا يوفّر العدد دون مبلغ الاسترداد",
+          },
           {
             label: "الرسوم المتوقعة لنهاية الشهر",
-            value: sar(totals.forecast),
-            hint: "متوسط الأيام المرفوعة × أيام الشهر",
+            value: totals.forecast === null ? "—" : sar(totals.forecast),
+            hint:
+              totals.forecast === null
+                ? "أكمل الأيام الناقصة لاحتساب التوقع"
+                : "متوسط مكتمل من بداية الشهر × أيام الشهر",
             tone: "gold",
           },
         ]}
@@ -264,16 +298,28 @@ function OperationsPage() {
           ) : null}
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[780px] text-[12.5px]">
+          <table className="w-full min-w-[1240px] text-[12.5px]">
             <thead className="bg-muted/55 text-muted-foreground">
               <tr>
                 <th className="px-4 py-2.5 text-start font-medium">المنصة</th>
-                <th className="px-4 py-2.5 text-center whitespace-nowrap font-medium">أيام مرفوعة</th>
-                <th className="px-4 py-2.5 text-center whitespace-nowrap font-medium">الطلبات</th>
-                <th className="px-4 py-2.5 text-center whitespace-nowrap font-medium">التوصيل</th>
-                <th className="px-4 py-2.5 text-center whitespace-nowrap font-medium">شكاوى / استردادات</th>
-                <th className="px-4 py-2.5 text-center whitespace-nowrap font-medium">الرسوم الحالية</th>
-                <th className="px-4 py-2.5 text-center whitespace-nowrap font-medium">توقع نهاية الشهر</th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">
+                  أيام مرفوعة
+                </th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">الطلبات</th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">المبيعات</th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">التوصيل</th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">الخصومات</th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">الاسترداد</th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">العمولة</th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">
+                  رسوم الدفع
+                </th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">
+                  إجمالي الخصومات والرسوم
+                </th>
+                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">
+                  توقع نهاية الشهر
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -285,22 +331,67 @@ function OperationsPage() {
                       <PlatformName platform={row.platform} />
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-center whitespace-nowrap"><span className="num">
-                    {count(row.coveredDays)} / {count(overview?.daysInMonth)}
-                  </span></td>
-                  <td className="px-4 py-3 text-center whitespace-nowrap"><span className="num">{count(row.orderCount)}</span></td>
-                  <td className="px-4 py-3 text-center whitespace-nowrap"><span className="num">{sar(row.deliveryAmount)}</span></td>
-                  <td className="px-4 py-3 text-center whitespace-nowrap"><span className="num">
-                    {count(row.complaintCount)} / {count(row.refundCount)}
-                  </span></td>
-                  <td className="px-4 py-3 text-center whitespace-nowrap"><span className="num">{sar(row.chargesToDate)}</span></td>
-                  <td className="px-4 py-3 text-center whitespace-nowrap font-semibold"><span className="num">
-                    {row.coveredDays ? sar(row.forecastCharges) : "—"}
-                  </span></td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num">
+                      {count(row.coveredDays)} / {count(overview?.daysInMonth)}
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num">{count(row.orderCount)}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num">{sar(row.grossSales)}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num">{sar(row.deliveryAmount)}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num">{sar(row.discountAmount)}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num inline-flex flex-col items-center gap-0.5">
+                      <span>{sar(row.refundAmount)}</span>
+                      <span className="text-[10.5px] text-muted-foreground">
+                        {count(row.refundCount)} طلب
+                      </span>
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num">{sar(row.commissionAmount)}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num">{sar(row.paymentFeeAmount)}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center">
+                    <span className="num">{sar(row.chargesToDate)}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-center font-semibold">
+                    <span className="num">
+                      {row.forecastCharges !== null ? (
+                        sar(row.forecastCharges)
+                      ) : row.forecastMissingDays.length ? (
+                        <span className="inline-flex flex-col items-center gap-0.5">
+                          <span>غير متاح</span>
+                          <span className="text-[10.5px] font-normal text-muted-foreground">
+                            الأيام الناقصة: {dayRanges(row.forecastMissingDays)}
+                          </span>
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="space-y-1 border-t border-border bg-muted/30 px-5 py-3 text-[11.5px] text-muted-foreground">
+          <p>
+            كيتا يجمع خصومات التوصيل والقسائم والعروض في حقل واحد؛ يظهر المبلغ ضمن الخصومات ولا
+            يتكرر في التوصيل.
+          </p>
+          <p>ملف هنقرستيشن لا يتضمن مبلغ توصيل منفصلاً، وملف كيتا لا يتضمن مبلغ الاسترداد.</p>
         </div>
       </section>
 

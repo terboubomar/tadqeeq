@@ -351,6 +351,13 @@
       "when": 1791995599573,
       "tag": "0049_daily_operations",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1792081999573,
+      "tag": "0050_refresh_operation_summaries",
+      "breakpoints": true
     }
   ]
 }

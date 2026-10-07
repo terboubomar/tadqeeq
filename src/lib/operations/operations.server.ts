@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { requireWorkspacePermission } from "../server-auth.server";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL } from "../upload-validation";
+import { forecastFromCompleteMonthToDate } from "./forecast";
 import { parseOperationFile } from "./parser";
 import type {
   OperationImportHistoryItem,
@@ -158,11 +159,15 @@ const zeroPlatform = (platform: OperationPlatform): OperationPlatformMonth => ({
   complaintCount: 0,
   refundCount: 0,
   refundAmount: 0,
+  discountAmount: 0,
+  commissionAmount: 0,
+  paymentFeeAmount: 0,
   cancellationCount: 0,
   chargesToDate: 0,
   settlementToDate: 0,
-  forecastCharges: 0,
-  forecastSettlement: 0,
+  forecastCharges: null,
+  forecastSettlement: null,
+  forecastMissingDays: [],
 });
 
 const rounded = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -209,6 +214,9 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
       target.complaintCount += summary.complaintCount;
       target.refundCount += summary.refundCount;
       target.refundAmount += summary.refundAmount;
+      target.discountAmount += summary.discountAmount ?? 0;
+      target.commissionAmount += summary.commissionAmount ?? 0;
+      target.paymentFeeAmount += summary.paymentFeeAmount ?? 0;
       target.cancellationCount += summary.cancellationCount;
       target.chargesToDate += summary.chargesTotal;
       target.settlementToDate += summary.settlementAmount;
@@ -225,16 +233,22 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
       "grossSales",
       "deliveryAmount",
       "refundAmount",
+      "discountAmount",
+      "commissionAmount",
+      "paymentFeeAmount",
       "chargesToDate",
       "settlementToDate",
     ] as const)
       target[key] = rounded(target[key]);
-    if (target.coveredDays > 0) {
-      target.forecastCharges = rounded((target.chargesToDate / target.coveredDays) * bounds.days);
-      target.forecastSettlement = rounded(
-        (target.settlementToDate / target.coveredDays) * bounds.days,
-      );
-    }
+    const forecast = forecastFromCompleteMonthToDate({
+      businessDates: covered.get(target.platform)!,
+      daysInMonth: bounds.days,
+      chargesToDate: target.chargesToDate,
+      settlementToDate: target.settlementToDate,
+    });
+    target.forecastCharges = forecast.charges;
+    target.forecastSettlement = forecast.settlement;
+    target.forecastMissingDays = forecast.missingDays;
   }
   const history: OperationImportHistoryItem[] = imports.map((item) => ({
     id: item.id,

@@ -368,6 +368,9 @@ export async function setOpsClientArchivedOnServer(input: { workspaceId: string;
  * compensation_cases references telegram_order_evidence, which references telegram_branch_chats.
  */
 const OWNED_TABLES_DELETE_ORDER = [
+  "operation_adjustments",
+  "operation_orders",
+  "operation_imports",
   "recovery_case_events",
   "recovery_case_documents",
   "recovery_case_details",
