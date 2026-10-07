@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { requireWorkspacePermission } from "../server-auth.server";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL } from "../upload-validation";
+import { forecastFromCompleteMonthToDate } from "./forecast";
 import { parseOperationFile } from "./parser";
 import type {
   OperationImportHistoryItem,
@@ -161,8 +162,9 @@ const zeroPlatform = (platform: OperationPlatform): OperationPlatformMonth => ({
   cancellationCount: 0,
   chargesToDate: 0,
   settlementToDate: 0,
-  forecastCharges: 0,
-  forecastSettlement: 0,
+  forecastCharges: null,
+  forecastSettlement: null,
+  forecastMissingDays: [],
 });
 
 const rounded = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -229,12 +231,15 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
       "settlementToDate",
     ] as const)
       target[key] = rounded(target[key]);
-    if (target.coveredDays > 0) {
-      target.forecastCharges = rounded((target.chargesToDate / target.coveredDays) * bounds.days);
-      target.forecastSettlement = rounded(
-        (target.settlementToDate / target.coveredDays) * bounds.days,
-      );
-    }
+    const forecast = forecastFromCompleteMonthToDate({
+      businessDates: covered.get(target.platform)!,
+      daysInMonth: bounds.days,
+      chargesToDate: target.chargesToDate,
+      settlementToDate: target.settlementToDate,
+    });
+    target.forecastCharges = forecast.charges;
+    target.forecastSettlement = forecast.settlement;
+    target.forecastMissingDays = forecast.missingDays;
   }
   const history: OperationImportHistoryItem[] = imports.map((item) => ({
     id: item.id,

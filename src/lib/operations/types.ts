@@ -80,8 +80,9 @@ export interface OperationPlatformMonth {
   cancellationCount: number;
   chargesToDate: number;
   settlementToDate: number;
-  forecastCharges: number;
-  forecastSettlement: number;
+  forecastCharges: number | null;
+  forecastSettlement: number | null;
+  forecastMissingDays: number[];
 }
 
 export interface OperationImportHistoryItem {

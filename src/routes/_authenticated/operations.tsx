@@ -81,6 +81,23 @@ const sourceLabels = Object.fromEntries(
   SOURCES.map((source) => [source.kind, source.title]),
 ) as Record<OperationSourceKind, string>;
 
+function dayRanges(days: number[]): string {
+  const ranges: string[] = [];
+  for (const day of days) {
+    const previous = ranges.at(-1);
+    if (!previous) {
+      ranges.push(String(day));
+      continue;
+    }
+    const parts = previous.split("–");
+    const start = Number(parts[0] ?? day);
+    const end = Number(parts[1] ?? parts[0] ?? day);
+    if (day === end + 1) ranges[ranges.length - 1] = `${start}–${day}`;
+    else ranges.push(String(day));
+  }
+  return ranges.join("، ");
+}
+
 function OperationsPage() {
   const { can } = useWorkspaceAccess();
   const canUpload = can("imports.create");
@@ -118,10 +135,15 @@ function OperationsPage() {
   const overview = query.data;
   const totals = useMemo(() => {
     const platforms = overview?.platforms ?? [];
+    const uploaded = platforms.filter((row) => row.coveredDays > 0);
+    const forecastAvailable =
+      uploaded.length > 0 && uploaded.every((row) => row.forecastCharges !== null);
     return {
       orders: platforms.reduce((sum, row) => sum + row.orderCount, 0),
       charges: platforms.reduce((sum, row) => sum + row.chargesToDate, 0),
-      forecast: platforms.reduce((sum, row) => sum + row.forecastCharges, 0),
+      forecast: forecastAvailable
+        ? uploaded.reduce((sum, row) => sum + (row.forecastCharges ?? 0), 0)
+        : null,
       refunds: platforms.reduce((sum, row) => sum + row.refundAmount, 0),
     };
   }, [overview]);
@@ -244,8 +266,11 @@ function OperationsPage() {
           { label: "الاستردادات المسجلة", value: sar(totals.refunds) },
           {
             label: "الرسوم المتوقعة لنهاية الشهر",
-            value: sar(totals.forecast),
-            hint: "متوسط الأيام المرفوعة × أيام الشهر",
+            value: totals.forecast === null ? "—" : sar(totals.forecast),
+            hint:
+              totals.forecast === null
+                ? "أكمل الأيام الناقصة لاحتساب التوقع"
+                : "متوسط مكتمل من بداية الشهر × أيام الشهر",
             tone: "gold",
           },
         ]}
@@ -295,7 +320,18 @@ function OperationsPage() {
                   </td>
                   <td className="num px-4 py-3 text-end">{sar(row.chargesToDate)}</td>
                   <td className="num px-4 py-3 text-end font-semibold">
-                    {row.coveredDays ? sar(row.forecastCharges) : "—"}
+                    {row.forecastCharges !== null ? (
+                      sar(row.forecastCharges)
+                    ) : row.forecastMissingDays.length ? (
+                      <span className="inline-flex flex-col items-end gap-0.5">
+                        <span>غير متاح</span>
+                        <span className="text-[10.5px] font-normal text-muted-foreground">
+                          الأيام الناقصة: {dayRanges(row.forecastMissingDays)}
+                        </span>
+                      </span>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                 </tr>
               ))}
