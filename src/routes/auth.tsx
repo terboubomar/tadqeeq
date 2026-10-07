@@ -277,9 +277,11 @@ function AuthPage() {
             <>
               <div className="mt-9 grid gap-3">
                 <Button variant="outline" className="h-12 w-full bg-card" onClick={google}>
+                  <GoogleLogo className="size-5 shrink-0" />
                   المتابعة باستخدام جوجل
                 </Button>
                 <Button variant="outline" className="h-12 w-full bg-card" onClick={apple}>
+                  <AppleLogo className="size-5 shrink-0 text-foreground" />
                   المتابعة باستخدام Apple
                 </Button>
               </div>
@@ -401,5 +403,39 @@ function AuthPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+function GoogleLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" focusable="false">
+      <path
+        fill="#4285F4"
+        d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.92h5.38a4.6 4.6 0 0 1-2 3.02v2.54h3.24c1.9-1.75 2.98-4.33 2.98-7.41Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 22c2.7 0 4.97-.9 6.62-2.36l-3.24-2.54c-.9.6-2.05.96-3.38.96-2.61 0-4.82-1.76-5.61-4.13H3.04v2.62A10 10 0 0 0 12 22Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M6.39 13.93A6.02 6.02 0 0 1 6.08 12c0-.67.11-1.32.31-1.93V7.45H3.04A10 10 0 0 0 2 12c0 1.61.39 3.14 1.04 4.55l3.35-2.62Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.94c1.47 0 2.79.5 3.82 1.49l2.87-2.87A9.62 9.62 0 0 0 12 2a10 10 0 0 0-8.96 5.45l3.35 2.62C7.18 7.7 9.39 5.94 12 5.94Z"
+      />
+    </svg>
+  );
+}
+
+function AppleLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.2.07 2.04.66 2.74.71 1.05-.21 2.05-.81 3.17-.73 1.34.11 2.35.64 3.02 1.6-2.76 1.66-2.1 5.3.43 6.32-.51 1.34-1.17 2.67-2.36 3.94l-1 1.13ZM12.03 7.25C11.88 5.26 13.51 3.62 15.37 3.46c.26 2.3-2.09 4.02-3.34 3.79Z"
+      />
+    </svg>
   );
 }
