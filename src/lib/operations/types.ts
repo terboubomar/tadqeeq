@@ -17,8 +17,11 @@ export interface OperationOrder {
   refundType: string | null;
   refundAmount: number | null;
   discountAmount: number;
+  merchantFundedDiscountAmount: number;
+  merchantFundedVoucherAmount: number;
   commissionAmount: number;
   paymentFeeAmount: number;
+  estimatedEarningsAmount: number;
   chargesTotal: number;
   settlementAmount: number;
   rawData: Record<string, string | number | boolean | null>;
@@ -44,8 +47,11 @@ export interface OperationImportSummary {
   refundCount: number;
   refundAmount: number;
   discountAmount: number;
+  merchantFundedDiscountAmount: number;
+  merchantFundedVoucherAmount: number;
   commissionAmount: number;
   paymentFeeAmount: number;
+  estimatedEarningsAmount: number;
   cancellationCount: number;
   chargesTotal: number;
   settlementAmount: number;
@@ -84,8 +90,11 @@ export interface OperationPlatformMonth {
   refundCount: number;
   refundAmount: number;
   discountAmount: number;
+  merchantFundedDiscountAmount: number;
+  merchantFundedVoucherAmount: number;
   commissionAmount: number;
   paymentFeeAmount: number;
+  estimatedEarningsAmount: number;
   cancellationCount: number;
   chargesToDate: number;
   settlementToDate: number;

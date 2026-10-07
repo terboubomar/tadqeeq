@@ -160,8 +160,11 @@ const zeroPlatform = (platform: OperationPlatform): OperationPlatformMonth => ({
   refundCount: 0,
   refundAmount: 0,
   discountAmount: 0,
+  merchantFundedDiscountAmount: 0,
+  merchantFundedVoucherAmount: 0,
   commissionAmount: 0,
   paymentFeeAmount: 0,
+  estimatedEarningsAmount: 0,
   cancellationCount: 0,
   chargesToDate: 0,
   settlementToDate: 0,
@@ -215,8 +218,11 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
       target.refundCount += summary.refundCount;
       target.refundAmount += summary.refundAmount;
       target.discountAmount += summary.discountAmount ?? 0;
+      target.merchantFundedDiscountAmount += summary.merchantFundedDiscountAmount ?? 0;
+      target.merchantFundedVoucherAmount += summary.merchantFundedVoucherAmount ?? 0;
       target.commissionAmount += summary.commissionAmount ?? 0;
       target.paymentFeeAmount += summary.paymentFeeAmount ?? 0;
+      target.estimatedEarningsAmount += summary.estimatedEarningsAmount ?? 0;
       target.cancellationCount += summary.cancellationCount;
       target.chargesToDate += summary.chargesTotal;
       target.settlementToDate += summary.settlementAmount;
@@ -234,8 +240,11 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
       "deliveryAmount",
       "refundAmount",
       "discountAmount",
+      "merchantFundedDiscountAmount",
+      "merchantFundedVoucherAmount",
       "commissionAmount",
       "paymentFeeAmount",
+      "estimatedEarningsAmount",
       "chargesToDate",
       "settlementToDate",
     ] as const)

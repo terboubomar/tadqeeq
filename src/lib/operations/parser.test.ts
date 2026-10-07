@@ -31,6 +31,7 @@ describe("daily Operations parsers", () => {
         "Voucher Funded by you",
         "Commission",
         "Online payment fee",
+        "Estimated earnings",
       ],
       [
         "H-1",
@@ -49,6 +50,7 @@ describe("daily Operations parsers", () => {
         2,
         20,
         3,
+        80,
       ],
     ]);
     const result = await parseOperationFile(file, "hungerstation_orders");
@@ -59,10 +61,30 @@ describe("daily Operations parsers", () => {
       refundCount: 1,
       refundAmount: 5,
       discountAmount: 12,
+      merchantFundedDiscountAmount: 10,
+      merchantFundedVoucherAmount: 2,
       commissionAmount: 20,
       paymentFeeAmount: 3,
+      estimatedEarningsAmount: 80,
     });
     expect(result.orders[0]?.deliveryMode).toBe("Platform delivery");
+  });
+
+  test("keeps HungerStation's local operating date for early-hour CSV orders", async () => {
+    const file = new File(
+      [
+        [
+          "Order ID,Order received at,Order status,Delivery type,Subtotal,Payout amount",
+          "H-1,2026-10-06 00:03,Delivered,Platform delivery,50,35",
+          "H-2,2026-10-06 23:58,Delivered,Platform delivery,40,28",
+        ].join("\n"),
+      ],
+      "Orders.csv",
+      { type: "text/csv" },
+    );
+    const result = await parseOperationFile(file, "hungerstation_orders");
+    expect(result.businessDate).toBe("2026-10-06");
+    expect(result.summary.orderCount).toBe(2);
   });
 
   test("uses Keeta's long order number and keeps full refund state", async () => {
@@ -105,6 +127,85 @@ describe("daily Operations parsers", () => {
       commissionAmount: 20,
       paymentFeeAmount: 2,
       chargesTotal: 32,
+    });
+  });
+
+  test("reads Keeta's current daily Operations export", async () => {
+    const file = workbookFile(
+      "keeta-current.xlsx",
+      [
+        [
+          "Date",
+          "Store ID",
+          "Store name",
+          "Order ID",
+          "Order type",
+          "Order time",
+          "Order status",
+          "Cancellation type",
+          "Earnings",
+          "Sales",
+          "Promotion expense",
+          "Keeta promotion subsidies",
+          "Commission",
+          "Other expenses",
+          "Delivery fee",
+          "Reason for order cancellation",
+        ],
+        [
+          20261006,
+          467438,
+          "Branch",
+          "5446822219993624",
+          "Delivery",
+          "20261005 23:50:00",
+          "Partial refund",
+          "Cancelled by user after acceptance",
+          102.44,
+          142,
+          14,
+          9,
+          21.48,
+          4.08,
+          23,
+          "Missing item",
+        ],
+        [
+          20261006,
+          467438,
+          "Branch",
+          "5446822219993625",
+          "Delivery",
+          "20261006 08:00:00",
+          "Completed",
+          "-",
+          "-\u00a01.27",
+          "-\u00a06.86",
+          0,
+          0,
+          "-\u00a00.41",
+          0,
+          0,
+          "",
+        ],
+      ],
+    );
+    const result = await parseOperationFile(file, "keeta_orders");
+    expect(result.businessDate).toBe("2026-10-06");
+    expect(result.orders[0]?.orderId).toBe("5446822219993624");
+    expect(result.orders[0]?.rawData["Keeta promotion subsidies"]).toBe(9);
+    expect(result.summary).toMatchObject({
+      orderCount: 2,
+      grossSales: 135.14,
+      deliveryAmount: 23,
+      complaintCount: 1,
+      refundCount: 1,
+      refundAmount: 0,
+      discountAmount: 14,
+      commissionAmount: 21.07,
+      paymentFeeAmount: 4.08,
+      chargesTotal: 39.15,
+      settlementAmount: 101.17,
     });
   });
 

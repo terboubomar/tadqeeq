@@ -20,8 +20,11 @@ const EMPTY_SUMMARY: OperationImportSummary = {
   refundCount: 0,
   refundAmount: 0,
   discountAmount: 0,
+  merchantFundedDiscountAmount: 0,
+  merchantFundedVoucherAmount: 0,
   commissionAmount: 0,
   paymentFeeAmount: 0,
+  estimatedEarningsAmount: 0,
   cancellationCount: 0,
   chargesTotal: 0,
   settlementAmount: 0,
@@ -52,9 +55,15 @@ function round(value: number): number {
 }
 
 function isoDate(value: Cell): string {
-  if (value instanceof Date && !Number.isNaN(value.valueOf()))
-    return value.toISOString().slice(0, 10);
+  if (value instanceof Date && !Number.isNaN(value.valueOf())) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
   const text = clean(value);
+  const compact = text.match(/^(\d{4})([01]\d)([0-3]\d)(?:\s|$)/);
+  if (compact) return `${compact[1]}-${compact[2]}-${compact[3]}`;
   const iso = text.match(/^(\d{4})[-/]([01]?\d)[-/]([0-3]?\d)/);
   if (iso) return `${iso[1]}-${iso[2]!.padStart(2, "0")}-${iso[3]!.padStart(2, "0")}`;
   const dmy = text.match(/^([0-3]?\d)[-/]([01]?\d)[-/](\d{4})/);
@@ -84,7 +93,30 @@ function readMatrix(file: File): Promise<Matrix> {
     const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
     const sheet = workbook.Sheets[workbook.SheetNames[0] ?? ""];
     if (!sheet) throw new Error("الملف لا يحتوي ورقة بيانات.");
+
+    // Some Keeta exports declare an incorrect A-only worksheet dimension even though
+    // their XML contains data through AE. Rebuild the used range from the actual cells.
+    const cells = Object.keys(sheet).filter((key) => !key.startsWith("!"));
+    if (cells.length) {
+      const first = XLSX.utils.decode_cell(cells[0]!);
+      const range = { s: { ...first }, e: { ...first } };
+      for (const key of cells.slice(1)) {
+        const cell = XLSX.utils.decode_cell(key);
+        range.s.r = Math.min(range.s.r, cell.r);
+        range.s.c = Math.min(range.s.c, cell.c);
+        range.e.r = Math.max(range.e.r, cell.r);
+        range.e.c = Math.max(range.e.c, cell.c);
+      }
+      sheet["!ref"] = XLSX.utils.encode_range(range);
+    }
     return XLSX.utils.sheet_to_json<Cell[]>(sheet, { header: 1, raw: true, defval: null });
+  });
+}
+
+function hasHeader(matrix: Matrix, required: string[]): boolean {
+  return matrix.some((row) => {
+    const headers = row.map(clean);
+    return required.every((column) => headers.includes(column));
   });
 }
 
@@ -141,8 +173,17 @@ function summarize(
         summary.refundCount + (order.refundType || (order.refundAmount ?? 0) !== 0 ? 1 : 0),
       refundAmount: round(summary.refundAmount + (order.refundAmount ?? 0)),
       discountAmount: round(summary.discountAmount + order.discountAmount),
+      merchantFundedDiscountAmount: round(
+        summary.merchantFundedDiscountAmount + order.merchantFundedDiscountAmount,
+      ),
+      merchantFundedVoucherAmount: round(
+        summary.merchantFundedVoucherAmount + order.merchantFundedVoucherAmount,
+      ),
       commissionAmount: round(summary.commissionAmount + order.commissionAmount),
       paymentFeeAmount: round(summary.paymentFeeAmount + order.paymentFeeAmount),
+      estimatedEarningsAmount: round(
+        summary.estimatedEarningsAmount + order.estimatedEarningsAmount,
+      ),
       cancellationCount: summary.cancellationCount + (/cancel/i.test(order.status ?? "") ? 1 : 0),
       chargesTotal: round(summary.chargesTotal + order.chargesTotal),
       settlementAmount: round(summary.settlementAmount + order.settlementAmount),
@@ -185,6 +226,8 @@ function parseHungerstation(matrix: Matrix): ParsedOperationImport {
       const orderId = clean(row["Order ID"]);
       if (!orderId) throw new Error("يوجد طلب هنقرستيشن بدون Order ID.");
       const complaint = clean(row["Has complaint?"]).toLowerCase() === "y";
+      const merchantFundedDiscount = Math.abs(money(row["Discount Funded by you"]));
+      const merchantFundedVoucher = Math.abs(money(row["Voucher Funded by you"]));
       const charges = [
         "Commission",
         "Operational charges",
@@ -214,12 +257,12 @@ function parseHungerstation(matrix: Matrix): ParsedOperationImport {
         complaintReason: complaint ? clean(row["Complaint reason"]) || null : null,
         refundType: money(row["Vendor refunds"]) !== 0 ? "vendor_refund" : null,
         refundAmount: money(row["Vendor refunds"]) || null,
-        discountAmount: round(
-          Math.abs(money(row["Discount Funded by you"])) +
-            Math.abs(money(row["Voucher Funded by you"])),
-        ),
+        discountAmount: round(merchantFundedDiscount + merchantFundedVoucher),
+        merchantFundedDiscountAmount: round(merchantFundedDiscount),
+        merchantFundedVoucherAmount: round(merchantFundedVoucher),
         commissionAmount: round(Math.abs(money(row["Commission"]))),
         paymentFeeAmount: round(Math.abs(money(row["Online payment fee"]))),
+        estimatedEarningsAmount: round(money(row["Estimated earnings"])),
         chargesTotal: round(charges.reduce((sum, column) => sum + money(row[column]), 0)),
         settlementAmount: round(money(row["Payout amount"])),
         rawData: rawRecord(row),
@@ -237,7 +280,7 @@ function parseHungerstation(matrix: Matrix): ParsedOperationImport {
   };
 }
 
-function parseKeeta(matrix: Matrix): ParsedOperationImport {
+function parseLegacyKeeta(matrix: Matrix): ParsedOperationImport {
   const { records } = headerTable(matrix, ["Order no.", "Order time", "Order status", "Earnings"]);
   const orders = uniqueOrders(
     records.map((row): OperationOrder => {
@@ -265,8 +308,11 @@ function parseKeeta(matrix: Matrix): ParsedOperationImport {
         refundType: clean(row["Refund type"]) || null,
         refundAmount: null,
         discountAmount: round(Math.abs(merchantPromotion)),
+        merchantFundedDiscountAmount: round(Math.abs(merchantPromotion)),
+        merchantFundedVoucherAmount: 0,
         commissionAmount: round(Math.abs(money(row["Basic commission"]))),
         paymentFeeAmount: round(Math.abs(money(row["Online payment fee"]))),
+        estimatedEarningsAmount: round(money(row["Earnings"])),
         chargesTotal: round(
           chargeValues.reduce((sum, value) => sum + (value < 0 ? -value : value), 0),
         ),
@@ -284,6 +330,72 @@ function parseKeeta(matrix: Matrix): ParsedOperationImport {
     adjustments: [],
     summary: summarize(orders, []),
   };
+}
+
+function parseCurrentKeeta(matrix: Matrix): ParsedOperationImport {
+  const { records } = headerTable(matrix, [
+    "Date",
+    "Order ID",
+    "Order status",
+    "Earnings",
+    "Sales",
+    "Promotion expense",
+    "Commission",
+    "Other expenses",
+    "Delivery fee",
+  ]);
+  const orders = uniqueOrders(
+    records.map((row): OperationOrder => {
+      const orderId = clean(row["Order ID"]);
+      if (!orderId) throw new Error("يوجد طلب كيتا بدون Order ID.");
+      const status = clean(row["Order status"]);
+      const refundType = /refund/i.test(status) ? status : null;
+      const promotionExpense = money(row["Promotion expense"]);
+      const commission = money(row["Commission"]);
+      const otherExpenses = money(row["Other expenses"]);
+      const cancellationType = clean(row["Cancellation type"]);
+      return {
+        orderId,
+        businessDate: isoDate(row["Date"]),
+        branchId: clean(row["Store ID"]) || null,
+        branchName: clean(row["Store name"]) || null,
+        status: status || null,
+        deliveryMode: clean(row["Order type"]) || null,
+        grossSales: round(money(row["Sales"])),
+        deliveryAmount: round(money(row["Delivery fee"])),
+        complaint: Boolean(refundType),
+        complaintReason:
+          (cancellationType && cancellationType !== "-" ? cancellationType : null) ??
+          (clean(row["Reason for order cancellation"]) || null),
+        refundType,
+        refundAmount: null,
+        discountAmount: round(promotionExpense),
+        merchantFundedDiscountAmount: round(promotionExpense),
+        merchantFundedVoucherAmount: 0,
+        commissionAmount: round(commission),
+        paymentFeeAmount: round(otherExpenses),
+        estimatedEarningsAmount: round(money(row["Earnings"])),
+        chargesTotal: round(promotionExpense + commission + otherExpenses),
+        settlementAmount: round(money(row["Earnings"])),
+        rawData: rawRecord(row),
+      };
+    }),
+  );
+  const businessDate = oneBusinessDate(orders, []);
+  return {
+    platform: "keeta",
+    sourceKind: "keeta_orders",
+    businessDate,
+    orders,
+    adjustments: [],
+    summary: summarize(orders, []),
+  };
+}
+
+function parseKeeta(matrix: Matrix): ParsedOperationImport {
+  if (hasHeader(matrix, ["Date", "Order ID", "Order status", "Earnings", "Sales"]))
+    return parseCurrentKeeta(matrix);
+  return parseLegacyKeeta(matrix);
 }
 
 function parseJahezOrders(matrix: Matrix): ParsedOperationImport {
@@ -324,10 +436,13 @@ function parseJahezOrders(matrix: Matrix): ParsedOperationImport {
         discountAmount: round(
           Math.abs(money(row["Offer Amount"])) + Math.abs(money(row["Delivery Coupon"])),
         ),
+        merchantFundedDiscountAmount: round(Math.abs(money(row["Offer Amount"]))),
+        merchantFundedVoucherAmount: round(Math.abs(money(row["Delivery Coupon"]))),
         commissionAmount: round(Math.abs(money(row["Jahez Commision"]))),
         paymentFeeAmount: round(
           Math.abs(money(row["Payment Fees"])) + Math.abs(money(row["Payment Fees Vat"])),
         ),
+        estimatedEarningsAmount: round(money(row["Restaurant Amount"])),
         chargesTotal: round(charges),
         settlementAmount: round(money(row["Restaurant Amount"])),
         rawData: rawRecord(row),

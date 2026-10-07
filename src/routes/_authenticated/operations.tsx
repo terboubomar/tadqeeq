@@ -2,23 +2,28 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   AlertTriangle,
+  ChevronDown,
   CheckCircle2,
   FileSpreadsheet,
   Loader2,
   RefreshCw,
   Upload,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
-import { NumberTiles, PageHeader } from "@/components/workspace/PageKit";
+import { PageHeader } from "@/components/workspace/PageKit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { count, sar } from "@/lib/format";
 import { getOperationMonth, importOperationFile } from "@/lib/operations/operations.functions";
-import type { OperationSourceKind } from "@/lib/operations/types";
+import type {
+  OperationPlatform,
+  OperationPlatformMonth,
+  OperationSourceKind,
+} from "@/lib/operations/types";
 import { MAX_UPLOAD_SIZE_LABEL, uploadSizeError } from "@/lib/upload-validation";
 import { cn } from "@/lib/utils";
 
@@ -51,8 +56,8 @@ const SOURCES: Array<{
     kind: "hungerstation_orders",
     platform: "hungerstation",
     title: "طلبات هنقرستيشن",
-    note: "ملف Order history اليومي",
-    accept: ".xlsx,.xls",
+    note: "ملف Orders اليومي",
+    accept: ".csv,.xlsx,.xls",
   },
   {
     kind: "keeta_orders",
@@ -77,6 +82,15 @@ const SOURCES: Array<{
   },
 ];
 
+const PLATFORMS: Array<{
+  id: OperationPlatform;
+  description: string;
+}> = [
+  { id: "hungerstation", description: "Orders والخصومات والأرباح والتحويلات" },
+  { id: "keeta", description: "الطلبات والعروض والعمولات والمصروفات" },
+  { id: "jahez", description: "الطلبات مع ملف الاستردادات المنفصل" },
+];
+
 const sourceLabels = Object.fromEntries(
   SOURCES.map((source) => [source.kind, source.title]),
 ) as Record<OperationSourceKind, string>;
@@ -98,11 +112,80 @@ function dayRanges(days: number[]): string {
   return ranges.join("، ");
 }
 
+type DetailMetric = { label: string; value: string; hint?: string };
+
+function platformMetrics(row: OperationPlatformMonth): DetailMetric[] {
+  const common: DetailMetric[] = [
+    { label: "الطلبات", value: count(row.orderCount) },
+    { label: "المبيعات", value: sar(row.grossSales) },
+  ];
+  const endingForecast: DetailMetric = {
+    label: "توقع خصومات ورسوم الشهر",
+    value: row.forecastCharges === null ? "غير متاح" : sar(row.forecastCharges),
+    hint:
+      row.forecastCharges === null && row.forecastMissingDays.length
+        ? `الأيام الناقصة: ${dayRanges(row.forecastMissingDays)}`
+        : undefined,
+  };
+
+  if (row.platform === "hungerstation")
+    return [
+      ...common,
+      { label: "Discount Funded by you", value: sar(row.merchantFundedDiscountAmount) },
+      { label: "Voucher Funded by you", value: sar(row.merchantFundedVoucherAmount) },
+      { label: "العمولة", value: sar(row.commissionAmount) },
+      { label: "رسوم الدفع", value: sar(row.paymentFeeAmount) },
+      { label: "الأرباح التقديرية", value: sar(row.estimatedEarningsAmount) },
+      { label: "إجمالي التحويل Payout", value: sar(row.settlementToDate) },
+      {
+        label: "الاستردادات",
+        value: sar(row.refundAmount),
+        hint: `${count(row.refundCount)} طلب`,
+      },
+      { label: "إجمالي الخصومات والرسوم", value: sar(row.chargesToDate) },
+      endingForecast,
+    ];
+
+  if (row.platform === "keeta")
+    return [
+      ...common,
+      { label: "Delivery fee", value: sar(row.deliveryAmount) },
+      { label: "Promotion expense", value: sar(row.merchantFundedDiscountAmount) },
+      { label: "العمولة", value: sar(row.commissionAmount) },
+      { label: "Other expenses", value: sar(row.paymentFeeAmount) },
+      { label: "Earnings", value: sar(row.settlementToDate) },
+      {
+        label: "الاستردادات",
+        value: sar(row.refundAmount),
+        hint: `${count(row.refundCount)} طلب — الملف لا يحدد المبلغ`,
+      },
+      { label: "إجمالي الخصومات والرسوم", value: sar(row.chargesToDate) },
+      endingForecast,
+    ];
+
+  return [
+    ...common,
+    { label: "التوصيل", value: sar(row.deliveryAmount) },
+    { label: "الخصومات", value: sar(row.discountAmount) },
+    { label: "العمولة", value: sar(row.commissionAmount) },
+    { label: "رسوم الدفع", value: sar(row.paymentFeeAmount) },
+    { label: "إجمالي التحويل", value: sar(row.settlementToDate) },
+    {
+      label: "الاستردادات",
+      value: sar(row.refundAmount),
+      hint: `${count(row.refundCount)} حركة`,
+    },
+    { label: "إجمالي الخصومات والرسوم", value: sar(row.chargesToDate) },
+    endingForecast,
+  ];
+}
+
 function OperationsPage() {
   const { can } = useWorkspaceAccess();
   const canUpload = can("imports.create");
   const queryClient = useQueryClient();
   const [month, setMonth] = useState(todayMonth);
+  const [activePlatform, setActivePlatform] = useState<OperationPlatform | null>(null);
   const [activeUpload, setActiveUpload] = useState<OperationSourceKind | null>(null);
   const query = useQuery({
     queryKey: ["operation-month", month],
@@ -133,21 +216,6 @@ function OperationsPage() {
   });
 
   const overview = query.data;
-  const totals = useMemo(() => {
-    const platforms = overview?.platforms ?? [];
-    const uploaded = platforms.filter((row) => row.coveredDays > 0);
-    const forecastAvailable =
-      uploaded.length > 0 && uploaded.every((row) => row.forecastCharges !== null);
-    return {
-      orders: platforms.reduce((sum, row) => sum + row.orderCount, 0),
-      sales: platforms.reduce((sum, row) => sum + row.grossSales, 0),
-      charges: platforms.reduce((sum, row) => sum + row.chargesToDate, 0),
-      forecast: forecastAvailable
-        ? uploaded.reduce((sum, row) => sum + (row.forecastCharges ?? 0), 0)
-        : null,
-      refunds: platforms.reduce((sum, row) => sum + row.refundAmount, 0),
-    };
-  }, [overview]);
 
   return (
     <div className="space-y-5">
@@ -168,85 +236,6 @@ function OperationsPage() {
         }
       />
 
-      <section className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="border-b border-border bg-ink px-5 py-4 text-ink-foreground">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="font-display text-[16px] font-bold">سجل الرفع اليومي</h2>
-              <p className="mt-0.5 text-[12px] text-ink-muted">
-                أربع مصادر مستقلة. ملف استردادات جاهز اختياري.
-              </p>
-            </div>
-            <span className="text-[11.5px] text-ink-muted">
-              الحد الأقصى للملف {MAX_UPLOAD_SIZE_LABEL}
-            </span>
-          </div>
-        </div>
-        <div className="divide-y divide-border">
-          {SOURCES.map((source) => {
-            const busy = activeUpload === source.kind;
-            const latest = overview?.imports.find((item) => item.sourceKind === source.kind);
-            return (
-              <div
-                key={source.kind}
-                className="grid items-center gap-3 px-4 py-3.5 sm:grid-cols-[minmax(0,1fr)_minmax(180px,0.8fr)_auto] sm:px-5"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-border bg-background">
-                    <PlatformIcon platform={source.platform} className="size-5 rounded" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-display text-[14px] font-bold">{source.title}</p>
-                    <p className="truncate text-[12px] text-muted-foreground">{source.note}</p>
-                  </div>
-                </div>
-                <div className="min-w-0 text-[12px]">
-                  {latest ? (
-                    <div className="flex items-center gap-2 text-success">
-                      <CheckCircle2 className="size-4 shrink-0" />
-                      <span className="truncate">
-                        آخر رفع {latest.businessDate} · {count(latest.rowCount)} صف
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <FileSpreadsheet className="size-4 shrink-0" />
-                      لم يرفع هذا المصدر في الشهر
-                    </div>
-                  )}
-                </div>
-                {canUpload ? (
-                  <label
-                    className={cn(
-                      "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 text-[12.5px] font-medium hover:bg-muted",
-                      busy && "pointer-events-none opacity-60",
-                    )}
-                  >
-                    {busy ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Upload className="size-4" />
-                    )}
-                    {busy ? "جارٍ الحفظ" : "رفع الملف"}
-                    <input
-                      type="file"
-                      accept={source.accept}
-                      className="sr-only"
-                      disabled={upload.isPending}
-                      onChange={(event) => {
-                        const file = event.currentTarget.files?.[0];
-                        event.currentTarget.value = "";
-                        if (file) upload.mutate({ file, sourceKind: source.kind });
-                      }}
-                    />
-                  </label>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
       {query.isError ? (
         <div className="flex items-start gap-3 rounded-xl border border-destructive/25 bg-destructive-soft p-4 text-sm text-destructive">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
@@ -260,168 +249,194 @@ function OperationsPage() {
         </div>
       ) : null}
 
-      <NumberTiles
-        items={[
-          {
-            label: "المبيعات حتى الآن",
-            value: sar(totals.sales),
-            hint: `${count(totals.orders)} طلب`,
-          },
-          { label: "الخصومات والرسوم حتى الآن", value: sar(totals.charges) },
-          {
-            label: "الاستردادات المسجلة",
-            value: sar(totals.refunds),
-            hint: "ملف كيتا يوفّر العدد دون مبلغ الاسترداد",
-          },
-          {
-            label: "الرسوم المتوقعة لنهاية الشهر",
-            value: totals.forecast === null ? "—" : sar(totals.forecast),
-            hint:
-              totals.forecast === null
-                ? "أكمل الأيام الناقصة لاحتساب التوقع"
-                : "متوسط مكتمل من بداية الشهر × أيام الشهر",
-            tone: "gold",
-          },
-        ]}
-      />
-
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-3.5">
+        <div className="flex items-center justify-between gap-3 border-b border-border bg-ink px-5 py-4 text-ink-foreground">
           <div>
-            <h2 className="font-display text-[15px] font-bold">ملخص الشهر حسب المنصة</h2>
-            <p className="mt-0.5 text-[11.5px] text-muted-foreground">
-              التوقع تشغيلي وغير بديل عن مطابقة الفاتورة الرسمية.
+            <h2 className="font-display text-[16px] font-bold">ملفات المنصات</h2>
+            <p className="mt-0.5 text-[12px] text-ink-muted">
+              افتح منصة واحدة لرفع ملفاتها ومراجعة أرقامها.
             </p>
           </div>
-          {query.isFetching ? (
-            <Loader2 className="size-4 animate-spin text-muted-foreground" />
-          ) : null}
+          <span className="text-[11.5px] text-ink-muted">
+            الحد الأقصى {MAX_UPLOAD_SIZE_LABEL}
+          </span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1240px] text-[12.5px]">
-            <thead className="bg-muted/55 text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2.5 text-start font-medium">المنصة</th>
-                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">
-                  أيام مرفوعة
-                </th>
-                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">الطلبات</th>
-                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">المبيعات</th>
-                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">التوصيل</th>
-                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">الخصومات</th>
-                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">الاسترداد</th>
-                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">العمولة</th>
-                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">
-                  رسوم الدفع
-                </th>
-                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">
-                  إجمالي الخصومات والرسوم
-                </th>
-                <th className="whitespace-nowrap px-4 py-2.5 text-center font-medium">
-                  توقع نهاية الشهر
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {(overview?.platforms ?? []).map((row) => (
-                <tr key={row.platform}>
-                  <td className="px-4 py-3 font-semibold">
-                    <span className="inline-flex items-center gap-2">
-                      <PlatformIcon platform={row.platform} className="size-4 rounded" />
-                      <PlatformName platform={row.platform} />
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center">
-                    <span className="num">
-                      {count(row.coveredDays)} / {count(overview?.daysInMonth)}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center">
-                    <span className="num">{count(row.orderCount)}</span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center">
-                    <span className="num">{sar(row.grossSales)}</span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center">
-                    <span className="num">{sar(row.deliveryAmount)}</span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center">
-                    <span className="num">{sar(row.discountAmount)}</span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center">
-                    <span className="num inline-flex flex-col items-center gap-0.5">
-                      <span>{sar(row.refundAmount)}</span>
-                      <span className="text-[10.5px] text-muted-foreground">
-                        {count(row.refundCount)} طلب
+
+        <div className="divide-y divide-border">
+          {PLATFORMS.map((platform) => {
+            const row = overview?.platforms.find((item) => item.platform === platform.id);
+            const isOpen = activePlatform === platform.id;
+            const platformSources = SOURCES.filter((source) => source.platform === platform.id);
+            const history = (overview?.imports ?? []).filter(
+              (item) => item.platform === platform.id,
+            );
+            return (
+              <div key={platform.id}>
+                <button
+                  type="button"
+                  aria-expanded={isOpen}
+                  onClick={() => setActivePlatform(isOpen ? null : platform.id)}
+                  className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 text-start outline-none transition-colors hover:bg-muted/35 focus-visible:bg-muted/45 sm:px-5"
+                >
+                  <span className="grid size-10 place-items-center rounded-xl border border-border bg-background">
+                    <PlatformIcon platform={platform.id} className="size-6 rounded" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <span className="font-display text-[15px] font-bold">
+                        <PlatformName platform={platform.id} />
                       </span>
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center">
-                    <span className="num">{sar(row.commissionAmount)}</span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center">
-                    <span className="num">{sar(row.paymentFeeAmount)}</span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center">
-                    <span className="num">{sar(row.chargesToDate)}</span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-center font-semibold">
-                    <span className="num">
-                      {row.forecastCharges !== null ? (
-                        sar(row.forecastCharges)
-                      ) : row.forecastMissingDays.length ? (
-                        <span className="inline-flex flex-col items-center gap-0.5">
-                          <span>غير متاح</span>
-                          <span className="text-[10.5px] font-normal text-muted-foreground">
-                            الأيام الناقصة: {dayRanges(row.forecastMissingDays)}
-                          </span>
+                      {row?.coveredDays ? (
+                        <span className="num text-[11.5px] text-muted-foreground">
+                          {count(row.coveredDays)} / {count(overview?.daysInMonth)} يوم · {count(row.orderCount)} طلب
                         </span>
                       ) : (
-                        "—"
+                        <span className="text-[11.5px] text-muted-foreground">لا توجد ملفات لهذا الشهر</span>
                       )}
                     </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="space-y-1 border-t border-border bg-muted/30 px-5 py-3 text-[11.5px] text-muted-foreground">
-          <p>
-            كيتا يجمع خصومات التوصيل والقسائم والعروض في حقل واحد؛ يظهر المبلغ ضمن الخصومات ولا
-            يتكرر في التوصيل.
-          </p>
-          <p>ملف هنقرستيشن لا يتضمن مبلغ توصيل منفصلاً، وملف كيتا لا يتضمن مبلغ الاسترداد.</p>
-        </div>
-      </section>
+                    <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
+                      {platform.description}
+                    </span>
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "size-4 text-muted-foreground transition-transform",
+                      isOpen && "rotate-180",
+                    )}
+                  />
+                </button>
 
-      <section className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="border-b border-border px-5 py-3.5">
-          <h2 className="font-display text-[15px] font-bold">سجل الملفات</h2>
-        </div>
-        {overview?.imports.length ? (
-          <div className="divide-y divide-border">
-            {overview.imports.slice(0, 20).map((item) => (
-              <div
-                key={item.id}
-                className="grid gap-1 px-5 py-3 text-[12.5px] sm:grid-cols-[1fr_auto_auto] sm:items-center sm:gap-4"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{item.originalName}</p>
-                  <p className="text-[11.5px] text-muted-foreground">
-                    {sourceLabels[item.sourceKind]}
-                  </p>
-                </div>
-                <span className="num text-muted-foreground">{item.businessDate}</span>
-                <span className="num text-muted-foreground">{count(item.rowCount)} صف</span>
+                {isOpen ? (
+                  <div className="border-t border-border bg-background/55">
+                    <div className="px-4 py-5 sm:px-5">
+                      <div className="mb-5">
+                        <h3 className="text-[13px] font-semibold">رفع الملفات</h3>
+                        <div className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+                          {platformSources.map((source) => {
+                            const busy = activeUpload === source.kind;
+                            const latest = history.find((item) => item.sourceKind === source.kind);
+                            return (
+                              <div
+                                key={source.kind}
+                                className="grid items-center gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(180px,0.7fr)_auto]"
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-[13px] font-medium">{source.title}</p>
+                                  <p className="truncate text-[11.5px] text-muted-foreground">
+                                    {source.note}
+                                  </p>
+                                </div>
+                                {latest ? (
+                                  <div className="flex min-w-0 items-center gap-2 text-[11.5px] text-success">
+                                    <CheckCircle2 className="size-4 shrink-0" />
+                                    <span className="truncate">
+                                      {latest.businessDate} · {count(latest.rowCount)} صف
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2 text-[11.5px] text-muted-foreground">
+                                    <FileSpreadsheet className="size-4 shrink-0" />
+                                    لم يرفع بعد
+                                  </div>
+                                )}
+                                {canUpload ? (
+                                  <label
+                                    className={cn(
+                                      "inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 text-[12.5px] font-medium hover:bg-muted",
+                                      busy && "pointer-events-none opacity-60",
+                                    )}
+                                  >
+                                    {busy ? (
+                                      <Loader2 className="size-4 animate-spin" />
+                                    ) : (
+                                      <Upload className="size-4" />
+                                    )}
+                                    {busy ? "جارٍ الحفظ" : latest ? "رفع نسخة جديدة" : "رفع الملف"}
+                                    <input
+                                      type="file"
+                                      accept={source.accept}
+                                      className="sr-only"
+                                      disabled={upload.isPending}
+                                      onChange={(event) => {
+                                        const file = event.currentTarget.files?.[0];
+                                        event.currentTarget.value = "";
+                                        if (file)
+                                          upload.mutate({ file, sourceKind: source.kind });
+                                      }}
+                                    />
+                                  </label>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between gap-3">
+                          <h3 className="text-[13px] font-semibold">تفاصيل الشهر</h3>
+                          {query.isFetching ? (
+                            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                          ) : null}
+                        </div>
+                        {row?.coveredDays ? (
+                          <div className="mt-2 grid overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-2 lg:grid-cols-4">
+                            {platformMetrics(row).map((metric) => (
+                              <div
+                                key={metric.label}
+                                className="min-w-0 border-b border-border px-4 py-3.5 last:border-b-0 sm:border-e sm:[&:nth-child(even)]:border-e-0 lg:[&:nth-child(even)]:border-e lg:[&:nth-child(4n)]:border-e-0"
+                              >
+                                <p className="text-[11.5px] text-muted-foreground">{metric.label}</p>
+                                <p className="num mt-1 text-[15px] font-semibold">{metric.value}</p>
+                                {metric.hint ? (
+                                  <p className="mt-0.5 text-[10.5px] text-muted-foreground">
+                                    {metric.hint}
+                                  </p>
+                                ) : null}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="mt-2 rounded-xl border border-dashed border-border px-4 py-7 text-center text-[12.5px] text-muted-foreground">
+                            ارفع أول ملف لعرض تفاصيل هذه المنصة.
+                          </div>
+                        )}
+                        <p className="mt-2 text-[11px] text-muted-foreground">
+                          التوقع تشغيلي ويظهر فقط عند اكتمال الأيام من بداية الشهر.
+                        </p>
+                      </div>
+
+                      {history.length ? (
+                        <div className="mt-5">
+                          <h3 className="text-[13px] font-semibold">سجل ملفات المنصة</h3>
+                          <div className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+                            {history.slice(0, 10).map((item) => (
+                              <div
+                                key={item.id}
+                                className="grid gap-1 px-4 py-3 text-[12px] sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4"
+                              >
+                                <div className="min-w-0">
+                                  <p className="truncate font-medium">{item.originalName}</p>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {sourceLabels[item.sourceKind]}
+                                  </p>
+                                </div>
+                                <span className="num text-muted-foreground">{item.businessDate}</span>
+                                <span className="num text-muted-foreground">
+                                  {count(item.rowCount)} صف
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="px-5 py-8 text-center text-sm text-muted-foreground">
-            لا توجد ملفات مرفوعة لهذا الشهر.
-          </p>
-        )}
+            );
+          })}
+        </div>
       </section>
     </div>
   );
