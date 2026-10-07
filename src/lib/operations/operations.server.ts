@@ -47,7 +47,9 @@ const TABLE_MISSING = "ميزة العمليات اليومية تحتاج تح�
 function operationError(error: { code?: string; message: string }): Error {
   if (
     error.code === "42P01" ||
-    /operation_(imports|orders|adjustments)|import_operation_snapshot/i.test(error.message)
+    /operation_(imports|orders|adjustments)|import_operation_snapshot|delete_operation_import/i.test(
+      error.message,
+    )
   ) {
     if (/does not exist|schema cache|Could not find/i.test(error.message))
       return new Error(TABLE_MISSING);
@@ -139,6 +141,13 @@ export async function importOperationFileOnServer(form: FormData): Promise<Opera
     matchedAdjustments: parsed.summary.matchedAdjustments,
     unmatchedAdjustments: parsed.summary.unmatchedAdjustments,
   };
+}
+
+export async function deleteOperationImportOnServer(importId: string): Promise<void> {
+  const { client } = await requireWorkspacePermission("imports.create");
+  const db = client as unknown as LooseClient;
+  const { error } = await db.rpc("delete_operation_import", { p_import_id: importId });
+  if (error) throw operationError(error);
 }
 
 function monthBounds(month: string): { start: string; end: string; days: number } {

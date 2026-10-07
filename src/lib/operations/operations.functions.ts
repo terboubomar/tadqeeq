@@ -1,7 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { getOperationMonthOnServer, importOperationFileOnServer } from "./operations.server";
+import {
+  deleteOperationImportOnServer,
+  getOperationMonthOnServer,
+  importOperationFileOnServer,
+} from "./operations.server";
 
 export const importOperationFile = createServerFn({ method: "POST" })
   .validator((data) => {
@@ -13,3 +17,7 @@ export const importOperationFile = createServerFn({ method: "POST" })
 export const getOperationMonth = createServerFn({ method: "POST" })
   .validator(z.object({ month: z.string().regex(/^\d{4}-\d{2}$/) }))
   .handler(({ data }) => getOperationMonthOnServer(data.month));
+
+export const deleteOperationImport = createServerFn({ method: "POST" })
+  .validator(z.object({ importId: z.string().uuid() }))
+  .handler(({ data }) => deleteOperationImportOnServer(data.importId));

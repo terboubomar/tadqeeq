@@ -7,6 +7,7 @@ import {
   FileSpreadsheet,
   Loader2,
   RefreshCw,
+  Trash2,
   Upload,
 } from "lucide-react";
 import { useState } from "react";
@@ -15,11 +16,26 @@ import { toast } from "sonner";
 import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { PageHeader } from "@/components/workspace/PageKit";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { count, sar } from "@/lib/format";
-import { getOperationMonth, importOperationFile } from "@/lib/operations/operations.functions";
+import {
+  deleteOperationImport,
+  getOperationMonth,
+  importOperationFile,
+} from "@/lib/operations/operations.functions";
 import type {
+  OperationImportHistoryItem,
   OperationPlatform,
   OperationPlatformMonth,
   OperationSourceKind,
@@ -187,6 +203,7 @@ function OperationsPage() {
   const [month, setMonth] = useState(todayMonth);
   const [activePlatform, setActivePlatform] = useState<OperationPlatform | null>(null);
   const [activeUpload, setActiveUpload] = useState<OperationSourceKind | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<OperationImportHistoryItem | null>(null);
   const query = useQuery({
     queryKey: ["operation-month", month],
     queryFn: () => getOperationMonth({ data: { month } }),
@@ -213,6 +230,16 @@ function OperationsPage() {
     onError: (error) =>
       toast.error(error instanceof Error ? error.message : "تعذّر رفع ملف العمليات."),
     onSettled: () => setActiveUpload(null),
+  });
+  const removeImport = useMutation({
+    mutationFn: (importId: string) => deleteOperationImport({ data: { importId } }),
+    onSuccess: async () => {
+      setDeleteTarget(null);
+      await queryClient.invalidateQueries({ queryKey: ["operation-month"] });
+      toast.success("حُذف الملف وبياناته التشغيلية.");
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "تعذّر حذف ملف العمليات."),
   });
 
   const overview = query.data;
@@ -257,9 +284,7 @@ function OperationsPage() {
               افتح منصة واحدة لرفع ملفاتها ومراجعة أرقامها.
             </p>
           </div>
-          <span className="text-[11.5px] text-ink-muted">
-            الحد الأقصى {MAX_UPLOAD_SIZE_LABEL}
-          </span>
+          <span className="text-[11.5px] text-ink-muted">الحد الأقصى {MAX_UPLOAD_SIZE_LABEL}</span>
         </div>
 
         <div className="divide-y divide-border">
@@ -288,10 +313,13 @@ function OperationsPage() {
                       </span>
                       {row?.coveredDays ? (
                         <span className="num text-[11.5px] text-muted-foreground">
-                          {count(row.coveredDays)} / {count(overview?.daysInMonth)} يوم · {count(row.orderCount)} طلب
+                          {count(row.coveredDays)} / {count(overview?.daysInMonth)} يوم ·{" "}
+                          {count(row.orderCount)} طلب
                         </span>
                       ) : (
-                        <span className="text-[11.5px] text-muted-foreground">لا توجد ملفات لهذا الشهر</span>
+                        <span className="text-[11.5px] text-muted-foreground">
+                          لا توجد ملفات لهذا الشهر
+                        </span>
                       )}
                     </span>
                     <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
@@ -360,8 +388,7 @@ function OperationsPage() {
                                       onChange={(event) => {
                                         const file = event.currentTarget.files?.[0];
                                         event.currentTarget.value = "";
-                                        if (file)
-                                          upload.mutate({ file, sourceKind: source.kind });
+                                        if (file) upload.mutate({ file, sourceKind: source.kind });
                                       }}
                                     />
                                   </label>
@@ -386,7 +413,9 @@ function OperationsPage() {
                                 key={metric.label}
                                 className="min-w-0 border-b border-border px-4 py-3.5 last:border-b-0 sm:border-e sm:[&:nth-child(even)]:border-e-0 lg:[&:nth-child(even)]:border-e lg:[&:nth-child(4n)]:border-e-0"
                               >
-                                <p className="text-[11.5px] text-muted-foreground">{metric.label}</p>
+                                <p className="text-[11.5px] text-muted-foreground">
+                                  {metric.label}
+                                </p>
                                 <p className="num mt-1 text-[15px] font-semibold">{metric.value}</p>
                                 {metric.hint ? (
                                   <p className="mt-0.5 text-[10.5px] text-muted-foreground">
@@ -413,7 +442,7 @@ function OperationsPage() {
                             {history.slice(0, 10).map((item) => (
                               <div
                                 key={item.id}
-                                className="grid gap-1 px-4 py-3 text-[12px] sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4"
+                                className="grid grid-cols-[minmax(0,1fr)_auto] gap-1 px-4 py-3 text-[12px] sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-center sm:gap-4"
                               >
                                 <div className="min-w-0">
                                   <p className="truncate font-medium">{item.originalName}</p>
@@ -421,10 +450,31 @@ function OperationsPage() {
                                     {sourceLabels[item.sourceKind]}
                                   </p>
                                 </div>
-                                <span className="num text-muted-foreground">{item.businessDate}</span>
+                                <span className="num text-muted-foreground">
+                                  {item.businessDate}
+                                </span>
                                 <span className="num text-muted-foreground">
                                   {count(item.rowCount)} صف
                                 </span>
+                                {canUpload ? (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                    aria-label={`حذف ${item.originalName}`}
+                                    title="حذف الملف"
+                                    disabled={removeImport.isPending}
+                                    onClick={() => setDeleteTarget(item)}
+                                  >
+                                    {removeImport.isPending &&
+                                    removeImport.variables === item.id ? (
+                                      <Loader2 className="size-4 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="size-4" />
+                                    )}
+                                  </Button>
+                                ) : null}
                               </div>
                             ))}
                           </div>
@@ -438,6 +488,39 @@ function OperationsPage() {
           })}
         </div>
       </section>
+
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !removeImport.isPending) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent dir="rtl" className="max-w-md">
+          <AlertDialogHeader className="text-start">
+            <AlertDialogTitle className="text-start">حذف ملف العمليات؟</AlertDialogTitle>
+            <AlertDialogDescription className="text-start leading-6">
+              سيُحذف ملف{" "}
+              <span className="font-medium text-foreground">{deleteTarget?.originalName}</span>
+              {deleteTarget ? ` وبيانات يوم ${deleteTarget.businessDate} المشتقة منه` : ""}. لا يؤثر
+              ذلك في الفواتير أو المحاسبة.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:space-x-0">
+            <AlertDialogCancel disabled={removeImport.isPending}>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!deleteTarget || removeImport.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                if (deleteTarget) removeImport.mutate(deleteTarget.id);
+              }}
+            >
+              {removeImport.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+              حذف الملف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
