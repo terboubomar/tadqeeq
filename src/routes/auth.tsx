@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { CheckCircle2, FileCheck2, Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
+import { Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -8,11 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { lovable } from "@/integrations/lovable/index";
 import { supabase } from "@/integrations/supabase/client";
-import { LogoLockup, LogoMark, LogoWordmark } from "@/components/brand/Logo";
+import { LogoLockup, LogoWordmark } from "@/components/brand/Logo";
 import { EmailCodeStep, MfaCodeStep } from "@/components/TwoFactor";
 import { getEmailCodeStatus } from "@/lib/email-signin.functions";
-import { PlatformName } from "@/components/brand/PlatformLogo";
-import { PLATFORM_KEYS } from "@/lib/platforms";
 import { needsMfaCode } from "@/lib/mfa";
 import { safeNextPath } from "@/lib/redirects";
 
@@ -158,81 +156,26 @@ function AuthPage() {
       className="grid min-h-screen bg-background lg:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]"
     >
       <aside className="relative hidden min-h-screen overflow-hidden border-l border-white/10 bg-ink px-12 py-10 text-ink-foreground lg:flex lg:flex-col xl:px-16 xl:py-12">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-32 -left-24 opacity-[0.045]"
+        <Link
+          to="/"
+          aria-label="العودة إلى الصفحة الرئيسية"
+          className="relative w-fit rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-ink"
         >
-          <LogoMark className="h-[520px] text-white" />
-        </div>
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 top-[41%] border-t border-white/10"
-        />
-
-        <div className="relative flex items-start justify-between gap-8">
           <LogoLockup title="تدقيق" className="h-16 text-ink-foreground" />
-          <div className="flex items-center gap-2 border border-white/15 px-3 py-2 text-xs text-ink-muted">
-            <ShieldCheck className="size-4 text-primary" />
-            دخول محمي
-          </div>
-        </div>
+        </Link>
 
-        <div className="relative my-auto max-w-xl py-14">
-          <p className="mb-5 flex items-center gap-3 text-sm font-medium text-primary">
-            <span className="h-px w-10 bg-primary" />
-            منصة الرقابة المالية للمطاعم
-          </p>
-          <h2 className="font-display text-[clamp(2.35rem,4vw,4.6rem)] font-bold leading-[1.45] tracking-[-0.035em]">
-            لا تعتمد الفاتورة
-            <br />
-            قبل أن تدقّقها.
+        <div className="relative my-auto max-w-lg">
+          <h2 className="font-display text-4xl font-semibold leading-[1.55] tracking-[-0.025em] xl:text-5xl">
+            راجع فواتيرك بثقة.
           </h2>
-          <p className="mt-7 max-w-lg text-base leading-8 text-ink-muted">
-            مساحة عمل واحدة لمطابقة فواتير منصات التوصيل، توثيق الفروقات، ومتابعة حقوق منشأتك بثقة.
+          <p className="mt-5 max-w-md text-base leading-8 text-ink-muted">
+            طابق فواتير منصات التوصيل، وتابع الفروقات من مكان واحد.
           </p>
-
-          <div className="mt-10 max-w-lg border-y border-white/10 py-2">
-            {[
-              {
-                icon: FileCheck2,
-                title: "مطابقة الفواتير",
-                description: "حسابات موثقة وقابلة للمراجعة",
-              },
-              {
-                icon: CheckCircle2,
-                title: "متابعة الفروقات",
-                description: "من الاكتشاف حتى الاسترداد",
-              },
-              {
-                icon: LockKeyhole,
-                title: "بيانات منشأتك",
-                description: "معزولة ومحكومة بصلاحيات فريقك",
-              },
-            ].map(({ icon: Icon, title, description }) => (
-              <div
-                key={title}
-                className="grid grid-cols-[32px_1fr_auto] items-center gap-3 border-b border-white/10 py-4 last:border-b-0"
-              >
-                <Icon className="size-5 text-primary" />
-                <span className="text-sm font-semibold">{title}</span>
-                <span className="text-xs text-ink-muted">{description}</span>
-              </div>
-            ))}
-          </div>
         </div>
 
-        <div className="relative flex items-end justify-between gap-8">
-          <ul
-            aria-label="المنصات المدعومة"
-            className="flex flex-wrap gap-2 text-sm text-ink-foreground"
-          >
-            {PLATFORM_KEYS.map((key) => (
-              <li key={key} className="border border-white/10 bg-white/[0.035] py-1 ps-1 pe-3">
-                <PlatformName platform={key} iconClassName="rounded-sm" />
-              </li>
-            ))}
-          </ul>
-          <span className="shrink-0 text-xs text-ink-muted">صُمّم للمطاعم في السعودية</span>
+        <div className="relative flex items-center gap-2 border-t border-white/10 pt-6 text-sm text-ink-muted">
+          <ShieldCheck className="size-4 text-primary" />
+          بيانات منشأتك محمية
         </div>
       </aside>
 
@@ -247,7 +190,13 @@ function AuthPage() {
               <span className="sr-only">
                 تسجيل الدخول إلى تدقيق — مراجعة فواتير تطبيقات التوصيل
               </span>
-              <LogoWordmark title="تدقيق" aria-hidden="true" className="h-8 text-ink" />
+              <Link
+                to="/"
+                aria-label="العودة إلى الصفحة الرئيسية"
+                className="block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4"
+              >
+                <LogoWordmark aria-hidden="true" className="h-8 text-ink" />
+              </Link>
             </h1>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <LockKeyhole className="size-4 text-primary" />
@@ -260,7 +209,13 @@ function AuthPage() {
               <span className="sr-only">
                 تسجيل الدخول إلى تدقيق — مراجعة فواتير تطبيقات التوصيل
               </span>
-              <LogoWordmark title="تدقيق" aria-hidden="true" className="h-9 text-ink" />
+              <Link
+                to="/"
+                aria-label="العودة إلى الصفحة الرئيسية"
+                className="block w-fit rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4"
+              >
+                <LogoWordmark aria-hidden="true" className="h-9 text-ink" />
+              </Link>
             </h1>
             <p className="mt-2 text-xs text-muted-foreground">مراجعة فواتير تطبيقات التوصيل</p>
           </div>
