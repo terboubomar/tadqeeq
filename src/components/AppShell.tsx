@@ -50,6 +50,12 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
     ],
   },
   {
+    title: "العمليات",
+    items: [
+      { to: "/operations", label: "العمليات اليومية", permission: "financials.read" },
+    ],
+  },
+  {
     title: "التدقيق",
     items: [
       productNav("mutabiq", "financials.read"),
@@ -84,6 +90,7 @@ const NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items);
 
 const ROUTE_PERMISSIONS: Record<string, WorkspacePermission> = {
   "/dashboard": "reports.read",
+  "/operations": "financials.read",
   "/ai": "ai.use",
   "/ask": "ai.use",
   "/invoice-check": "financials.read",

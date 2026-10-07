@@ -59,6 +59,7 @@ import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/t
 import { Route as AuthenticatedSubscribeRouteImport } from './routes/_authenticated/subscribe'
 import { Route as AuthenticatedSecurityRouteImport } from './routes/_authenticated/security'
 import { Route as AuthenticatedPromotionsRouteImport } from './routes/_authenticated/promotions'
+import { Route as AuthenticatedOperationsRouteImport } from './routes/_authenticated/operations'
 import { Route as AuthenticatedJournalRouteImport } from './routes/_authenticated/journal'
 import { Route as AuthenticatedInvoiceCheckRouteImport } from './routes/_authenticated/invoice-check'
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
@@ -335,6 +336,11 @@ const AuthenticatedPromotionsRoute = AuthenticatedPromotionsRouteImport.update({
   path: '/promotions',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedOperationsRoute = AuthenticatedOperationsRouteImport.update({
+  id: '/operations',
+  path: '/operations',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedJournalRoute = AuthenticatedJournalRouteImport.update({
   id: '/journal',
   path: '/journal',
@@ -484,6 +490,7 @@ export interface FileRoutesByFullPath {
   '/import': typeof AuthenticatedImportRoute
   '/invoice-check': typeof AuthenticatedInvoiceCheckRoute
   '/journal': typeof AuthenticatedJournalRoute
+  '/operations': typeof AuthenticatedOperationsRoute
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/security': typeof AuthenticatedSecurityRoute
   '/subscribe': typeof AuthenticatedSubscribeRoute
@@ -555,6 +562,7 @@ export interface FileRoutesByTo {
   '/import': typeof AuthenticatedImportRoute
   '/invoice-check': typeof AuthenticatedInvoiceCheckRoute
   '/journal': typeof AuthenticatedJournalRoute
+  '/operations': typeof AuthenticatedOperationsRoute
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/security': typeof AuthenticatedSecurityRoute
   '/subscribe': typeof AuthenticatedSubscribeRoute
@@ -630,6 +638,7 @@ export interface FileRoutesById {
   '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/invoice-check': typeof AuthenticatedInvoiceCheckRoute
   '/_authenticated/journal': typeof AuthenticatedJournalRoute
+  '/_authenticated/operations': typeof AuthenticatedOperationsRoute
   '/_authenticated/promotions': typeof AuthenticatedPromotionsRoute
   '/_authenticated/security': typeof AuthenticatedSecurityRoute
   '/_authenticated/subscribe': typeof AuthenticatedSubscribeRoute
@@ -705,6 +714,7 @@ export interface FileRouteTypes {
     | '/import'
     | '/invoice-check'
     | '/journal'
+    | '/operations'
     | '/promotions'
     | '/security'
     | '/subscribe'
@@ -776,6 +786,7 @@ export interface FileRouteTypes {
     | '/import'
     | '/invoice-check'
     | '/journal'
+    | '/operations'
     | '/promotions'
     | '/security'
     | '/subscribe'
@@ -850,6 +861,7 @@ export interface FileRouteTypes {
     | '/_authenticated/import'
     | '/_authenticated/invoice-check'
     | '/_authenticated/journal'
+    | '/_authenticated/operations'
     | '/_authenticated/promotions'
     | '/_authenticated/security'
     | '/_authenticated/subscribe'
@@ -1284,6 +1296,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPromotionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/operations': {
+      id: '/_authenticated/operations'
+      path: '/operations'
+      fullPath: '/operations'
+      preLoaderRoute: typeof AuthenticatedOperationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/journal': {
       id: '/_authenticated/journal'
       path: '/journal'
@@ -1455,6 +1474,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedInvoiceCheckRoute: typeof AuthenticatedInvoiceCheckRoute
   AuthenticatedJournalRoute: typeof AuthenticatedJournalRoute
+  AuthenticatedOperationsRoute: typeof AuthenticatedOperationsRoute
   AuthenticatedPromotionsRoute: typeof AuthenticatedPromotionsRoute
   AuthenticatedSecurityRoute: typeof AuthenticatedSecurityRoute
   AuthenticatedSubscribeRoute: typeof AuthenticatedSubscribeRoute
@@ -1475,6 +1495,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedInvoiceCheckRoute: AuthenticatedInvoiceCheckRoute,
   AuthenticatedJournalRoute: AuthenticatedJournalRoute,
+  AuthenticatedOperationsRoute: AuthenticatedOperationsRoute,
   AuthenticatedPromotionsRoute: AuthenticatedPromotionsRoute,
   AuthenticatedSecurityRoute: AuthenticatedSecurityRoute,
   AuthenticatedSubscribeRoute: AuthenticatedSubscribeRoute,
