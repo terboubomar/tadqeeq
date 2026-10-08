@@ -37,6 +37,9 @@ export function ClientListRow({ c, meta }: { c: OpsClient; meta?: string }) {
       <ClientAvatar c={c} />
       <div className="min-w-44 flex-1">
         <p className="font-semibold">{c.name}</p>
+        {c.accountOf ? (
+          <p className="text-xs text-primary-text">شركة تابعة لحساب «{c.accountOf}»</p>
+        ) : null}
         <p className="text-xs text-muted-foreground" dir="ltr">{c.ownerEmail ?? c.contactEmail ?? "—"}</p>
       </div>
       <ClientStatusBadge c={c} />
@@ -44,6 +47,7 @@ export function ClientListRow({ c, meta }: { c: OpsClient; meta?: string }) {
         {c.subscriptionStatus
           ? `${SUBSCRIPTION_STATUS_LABELS[c.subscriptionStatus]} · ${sarFmt(c.subscriptionPrice ?? 0)} ${CYCLE_LABELS[c.subscriptionCycle ?? "monthly"]}`
           : "بدون اشتراك"}
+        {c.subscriptionFromAccount ? <span className="block">من اشتراك الحساب</span> : null}
       </span>
       <span className="w-20 text-xs text-muted-foreground"><span className="num">{c.users}</span> مستخدم</span>
       <span className="w-28 text-xs text-muted-foreground">{meta ?? <span className="num">{c.createdAt.slice(0, 10)}</span>}</span>

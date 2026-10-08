@@ -165,6 +165,13 @@ export interface OpsClient {
   subscriptionCycle: Cycle | null;
   subscriptionEndsOn: string | null;
   paidTotal: number;
+  /**
+   * For a company an account added after subscribing: the name of the account's first company.
+   * Its plan belongs to the owner account, so the subscription fields show the account's.
+   */
+  accountOf: string | null;
+  /** The subscription fields come from another company of the same owner account. */
+  subscriptionFromAccount: boolean;
   /** Archived clients are suspended and hidden from the default list. */
   archived: boolean;
   archivedAt: string | null;
@@ -197,6 +204,25 @@ async function loadOpsClients(workspaceId?: string): Promise<OpsClient[]> {
   const paid = new Map<string, number>();
   for (const p of (pays ?? []) as Row[]) paid.set(String(p["workspace_id"]), (paid.get(String(p["workspace_id"])) ?? 0) + Number(p["amount"]));
 
+  // Companies of the same owner account share its subscription (migration 0052).
+  const owners = [...new Set(((ws ?? []) as Row[]).map((w) => String(w["owner_user_id"])))];
+  const { data: ownedRows } = owners.length
+    ? await db().from("workspaces").select("id,name,owner_user_id,created_at").in("owner_user_id", owners).order("created_at", { ascending: true })
+    : { data: [] };
+  const accountWorkspaces = new Map<string, Row[]>();
+  for (const row of (ownedRows ?? []) as Row[]) {
+    const owner = String(row["owner_user_id"]);
+    accountWorkspaces.set(owner, [...(accountWorkspaces.get(owner) ?? []), row]);
+  }
+  const accountIds = ((ownedRows ?? []) as Row[]).map((row) => String(row["id"]));
+  const { data: accountSubs } = accountIds.length
+    ? await db().from("subscriptions").select("workspace_id,price,cycle,status,ends_on,created_at").in("workspace_id", accountIds).order("created_at", { ascending: false })
+    : { data: [] };
+  const accountSubFor = (owner: string): Row | undefined => {
+    const ids = new Set((accountWorkspaces.get(owner) ?? []).map((row) => String(row["id"])));
+    return ((accountSubs ?? []) as Row[]).find((sub) => ids.has(String(sub["workspace_id"])));
+  };
+
   const out = await Promise.all(
     ((ws ?? []) as Row[]).map(async (w) => {
       const id = String(w["id"]);
@@ -207,7 +233,11 @@ async function loadOpsClients(workspaceId?: string): Promise<OpsClient[]> {
         const { data } = await supabaseAdmin.storage.from(LOGOS).createSignedUrl(s("logo_path")!, 3600);
         logoUrl = data?.signedUrl ?? null;
       }
-      const sub = subMap.get(id);
+      const owner = String(w["owner_user_id"]);
+      const first = accountWorkspaces.get(owner)?.[0];
+      const accountOf = first && String(first["id"]) !== id ? String(first["name"]) : null;
+      const ownSub = subMap.get(id);
+      const sub = ownSub ?? accountSubFor(owner);
       return {
         workspaceId: id,
         name: String(w["name"]),
@@ -232,6 +262,8 @@ async function loadOpsClients(workspaceId?: string): Promise<OpsClient[]> {
         subscriptionCycle: (sub?.["cycle"] as Cycle) ?? null,
         subscriptionEndsOn: (sub?.["ends_on"] as string) ?? null,
         paidTotal: paid.get(id) ?? 0,
+        accountOf,
+        subscriptionFromAccount: !ownSub && sub !== undefined,
         archived: archives.get(id)?.action === ARCHIVE_ACTION,
         archivedAt: archives.get(id)?.action === ARCHIVE_ACTION ? archives.get(id)!.at : null,
       } satisfies OpsClient;

@@ -274,6 +274,7 @@ export async function inviteWorkspaceMemberOnServer(
 
   let authUser = await authUserByEmail(email);
   const invited = false;
+  let isNewUser = false;
 
   if (!authUser) {
     if (!input.password || input.password.length < 8) {
@@ -289,6 +290,7 @@ export async function inviteWorkspaceMemberOnServer(
       throw new Error(error?.message || "تعذّر إنشاء المستخدم.");
     }
     authUser = data.user;
+    isNewUser = true;
   }
 
   const db = adminDb();
@@ -304,6 +306,8 @@ export async function inviteWorkspaceMemberOnServer(
     throw new Error("هذا المستخدم مرتبط بالفعل بحساب الشركة.");
   }
 
+  // A new user starts in this company. Someone who already has an account keeps their name and
+  // the company they are working in; this one appears in their company switcher.
   await db.from("profiles").upsert(
     {
       id: authUser.id,
@@ -311,7 +315,7 @@ export async function inviteWorkspaceMemberOnServer(
       email,
       active_workspace_id: context.workspaceId,
     },
-    { onConflict: "id" },
+    { onConflict: "id", ignoreDuplicates: !isNewUser },
   );
 
   const { data: membership, error: memberError } = await db

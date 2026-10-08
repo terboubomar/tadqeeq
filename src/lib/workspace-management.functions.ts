@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   createAccountWorkspaceOnServer,
   listMyWorkspacesOnServer,
+  renameAccountWorkspaceOnServer,
   switchMyWorkspaceOnServer,
 } from "./workspace-management.server";
 
@@ -18,3 +19,7 @@ export const switchMyWorkspace = createServerFn({ method: "POST" })
 export const createAccountWorkspace = createServerFn({ method: "POST" })
   .validator(z.object({ name: z.string().trim().min(1).max(160) }))
   .handler(({ data }) => createAccountWorkspaceOnServer(data.name));
+
+export const renameAccountWorkspace = createServerFn({ method: "POST" })
+  .validator(z.object({ workspaceId: z.string().uuid(), name: z.string().trim().min(1).max(160) }))
+  .handler(({ data }) => renameAccountWorkspaceOnServer(data.workspaceId, data.name));
