@@ -559,9 +559,9 @@ function OrdersTable({
         <tbody className="divide-y divide-border">
           {rows.map((row) => (
             <tr key={row.orderId} className="hover:bg-muted/25">
-              <td className="num whitespace-nowrap px-3 py-3 font-medium">{row.orderId}</td>
-              <td className="num whitespace-nowrap px-3 py-3 text-muted-foreground">
-                {row.businessDate}
+              <td className="whitespace-nowrap px-3 py-3 font-medium"><span className="num">{row.orderId}</span></td>
+              <td className="whitespace-nowrap px-3 py-3 text-muted-foreground">
+                <span className="num">{row.businessDate}</span>
               </td>
               <td
                 className="max-w-44 truncate px-3 py-3"
@@ -673,8 +673,8 @@ function AdjustmentsTable({
         <tbody className="divide-y divide-border">
           {rows.map((row) => (
             <tr key={row.fingerprint} className="hover:bg-muted/25">
-              <td className="num px-3 py-3 font-medium">{row.orderId}</td>
-              <td className="num px-3 py-3">{row.businessDate}</td>
+              <td className="px-3 py-3 font-medium"><span className="num">{row.orderId}</span></td>
+              <td className="px-3 py-3"><span className="num">{row.businessDate}</span></td>
               <td className="px-3 py-3">{row.branchName ?? "—"}</td>
               <td className="px-3 py-3">{row.transactionType === "debit" ? "خصم" : "إضافة"}</td>
               <td className="px-3 py-3">{row.reason ?? "—"}</td>
@@ -700,12 +700,12 @@ function MoneyCell({
   return (
     <td
       className={cn(
-        "num whitespace-nowrap px-3 py-3",
+        "whitespace-nowrap px-3 py-3",
         strong && "font-semibold",
         warning && "text-destructive",
       )}
     >
-      {sar(value)}
+      <span className="num">{sar(value)}</span>
     </td>
   );
 }

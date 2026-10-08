@@ -282,9 +282,9 @@ function BranchesPage() {
                   <tr key={c.id} className="border-t border-border/70">
                     <td className="px-5 py-3 font-semibold">{c.branchName}</td>
                     <td className="px-2 text-muted-foreground">{c.chatId ? c.chatTitle || String(c.chatId) : "بانتظار /connect"}</td>
-                    <td className="num px-2 text-xs text-muted-foreground">
+                    <td className="px-2 text-xs text-muted-foreground"><span className="num">
                       {c.lastMessageAt ? formatTimestamp(c.lastMessageAt) : "—"}
-                    </td>
+                    </span></td>
                     <td className="px-2">
                       <span
                         className={cn(

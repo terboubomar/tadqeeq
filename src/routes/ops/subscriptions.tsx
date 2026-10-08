@@ -11,6 +11,7 @@ import { CYCLE_LABELS, opsCan, sarFmt, SUBSCRIPTION_STATUS_LABELS, type Cycle, t
 import { listOpsClients, listPlanRequests, listPlans, listSubscriptions, saveSubscription, workspaceOrderUsage } from "@/lib/ops.functions";
 import { PLAN_ADDONS, planIncludesAddon, type PlanAddon } from "@/lib/plans";
 import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/ops/subscriptions")({ component: Subscriptions });
 
@@ -168,25 +169,25 @@ function Subscriptions() {
                   <tr key={s.id} className="border-t border-border">
                     <td className="p-3 font-medium">{s.workspaceName}</td>
                     <td className="p-3">{planName(s.planId)}{s.addons.length ? <span className="block text-xs text-muted-foreground">+ إضافات</span> : null}</td>
-                    <td className="num p-3">{sarFmt(s.price)}</td>
+                    <td className="p-3"><span className="num">{sarFmt(s.price)}</span></td>
                     <td className="p-3">{CYCLE_LABELS[s.cycle]}</td>
-                    <td className="num p-3">{(() => {
+                    <td className="p-3">{(() => {
                       const u = usage.data?.find((x) => x.workspaceId === s.workspaceId) ?? { month: null, latest: 0, previous: 0 };
                       const limit = plans.data?.find((p) => p.id === s.planId)?.orderLimit ?? null;
                       const over = (n: number) => limit !== null && n > limit;
                       return (
                         <span title={[u.month ? `آخر شهر بيانات: ${u.month.slice(0, 7)}` : "", limit !== null ? `حد الباقة ${fmt(limit)}` : ""].filter(Boolean).join(" · ") || undefined}>
-                          <span className={over(u.latest) ? "font-semibold text-destructive" : ""}>{fmt(u.latest)}</span>
+                          <span className={cn("num", over(u.latest) && "font-semibold text-destructive")}>{fmt(u.latest)}</span>
                           {" · "}
-                          <span className={over(u.previous) ? "font-semibold text-destructive" : ""}>{fmt(u.previous)}</span>
-                          {limit !== null ? <span className="text-xs text-muted-foreground"> / {fmt(limit)}</span> : null}
+                          <span className={cn("num", over(u.previous) && "font-semibold text-destructive")}>{fmt(u.previous)}</span>
+                          {limit !== null ? <span className="text-xs text-muted-foreground"> / <span className="num">{fmt(limit)}</span></span> : null}
                           {over(u.latest) && over(u.previous) ? <span className="block text-xs text-destructive">تجاوز شهرين: رقِّ الباقة</span> : null}
                         </span>
                       );
                     })()}</td>
                     <td className="p-3"><span className={late || s.status === "overdue" ? "text-destructive" : ""}>{SUBSCRIPTION_STATUS_LABELS[s.status]}{late ? " · انتهى" : ""}</span></td>
-                    <td className="num p-3">{s.startsOn}</td>
-                    <td className="num p-3">{s.endsOn ?? "—"}</td>
+                    <td className="p-3"><span className="num">{s.startsOn}</span></td>
+                    <td className="p-3"><span className="num">{s.endsOn ?? "—"}</span></td>
                     <td className="p-3">{role !== "support" ? <Button size="sm" variant="outline" onClick={() => setForm({ ...s, notes: s.notes ?? undefined, addons: s.addons })}>تعديل</Button> : null}</td>
                   </tr>
                 );

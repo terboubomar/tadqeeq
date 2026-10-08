@@ -25,11 +25,11 @@ function Usage() {
               {(q.data ?? []).sort((a, b) => (b.lastLogin ?? "").localeCompare(a.lastLogin ?? "")).map((r) => (
                 <tr key={r.workspaceId} className="border-t border-border">
                   <td className="p-3 font-medium">{r.name}</td>
-                  <td className="num p-3">{r.users}</td>
-                  <td className="num p-3">{r.audits}</td>
-                  <td className="num p-3">{r.uploads}</td>
-                  <td className="num p-3">{r.aiCalls30d}</td>
-                  <td className="num p-3">{r.evidence}</td>
+                  <td className="p-3"><span className="num">{r.users}</span></td>
+                  <td className="p-3"><span className="num">{r.audits}</span></td>
+                  <td className="p-3"><span className="num">{r.uploads}</span></td>
+                  <td className="p-3"><span className="num">{r.aiCalls30d}</span></td>
+                  <td className="p-3"><span className="num">{r.evidence}</span></td>
                   <td className="p-3">{d(r.lastUpload)}</td>
                   <td className="p-3">{d(r.lastLogin)}</td>
                 </tr>

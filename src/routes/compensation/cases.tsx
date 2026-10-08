@@ -345,7 +345,7 @@ function CasesPage() {
                       <StatusBadge status={r.status} />
                       <FollowUpNote item={r} />
                     </td>
-                    <td className="num px-2 text-xs text-muted-foreground">{formatTimestamp(r.updatedAt)}</td>
+                    <td className="px-2 text-xs text-muted-foreground"><span className="num">{formatTimestamp(r.updatedAt)}</span></td>
                     <td className="px-2">
                       {canManage && nextCaseActions(r.status)[0] ? (
                         <Button
