@@ -16,6 +16,7 @@ export interface WorkspaceClientContext {
   onboardingStatus: string;
   isPlatformAdmin: boolean;
   planName: string | null;
+  planId: string | null;
   planFeatures: string[] | null;
   uploadLimit: number | null;
   uploadsThisMonth: number;
@@ -23,6 +24,8 @@ export interface WorkspaceClientContext {
   monthlyOrders: number;
   ordersMonth: string | null;
   addons: string[];
+  workspaceLimit: number | null;
+  workspaceCount: number;
   trial: boolean;
   planLockedPermissions: readonly WorkspacePermission[];
 }
@@ -52,6 +55,7 @@ export async function getMyWorkspaceContextOnServer(): Promise<WorkspaceClientCo
     onboardingStatus: context.onboardingStatus,
     isPlatformAdmin: context.isPlatformAdmin,
     planName: context.planName,
+    planId: context.planId,
     planFeatures: context.planFeatures,
     uploadLimit: context.uploadLimit,
     uploadsThisMonth: context.uploadsThisMonth,
@@ -59,6 +63,8 @@ export async function getMyWorkspaceContextOnServer(): Promise<WorkspaceClientCo
     monthlyOrders: context.monthlyOrders,
     ordersMonth: context.ordersMonth,
     addons: context.addons,
+    workspaceLimit: context.workspaceLimit,
+    workspaceCount: context.workspaceCount,
     trial: context.trial,
     planLockedPermissions: context.planLockedPermissions,
   };

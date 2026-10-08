@@ -53,6 +53,8 @@ beforeAll(async () => {
   ];
   for (const [user, role] of members) {
     await db.query("insert into public.workspace_members (workspace_id, user_id, role, status) values ($1, $2, $3, 'active')", [wsA, user, role]);
+    // Multi-workspace data policies follow the company selected in the profile.
+    await db.query("update public.profiles set active_workspace_id = $1 where id = $2", [wsA, user]);
   }
 
   for (const [id, ws, owner, name] of [

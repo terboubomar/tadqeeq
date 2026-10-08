@@ -59,6 +59,7 @@ import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/t
 import { Route as AuthenticatedSubscribeRouteImport } from './routes/_authenticated/subscribe'
 import { Route as AuthenticatedSecurityRouteImport } from './routes/_authenticated/security'
 import { Route as AuthenticatedPromotionsRouteImport } from './routes/_authenticated/promotions'
+import { Route as AuthenticatedOperationsRouteImport } from './routes/_authenticated/operations'
 import { Route as AuthenticatedJournalRouteImport } from './routes/_authenticated/journal'
 import { Route as AuthenticatedInvoiceCheckRouteImport } from './routes/_authenticated/invoice-check'
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
@@ -76,6 +77,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as OpsClientsWorkspaceIdRouteImport } from './routes/ops/clients_.$workspaceId'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
 import { Route as ApiPublicCspReportRouteImport } from './routes/api/public/csp-report'
+import { Route as AuthenticatedOperationsPlatformRouteImport } from './routes/_authenticated/operations_.$platform'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
@@ -335,6 +337,11 @@ const AuthenticatedPromotionsRoute = AuthenticatedPromotionsRouteImport.update({
   path: '/promotions',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedOperationsRoute = AuthenticatedOperationsRouteImport.update({
+  id: '/operations',
+  path: '/operations',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedJournalRoute = AuthenticatedJournalRouteImport.update({
   id: '/journal',
   path: '/journal',
@@ -423,6 +430,12 @@ const ApiPublicCspReportRoute = ApiPublicCspReportRouteImport.update({
   path: '/api/public/csp-report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedOperationsPlatformRoute =
+  AuthenticatedOperationsPlatformRouteImport.update({
+    id: '/operations_/$platform',
+    path: '/operations/$platform',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   id: '/.lovable/oauth/consent',
   path: '/.lovable/oauth/consent',
@@ -484,6 +497,7 @@ export interface FileRoutesByFullPath {
   '/import': typeof AuthenticatedImportRoute
   '/invoice-check': typeof AuthenticatedInvoiceCheckRoute
   '/journal': typeof AuthenticatedJournalRoute
+  '/operations': typeof AuthenticatedOperationsRoute
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/security': typeof AuthenticatedSecurityRoute
   '/subscribe': typeof AuthenticatedSubscribeRoute
@@ -516,6 +530,7 @@ export interface FileRoutesByFullPath {
   '/ops/': typeof OpsIndexRoute
   '/products/': typeof ProductsIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/operations/$platform': typeof AuthenticatedOperationsPlatformRoute
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
@@ -555,6 +570,7 @@ export interface FileRoutesByTo {
   '/import': typeof AuthenticatedImportRoute
   '/invoice-check': typeof AuthenticatedInvoiceCheckRoute
   '/journal': typeof AuthenticatedJournalRoute
+  '/operations': typeof AuthenticatedOperationsRoute
   '/promotions': typeof AuthenticatedPromotionsRoute
   '/security': typeof AuthenticatedSecurityRoute
   '/subscribe': typeof AuthenticatedSubscribeRoute
@@ -587,6 +603,7 @@ export interface FileRoutesByTo {
   '/ops': typeof OpsIndexRoute
   '/products': typeof ProductsIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/operations/$platform': typeof AuthenticatedOperationsPlatformRoute
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
@@ -630,6 +647,7 @@ export interface FileRoutesById {
   '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/invoice-check': typeof AuthenticatedInvoiceCheckRoute
   '/_authenticated/journal': typeof AuthenticatedJournalRoute
+  '/_authenticated/operations': typeof AuthenticatedOperationsRoute
   '/_authenticated/promotions': typeof AuthenticatedPromotionsRoute
   '/_authenticated/security': typeof AuthenticatedSecurityRoute
   '/_authenticated/subscribe': typeof AuthenticatedSubscribeRoute
@@ -662,6 +680,7 @@ export interface FileRoutesById {
   '/ops/': typeof OpsIndexRoute
   '/products/': typeof ProductsIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/_authenticated/operations_/$platform': typeof AuthenticatedOperationsPlatformRoute
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients_/$workspaceId': typeof OpsClientsWorkspaceIdRoute
@@ -705,6 +724,7 @@ export interface FileRouteTypes {
     | '/import'
     | '/invoice-check'
     | '/journal'
+    | '/operations'
     | '/promotions'
     | '/security'
     | '/subscribe'
@@ -737,6 +757,7 @@ export interface FileRouteTypes {
     | '/ops/'
     | '/products/'
     | '/.lovable/oauth/consent'
+    | '/operations/$platform'
     | '/api/public/csp-report'
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
@@ -776,6 +797,7 @@ export interface FileRouteTypes {
     | '/import'
     | '/invoice-check'
     | '/journal'
+    | '/operations'
     | '/promotions'
     | '/security'
     | '/subscribe'
@@ -808,6 +830,7 @@ export interface FileRouteTypes {
     | '/ops'
     | '/products'
     | '/.lovable/oauth/consent'
+    | '/operations/$platform'
     | '/api/public/csp-report'
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
@@ -850,6 +873,7 @@ export interface FileRouteTypes {
     | '/_authenticated/import'
     | '/_authenticated/invoice-check'
     | '/_authenticated/journal'
+    | '/_authenticated/operations'
     | '/_authenticated/promotions'
     | '/_authenticated/security'
     | '/_authenticated/subscribe'
@@ -882,6 +906,7 @@ export interface FileRouteTypes {
     | '/ops/'
     | '/products/'
     | '/.lovable/oauth/consent'
+    | '/_authenticated/operations_/$platform'
     | '/api/public/csp-report'
     | '/api/public/telegram-webhook'
     | '/ops/clients_/$workspaceId'
@@ -1284,6 +1309,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPromotionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/operations': {
+      id: '/_authenticated/operations'
+      path: '/operations'
+      fullPath: '/operations'
+      preLoaderRoute: typeof AuthenticatedOperationsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/journal': {
       id: '/_authenticated/journal'
       path: '/journal'
@@ -1403,6 +1435,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCspReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/operations_/$platform': {
+      id: '/_authenticated/operations_/$platform'
+      path: '/operations/$platform'
+      fullPath: '/operations/$platform'
+      preLoaderRoute: typeof AuthenticatedOperationsPlatformRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/.lovable/oauth/consent': {
       id: '/.lovable/oauth/consent'
       path: '/.lovable/oauth/consent'
@@ -1455,10 +1494,12 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedInvoiceCheckRoute: typeof AuthenticatedInvoiceCheckRoute
   AuthenticatedJournalRoute: typeof AuthenticatedJournalRoute
+  AuthenticatedOperationsRoute: typeof AuthenticatedOperationsRoute
   AuthenticatedPromotionsRoute: typeof AuthenticatedPromotionsRoute
   AuthenticatedSecurityRoute: typeof AuthenticatedSecurityRoute
   AuthenticatedSubscribeRoute: typeof AuthenticatedSubscribeRoute
   AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
+  AuthenticatedOperationsPlatformRoute: typeof AuthenticatedOperationsPlatformRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -1475,10 +1516,12 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedInvoiceCheckRoute: AuthenticatedInvoiceCheckRoute,
   AuthenticatedJournalRoute: AuthenticatedJournalRoute,
+  AuthenticatedOperationsRoute: AuthenticatedOperationsRoute,
   AuthenticatedPromotionsRoute: AuthenticatedPromotionsRoute,
   AuthenticatedSecurityRoute: AuthenticatedSecurityRoute,
   AuthenticatedSubscribeRoute: AuthenticatedSubscribeRoute,
   AuthenticatedTeamRoute: AuthenticatedTeamRoute,
+  AuthenticatedOperationsPlatformRoute: AuthenticatedOperationsPlatformRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

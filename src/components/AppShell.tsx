@@ -8,6 +8,7 @@ import { AskTadqeeqWidget } from "@/components/AskTadqeeqWidget";
 import { OnboardingGate } from "@/components/OnboardingGate";
 import { LockedFeatureCard, TrialBanner, UpgradeCard } from "@/components/PlanUpgrade";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
+import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -50,6 +51,12 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
     ],
   },
   {
+    title: "العمليات",
+    items: [
+      { to: "/operations", label: "العمليات اليومية", permission: "financials.read" },
+    ],
+  },
+  {
     title: "التدقيق",
     items: [
       productNav("mutabiq", "financials.read"),
@@ -84,6 +91,7 @@ const NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items);
 
 const ROUTE_PERMISSIONS: Record<string, WorkspacePermission> = {
   "/dashboard": "reports.read",
+  "/operations": "financials.read",
   "/ai": "ai.use",
   "/ask": "ai.use",
   "/invoice-check": "financials.read",
@@ -246,6 +254,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="mx-auto flex max-w-3xl items-center justify-between border-b border-border px-5 py-4">
           <div className="flex items-center gap-2.5">
             <LogoWordmark title="تدقيق" className="h-8 text-ink" />
+            <WorkspaceSwitcher />
           </div>
           <button
             type="button"
@@ -372,6 +381,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               {sidebarHidden ? <PanelRightOpen className="size-4" /> : <PanelRightClose className="size-4" />}
             </button>
+            <WorkspaceSwitcher />
             {can("periods.read") && !locked ? (
               <>
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">

@@ -197,7 +197,7 @@ async function rollbackVersion(
 export async function reanalyzePeriodOnServer(
   periodId: string,
 ): Promise<ReanalyzePeriodResult> {
-  const { client, userId } = await requireWorkspacePermission("periods.reanalyze");
+  const { client, userId, workspaceId } = await requireWorkspacePermission("periods.reanalyze");
   const oldPeriod = await loadCurrentPeriod(client, userId, periodId);
   const originalSources = await loadSourceFiles(client, userId, periodId);
   const form = sourceForm(oldPeriod, originalSources);
@@ -207,6 +207,7 @@ export async function reanalyzePeriodOnServer(
     oldPeriod.platform,
     client,
     userId,
+    workspaceId,
     {},
     oldPeriod.id,
   );

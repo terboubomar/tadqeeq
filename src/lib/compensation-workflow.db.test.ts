@@ -38,6 +38,7 @@ beforeAll(async () => {
     "insert into public.workspace_members (workspace_id, user_id, role, status) values ($1, $2, 'compensation', 'active') returning id",
     [workspace, AGENT],
   );
+  await db.query("update public.profiles set active_workspace_id = $1 where id = $2", [workspace, AGENT]);
   await db.query(
     "insert into public.workspace_member_branches (workspace_id, workspace_member_id, branch_id) values ($1, $2, $3)",
     [workspace, member.rows[0]!.id, BRANCH],

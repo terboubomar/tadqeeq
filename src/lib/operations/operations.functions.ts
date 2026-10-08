@@ -1,0 +1,35 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+
+import {
+  deleteOperationImportOnServer,
+  getOperationImportDetailOnServer,
+  getOperationMonthOnServer,
+  importOperationFileOnServer,
+} from "./operations.server";
+
+export const importOperationFile = createServerFn({ method: "POST" })
+  .validator((data) => {
+    if (!(data instanceof FormData)) throw new Error("بيانات رفع العمليات غير صالحة.");
+    return data;
+  })
+  .handler(({ data }) => importOperationFileOnServer(data));
+
+export const getOperationMonth = createServerFn({ method: "POST" })
+  .validator(z.object({ month: z.string().regex(/^\d{4}-\d{2}$/) }))
+  .handler(({ data }) => getOperationMonthOnServer(data.month));
+
+export const deleteOperationImport = createServerFn({ method: "POST" })
+  .validator(z.object({ importId: z.string().uuid() }))
+  .handler(({ data }) => deleteOperationImportOnServer(data.importId));
+
+export const getOperationImportDetail = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      importId: z.string().uuid(),
+      platform: z.enum(["hungerstation", "keeta", "jahez"]),
+      page: z.number().int().min(1).max(10_000),
+      pageSize: z.number().int().min(10).max(100),
+    }),
+  )
+  .handler(({ data }) => getOperationImportDetailOnServer(data));

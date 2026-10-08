@@ -42,4 +42,38 @@ describe("dependency audit gate", () => {
     const findings = blockingFindings(report, versions);
     expect(findings.map((f) => `${f.name}@${f.version}`)).toEqual(["tiny-id@3.3.16"]);
   });
+  test("skips only the documented non-applicable MCP OAuth client advisory", () => {
+    const lock = parseLockfile(`{
+      "lockfileVersion": 1,
+      "workspaces": {
+        "": { "name": "app", "dependencies": { "@modelcontextprotocol/sdk": "1.28.0" } }
+      },
+      "packages": {
+        "@modelcontextprotocol/sdk": ["@modelcontextprotocol/sdk@1.28.0", "", {}, "sha512-a"]
+      }
+    }`);
+    const versions = productionVersions(lock);
+    const report: AuditReport = {
+      "@modelcontextprotocol/sdk": [
+        {
+          title: "oauth client issue",
+          url: "https://github.com/advisories/GHSA-6qxp-vccf-f47h",
+          severity: "high",
+          vulnerable_versions: ">=1.12.0 <=1.30.1",
+        },
+        {
+          title: "different high issue",
+          url: "https://github.com/advisories/GHSA-example",
+          severity: "high",
+          vulnerable_versions: "1.28.0",
+        },
+      ],
+    };
+
+    const findings = blockingFindings(report, versions);
+    expect(findings.map((f) => f.advisory.url)).toEqual([
+      "https://github.com/advisories/GHSA-example",
+    ]);
+  });
+
 });

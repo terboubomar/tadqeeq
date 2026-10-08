@@ -61,6 +61,8 @@ export interface PublicPlan {
   priceYearly: number | null;
   /** Priced by agreement (no public price). */
   customPrice: boolean;
+  /** Total companies included in the account subscription; null = unlimited. */
+  workspaceLimit: number | null;
 }
 
 /** Order-based plans (they carry a code); older plans are shown only when none exist. */
@@ -149,6 +151,13 @@ export function planComparison(plans: PublicPlan[]): ComparisonRow[] {
       cells: plans.map((plan) => ({
         kind: "text",
         text: plan.orderLimit !== null ? `حتى ${count(plan.orderLimit)}` : plan.customPrice ? `أكثر من ${count(largest)}` : "بلا حدود",
+      })),
+    },
+    {
+      label: "مساحات العمل (الشركات)",
+      cells: plans.map((plan) => ({
+        kind: "text",
+        text: plan.workspaceLimit === null ? "بلا حدود" : count(plan.workspaceLimit),
       })),
     },
     { label: "الفروع والمنصات والمستخدمون", cells: all("بلا حدود") },

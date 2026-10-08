@@ -31,6 +31,7 @@ beforeAll(async () => {
   wsB = await ws(U.ownerB);
   for (const [user, role] of [[U.auditorA, "auditor"], [U.viewerA, "viewer"]] as const) {
     await db.query("insert into public.workspace_members (workspace_id, user_id, role, status) values ($1, $2, $3, 'active')", [wsA, user, role]);
+    await db.query("update public.profiles set active_workspace_id = $1 where id = $2", [wsA, user]);
   }
   await db.query(UPSERT, [wsA, U.ownerA, "sales_revenue", "4101", "مبيعات التطبيقات", U.ownerA]);
   await db.query(UPSERT, [wsB, U.ownerB, "sales_revenue", "9999", "Other company", U.ownerB]);

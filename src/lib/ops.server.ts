@@ -368,6 +368,9 @@ export async function setOpsClientArchivedOnServer(input: { workspaceId: string;
  * compensation_cases references telegram_order_evidence, which references telegram_branch_chats.
  */
 const OWNED_TABLES_DELETE_ORDER = [
+  "operation_adjustments",
+  "operation_orders",
+  "operation_imports",
   "recovery_case_events",
   "recovery_case_documents",
   "recovery_case_details",
@@ -578,10 +581,11 @@ export async function listPlansOnServer() {
     orderLimit: typeof r["order_limit"] === "number" ? (r["order_limit"] as number) : null,
     priceYearly: r["price_yearly"] === null || r["price_yearly"] === undefined ? null : Number(r["price_yearly"]),
     customPrice: r["custom_price"] === true,
+    workspaceLimit: typeof r["workspace_limit"] === "number" ? (r["workspace_limit"] as number) : null,
   }));
 }
 
-export async function savePlanOnServer(input: { id?: string; name: string; price: number; cycle: Cycle; active: boolean; features: PlanFeature[]; uploadLimit: number | null; description?: string; highlighted?: boolean; sortOrder?: number; orderLimit?: number | null; priceYearly?: number | null; customPrice?: boolean }) {
+export async function savePlanOnServer(input: { id?: string; name: string; price: number; cycle: Cycle; active: boolean; features: PlanFeature[]; uploadLimit: number | null; description?: string; highlighted?: boolean; sortOrder?: number; orderLimit?: number | null; priceYearly?: number | null; customPrice?: boolean; workspaceLimit?: number | null }) {
   const actor = await requireOps("subscriptions");
   if (actor.role === "sales" || actor.role === "support") throw new Error("المالية أو المالك فقط يعدّل الباقات.");
   const row = {
@@ -592,6 +596,7 @@ export async function savePlanOnServer(input: { id?: string; name: string; price
     ...(input.orderLimit !== undefined ? { order_limit: input.orderLimit } : {}),
     ...(input.priceYearly !== undefined ? { price_yearly: input.priceYearly } : {}),
     ...(input.customPrice !== undefined ? { custom_price: input.customPrice } : {}),
+    ...(input.workspaceLimit !== undefined ? { workspace_limit: input.workspaceLimit } : {}),
   };
   const { error } = input.id ? await db().from("subscription_plans").update(row).eq("id", input.id) : await db().from("subscription_plans").insert(row);
   if (error) throw new Error(error.message);

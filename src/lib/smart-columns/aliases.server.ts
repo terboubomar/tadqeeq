@@ -17,11 +17,11 @@ function isTableMissing(error: { code?: string; message: string }): boolean {
   return error.code === "42P01" || error.code === "PGRST205" || (/format_column_aliases/.test(error.message) && /does not exist|schema cache/i.test(error.message));
 }
 
-export async function loadColumnAliases(client: ServerUserClient, ownerUserId: string, platform: Platform): Promise<ColumnAlias[]> {
+export async function loadColumnAliases(client: ServerUserClient, workspaceId: string, platform: Platform): Promise<ColumnAlias[]> {
   const { data, error } = await (client as unknown as LooseClient)
     .from(TABLE)
     .select("source,canonical,observed")
-    .eq("user_id", ownerUserId)
+    .eq("workspace_id", workspaceId)
     .eq("platform", platform);
   if (error) {
     if (isTableMissing(error)) return [];
@@ -59,11 +59,11 @@ function isSnapshotTableMissing(error: { code?: string; message: string }): bool
 }
 
 /** Remembered columns for a platform; null when migration 0036 is not applied (no reports then). */
-export async function loadColumnSnapshots(client: ServerUserClient, ownerUserId: string, platform: Platform): Promise<ColumnSnapshot[] | null> {
+export async function loadColumnSnapshots(client: ServerUserClient, workspaceId: string, platform: Platform): Promise<ColumnSnapshot[] | null> {
   const { data, error } = await (client as unknown as LooseClient)
     .from(SNAPSHOTS)
     .select("source,columns")
-    .eq("user_id", ownerUserId)
+    .eq("workspace_id", workspaceId)
     .eq("platform", platform);
   if (error) {
     if (isSnapshotTableMissing(error)) return null;
