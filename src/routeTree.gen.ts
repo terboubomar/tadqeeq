@@ -77,6 +77,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as OpsClientsWorkspaceIdRouteImport } from './routes/ops/clients_.$workspaceId'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
 import { Route as ApiPublicCspReportRouteImport } from './routes/api/public/csp-report'
+import { Route as AuthenticatedOperationsPlatformRouteImport } from './routes/_authenticated/operations_.$platform'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
@@ -429,6 +430,12 @@ const ApiPublicCspReportRoute = ApiPublicCspReportRouteImport.update({
   path: '/api/public/csp-report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedOperationsPlatformRoute =
+  AuthenticatedOperationsPlatformRouteImport.update({
+    id: '/operations_/$platform',
+    path: '/operations/$platform',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   id: '/.lovable/oauth/consent',
   path: '/.lovable/oauth/consent',
@@ -523,6 +530,7 @@ export interface FileRoutesByFullPath {
   '/ops/': typeof OpsIndexRoute
   '/products/': typeof ProductsIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/operations/$platform': typeof AuthenticatedOperationsPlatformRoute
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
@@ -595,6 +603,7 @@ export interface FileRoutesByTo {
   '/ops': typeof OpsIndexRoute
   '/products': typeof ProductsIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/operations/$platform': typeof AuthenticatedOperationsPlatformRoute
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
@@ -671,6 +680,7 @@ export interface FileRoutesById {
   '/ops/': typeof OpsIndexRoute
   '/products/': typeof ProductsIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/_authenticated/operations_/$platform': typeof AuthenticatedOperationsPlatformRoute
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients_/$workspaceId': typeof OpsClientsWorkspaceIdRoute
@@ -747,6 +757,7 @@ export interface FileRouteTypes {
     | '/ops/'
     | '/products/'
     | '/.lovable/oauth/consent'
+    | '/operations/$platform'
     | '/api/public/csp-report'
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
@@ -819,6 +830,7 @@ export interface FileRouteTypes {
     | '/ops'
     | '/products'
     | '/.lovable/oauth/consent'
+    | '/operations/$platform'
     | '/api/public/csp-report'
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
@@ -894,6 +906,7 @@ export interface FileRouteTypes {
     | '/ops/'
     | '/products/'
     | '/.lovable/oauth/consent'
+    | '/_authenticated/operations_/$platform'
     | '/api/public/csp-report'
     | '/api/public/telegram-webhook'
     | '/ops/clients_/$workspaceId'
@@ -1422,6 +1435,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCspReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/operations_/$platform': {
+      id: '/_authenticated/operations_/$platform'
+      path: '/operations/$platform'
+      fullPath: '/operations/$platform'
+      preLoaderRoute: typeof AuthenticatedOperationsPlatformRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/.lovable/oauth/consent': {
       id: '/.lovable/oauth/consent'
       path: '/.lovable/oauth/consent'
@@ -1479,6 +1499,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSecurityRoute: typeof AuthenticatedSecurityRoute
   AuthenticatedSubscribeRoute: typeof AuthenticatedSubscribeRoute
   AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
+  AuthenticatedOperationsPlatformRoute: typeof AuthenticatedOperationsPlatformRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -1500,6 +1521,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSecurityRoute: AuthenticatedSecurityRoute,
   AuthenticatedSubscribeRoute: AuthenticatedSubscribeRoute,
   AuthenticatedTeamRoute: AuthenticatedTeamRoute,
+  AuthenticatedOperationsPlatformRoute: AuthenticatedOperationsPlatformRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

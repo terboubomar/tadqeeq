@@ -120,3 +120,48 @@ export interface OperationMonthOverview {
   platforms: OperationPlatformMonth[];
   imports: OperationImportHistoryItem[];
 }
+
+export interface OperationOrderDetail {
+  orderId: string;
+  businessDate: string;
+  branchId: string | null;
+  branchName: string | null;
+  status: string | null;
+  deliveryMode: string | null;
+  subtotalAmount: number;
+  packagingAmount: number;
+  grossSales: number;
+  deliveryAmount: number;
+  discountAmount: number;
+  merchantFundedDiscountAmount: number;
+  merchantFundedVoucherAmount: number;
+  commissionAmount: number;
+  paymentFeeAmount: number;
+  otherFeeAmount: number;
+  refundAmount: number;
+  chargesTotal: number;
+  estimatedEarningsAmount: number;
+  settlementAmount: number;
+  complaint: boolean;
+  complaintReason: string | null;
+}
+
+export interface OperationAdjustmentDetail {
+  fingerprint: string;
+  orderId: string;
+  businessDate: string;
+  branchName: string | null;
+  transactionType: "debit" | "credit";
+  reason: string | null;
+  amount: number;
+  comment: string | null;
+}
+
+export interface OperationImportDetail {
+  importItem: OperationImportHistoryItem;
+  orders: OperationOrderDetail[];
+  adjustments: OperationAdjustmentDetail[];
+  totalRows: number;
+  page: number;
+  pageSize: number;
+}

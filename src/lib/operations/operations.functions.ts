@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   deleteOperationImportOnServer,
+  getOperationImportDetailOnServer,
   getOperationMonthOnServer,
   importOperationFileOnServer,
 } from "./operations.server";
@@ -21,3 +22,14 @@ export const getOperationMonth = createServerFn({ method: "POST" })
 export const deleteOperationImport = createServerFn({ method: "POST" })
   .validator(z.object({ importId: z.string().uuid() }))
   .handler(({ data }) => deleteOperationImportOnServer(data.importId));
+
+export const getOperationImportDetail = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      importId: z.string().uuid(),
+      platform: z.enum(["hungerstation", "keeta", "jahez"]),
+      page: z.number().int().min(1).max(10_000),
+      pageSize: z.number().int().min(10).max(100),
+    }),
+  )
+  .handler(({ data }) => getOperationImportDetailOnServer(data));

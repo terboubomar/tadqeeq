@@ -2,9 +2,12 @@ import { createHash } from "node:crypto";
 
 import { requireWorkspacePermission } from "../server-auth.server";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL } from "../upload-validation";
+import { mapStoredOperationOrder, type StoredOperationOrder } from "./details";
 import { forecastFromCompleteMonthToDate } from "./forecast";
 import { parseOperationFile } from "./parser";
 import type {
+  OperationAdjustmentDetail,
+  OperationImportDetail,
   OperationImportHistoryItem,
   OperationImportResult,
   OperationImportSummary,
@@ -148,6 +151,96 @@ export async function deleteOperationImportOnServer(importId: string): Promise<v
   const db = client as unknown as LooseClient;
   const { error } = await db.rpc("delete_operation_import", { p_import_id: importId });
   if (error) throw operationError(error);
+}
+
+export async function getOperationImportDetailOnServer(input: {
+  importId: string;
+  platform: OperationPlatform;
+  page: number;
+  pageSize: number;
+}): Promise<OperationImportDetail> {
+  const { client, workspaceId } = await requireWorkspacePermission("financials.read");
+  const db = client as unknown as LooseClient;
+  const { data: importData, error: importError } = await db
+    .from("operation_imports")
+    .select("id,source_kind,platform,business_date,original_name,row_count,summary,created_at")
+    .eq("workspace_id", workspaceId)
+    .eq("id", input.importId)
+    .eq("platform", input.platform)
+    .maybeSingle();
+  if (importError) throw operationError(importError);
+  if (!importData) throw new Error("ملف العمليات غير موجود أو لا تملك صلاحية عرضه.");
+  const item = importData as ImportRow;
+  const from = (input.page - 1) * input.pageSize;
+  const to = from + input.pageSize - 1;
+  const importItem: OperationImportHistoryItem = {
+    id: item.id,
+    sourceKind: item.source_kind,
+    platform: item.platform,
+    businessDate: item.business_date,
+    originalName: item.original_name,
+    rowCount: item.row_count,
+    summary: item.summary,
+    createdAt: item.created_at,
+  };
+
+  if (item.source_kind === "jahez_adjustments") {
+    const { data, error, count } = await db
+      .from("operation_adjustments")
+      .select(
+        "fingerprint,order_id,business_date,branch_name,transaction_type,reason,amount,comment",
+        { count: "exact" },
+      )
+      .eq("workspace_id", workspaceId)
+      .eq("source_import_id", input.importId)
+      .order("order_id", { ascending: true })
+      .range(from, to);
+    if (error) throw operationError(error);
+    const adjustments: OperationAdjustmentDetail[] = (data ?? []).map(
+      (row: Record<string, unknown>) => ({
+        fingerprint: String(row["fingerprint"]),
+        orderId: String(row["order_id"]),
+        businessDate: String(row["business_date"]),
+        branchName: row["branch_name"] ? String(row["branch_name"]) : null,
+        transactionType: row["transaction_type"] === "credit" ? "credit" : "debit",
+        reason: row["reason"] ? String(row["reason"]) : null,
+        amount: Number(row["amount"]) || 0,
+        comment: row["comment"] ? String(row["comment"]) : null,
+      }),
+    );
+    return {
+      importItem,
+      orders: [],
+      adjustments,
+      totalRows: count ?? adjustments.length,
+      page: input.page,
+      pageSize: input.pageSize,
+    };
+  }
+
+  const { data, error, count } = await db
+    .from("operation_orders")
+    .select(
+      "order_id,business_date,branch_id,branch_name,status,delivery_mode,gross_sales,delivery_amount,complaint,complaint_reason,refund_amount,charges_total,settlement_amount,raw_data",
+      { count: "exact" },
+    )
+    .eq("workspace_id", workspaceId)
+    .eq("source_import_id", input.importId)
+    .eq("platform", input.platform)
+    .order("order_id", { ascending: true })
+    .range(from, to);
+  if (error) throw operationError(error);
+  const orders = (data ?? []).map((row: StoredOperationOrder) =>
+    mapStoredOperationOrder(input.platform, row),
+  );
+  return {
+    importItem,
+    orders,
+    adjustments: [],
+    totalRows: count ?? orders.length,
+    page: input.page,
+    pageSize: input.pageSize,
+  };
 }
 
 function monthBounds(month: string): { start: string; end: string; days: number } {
