@@ -255,13 +255,45 @@ export async function setOpsClientStatusOnServer(input: {
   if (input.adminNote !== undefined) patch["admin_note"] = input.adminNote.trim() || null;
   if (input.status === "onboarding") patch["paid_at"] = now;
   if (input.status === "active") patch["activated_at"] = now;
-  const { data: existing } = await db().from("workspace_onboarding").select("workspace_id").eq("workspace_id", input.workspaceId).maybeSingle();
-  const { error } = existing
-    ? await db().from("workspace_onboarding").update(patch).eq("workspace_id", input.workspaceId)
-    : await db().from("workspace_onboarding").insert({ workspace_id: input.workspaceId, ...patch });
-  if (error) throw new Error(error.message);
+  // The subscription belongs to the owner account, so suspending or reactivating applies to every
+  // company it owns; otherwise a suspended account keeps working in its other companies.
+  const workspaceIds = ACCOUNT_WIDE_STATUSES.includes(input.status)
+    ? await accountWorkspaceIds(input.workspaceId)
+    : [input.workspaceId];
+  const { data: existingRows, error: existingError } = await db()
+    .from("workspace_onboarding")
+    .select("workspace_id")
+    .in("workspace_id", workspaceIds);
+  if (existingError) throw new Error(existingError.message);
+  const existing = new Set(((existingRows ?? []) as Row[]).map((r) => String(r["workspace_id"])));
+  for (const workspaceId of workspaceIds) {
+    const { error } = existing.has(workspaceId)
+      ? await db().from("workspace_onboarding").update(patch).eq("workspace_id", workspaceId)
+      : await db().from("workspace_onboarding").insert({ workspace_id: workspaceId, ...patch });
+    if (error) throw new Error(error.message);
+  }
   const suspension = input.status === "suspended" ? { reason: input.reason ?? "payment", message: input.clientMessage?.trim() || null } : {};
-  await log(actor, "client.status", "workspace", input.workspaceId, input.workspaceId, { status: input.status, ...suspension });
+  for (const workspaceId of workspaceIds) {
+    await log(actor, "client.status", "workspace", workspaceId, workspaceId, {
+      status: input.status,
+      ...suspension,
+      ...(workspaceId === input.workspaceId ? {} : { viaWorkspaceId: input.workspaceId }),
+    });
+  }
+}
+
+/** Statuses that follow the owner account across all of its company workspaces. */
+const ACCOUNT_WIDE_STATUSES: OnboardingStatus[] = ["suspended", "active"];
+
+/** The workspace and every other company owned by the same account. */
+async function accountWorkspaceIds(workspaceId: string): Promise<string[]> {
+  const { data: ws, error } = await db().from("workspaces").select("owner_user_id").eq("id", workspaceId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!ws?.owner_user_id) return [workspaceId];
+  const { data: owned, error: ownedError } = await db().from("workspaces").select("id").eq("owner_user_id", ws.owner_user_id);
+  if (ownedError) throw new Error(ownedError.message);
+  const ids = ((owned ?? []) as Row[]).map((r) => String(r["id"]));
+  return ids.includes(workspaceId) ? ids : [workspaceId, ...ids];
 }
 
 // ---------------- Edit / archive / delete ----------------

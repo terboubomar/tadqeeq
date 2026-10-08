@@ -51,5 +51,6 @@
   "0049_daily_operations": "f10ba6f97fbac56c35d18512ade194d8316c7add6daaba1c469b48c8dfe564d5",
   "0050_refresh_operation_summaries": "319e46bf6df5d226eb3d6eca1f14112dc11707cfe7b527faf0ce84560a888f89",
   "0051_delete_operation_import": "c877126d8c77cec7eccae1e3344a1fed4cdc878703a2a890c5749be5e3008615",
-  "0052_account_workspaces": "45cccab2861dc83d95bd1fca47e7fb3bf8ea4ac12157ab8c387ea0f494e62c26"
+  "0052_account_workspaces": "45cccab2861dc83d95bd1fca47e7fb3bf8ea4ac12157ab8c387ea0f494e62c26",
+  "0053_account_mcp_access": "1932b780327912affe025c4e789133be75595651cbdcb4850a37593f86d8a533"
 }
