@@ -49,6 +49,7 @@ export interface ServerUserAuth {
   onboardingStatus: string;
   isPlatformAdmin: boolean;
   planName: string | null;
+  planId: string | null;
   planFeatures: PlanFeature[] | null;
   uploadLimit: number | null;
   /** Uploads counted against uploadLimit: this month on a plan, all-time during the trial. */
@@ -60,6 +61,9 @@ export interface ServerUserAuth {
   /** That month (YYYY-MM-01), or null before any upload. */
   ordersMonth: string | null;
   addons: PlanAddon[];
+  /** Total owner workspaces included in the account plan; null means unlimited. */
+  workspaceLimit: number | null;
+  workspaceCount: number;
   /** Signed up but not activated yet: runs as a free trial limited to analysis. */
   trial: boolean;
   /** Allowed by the member's role but closed by the plan or trial. */
@@ -242,7 +246,7 @@ async function loadWorkspaceContext(
   const isPlatformAdmin = adminFlag === true;
 
   const trialUploads =
-    isTrialStatus(onboardingStatus) && !isPlatformAdmin ? await countTrialUploads(db, typedWorkspace.id) : 0;
+    isTrialStatus(onboardingStatus) && !isPlatformAdmin ? await countTrialUploads(typedWorkspace.owner_user_id) : 0;
 
   const access = resolvePlanAccess({
     rolePermissions: ROLE_PERMISSIONS[membership.role],
@@ -266,6 +270,7 @@ async function loadWorkspaceContext(
     allowedBranchIds,
     globalBranchAccess,
     planName: typeof plan["plan_name"] === "string" ? plan["plan_name"] : null,
+    planId: typeof plan["plan_id"] === "string" ? plan["plan_id"] : null,
     planFeatures,
     uploadLimit: access.uploadLimit,
     uploadsThisMonth: access.uploadsUsed,
@@ -274,6 +279,8 @@ async function loadWorkspaceContext(
     monthlyOrders: typeof plan["monthly_orders"] === "number" ? plan["monthly_orders"] : typeof plan["orders_this_month"] === "number" ? plan["orders_this_month"] : 0,
     ordersMonth: typeof plan["orders_month"] === "string" ? plan["orders_month"] : null,
     addons,
+    workspaceLimit: typeof plan["workspace_limit"] === "number" ? plan["workspace_limit"] : null,
+    workspaceCount: typeof plan["workspace_count"] === "number" ? plan["workspace_count"] : 1,
     trial: access.trial,
     planLockedPermissions: access.planLockedPermissions,
   };
@@ -284,18 +291,28 @@ async function loadWorkspaceContext(
  * trial.upload audit events (written with the service role, read-only for users) also count.
  */
 type CountResult = { count: number | null; error: { message: string } | null };
-type CountQuery = PromiseLike<CountResult> & { eq: (column: string, value: string) => CountQuery };
+type CountQuery = PromiseLike<CountResult> & {
+  eq: (column: string, value: string) => CountQuery;
+  in: (column: string, values: string[]) => CountQuery;
+};
 type CountClient = {
   from: (table: string) => { select: (columns: string, options: { count: "exact"; head: true }) => CountQuery };
 };
 
-async function countTrialUploads(db: unknown, workspaceId: string): Promise<number> {
+async function countTrialUploads(ownerUserId: string): Promise<number> {
+  // Generated types lag the workspace migrations at this boundary.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const admin = supabaseAdmin as any;
+  const workspaceResult = await admin.from("workspaces").select("id").eq("owner_user_id", ownerUserId);
+  if (workspaceResult.error) throw new Error(workspaceResult.error.message);
+  const workspaceIds = (workspaceResult.data ?? []).map((row: { id: string }) => row.id);
+  if (!workspaceIds.length) return 0;
   const [periods, events] = await Promise.all([
-    (db as CountClient).from("periods").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId),
+    (supabaseAdmin as unknown as CountClient).from("periods").select("id", { count: "exact", head: true }).in("workspace_id", workspaceIds),
     (supabaseAdmin as unknown as CountClient)
       .from("workspace_audit_events")
       .select("id", { count: "exact", head: true })
-      .eq("workspace_id", workspaceId)
+      .in("workspace_id", workspaceIds)
       .eq("event_type", TRIAL_UPLOAD_EVENT),
   ]);
   if (periods.error) throw new Error(periods.error.message);

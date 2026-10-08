@@ -32,8 +32,8 @@ function Plans() {
   );
 }
 
-type PlanRow = { id: string; name: string; price: number; cycle: Cycle; active: boolean; features: PlanFeature[]; uploadLimit: number | null; description: string; highlighted: boolean; sortOrder: number; code: string | null; orderLimit: number | null; priceYearly: number | null; customPrice: boolean };
-const blankPlan = (): Omit<PlanRow, "id" | "code"> & { id?: string; code?: string | null } => ({ name: "", price: 0, cycle: "monthly", active: true, features: ["invoice_audit", "exceptions", "contracts"], uploadLimit: null, description: "", highlighted: false, sortOrder: 0, orderLimit: 15_000, priceYearly: null, customPrice: false });
+type PlanRow = { id: string; name: string; price: number; cycle: Cycle; active: boolean; features: PlanFeature[]; uploadLimit: number | null; description: string; highlighted: boolean; sortOrder: number; code: string | null; orderLimit: number | null; priceYearly: number | null; customPrice: boolean; workspaceLimit: number | null };
+const blankPlan = (): Omit<PlanRow, "id" | "code"> & { id?: string; code?: string | null } => ({ name: "", price: 0, cycle: "monthly", active: true, features: ["invoice_audit", "exceptions", "contracts"], uploadLimit: null, description: "", highlighted: false, sortOrder: 0, orderLimit: 15_000, priceYearly: null, customPrice: false, workspaceLimit: 1 });
 
 function PlansEditor({ plans, canEdit, subscribers }: { plans: PlanRow[]; canEdit: boolean; subscribers: Map<string, number> }) {
   const qc = useQueryClient();
@@ -62,6 +62,7 @@ function PlansEditor({ plans, canEdit, subscribers }: { plans: PlanRow[]; canEdi
             <p className="num text-xs">
               {p.orderLimit !== null ? `حتى ${p.orderLimit.toLocaleString("en-US")} طلب/شهر` : p.code ? "طلبات بلا حد" : ""}
               {p.uploadLimit !== null ? ` · ${p.uploadLimit} رفعة/شهر` : ""}
+              {` · ${p.workspaceLimit === null ? "مساحات بلا حد" : `${p.workspaceLimit} مساحة عمل`}`}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">{PLAN_FEATURES.filter((f) => p.features.includes(f.key)).map((f) => f.label).join("، ") || "الأساسيات فقط"}</p>
             <p className="num mt-2 text-xs">{subscribers.get(p.id) ?? 0} مشترك حالياً{p.active ? "" : " · مخفية"}</p>
@@ -85,6 +86,11 @@ function PlansEditor({ plans, canEdit, subscribers }: { plans: PlanRow[]; canEdi
             <div className="flex gap-2">
               <Input type="number" min={0} disabled={edit.uploadLimit === null} value={edit.uploadLimit ?? ""} onChange={(e) => setEdit({ ...edit, uploadLimit: Math.max(0, Number(e.target.value)) })} />
               <label className="flex items-center gap-1 whitespace-nowrap text-xs"><input type="checkbox" checked={edit.uploadLimit === null} onChange={(e) => setEdit({ ...edit, uploadLimit: e.target.checked ? null : 10 })} />بلا حدود</label>
+            </div></div>
+          <div className="space-y-1"><Label>مساحات العمل</Label>
+            <div className="flex gap-2">
+              <Input type="number" min={1} disabled={edit.workspaceLimit === null} value={edit.workspaceLimit ?? ""} onChange={(e) => setEdit({ ...edit, workspaceLimit: Math.max(1, Number(e.target.value)) })} />
+              <label className="flex items-center gap-1 whitespace-nowrap text-xs"><input type="checkbox" checked={edit.workspaceLimit === null} onChange={(e) => setEdit({ ...edit, workspaceLimit: e.target.checked ? null : 1 })} />بلا حدود</label>
             </div></div>
           <div className="space-y-1 sm:col-span-2"><Label>وصف قصير</Label><Input value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} /></div>
           <div className="space-y-1"><Label>الترتيب</Label><Input type="number" value={edit.sortOrder} onChange={(e) => setEdit({ ...edit, sortOrder: Number(e.target.value) })} /></div>

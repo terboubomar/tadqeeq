@@ -37,7 +37,7 @@ const ALIAS = { source: "Order Summary", canonical: "Subtotal of commission fee 
 
 describe("smart columns in the import flow", () => {
   test("a renamed column asks for confirmation instead of failing", async () => {
-    const error = await buildAnalysis(form(keetaFile(RENAMED)), "keeta", clientWith([]), "owner", {}).catch((cause: unknown) => cause);
+    const error = await buildAnalysis(form(keetaFile(RENAMED)), "keeta", clientWith([]), "owner", "workspace", {}).catch((cause: unknown) => cause);
     expect(error).toBeInstanceOf(ColumnReviewRequired);
     expect((error as InstanceType<typeof ColumnReviewRequired>).review.fields[0]?.suggested).toBe("Commission fee incl. VAT");
   });
@@ -46,13 +46,13 @@ describe("smart columns in the import flow", () => {
     const original = analyzeKeeta(await keetaFile().arrayBuffer());
     const file = keetaFile(RENAMED);
 
-    const confirmed = await buildAnalysis(form(file, [ALIAS]), "keeta", clientWith([]), "owner", {});
+    const confirmed = await buildAnalysis(form(file, [ALIAS]), "keeta", clientWith([]), "owner", "workspace", {});
     expect(confirmed.result).toEqual(original);
     expect(confirmed.confirmedAliases).toEqual([ALIAS]);
     const kept = new Uint8Array(await confirmed.sources[0]!.file.arrayBuffer());
     expect(kept).toEqual(new Uint8Array(await file.arrayBuffer()));
 
-    const stored = await buildAnalysis(form(file), "keeta", clientWith([ALIAS]), "owner", {});
+    const stored = await buildAnalysis(form(file), "keeta", clientWith([ALIAS]), "owner", "workspace", {});
     expect(stored.result).toEqual(original);
     expect(stored.confirmedAliases).toEqual([]);
     expect(stored.appliedAliases).toEqual([ALIAS]);
@@ -60,6 +60,6 @@ describe("smart columns in the import flow", () => {
 
   test("a match pointing at a column that is not in the file is refused", async () => {
     const bad = { ...ALIAS, observed: "Missing column" };
-    await expect(buildAnalysis(form(keetaFile(RENAMED), [bad]), "keeta", clientWith([]), "owner", {})).rejects.toThrow("العمود غير موجود");
+    await expect(buildAnalysis(form(keetaFile(RENAMED), [bad]), "keeta", clientWith([]), "owner", "workspace", {})).rejects.toThrow("العمود غير موجود");
   });
 });

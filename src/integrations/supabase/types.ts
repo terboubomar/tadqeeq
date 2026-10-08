@@ -2132,6 +2132,7 @@ export type Database = {
           pricing: string
           sort_order: number
           upload_limit: number | null
+          workspace_limit: number | null
         }
         Insert: {
           active?: boolean
@@ -2150,6 +2151,7 @@ export type Database = {
           pricing?: string
           sort_order?: number
           upload_limit?: number | null
+          workspace_limit?: number | null
         }
         Update: {
           active?: boolean
@@ -2168,6 +2170,7 @@ export type Database = {
           pricing?: string
           sort_order?: number
           upload_limit?: number | null
+          workspace_limit?: number | null
         }
         Relationships: []
       }
@@ -2675,6 +2678,8 @@ export type Database = {
         Returns: string
       }
       my_workspace_plan: { Args: { p_workspace_id: string }; Returns: Json }
+      create_account_workspace: { Args: { p_name: string }; Returns: string }
+      switch_my_workspace: { Args: { p_workspace_id: string }; Returns: string }
       ops_role: { Args: never; Returns: string }
       reserve_ai_call: {
         Args: {

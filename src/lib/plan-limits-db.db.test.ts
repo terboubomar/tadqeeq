@@ -84,6 +84,7 @@ describe("plan limits in the database", () => {
     const MEMBER = "00000000-0000-4000-8000-0000000005b1";
     await db.query("insert into auth.users (id, email) values ($1, 'viewer@example.com')", [MEMBER]);
     await db.query("insert into public.workspace_members (workspace_id, user_id, role, status) values ($1, $2, 'viewer', 'active')", [ws, MEMBER]);
+    await db.query("update public.profiles set active_workspace_id = $1 where id = $2", [ws, MEMBER]);
     const viewer = async (permission: string) =>
       (await asUser<{ ok: boolean }>(db, MEMBER, "select private.has_workspace_permission($1, $2) as ok", [ws, permission])).rows[0]!.ok;
     expect(await viewer("contracts.read")).toBe(true);
