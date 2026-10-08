@@ -135,6 +135,9 @@ function ClientProfilePage() {
           <div className="min-w-52 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-bold">{c.name}</h1>
+              {c.accountOf ? (
+                <p className="w-full text-sm text-primary-text">شركة تابعة لحساب «{c.accountOf}» · الاشتراك والحدود مشتركة مع الحساب</p>
+              ) : null}
               <ClientStatusBadge c={c} />
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -245,7 +248,7 @@ function ClientProfilePage() {
 
       {/* Key numbers */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <Stat label="الاشتراك" value={c.subscriptionStatus ? SUBSCRIPTION_STATUS_LABELS[c.subscriptionStatus] : "بدون"} sub={c.subscriptionEndsOn ? `حتى ${c.subscriptionEndsOn}` : undefined} />
+        <Stat label="الاشتراك" value={c.subscriptionStatus ? SUBSCRIPTION_STATUS_LABELS[c.subscriptionStatus] : "بدون"} sub={c.subscriptionFromAccount ? "من اشتراك الحساب" : c.subscriptionEndsOn ? `حتى ${c.subscriptionEndsOn}` : undefined} />
         <Stat label="إجمالي المدفوع" value={sarFmt(c.paidTotal)} numeric />
         <Stat label="المستخدمون" numeric value={String(c.users)} sub={`${p.branches.length} فرع`} />
         <Stat label="التدقيقات" numeric value={String(p.usage.audits)} sub={`${p.usage.uploads} ملف مرفوع`} />
