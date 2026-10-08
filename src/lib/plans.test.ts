@@ -93,6 +93,7 @@ describe("order-based plans", () => {
     orderLimit,
     priceYearly: 1000,
     customPrice,
+    workspaceLimit: 1,
   });
   const plans = [plan("start", 3000), plan("growth", 10000), plan("scale", 30000), plan("groups", 75000), plan("enterprise", null, true), plan(null, null)];
 
@@ -141,9 +142,9 @@ describe("plan comparison", () => {
   const base = { cycle: "monthly" as const, uploadLimit: null, description: null, highlighted: false, priceYearly: null, customPrice: false };
   const core: PublicPlan["features"] = ["invoice_audit", "exceptions", "contracts"];
   const plans: PublicPlan[] = [
-    { ...base, id: "1", code: "start", name: "البداية", price: 299, orderLimit: 15000, features: core },
-    { ...base, id: "2", code: "growth", name: "النمو", price: 499, orderLimit: 45000, features: core },
-    { ...base, id: "3", code: "unlimited", name: "الشاملة", price: 799, orderLimit: null, features: [...core, "compensation", "ai"] },
+    { ...base, id: "1", code: "start", name: "البداية", price: 299, orderLimit: 15000, workspaceLimit: 1, features: core },
+    { ...base, id: "2", code: "growth", name: "النمو", price: 499, orderLimit: 45000, workspaceLimit: 3, features: core },
+    { ...base, id: "3", code: "unlimited", name: "الشاملة", price: 799, orderLimit: null, workspaceLimit: null, features: [...core, "compensation", "ai"] },
   ];
   const row = (label: string) => planComparison(plans).find((r) => r.label === label)!.cells;
 
@@ -151,6 +152,11 @@ describe("plan comparison", () => {
     expect(row("الطلبات المدققة شهرياً")).toEqual([
       { kind: "text", text: "حتى 15,000" },
       { kind: "text", text: "حتى 45,000" },
+      { kind: "text", text: "بلا حدود" },
+    ]);
+    expect(row("مساحات العمل (الشركات)")).toEqual([
+      { kind: "text", text: "1" },
+      { kind: "text", text: "3" },
       { kind: "text", text: "بلا حدود" },
     ]);
     expect(row("استرداد · مركز التعويضات وبوت Telegram").map((c) => c.kind)).toEqual(["addon", "addon", "yes"]);
@@ -164,10 +170,11 @@ describe("plan comparison", () => {
     expect(planCardItems(plans, 0).items).toContain("الفروع والمنصات والمستخدمون: بلا حدود");
     expect(planCardItems(plans, 0).items.some((item) => item.startsWith("الطلبات"))).toBe(false);
     expect(planCardItems(plans, 0).items).not.toContain("استرداد · مركز التعويضات وبوت Telegram");
-    expect(planCardItems(plans, 1)).toEqual({ basedOn: "البداية", items: [] });
+    expect(planCardItems(plans, 1)).toEqual({ basedOn: "البداية", items: ["مساحات العمل (الشركات): 3"] });
     expect(planCardItems(plans, 2)).toEqual({
       basedOn: "النمو",
       items: [
+        "مساحات العمل (الشركات): بلا حدود",
         "استرداد · مركز التعويضات وبوت Telegram",
         "Tadqeeq AI للأسئلة عن أرقامك",
         "التدقيق من داخل Claude و ChatGPT",

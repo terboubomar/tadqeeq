@@ -40,6 +40,7 @@ export async function loadPublicPlans(): Promise<PublicPlan[]> {
     orderLimit: num(r["order_limit"]),
     priceYearly: num(r["price_yearly"]),
     customPrice: r["custom_price"] === true,
+    workspaceLimit: num(r["workspace_limit"]),
   }));
 }
 

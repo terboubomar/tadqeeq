@@ -217,12 +217,12 @@ function parseApprovedMappings(form: FormData): Record<string, string> {
 
 async function loadHungerStationMappings(
   client: ServerUserClient,
-  userId: string,
+  workspaceId: string,
 ): Promise<Record<string, string>> {
   const { data, error } = await client
     .from("hungerstation_branch_mappings")
     .select("hs_branch_id, invoice_branch_name")
-    .eq("user_id", userId);
+    .eq("workspace_id", workspaceId);
 
   if (error) {
     throw new Error("تعذّر قراءة ربط فروع هنقرستيشن المحفوظ.");
@@ -240,6 +240,7 @@ async function loadHungerStationMappings(
 
 async function saveConfirmedHungerStationMappings(
   client: ServerUserClient,
+  workspaceId: string,
   userId: string,
   mappings: Record<string, string>,
 ): Promise<void> {
@@ -251,13 +252,14 @@ async function saveConfirmedHungerStationMappings(
     .from("hungerstation_branch_mappings")
     .upsert(
       entries.map(([hsBranchId, invoiceBranchName]) => ({
+        workspace_id: workspaceId,
         user_id: userId,
         hs_branch_id: hsBranchId,
         invoice_branch_name: invoiceBranchName,
         confirmed_at: now,
         updated_at: now,
       })),
-      { onConflict: "user_id,hs_branch_id" },
+      { onConflict: "workspace_id,hs_branch_id" },
     );
 
   if (error) {
@@ -272,13 +274,13 @@ async function saveConfirmedHungerStationMappings(
 
 async function historicalJahezOrders(
   client: ServerUserClient,
-  userId: string,
+  workspaceId: string,
   excludePeriodId?: string,
 ): Promise<Record<string, JahezOrderReference>> {
   let query = client
     .from("periods")
     .select("id, label, invoice")
-    .eq("user_id", userId)
+    .eq("workspace_id", workspaceId)
     .eq("platform", "jahez");
 
   if (excludePeriodId) {
@@ -310,6 +312,7 @@ export async function buildAnalysis(
   platform: Platform,
   client: ServerUserClient,
   userId: string,
+  workspaceId: string,
   approvedMappings: Record<string, string>,
   excludeHistoricalPeriodId?: string,
 ): Promise<{
@@ -349,7 +352,7 @@ export async function buildAnalysis(
   const label = formString(form, "label");
   const originalBuffer = await dataFile.arrayBuffer();
   const requestedAliases = parseColumnAliases(form);
-  const storedAliases = await loadColumnAliases(client, userId, platform);
+  const storedAliases = await loadColumnAliases(client, workspaceId, platform);
   // Large Excel exports do not fit in a Worker when opened with SheetJS; read them as a stream.
   // Very large HungerStation sheets keep only the columns the engine reads (and renamed ones).
   const sheets =
@@ -394,7 +397,7 @@ export async function buildAnalysis(
   let result: AnalysisResult;
   try {
     if (platform === "hungerstation") {
-      const persistedMappings = await loadHungerStationMappings(client, userId);
+      const persistedMappings = await loadHungerStationMappings(client, workspaceId);
       const bankRate = parsePercentRateInput(formString(form, "bankRate"));
 
       const hungerOptions = {
@@ -422,7 +425,7 @@ export async function buildAnalysis(
           : {}),
         historicalOrders: await historicalJahezOrders(
           client,
-          userId,
+          workspaceId,
           excludeHistoricalPeriodId,
         ),
         ...(label ? { label } : {}),
@@ -488,7 +491,7 @@ function assertApprovedMappingsBelongToAnalysis(
 
 async function findDuplicate(
   client: ServerUserClient,
-  userId: string,
+  workspaceId: string,
   result: AnalysisResult,
 ): Promise<string | null> {
   const start = result.summary.periodStart;
@@ -498,7 +501,7 @@ async function findDuplicate(
   const { data, error } = await client
     .from("periods")
     .select("id, label")
-    .eq("user_id", userId)
+    .eq("workspace_id", workspaceId)
     .eq("platform", result.platform)
     .eq("period_start", start)
     .eq("period_end", end)
@@ -817,6 +820,7 @@ async function runImportAudit(
       platform,
       client,
       userId,
+      workspaceId,
       approvedMappings,
     ));
   } catch (cause) {
@@ -864,7 +868,7 @@ async function runImportAudit(
   let columnChanges: ColumnChange[] = [];
   let nextSnapshots: ColumnSnapshot[] | null = null;
   try {
-    const snapshots = await loadColumnSnapshots(client, userId, platform);
+    const snapshots = await loadColumnSnapshots(client, workspaceId, platform);
     if (snapshots) {
       const profiles = profileColumns(platform, analysedFile, analysedSheets ?? undefined);
       columnChanges = diffColumns(snapshots, profiles);
@@ -874,7 +878,7 @@ async function runImportAudit(
     console.error("Failed to compare platform columns", cause);
   }
 
-  const duplicate = await findDuplicate(client, userId, result);
+  const duplicate = await findDuplicate(client, workspaceId, result);
   if (duplicate) {
     await completeMcpRequest(client, form, duplicate);
     return { status: "duplicate", existingPeriodId: duplicate };
@@ -903,7 +907,7 @@ async function runImportAudit(
       "code" in cause &&
       cause.code === "23505"
     ) {
-      const racedDuplicate = await findDuplicate(client, userId, result);
+      const racedDuplicate = await findDuplicate(client, workspaceId, result);
       if (racedDuplicate) {
         return {
           status: "duplicate",
@@ -918,6 +922,7 @@ async function runImportAudit(
     if (platform === "hungerstation") {
       await saveConfirmedHungerStationMappings(
         client,
+        workspaceId,
         userId,
         approvedMappings,
       );
