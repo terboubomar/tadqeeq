@@ -20,6 +20,20 @@ describe("audit source-file primitives", () => {
     expect(safeStorageFileName("")).toBe("source-file");
   });
 
+  test("storage keys stay ASCII for Arabic and accented file names", () => {
+    expect(safeStorageFileName("اليز غلوب.xlsx")).toBe("source-file.xlsx");
+    expect(safeStorageFileName("فاتورة جاهز سبتمبر.PDF")).toBe("source-file.pdf");
+    expect(safeStorageFileName("Alize Globe - اليز غلوب.xlsx")).toBe("Alize-Globe.xlsx");
+    expect(safeStorageFileName("Café Sept.csv")).toBe("Cafe-Sept.csv");
+    expect(safeStorageFileName("report")).toBe("report");
+    expect(safeStorageFileName("اليز")).toBe("source-file");
+    for (const name of ["اليز غلوب.xlsx", "a".repeat(300) + ".xlsx", "..//\\.."]) {
+      const key = safeStorageFileName(name);
+      expect(key).toMatch(/^[A-Za-z0-9._-]+$/);
+      expect(key.length).toBeLessThanOrEqual(120);
+    }
+  });
+
   test("migration creates private bounded storage and owned metadata", async () => {
     const sql = await Bun.file(
       "drizzle/migrations/0010_source_files.sql",
