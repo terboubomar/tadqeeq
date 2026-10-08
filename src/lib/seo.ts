@@ -63,7 +63,7 @@ export const PUBLIC_PAGES: PublicPage[] = [
 ];
 
 /** App sections whose every sub-path is private. */
-export const PRIVATE_PREFIXES = ["/api/", "/lovable/", "/.lovable/", "/.well-known/", "/ops", "/compensation"];
+export const PRIVATE_PREFIXES = ["/api/", "/lovable/", "/.lovable/", "/.well-known/", "/ops", "/operations", "/compensation"];
 
 /** Single private screens, blocked exactly so future public pages that share a prefix stay crawlable. */
 export const PRIVATE_PAGES = [
@@ -83,7 +83,6 @@ export const PRIVATE_PAGES = [
   "/invoice-check",
   "/journal",
   "/mcp",
-  "/operations",
   "/promotions",
   "/reset-password",
   "/security",
