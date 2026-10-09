@@ -24,6 +24,8 @@ export interface OperationOrder {
   estimatedEarningsAmount: number;
   chargesTotal: number;
   settlementAmount: number;
+  /** A cancelled HungerStation order: not a sale and not counted as an order; its payout still counts. */
+  excludedFromSales?: boolean;
   rawData: Record<string, string | number | boolean | null>;
 }
 
@@ -53,6 +55,8 @@ export interface OperationImportSummary {
   paymentFeeAmount: number;
   estimatedEarningsAmount: number;
   cancellationCount: number;
+  /** What cancelled orders still earn (HungerStation), already inside settlementAmount. */
+  cancelledEarningsAmount?: number;
   chargesTotal: number;
   settlementAmount: number;
   adjustmentDebit: number;
@@ -96,6 +100,7 @@ export interface OperationPlatformMonth {
   paymentFeeAmount: number;
   estimatedEarningsAmount: number;
   cancellationCount: number;
+  cancelledEarningsAmount: number;
   chargesToDate: number;
   settlementToDate: number;
   forecastCharges: number | null;
@@ -112,6 +117,8 @@ export interface OperationImportHistoryItem {
   rowCount: number;
   summary: OperationImportSummary;
   createdAt: string;
+  /** False once a newer upload (or a re-upload of another file) took over the same source and day. */
+  current: boolean;
 }
 
 export interface OperationMonthOverview {

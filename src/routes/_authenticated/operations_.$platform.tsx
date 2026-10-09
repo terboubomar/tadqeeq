@@ -228,7 +228,7 @@ function PlatformWorkspace({
         <Kpi
           label="المبيعات"
           value={sar(row?.grossSales)}
-          hint={`${count(row?.orderCount)} طلب`}
+          hint={`${count(row?.orderCount)} طلب${row?.cancellationCount ? ` · ${count(row.cancellationCount)} ملغى` : ""}`}
           strong
         />
         <Kpi label="تكلفة المنصة" value={percent(costRatio)} hint={sar(row?.chargesToDate)} />
@@ -240,7 +240,7 @@ function PlatformWorkspace({
         <Kpi
           label="صافي التحويل"
           value={sar(row?.settlementToDate)}
-          hint={`حتى ${count(row?.coveredDays)} يوم`}
+          hint={`حتى ${count(row?.coveredDays)} يوم${row?.cancelledEarningsAmount ? ` · منه ${sar(row.cancelledEarningsAmount)} من طلبات ملغاة` : ""}`}
         />
         <Kpi
           label="توقع نهاية الشهر"
@@ -263,7 +263,7 @@ function PlatformWorkspace({
         </div>
         <div className="divide-y divide-border">
           {sources.map((source) => {
-            const latest = history.find((item) => item.sourceKind === source.kind);
+            const latest = history.find((item) => item.sourceKind === source.kind && item.current);
             const busy = activeUpload === source.kind;
             return (
               <div
@@ -350,6 +350,7 @@ function PlatformWorkspace({
                   </span>
                   <span className="mt-0.5 block text-[10.5px] text-muted-foreground">
                     {operationSourceLabels[item.sourceKind]}
+                    {item.current ? "" : " · مستبدل بملف أحدث لليوم نفسه، لا يدخل في المؤشرات"}
                   </span>
                 </button>
                 <button
