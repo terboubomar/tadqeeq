@@ -237,7 +237,7 @@ function parseHungerBranch(detailPage: string, onlinePage: string): HungerInvoic
   const walletFee = amountsAfter(detailPage, 3, "Wallet Payments Fees", "Wallet Payments Fee", "Wallet Payment Fee");
   const rdf = amountsAfter(detailPage, 3, "RDF campaigns");
   const compensation = amountsAfter(detailPage, 3, "Customer Compensation");
-  const waiting = amountsAfter(detailPage, 3, "Avoidable Waiting Time Fee");
+  const waiting = amountsAfter(detailPage, 3, "Avoidable wait time fees", "Avoidable Waiting Time Fee");
   const freeDelivery = amountsAfter(
     detailPage,
     3,
