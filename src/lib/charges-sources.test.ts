@@ -112,6 +112,44 @@ describe("branch breakdown", () => {
   });
 });
 
+describe("CPC by branch from the CPC invoice", () => {
+  const cpcLine = { ...line("hs-cpc", "إعلانات CPC"), category: "advertising", amount: 230.03 } as MarketplaceChargeLine;
+  const p = {
+    ...period,
+    branches: [
+      { branch: "Brand -  North", branchId: "1" },
+      { branch: "Brand - South", branchId: "2", invoiceBranchName: "Brand - South ' - ' /" },
+      { branch: "Brand - East", branchId: "3" },
+    ],
+    invoice: {
+      lines: [],
+      cpc: 230.03,
+      cpcBranches: [
+        { branch: "Brand - North", amountExVat: 100, vat: 15 },
+        { branch: "brand - south", amountExVat: 50.01, vat: 7.51 },
+        { branch: "Brand - West", amountExVat: 50, vat: 7.5 },
+      ],
+    },
+  } as unknown as StoredPeriod;
+
+  test("each invoice line goes to its branch by name, VAT included, every branch listed", () => {
+    const split = branchBreakdown(cpcLine, p, [cpcLine]);
+    expect(split.rows).toEqual([
+      { name: "Brand -  North", value: 115 },
+      { name: "Brand - South", value: 57.52 },
+      { name: "Brand - West", value: 57.5 },
+      { name: "Brand - East", value: 0 },
+    ]);
+    expect(split.total).toBe(230.02);
+    expect(split.unavailable).toBeUndefined();
+    expect(split.caption).toContain("0.01");
+  });
+
+  test("the source says where the split comes from", () => {
+    expect(chargeLineSource(cpcLine, p).formula).toContain("سطر كل فرع");
+  });
+});
+
 describe("CPC by branch from the ads report", () => {
   const p = {
     ...period,

@@ -363,6 +363,14 @@ export interface InvoiceChargeItem {
   amount: number;
 }
 
+/** One branch line of a HungerStation advertising (CPC) invoice, as printed. */
+export interface CpcBranchCharge {
+  /** The branch name exactly as the CPC invoice prints it. */
+  branch: string;
+  amountExVat: number;
+  vat: number;
+}
+
 /**
  * One commission row exactly as the invoice prints it: what was counted, at what rate, for how much.
  * Read for display and explanation only; no audit figure is computed from it.
@@ -417,6 +425,11 @@ export interface InvoiceFigures {
   totalOnlineSales?: number;
   netDue?: number;
   cpc?: number;
+  /**
+   * The advertising (CPC) invoice's lines per branch, kept only when they add up to its total before VAT.
+   * Read for display only; no audit figure is computed from it.
+   */
+  cpcBranches?: CpcBranchCharge[];
   creditSales?: number;
   creditSalesOrders?: number;
   creditSalesIncVat?: number;

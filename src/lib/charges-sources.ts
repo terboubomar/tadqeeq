@@ -81,10 +81,12 @@ const SOURCES: Record<string, (period: StoredPeriod) => ChargeLineSource> = {
     formula: "مجموع رسوم وقت الانتظار القابل للتجنب، " + VAT_NOTE + ".",
     branchValue: (b) => b.waitingTimeFees,
   }),
-  "hs-cpc": () => ({
+  "hs-cpc": (period) => ({
     file: "فاتورة إعلانات هنقرستيشن CPC (PDF)",
     columns: [],
-    formula: "إجمالي فاتورة الإعلانات كما ورد فيها، شامل الضريبة.",
+    formula: period.invoice?.cpcBranches?.length
+      ? "إجمالي فاتورة الإعلانات كما ورد فيها، شامل الضريبة. وتوزيعه على الفروع من سطر كل فرع في الفاتورة: المبلغ + ضريبته."
+      : "إجمالي فاتورة الإعلانات كما ورد فيها، شامل الضريبة.",
   }),
   "hs-restaurant-food-discount": () => ({
     file: HS_ORDERS,
@@ -308,6 +310,33 @@ export function branchBreakdown(
     if (Math.abs(total) > SPLIT_TOLERANCE || Math.abs(line.amount) <= SPLIT_TOLERANCE) return { rows, total };
   }
 
+  if (line.id === "hs-cpc" && period.invoice?.cpcBranches?.length) {
+    // Each line of the CPC invoice names its branch; match it to the order branch by name.
+    const key = (name: string | undefined) => (name ?? "").replace(/\s+/g, " ").trim().toLocaleLowerCase();
+    const byName = new Map<string, string>();
+    for (const b of period.branches) {
+      byName.set(key(b.branch), b.branch);
+      if (b.invoiceBranchName) byName.set(key(b.invoiceBranchName), b.branch);
+    }
+    const values = new Map(period.branches.map((b) => [b.branch, 0]));
+    for (const charge of period.invoice.cpcBranches) {
+      const name = byName.get(key(charge.branch)) ?? charge.branch;
+      values.set(name, (values.get(name) ?? 0) + charge.amountExVat + charge.vat);
+    }
+    const rows = sortedRows([...values.entries()].map(([name, value]) => ({ name, value })));
+    const total = rowsTotal(rows);
+    const rounding = Math.round((line.amount - total) * 100) / 100;
+    return {
+      rows,
+      total,
+      caption:
+        "من فاتورة CPC: سطر كل فرع كما ورد فيها، المبلغ + ضريبته." +
+        (Math.abs(rounding) >= 0.01
+          ? ` مجموع السطور ${total.toFixed(2)} مقابل إجمالي الفاتورة ${line.amount.toFixed(2)} ر.س؛ الفرق ${Math.abs(rounding).toFixed(2)} تقريب لأن الفاتورة تقرّب ضريبة كل سطر على حدة.`
+          : ""),
+    };
+  }
+
   if (line.id.startsWith("hs-unmapped-invoice-extra-")) {
     // Invoices read since the parser keeps each branch's rows apart: split this line by its own item.
     const itemized = (period.invoice?.branches ?? []).some((branch) => branch.invoiceOnlyItems !== undefined);
@@ -438,8 +467,8 @@ export function pickAdsAnalysisForPeriod<T extends { dateFrom: string; dateTo: s
 
 /**
  * CPC ad spend per branch, from the HungerStation ads report saved in «عائد»: spend within the period's dates,
- * matched to order branches by HS Branch ID (the report's Restaurant ID), every branch listed. The CPC invoice
- * itself only has an account total, so the caption gives both totals rather than scaling one to the other.
+ * matched to order branches by HS Branch ID (the report's Restaurant ID), every branch listed. Used only when the
+ * CPC invoice has no per-branch lines; the caption gives both totals rather than scaling one to the other.
  */
 export function cpcBranchesFromAds(source: AdsSpendSource, period: StoredPeriod, invoiceAmount: number): BranchBreakdown {
   const start = period.period_start ?? source.dateFrom;

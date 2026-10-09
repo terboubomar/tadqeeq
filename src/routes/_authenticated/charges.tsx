@@ -364,11 +364,11 @@ function SourceCard({
 }
 
 /**
- * CPC split per branch for HungerStation's ad invoice, from the ads report saved in «عائد» for the same dates.
- * Returns null for every other line so the regular split applies.
+ * CPC split per branch for HungerStation's ad invoice, from the ads report saved in «عائد» for the same dates,
+ * when the CPC invoice itself has no per-branch lines. Returns null otherwise so the regular split applies.
  */
 function useCpcBranches(period: StoredPeriod, line: MarketplaceChargeLine): (BranchBreakdown & { loading?: boolean }) | null {
-  const isCpc = line.id === "hs-cpc";
+  const isCpc = line.id === "hs-cpc" && !period.invoice?.cpcBranches?.length;
   const analyses = useQuery({
     queryKey: ["ads-roi-analyses"],
     queryFn: () => listAdsRoiAnalyses({ data: {} }),
