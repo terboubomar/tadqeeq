@@ -10,6 +10,7 @@ import {
   CircleAlert,
   CreditCard,
   Percent,
+  PieChart,
   Receipt,
   RefreshCw,
   ShieldCheck,
@@ -45,7 +46,7 @@ import { SmartWatchCard } from "@/components/smart-watch/SmartWatchCard";
 import { ActionBar, NumberTiles, PageHeader } from "@/components/workspace/PageKit";
 import { PRODUCTS } from "@/lib/products";
 import { keetaCostSplit, keetaOutsideInvoice } from "@/lib/keeta-cost";
-import { platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
+import { PLATFORM_COST_FORMULA_AR, platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -154,6 +155,25 @@ function Dashboard() {
     .filter((p) => p.platform === selected.platform && !p.superseded_by)
     .sort((a, b) => (b.period_end ?? "").localeCompare(a.period_end ?? ""))
     .slice(0, 3);
+
+  // Platform cost %: total platform charges ÷ gross sales, with the previous period of the same platform.
+  const costPct = platformCostPct(totalPlatformCharges(selected.platform, s), s.grossSales);
+  const previous = periods
+    .filter((p) => p.platform === selected.platform && !p.superseded_by && p.id !== selected.id)
+    .filter((p) => (p.period_end ?? "") < (selected.period_start ?? selected.period_end ?? ""))
+    .sort((a, b) => (b.period_end ?? "").localeCompare(a.period_end ?? ""))[0];
+  const previousCostPct = previous ? platformCostPct(totalPlatformCharges(previous.platform, previous.summary), previous.summary.grossSales) : null;
+  const costPctChange = costPct !== null && previousCostPct !== null ? (costPct - previousCostPct) * 100 : null;
+  const costPctTile = {
+    label: "نسبة تكلفة المنصة",
+    value: costPct === null ? "—" : percent(costPct),
+    hint:
+      costPctChange === null || previousCostPct === null
+        ? PLATFORM_COST_FORMULA_AR
+        : `${Math.abs(costPctChange) < 0.05 ? "دون تغيير عن" : costPctChange > 0 ? "▲ " + costPctChange.toFixed(1) + " نقطة عن" : "▼ " + Math.abs(costPctChange).toFixed(1) + " نقطة عن"} ${previous!.label} (${percent(previousCostPct)})`,
+    icon: PieChart,
+    tone: "negative" as const,
+  };
 
   const exceptions = can("exceptions.read") ? buildPeriodExceptions(selected) : [];
   const exceptionSummary = summarizeExceptions(exceptions);
@@ -392,6 +412,7 @@ function Dashboard() {
                       icon: Receipt,
                       tone: "negative" as const,
                     },
+                    costPctTile,
                     {
                       label: "الطلبات",
                       value: count(s.orders),
@@ -411,6 +432,7 @@ function Dashboard() {
                       icon: Receipt,
                       tone: "negative" as const,
                     },
+                    costPctTile,
                     { label: "الطلبات", value: count(s.orders), icon: ShoppingCart },
                     { label: "متوسط قيمة الطلب", value: sar(s.orders ? s.grossSales / s.orders : 0), icon: Store },
                   ]),
