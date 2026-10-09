@@ -379,6 +379,13 @@
       "when": 1792341199573,
       "tag": "0053_account_mcp_access",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1792427599573,
+      "tag": "0054_journal_invoice_accounts",
+      "breakpoints": true
     }
   ]
 }

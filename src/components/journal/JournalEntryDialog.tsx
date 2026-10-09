@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BookOpenCheck, CheckCircle2, Download, Loader2, Settings2 } from "lucide-react";
+import { BookOpenCheck, CheckCircle2, Loader2, Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -11,11 +11,11 @@ import { exportXlsx } from "@/lib/export";
 import { arabicDate, money } from "@/lib/format";
 import { saveJournalAccounts } from "@/lib/journal-accounts.functions";
 import { JOURNAL_ACCOUNTS_KEY, useJournalAccounts } from "@/components/journal/use-journal-accounts";
+import { ExportJournalsMenu } from "@/components/journal/ExportJournalsMenu";
 import {
   type BranchJournal,
   ENTRY_COLUMNS,
   entryRows,
-  exportBranchJournals,
   fileSlug,
   isBalanced,
   TREATMENT_NOTE,
@@ -143,10 +143,13 @@ export function JournalEntryDialog({ entry, onClose }: { entry: JournalEntry | n
             <p className="text-[11.5px] leading-5 text-muted-foreground">{TREATMENT_NOTE}</p>
 
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={exportEntry}>
-                <Download className="size-4" />
-                تصدير Excel
-              </Button>
+              <ExportJournalsMenu
+                title={entry.description}
+                journals={[{ branch: entry.description, entry }]}
+                label="تصدير القيد"
+                variant="outline"
+                onExcel={exportEntry}
+              />
               <AccountsButton onClick={() => setEditing(true)} />
             </div>
           </>
@@ -170,10 +173,6 @@ export function BranchJournalsDialog({
   const [editing, setEditing] = useState(false);
   const unbalanced = journals?.filter((journal) => !isBalanced(journal.entry)).length ?? 0;
 
-  function exportAll() {
-    if (journals?.length) exportBranchJournals(title, journals);
-  }
-
   function jumpTo(index: number) {
     document.getElementById("branch-journal-" + index)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -195,10 +194,7 @@ export function BranchJournalsDialog({
             </DialogHeader>
 
             <div className="flex flex-wrap gap-2">
-              <Button type="button" size="sm" className="gap-1.5" onClick={exportAll} disabled={!journals.length}>
-                <Download className="size-4" />
-                تصدير كل القيود Excel
-              </Button>
+              <ExportJournalsMenu title={title} journals={journals} label="تصدير كل القيود" />
               <AccountsButton onClick={() => setEditing(true)} />
             </div>
 

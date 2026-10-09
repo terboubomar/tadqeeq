@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { BookOpenCheck, Check, ChevronsUpDown, Download, Layers, Scale } from "lucide-react";
-import { toast } from "sonner";
+import { BookOpenCheck, Check, ChevronsUpDown, Layers, Scale } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { EmptyState } from "@/components/AppShell";
 import { AccountsButton, AccountsDialog, EntryNotes, EntryTable } from "@/components/journal/JournalEntryDialog";
-import { exportBranchJournals, isBalanced, TREATMENT_NOTE, type BranchJournal } from "@/components/journal/journal-export";
+import { ExportJournalsMenu } from "@/components/journal/ExportJournalsMenu";
+import { isBalanced, TREATMENT_NOTE, type BranchJournal } from "@/components/journal/journal-export";
 import { useJournalAccounts } from "@/components/journal/use-journal-accounts";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -68,16 +68,6 @@ function JournalReport({ title, journals, combined }: { title: string; journals:
   const shown = current?.entry ?? combined;
   const unbalanced = journals.filter((journal) => !isBalanced(journal.entry)).length;
 
-  function exportSelection() {
-    try {
-      if (current) exportBranchJournals(title + " · " + current.branch, [current], (selection as number) + 1);
-      else exportBranchJournals(title, journals);
-      toast.success("تم تجهيز ملف Excel");
-    } catch (error) {
-      toast.error("تعذّر تصدير الملف: " + (error instanceof Error ? error.message : String(error)));
-    }
-  }
-
   return (
     <div className="space-y-5">
       <PageHeader
@@ -88,10 +78,12 @@ function JournalReport({ title, journals, combined }: { title: string; journals:
 
       <ActionBar>
         <BranchPicker journals={journals} combined={combined} selection={selection} onSelect={setSelection} />
-        <Button type="button" size="sm" className="gap-1.5" disabled={!journals.length} onClick={exportSelection}>
-          <Download className="size-4" />
-          {current ? "تصدير قيد الفرع Excel" : "تصدير كل الفروع Excel"}
-        </Button>
+        <ExportJournalsMenu
+          title={current ? title + " · " + current.branch : title}
+          journals={current ? [current] : journals}
+          firstNumber={current ? (selection as number) + 1 : 1}
+          label={current ? "تصدير قيد الفرع" : "تصدير كل الفروع"}
+        />
         <AccountsButton onClick={() => setEditing(true)} />
       </ActionBar>
 

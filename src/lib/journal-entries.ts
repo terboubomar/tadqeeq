@@ -8,7 +8,10 @@ import type { StoredPeriod } from "./periods";
  * commission and fees are expenses, each on its own line; output VAT on sales and input VAT on the platform's charges
  * are separate; the net amount owed by the platform is the balancing debit. When the platform's own payout figure is
  * used (Keeta, Jahez) and differs from the computed balance, the gap gets its own visible line instead of being
- * folded into another account.
+ * folded into another account. HungerStation charges that only its invoices list (printers, the monthly subscription,
+ * free-delivery campaign charges) and its CPC advertising invoice are expenses of the branch the invoice names, with
+ * their VAT, and HungerStation deducts them from the same balance; what no branch section names stays in the period
+ * entry only.
  *
  * Read-only: it only arranges figures the audit already stored on each branch. It never recalculates them.
  */
@@ -22,6 +25,9 @@ export type JournalAccountKey =
   | "marketing_expense"
   | "compensation_expense"
   | "other_platform_fee_expense"
+  | "device_expense"
+  | "subscription_expense"
+  | "advertising_expense"
   | "input_vat"
   | "settlement_difference";
 
@@ -41,6 +47,9 @@ export const DEFAULT_JOURNAL_ACCOUNTS: Record<JournalAccountKey, JournalAccount>
   marketing_expense: { key: "marketing_expense", code: "", name: "مصروف حملات وتسويق المنصات" },
   compensation_expense: { key: "compensation_expense", code: "", name: "مصروف تعويضات العملاء" },
   other_platform_fee_expense: { key: "other_platform_fee_expense", code: "", name: "رسوم منصات أخرى" },
+  device_expense: { key: "device_expense", code: "", name: "مصروف أجهزة المنصات (الطابعات)" },
+  subscription_expense: { key: "subscription_expense", code: "", name: "مصروف اشتراك المنصات الشهري" },
+  advertising_expense: { key: "advertising_expense", code: "", name: "مصروف إعلانات المنصات (CPC)" },
   input_vat: { key: "input_vat", code: "", name: "ضريبة القيمة المضافة – مدخلات" },
   settlement_difference: { key: "settlement_difference", code: "", name: "فروقات تسوية منصات التوصيل" },
 };
@@ -53,6 +62,9 @@ export const JOURNAL_ACCOUNT_ORDER: JournalAccountKey[] = [
   "marketing_expense",
   "compensation_expense",
   "other_platform_fee_expense",
+  "device_expense",
+  "subscription_expense",
+  "advertising_expense",
   "input_vat",
   "settlement_difference",
   "sales_revenue",
@@ -106,6 +118,9 @@ interface Amounts {
   marketing: number;
   compensation: number;
   otherFees: number;
+  devices?: number;
+  subscription?: number;
+  advertising?: number;
   inputVat: number;
   /** The platform's own net payout when the file states it; otherwise the balancing figure is used. */
   reportedReceivable?: number;
@@ -113,11 +128,69 @@ interface Amounts {
   notes: string[];
 }
 
-function hungerStationAmounts(b: BranchRow): Amounts {
+const DEVICE_LABEL = "الطابعات";
+const SUBSCRIPTION_LABEL = "الاشتراك الشهري";
+const FREE_DELIVERY_LABEL = "رسوم حملات التوصيل المجاني";
+
+/** Charges only HungerStation's invoices list, split by account, with the VAT they carry. */
+interface InvoiceExtras {
+  devices: number;
+  subscription: number;
+  marketing: number;
+  other: number;
+  advertising: number;
+  advertisingVat: number;
+}
+
+const NO_EXTRAS: InvoiceExtras = { devices: 0, subscription: 0, marketing: 0, other: 0, advertising: 0, advertisingVat: 0 };
+
+function addItems(extras: InvoiceExtras, items: Array<{ label: string; amount: number }>): InvoiceExtras {
+  const next = { ...extras };
+  for (const item of items) {
+    if (item.label === DEVICE_LABEL) next.devices += item.amount;
+    else if (item.label === SUBSCRIPTION_LABEL) next.subscription += item.amount;
+    else if (item.label === FREE_DELIVERY_LABEL) next.marketing += item.amount;
+    else next.other += item.amount;
+  }
+  return next;
+}
+
+const nameKey = (name: string | undefined) => (name ?? "").replace(/\s+/g, " ").trim().toLocaleLowerCase();
+
+/** The branch row as the analysis stored it: pages may pass a copy renamed for display. */
+function storedBranch(period: StoredPeriod, b: BranchRow): BranchRow {
+  return period.branches.find((row) => row.branchId === b.branchId && row.invoiceBranchName === b.invoiceBranchName) ?? b;
+}
+
+/** Whether a CPC invoice line names this branch (as the orders file or the commission invoice spells it). */
+function cpcNamesBranch(charge: { branch: string }, b: BranchRow): boolean {
+  const key = nameKey(charge.branch);
+  return key !== "" && (key === nameKey(b.branch) || key === nameKey(b.invoiceBranchName));
+}
+
+function hungerStationExtras(period: StoredPeriod, shown: BranchRow): InvoiceExtras {
+  const b = storedBranch(period, shown);
+  let extras = NO_EXTRAS;
+  const invoiceBranch = b.invoiceBranchName ? period.invoice?.branches?.find((row) => row.branch === b.invoiceBranchName) : undefined;
+  if (invoiceBranch?.invoiceOnlyItems) {
+    extras = addItems(extras, invoiceBranch.invoiceOnlyItems);
+  } else if ((b.invoiceOnlyBranchCharges ?? 0) !== 0) {
+    // Saved before the invoice's items were kept apart: only their total is known.
+    extras = { ...extras, other: b.invoiceOnlyBranchCharges ?? 0 };
+  }
+  for (const charge of period.invoice?.cpcBranches ?? []) {
+    if (!cpcNamesBranch(charge, b)) continue;
+    extras = { ...extras, advertising: extras.advertising + charge.amountExVat, advertisingVat: extras.advertisingVat + charge.vat };
+  }
+  return extras;
+}
+
+function hungerStationAmounts(period: StoredPeriod, b: BranchRow): Amounts {
+  const extras = hungerStationExtras(period, b);
   const cardFees = (b.bankFeeSuccess ?? 0) + (b.bankFeeRefunded ?? 0) + (b.walletFee ?? 0);
-  const marketing = (b.rdfCampaigns ?? 0) + (b.jokerFees ?? 0);
-  const other = b.waitingTimeFees ?? 0;
-  const charges = (b.commission ?? 0) + cardFees + marketing + (b.compensation ?? 0) + other;
+  const marketing = (b.rdfCampaigns ?? 0) + (b.jokerFees ?? 0) + extras.marketing;
+  const other = (b.waitingTimeFees ?? 0) + extras.other;
+  const charges = (b.commission ?? 0) + cardFees + marketing + (b.compensation ?? 0) + other + extras.devices + extras.subscription;
   return {
     revenue: b.netSales,
     outputVat: b.grossSales - b.netSales,
@@ -126,20 +199,33 @@ function hungerStationAmounts(b: BranchRow): Amounts {
     marketing,
     compensation: b.compensation,
     otherFees: other,
-    inputVat: charges * VAT_RATE,
+    devices: extras.devices,
+    subscription: extras.subscription,
+    advertising: extras.advertising,
+    // The CPC invoice prints the VAT of each branch line; the other charges carry 15%.
+    inputVat: charges * VAT_RATE + extras.advertisingVat,
     memos: {
       sales_revenue: "Commissionable GMV بدون الضريبة",
       output_vat: "15% على المبيعات",
       commission_expense: "عمود Commission",
       payment_fee_expense: "رسوم البطاقات + المحافظ",
-      marketing_expense: "خصم التوصيل الممول من المطعم + Flash Deals",
+      marketing_expense:
+        extras.marketing !== 0
+          ? "خصم التوصيل الممول من المطعم + Flash Deals + رسوم حملات التوصيل المجاني من الفاتورة"
+          : "خصم التوصيل الممول من المطعم + Flash Deals",
       compensation_expense: "ورقة Compensated Orders",
-      other_platform_fee_expense: "رسوم وقت الانتظار",
-      input_vat: "15% على رسوم المنصة",
+      other_platform_fee_expense: extras.other !== 0 ? "رسوم وقت الانتظار + بنود الفاتورة فقط" : "رسوم وقت الانتظار",
+      device_expense: "الطابعات حسب فاتورة هنقرستيشن",
+      subscription_expense: "الاشتراك الشهري حسب فاتورة هنقرستيشن",
+      advertising_expense: "فاتورة الإعلانات CPC: سطر الفرع بدون الضريبة",
+      input_vat: extras.advertisingVat !== 0 ? "15% على رسوم المنصة + ضريبة فاتورة CPC" : "15% على رسوم المنصة",
       platform_receivable: "المبيعات شامل الضريبة − رسوم المنصة شامل الضريبة",
     },
     notes: [
       "المستحق من هنقرستيشن محسوب: المبيعات شامل الضريبة ناقص رسوم المنصة شامل الضريبة. إن كان جزء من الطلبات مدفوعاً نقداً للمطعم مباشرة فاخصمه من الذمة عند المطابقة مع كشف التحويل.",
+      ...(extras.advertising !== 0 || extras.devices !== 0 || extras.subscription !== 0 || extras.marketing !== 0 || extras.other !== 0
+        ? ["بنود الفاتورة فقط وفاتورة الإعلانات CPC تخصمها هنقرستيشن من نفس الرصيد، لذلك تُنقص المستحق منها."]
+        : []),
     ],
   };
 }
@@ -201,10 +287,48 @@ function jahezAmounts(b: BranchRow): Amounts {
   };
 }
 
-function amountsFor(platform: StoredPeriod["platform"], branch: BranchRow): Amounts {
-  if (platform === "hungerstation") return hungerStationAmounts(branch);
-  if (platform === "keeta") return keetaAmounts(branch);
+function amountsFor(period: StoredPeriod, branch: BranchRow): Amounts {
+  if (period.platform === "hungerstation") return hungerStationAmounts(period, branch);
+  if (period.platform === "keeta") return keetaAmounts(branch);
   return jahezAmounts(branch);
+}
+
+/**
+ * HungerStation charges no branch carries: invoice-only items printed only in the invoice summary, and CPC lines
+ * whose branch is not in the period. They belong to the period entry only.
+ */
+function hungerStationUnallocated(period: StoredPeriod): Amounts | null {
+  if (period.platform !== "hungerstation") return null;
+  let extras = addItems(NO_EXTRAS, period.invoice?.unallocatedCharges ?? []);
+  for (const charge of period.invoice?.cpcBranches ?? []) {
+    if (period.branches.some((branch) => cpcNamesBranch(charge, branch))) continue;
+    extras = { ...extras, advertising: extras.advertising + charge.amountExVat, advertisingVat: extras.advertisingVat + charge.vat };
+  }
+  const charges = extras.marketing + extras.other + extras.devices + extras.subscription;
+  if (charges === 0 && extras.advertising === 0) return null;
+  return {
+    revenue: 0,
+    outputVat: 0,
+    commission: 0,
+    paymentFees: 0,
+    marketing: extras.marketing,
+    compensation: 0,
+    otherFees: extras.other,
+    devices: extras.devices,
+    subscription: extras.subscription,
+    advertising: extras.advertising,
+    inputVat: charges * VAT_RATE + extras.advertisingVat,
+    memos: {
+      marketing_expense: "رسوم حملات التوصيل المجاني في ملخص الفاتورة",
+      other_platform_fee_expense: "بنود الفاتورة فقط في ملخص الفاتورة",
+      device_expense: "الطابعات في ملخص الفاتورة",
+      subscription_expense: "الاشتراك الشهري في ملخص الفاتورة",
+      advertising_expense: "سطور فاتورة CPC لفروع خارج الفترة",
+      input_vat: "15% على البنود + ضريبة فاتورة CPC",
+      platform_receivable: "تخصمها هنقرستيشن من الرصيد",
+    },
+    notes: ["بنود في ملخص فاتورة هنقرستيشن لا يذكرها قسم أي فرع تظهر في قيد الفترة فقط، لا في قيود الفروع."],
+  };
 }
 
 function buildEntry(
@@ -219,6 +343,9 @@ function buildEntry(
     ["marketing_expense", amounts.marketing],
     ["compensation_expense", amounts.compensation],
     ["other_platform_fee_expense", amounts.otherFees],
+    ["device_expense", amounts.devices ?? 0],
+    ["subscription_expense", amounts.subscription ?? 0],
+    ["advertising_expense", amounts.advertising ?? 0],
     ["input_vat", amounts.inputVat],
   ];
   const credits: Array<[JournalAccountKey, number]> = [
@@ -277,17 +404,24 @@ export function branchJournalEntry(period: StoredPeriod, branch: BranchRow, acco
   return buildEntry(
     withPlatform(period) + " · " + branch.branch,
     period.period_end,
-    amountsFor(period.platform, branch),
+    amountsFor(period, branch),
     accounts,
   );
 }
 
-/** Journal entry for the whole period: the sum of its branch entries, line by line. */
+/**
+ * Journal entry for the whole period: the sum of its branch entries, line by line, plus the HungerStation invoice
+ * charges no branch carries.
+ */
 export function periodJournalEntry(period: StoredPeriod, accounts: JournalAccounts = DEFAULT_JOURNAL_ACCOUNTS): JournalEntry {
   const totals = new Map<JournalAccountKey, { debit: number; credit: number; memo: string }>();
   const notes = new Set<string>();
-  for (const branch of period.branches) {
-    const entry = branchJournalEntry(period, branch, accounts);
+  const unallocated = hungerStationUnallocated(period);
+  const entries = [
+    ...period.branches.map((branch) => branchJournalEntry(period, branch, accounts)),
+    ...(unallocated ? [buildEntry("", period.period_end, unallocated, accounts)] : []),
+  ];
+  for (const entry of entries) {
     entry.notes.forEach((note) => notes.add(note));
     for (const line of entry.lines) {
       const current = totals.get(line.account.key) ?? { debit: 0, credit: 0, memo: line.memo };
