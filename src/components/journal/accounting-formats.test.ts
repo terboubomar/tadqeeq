@@ -2,7 +2,20 @@ import { describe, expect, test } from "bun:test";
 
 import type { JournalEntry } from "@/lib/journal-entries";
 
-import { dayFirst, entryReference, odooRows, qoyodRows, quickBooksRows, zohoRows, daftraRows, missingCodes } from "./accounting-formats";
+import {
+  daftraRows,
+  dayFirst,
+  entryReference,
+  hasCostCenters,
+  missingCodes,
+  nonNumericCostCenters,
+  odooAnalytic,
+  odooRows,
+  qoyodRows,
+  quickBooksRows,
+  zohoRows,
+} from "./accounting-formats";
+import { entryRows } from "./journal-export";
 
 const account = (key: string, code: string, name: string) => ({ key, code, name }) as JournalEntry["lines"][number]["account"];
 
@@ -63,3 +76,29 @@ describe("journal export layouts", () => {
     expect(missingCodes(journals)).toBe(true);
   });
 });
+
+describe("branch cost center on every line", () => {
+  const withCenter = [{ branch: "فرع الشمال", entry, number: 1, costCenter: "CC-101" }];
+  const withId = [{ branch: "فرع الشمال", entry, number: 1, costCenter: "12" }];
+
+  test("Excel (Tadqeeq), Zoho Books and QuickBooks carry the code on each line", () => {
+    expect(entryRows(entry, "CC-101").every((row) => row.costCenter === "CC-101")).toBe(true);
+    expect(zohoRows(withCenter).every((row) => row.costCenter === "CC-101")).toBe(true);
+    expect(quickBooksRows(withCenter).every((row) => row.className === "CC-101")).toBe(true);
+  });
+
+  test("Odoo takes the analytic account number as its distribution, and nothing for a non-numeric code", () => {
+    expect(odooAnalytic("12")).toBe('{"12":100}');
+    expect(odooRows(withId).every((row) => row.analytic === '{"12":100}')).toBe(true);
+    expect(odooRows(withCenter).every((row) => row.analytic === "")).toBe(true);
+    expect(nonNumericCostCenters(withCenter)).toBe(true);
+    expect(nonNumericCostCenters(withId)).toBe(false);
+  });
+
+  test("entries without a cost center leave the column empty", () => {
+    expect(hasCostCenters(journals)).toBe(false);
+    expect(zohoRows(journals).every((row) => row.costCenter === "")).toBe(true);
+    expect(hasCostCenters(withCenter)).toBe(true);
+  });
+});
+

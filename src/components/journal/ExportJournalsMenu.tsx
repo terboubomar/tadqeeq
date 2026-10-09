@@ -11,7 +11,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { ACCOUNTING_SYSTEMS, exportJournalsFor, missingCodes, type AccountingSystem } from "./accounting-formats";
+import {
+  ACCOUNTING_SYSTEMS,
+  exportJournalsFor,
+  hasCostCenters,
+  missingCodes,
+  nonNumericCostCenters,
+  type AccountingSystem,
+} from "./accounting-formats";
 import type { BranchJournal } from "./journal-export";
 
 /** Export button that asks which accounting system the file is for, then downloads it in that system's import layout. */
@@ -36,13 +43,18 @@ export function ExportJournalsMenu({
     try {
       if (system === "excel" && onExcel) onExcel();
       else exportJournalsFor(system, title, journals, firstNumber);
+      const warnings: string[] = [];
       if (target.needsCodes && missingCodes(journals)) {
-        toast.warning(
-          target.label + " يطابق الحسابات برمزها. بعض الحسابات بلا رمز فكُتب اسمها بدلاً منه؛ أضف الرموز من «حساباتي» ثم صدّر مرة أخرى.",
-        );
-      } else {
-        toast.success("تم تجهيز ملف " + target.label);
+        warnings.push(target.label + " يطابق الحسابات برمزها. بعض الحسابات بلا رمز فكُتب اسمها بدلاً منه؛ أضف الرموز من «حساباتي» ثم صدّر مرة أخرى.");
       }
+      if (target.costCenter === "none" && hasCostCenters(journals)) {
+        warnings.push("استيراد " + target.label + " لا يقبل مراكز التكلفة، فلم تُكتب في الملف؛ أضفها على القيود بعد الاستيراد.");
+      }
+      if (target.costCenter === "numeric" && nonNumericCostCenters(journals)) {
+        warnings.push("Odoo يأخذ مركز التكلفة برقم الحساب التحليلي (مثل 12). مراكز التكلفة غير الرقمية تُركت فارغة في الملف.");
+      }
+      if (warnings.length) toast.warning(warnings.join(" "), { duration: 10_000 });
+      else toast.success("تم تجهيز ملف " + target.label);
     } catch (error) {
       toast.error("تعذّر تصدير الملف: " + (error instanceof Error ? error.message : String(error)));
     }

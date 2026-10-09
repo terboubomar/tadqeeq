@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BookOpenCheck, CheckCircle2, Loader2, Settings2 } from "lucide-react";
+import { BookOpenCheck, CheckCircle2, Landmark, Loader2, Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -11,6 +11,9 @@ import { exportXlsx } from "@/lib/export";
 import { arabicDate, money } from "@/lib/format";
 import { saveJournalAccounts } from "@/lib/journal-accounts.functions";
 import { JOURNAL_ACCOUNTS_KEY, useJournalAccounts } from "@/components/journal/use-journal-accounts";
+import { journalCostCentersKey, useJournalCostCenters } from "@/components/journal/use-journal-cost-centers";
+import { saveJournalCostCenters } from "@/lib/journal-cost-centers.functions";
+import type { JournalPlatform } from "@/lib/journal-cost-centers";
 import { ExportJournalsMenu } from "@/components/journal/ExportJournalsMenu";
 import {
   type BranchJournal,
@@ -105,7 +108,16 @@ export function AccountsButton({ onClick }: { onClick: () => void }) {
 }
 
 /** Pop-up with one journal entry: accounts, debit, credit, memo, totals, notes, Excel export. */
-export function JournalEntryDialog({ entry, onClose }: { entry: JournalEntry | null; onClose: () => void }) {
+export function JournalEntryDialog({
+  entry,
+  costCenter,
+  onClose,
+}: {
+  entry: JournalEntry | null;
+  /** The branch's cost center, when the entry is one branch's. */
+  costCenter?: string;
+  onClose: () => void;
+}) {
   const [editing, setEditing] = useState(false);
 
   function exportEntry() {
@@ -114,7 +126,10 @@ export function JournalEntryDialog({ entry, onClose }: { entry: JournalEntry | n
       [
         {
           name: "القيد",
-          rows: [...entryRows(entry), { code: "", account: "الإجمالي", debit: entry.totalDebit, credit: entry.totalCredit, memo: entry.description }],
+          rows: [
+            ...entryRows(entry, costCenter),
+            { code: "", account: "الإجمالي", debit: entry.totalDebit, credit: entry.totalCredit, memo: entry.description },
+          ],
           columns: [...ENTRY_COLUMNS],
         },
       ],
@@ -135,6 +150,7 @@ export function JournalEntryDialog({ entry, onClose }: { entry: JournalEntry | n
               <DialogDescription>
                 {entry.description}
                 {entry.date ? " · بتاريخ " + arabicDate(entry.date) : ""}
+                {costCenter ? " · مركز التكلفة " + costCenter : ""}
               </DialogDescription>
             </DialogHeader>
 
@@ -145,7 +161,7 @@ export function JournalEntryDialog({ entry, onClose }: { entry: JournalEntry | n
             <div className="flex flex-wrap gap-2">
               <ExportJournalsMenu
                 title={entry.description}
-                journals={[{ branch: entry.description, entry }]}
+                journals={[{ branch: entry.description, entry, costCenter }]}
                 label="تصدير القيد"
                 variant="outline"
                 onExcel={exportEntry}
@@ -163,14 +179,17 @@ export function JournalEntryDialog({ entry, onClose }: { entry: JournalEntry | n
 /** Pop-up with one separate journal entry per branch, a jump list, and one Excel workbook for all of them. */
 export function BranchJournalsDialog({
   title,
+  platform,
   journals,
   onClose,
 }: {
   title: string;
+  platform: JournalPlatform;
   journals: BranchJournal[] | null;
   onClose: () => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [editingCenters, setEditingCenters] = useState(false);
   const unbalanced = journals?.filter((journal) => !isBalanced(journal.entry)).length ?? 0;
 
   function jumpTo(index: number) {
@@ -196,6 +215,7 @@ export function BranchJournalsDialog({
             <div className="flex flex-wrap gap-2">
               <ExportJournalsMenu title={title} journals={journals} label="تصدير كل القيود" />
               <AccountsButton onClick={() => setEditing(true)} />
+              <CostCentersButton onClick={() => setEditingCenters(true)} />
             </div>
 
             {journals.length > 1 ? (
@@ -230,6 +250,7 @@ export function BranchJournalsDialog({
                       </h3>
                       <span className="text-[12px] text-muted-foreground">
                         {journal.entry.date ? "بتاريخ " + arabicDate(journal.entry.date) : ""}
+                        {journal.costCenter ? " · مركز التكلفة " + journal.costCenter : ""}
                       </span>
                     </header>
                     <EntryTable entry={journal.entry} />
@@ -246,6 +267,7 @@ export function BranchJournalsDialog({
         ) : null}
       </DialogContent>
       <AccountsDialog open={editing} onClose={() => setEditing(false)} />
+      <CostCentersDialog open={editingCenters} platform={platform} journals={journals ?? []} onClose={() => setEditingCenters(false)} />
     </Dialog>
   );
 }
@@ -326,4 +348,104 @@ function toDraft(accounts: JournalAccounts): Record<JournalAccountKey, { code: s
       { code: accounts[key].code, name: accounts[key].name === DEFAULT_JOURNAL_ACCOUNTS[key].name ? "" : accounts[key].name },
     ]),
   ) as Record<JournalAccountKey, { code: string; name: string }>;
+}
+
+export function CostCentersButton({ onClick }: { onClick: () => void }) {
+  const { can } = useWorkspaceAccess();
+  if (!can("contracts.manage")) return null;
+  return (
+    <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={onClick}>
+      <Landmark className="size-4" />
+      مراكز التكلفة
+    </Button>
+  );
+}
+
+/** One cost center code per branch, saved under the platform's branch ID so later periods reuse it. */
+export function CostCentersDialog({
+  open,
+  platform,
+  journals,
+  onClose,
+}: {
+  open: boolean;
+  platform: JournalPlatform;
+  journals: BranchJournal[];
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const saved = useJournalCostCenters(platform);
+  const branches = journals.filter((journal) => journal.costCenterKey);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (open) setDraft(Object.fromEntries(branches.map((journal) => [journal.costCenterKey!, saved[journal.costCenterKey!] ?? ""])));
+    // Reset the form each time it opens from the saved codes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const save = useMutation({
+    mutationFn: () =>
+      saveJournalCostCenters({
+        data: {
+          platform,
+          branches: branches.map((journal) => ({
+            key: journal.costCenterKey!,
+            name: journal.branch,
+            costCenter: draft[journal.costCenterKey!] ?? "",
+          })),
+        },
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: journalCostCentersKey(platform) });
+      toast.success("تم حفظ مراكز التكلفة");
+      onClose();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
+      <DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader className="text-start sm:text-start">
+          <DialogTitle className="font-display text-lg">مراكز التكلفة</DialogTitle>
+          <DialogDescription>
+            رمز مركز التكلفة لكل فرع كما في نظامك المحاسبي. يظهر على كل سطر في قيد الفرع وفي ملفات التصدير، ويُحفظ للفترات القادمة.
+          </DialogDescription>
+        </DialogHeader>
+        {branches.length ? (
+          <div className="space-y-2">
+            {branches.map((journal) => (
+              <label
+                key={journal.costCenterKey}
+                className="grid gap-2 rounded-xl border border-border p-3 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center"
+              >
+                <span className="min-w-0 truncate text-[13px] font-medium">{journal.branch}</span>
+                <Input
+                  aria-label={"مركز تكلفة " + journal.branch}
+                  dir="ltr"
+                  placeholder="مثال: CC-101"
+                  value={draft[journal.costCenterKey!] ?? ""}
+                  maxLength={60}
+                  onChange={(event) => setDraft((current) => ({ ...current, [journal.costCenterKey!]: event.target.value }))}
+                  className="h-9 text-start font-mono"
+                />
+              </label>
+            ))}
+          </div>
+        ) : (
+          <p className="py-6 text-center text-sm text-muted-foreground">لا توجد فروع في هذه الفترة.</p>
+        )}
+        <div className="flex gap-2">
+          <Button type="button" disabled={save.isPending || !branches.length} onClick={() => save.mutate()} className="gap-1.5">
+            {save.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+            حفظ
+          </Button>
+          <Button type="button" variant="outline" onClick={onClose}>
+            إلغاء
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
