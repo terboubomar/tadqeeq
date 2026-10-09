@@ -50,8 +50,8 @@ const SOURCE_KINDS = new Set<OperationSourceKind>([
   "jahez_adjustments",
 ]);
 
-const TABLE_MISSING = "ميزة العمليات اليومية تحتاج تحديث قاعدة البيانات (migration 0049).";
-const CURRENT_MISSING = "العمليات اليومية تحتاج تحديث قاعدة البيانات (migration 0056).";
+const TABLE_MISSING = "ميزة «نبض» (المتابعة اليومية) تحتاج تحديث قاعدة البيانات (migration 0049).";
+const CURRENT_MISSING = "«نبض» (المتابعة اليومية) يحتاج تحديث قاعدة البيانات (migration 0056).";
 
 function operationError(error: { code?: string; message: string }): Error {
   if (/superseded_at/.test(error.message) && /does not exist|schema cache|Could not find/i.test(error.message)) {

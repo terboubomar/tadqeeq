@@ -1,4 +1,4 @@
-import { AlertTriangle, Eye, FileSpreadsheet, Megaphone, PieChart, Sparkles, Video, type LucideIcon } from "lucide-react";
+import { Activity, AlertTriangle, Eye, FileSpreadsheet, Megaphone, PieChart, Sparkles, Video, type LucideIcon } from "lucide-react";
 
 import type { ProductKey } from "@/lib/products";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ const ICONS: Record<ProductKey, LucideIcon> = {
   istirdad: Video,
   aaid: Megaphone,
   raqeeb: Eye,
+  nabd: Activity,
   ai: Sparkles,
 };
 

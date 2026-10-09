@@ -23,12 +23,13 @@ import { count } from "@/lib/format";
 import { operationPlatformLabel } from "@/lib/operations/catalog";
 import { isIncompleteDay } from "@/lib/operations/completeness";
 import { deleteOperationImport, getOperationMonth } from "@/lib/operations/operations.functions";
+import { PRODUCTS } from "@/lib/products";
 import type { OperationImportHistoryItem, OperationPlatform } from "@/lib/operations/types";
 
 const PLATFORM_IDS = new Set<OperationPlatform>(["hungerstation", "keeta", "jahez"]);
 
 export const Route = createFileRoute("/_authenticated/operations_/$platform_/$date")({
-  head: () => ({ meta: [{ title: "طلبات اليوم · العمليات اليومية · تدقيق" }] }),
+  head: () => ({ meta: [{ title: `طلبات اليوم · ${PRODUCTS.nabd.name} · تدقيق` }] }),
   component: DayPage,
 });
 
@@ -40,7 +41,7 @@ function DayPage() {
       <div className="rounded-2xl border border-border bg-card p-8 text-center">
         <p className="text-sm">اليوم المطلوب غير موجود.</p>
         <Link to="/operations" className="mt-3 inline-block text-sm font-semibold text-primary">
-          العودة إلى العمليات اليومية
+          العودة إلى {PRODUCTS.nabd.name}
         </Link>
       </div>
     );
@@ -96,7 +97,7 @@ function DayWorkspace({ platform, date }: { platform: OperationPlatform; date: s
       <PageHeader
         crumbs={[
           { label: "الرئيسية", to: "/dashboard" },
-          { label: "العمليات اليومية", to: "/operations" },
+          { label: PRODUCTS.nabd.name, to: "/operations" },
           { label },
           { label: date },
         ]}

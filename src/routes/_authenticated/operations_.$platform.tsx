@@ -18,6 +18,7 @@ import {
 import { operationCommissionRatio, operationCostRatio } from "@/lib/operations/details";
 import { monthLabel } from "@/lib/operations/months";
 import { getOperationMonth, importOperationFile } from "@/lib/operations/operations.functions";
+import { PRODUCTS } from "@/lib/products";
 import type { OperationImportHistoryItem, OperationPlatform, OperationSourceKind } from "@/lib/operations/types";
 import { MAX_UPLOAD_SIZE_LABEL, uploadSizeError } from "@/lib/upload-validation";
 import { cn } from "@/lib/utils";
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/_authenticated/operations_/$platform")({
         ? search["month"]
         : undefined,
   }),
-  head: () => ({ meta: [{ title: "تفاصيل المنصة · العمليات اليومية · تدقيق" }] }),
+  head: () => ({ meta: [{ title: `تفاصيل المنصة · ${PRODUCTS.nabd.name} · تدقيق` }] }),
   component: PlatformOperationsPage,
 });
 
@@ -140,7 +141,7 @@ function PlatformWorkspace({
       <PageHeader
         crumbs={[
           { label: "الرئيسية", to: "/dashboard" },
-          { label: "العمليات اليومية", to: "/operations" },
+          { label: PRODUCTS.nabd.name, to: "/operations" },
           { label: platformLabel(platform) },
         ]}
         title={
@@ -420,7 +421,7 @@ function InvalidPlatform() {
     <div className="rounded-2xl border border-border bg-card p-8 text-center">
       <p className="text-sm">المنصة المطلوبة غير موجودة.</p>
       <Link to="/operations" className="mt-3 inline-block text-sm font-semibold text-primary">
-        العودة إلى العمليات اليومية
+        العودة إلى {PRODUCTS.nabd.name}
       </Link>
     </div>
   );

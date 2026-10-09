@@ -53,7 +53,7 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
   {
     title: "العمليات",
     items: [
-      { to: "/operations", label: "العمليات اليومية", permission: "financials.read" },
+      productNav("nabd", "financials.read"),
     ],
   },
   {
