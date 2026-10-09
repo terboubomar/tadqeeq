@@ -13,6 +13,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ActionBar, NumberTiles, PageHeader } from "@/components/workspace/PageKit";
 import { listBranchRegistry, resolveBranchName } from "@/lib/branch-registry";
+import { displayBranchName } from "@/lib/reporting-metrics";
 import { arabicDate, money } from "@/lib/format";
 import { branchJournalEntry, periodJournalEntry, type JournalEntry } from "@/lib/journal-entries";
 import { useSelectedPeriod } from "@/lib/use-period";
@@ -44,7 +45,7 @@ function JournalPage() {
   const journals = useMemo<BranchJournal[]>(() => {
     if (!selected) return [];
     return selected.branches.map((branch) => {
-      const name = resolveBranchName(registry, selected.platform, branch.branchId, branch.branch) ?? branch.branch;
+      const name = resolveBranchName(registry, selected.platform, branch.branchId, branch.branch) ?? displayBranchName(branch.branch);
       return { branch: name, entry: branchJournalEntry(selected, { ...branch, branch: name }, accounts) };
     });
   }, [selected, registry, accounts]);

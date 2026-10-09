@@ -12,6 +12,7 @@ import {
 import type { BranchRow } from "@/lib/analysis/types";
 import { normalizeCheckMetadata } from "@/lib/analysis/check-metadata";
 import type { StoredPeriod } from "@/lib/periods";
+import { PLATFORM_COST_FORMULA_AR, platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
 
 import { APP_KNOWLEDGE, normalizeAppRoute } from "./app-knowledge";
 
@@ -178,7 +179,7 @@ class FactBuilder {
 
 function addPeriodFacts(builder: FactBuilder, period: StoredPeriod, exceptions: AuditException[]) {
   const s = period.summary;
-  const platformCostRate = s.grossSales > 0 ? s.totalCharges / s.grossSales : 0;
+  const platformCostRate = platformCostPct(totalPlatformCharges(period.platform, s), s.grossSales) ?? 0;
   const exceptionSummary = summarizeExceptions(exceptions);
 
   builder.add("period", "عدد الطلبات", String(s.orders), {
@@ -209,9 +210,10 @@ function addPeriodFacts(builder: FactBuilder, period: StoredPeriod, exceptions: 
     value: s.totalCharges,
     unit: "sar",
   });
-  builder.add("period", "تكلفة المنصة كنسبة من المبيعات", pct(platformCostRate), {
+  builder.add("period", "نسبة تكلفة المنصة من إجمالي المبيعات", pct(platformCostRate), {
     valuePct: platformCostRate * 100,
     unit: "percent",
+    formula: PLATFORM_COST_FORMULA_AR,
   });
 
   builder.add("period", "الاستثناءات المفتوحة", String(exceptionSummary.openCount), {
@@ -260,7 +262,7 @@ function addPeriodFacts(builder: FactBuilder, period: StoredPeriod, exceptions: 
     });
   } else if (period.platform === "keeta") {
     if (finite(s.keetaPlatformCostPct) !== null) {
-      builder.add("period", "نسبة تكلفة منصة كيتا", pct(s.keetaPlatformCostPct ?? 0), {
+      builder.add("period", "نسبة تكلفة كيتا من المبيعات بدون الضريبة", pct(s.keetaPlatformCostPct ?? 0), {
         valuePct: (s.keetaPlatformCostPct ?? 0) * 100,
         unit: "percent",
       });
