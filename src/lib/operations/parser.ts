@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 
 import type {
   OperationAdjustment,
+  OperationBranchSummary,
   OperationImportSummary,
   OperationOrder,
   ParsedOperationImport,
@@ -159,11 +160,43 @@ function oneBusinessDate(orders: OperationOrder[], adjustments: OperationAdjustm
   return [...dates][0]!;
 }
 
+/** Each branch's totals, largest sales first. */
+export function branchSummaries(orders: OperationOrder[]): OperationBranchSummary[] {
+  const byKey = new Map<string, OperationBranchSummary>();
+  for (const order of orders) {
+    const key = order.branchId || order.branchName || "—";
+    const branch = byKey.get(key) ?? {
+      key,
+      branchId: order.branchId,
+      branchName: order.branchName,
+      orderCount: 0,
+      grossSales: 0,
+      chargesTotal: 0,
+      commissionAmount: 0,
+      settlementAmount: 0,
+      cancellationCount: 0,
+      complaintCount: 0,
+      refundCount: 0,
+    };
+    branch.branchName ??= order.branchName;
+    branch.orderCount += order.excludedFromSales ? 0 : 1;
+    branch.grossSales = round(branch.grossSales + order.grossSales);
+    branch.chargesTotal = round(branch.chargesTotal + order.chargesTotal);
+    branch.commissionAmount = round(branch.commissionAmount + order.commissionAmount);
+    branch.settlementAmount = round(branch.settlementAmount + order.settlementAmount);
+    branch.cancellationCount += /cancel/i.test(order.status ?? "") ? 1 : 0;
+    branch.complaintCount += order.complaint ? 1 : 0;
+    branch.refundCount += order.refundType || (order.refundAmount ?? 0) !== 0 ? 1 : 0;
+    byKey.set(key, branch);
+  }
+  return [...byKey.values()].sort((a, b) => b.grossSales - a.grossSales);
+}
+
 function summarize(
   orders: OperationOrder[],
   adjustments: OperationAdjustment[],
 ): OperationImportSummary {
-  return orders.reduce<OperationImportSummary>(
+  const totals = orders.reduce<OperationImportSummary>(
     (summary, order) => ({
       ...summary,
       orderCount: summary.orderCount + (order.excludedFromSales ? 0 : 1),
@@ -207,6 +240,7 @@ function summarize(
       { ...EMPTY_SUMMARY },
     ),
   );
+  return orders.length ? { ...totals, branches: branchSummaries(orders) } : totals;
 }
 
 function uniqueOrders(orders: OperationOrder[]): OperationOrder[] {

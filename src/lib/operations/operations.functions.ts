@@ -30,6 +30,10 @@ export const getOperationImportDetail = createServerFn({ method: "POST" })
       platform: z.enum(["hungerstation", "keeta", "jahez"]),
       page: z.number().int().min(1).max(10_000),
       pageSize: z.number().int().min(10).max(100),
+      search: z.string().max(120).optional(),
+      filter: z.enum(["all", "cancelled", "complaints", "refunds"]).optional(),
+      branchId: z.string().max(200).optional(),
+      branchName: z.string().max(200).optional(),
     }),
   )
   .handler(({ data }) => getOperationImportDetailOnServer(data));

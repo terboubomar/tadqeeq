@@ -41,6 +41,21 @@ export interface OperationAdjustment {
   rawData: Record<string, string | number | boolean | null>;
 }
 
+/** One branch's totals within an upload or a month (orders excluded from sales are not counted as orders). */
+export interface OperationBranchSummary {
+  key: string;
+  branchId: string | null;
+  branchName: string | null;
+  orderCount: number;
+  grossSales: number;
+  chargesTotal: number;
+  commissionAmount: number;
+  settlementAmount: number;
+  cancellationCount: number;
+  complaintCount: number;
+  refundCount: number;
+}
+
 export interface OperationImportSummary {
   orderCount: number;
   grossSales: number;
@@ -63,6 +78,8 @@ export interface OperationImportSummary {
   adjustmentCredit: number;
   matchedAdjustments: number;
   unmatchedAdjustments: number;
+  /** Per-branch totals; absent on uploads saved before branches were kept. */
+  branches?: OperationBranchSummary[];
 }
 
 export interface ParsedOperationImport {
@@ -80,6 +97,8 @@ export interface OperationImportResult {
   businessDate: string;
   sourceKind: OperationSourceKind;
   rows: number;
+  orderCount: number;
+  grossSales: number;
   matchedAdjustments: number;
   unmatchedAdjustments: number;
 }
@@ -106,6 +125,19 @@ export interface OperationPlatformMonth {
   forecastCharges: number | null;
   forecastSettlement: number | null;
   forecastMissingDays: number[];
+  /** One entry per uploaded day (orders file), oldest first. */
+  days: OperationDay[];
+  branches: OperationBranchSummary[];
+  /** False when some of the month's uploads predate per-branch totals (re-upload them to complete the list). */
+  branchesComplete: boolean;
+}
+
+export interface OperationDay {
+  date: string;
+  orderCount: number;
+  grossSales: number;
+  chargesTotal: number;
+  settlementAmount: number;
 }
 
 export interface OperationImportHistoryItem {
@@ -164,11 +196,15 @@ export interface OperationAdjustmentDetail {
   comment: string | null;
 }
 
+export type OperationOrderFilter = "all" | "cancelled" | "complaints" | "refunds";
+
 export interface OperationImportDetail {
   importItem: OperationImportHistoryItem;
   orders: OperationOrderDetail[];
   adjustments: OperationAdjustmentDetail[];
   totalRows: number;
+  /** Totals of every row matching the search and filter, across all pages (orders files only). */
+  totals: { grossSales: number; chargesTotal: number; settlementAmount: number } | null;
   page: number;
   pageSize: number;
 }

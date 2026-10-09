@@ -1,15 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowLeft, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Loader2, RefreshCw, Upload } from "lucide-react";
 import { useState } from "react";
 
 import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
+import { MonthPicker } from "@/components/operations/OperationsKit";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/workspace/PageKit";
 import { count, percent, sar } from "@/lib/format";
 import { currentOperationMonth, OPERATION_PLATFORMS } from "@/lib/operations/catalog";
 import { operationCommissionRatio, operationCostRatio } from "@/lib/operations/details";
+import { monthLabel } from "@/lib/operations/months";
 import { getOperationMonth } from "@/lib/operations/operations.functions";
 
 export const Route = createFileRoute("/_authenticated/operations")({
@@ -39,17 +40,7 @@ function OperationsPage() {
         crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "العمليات اليومية" }]}
         title="العمليات اليومية"
         subtitle="نظرة سريعة على تكلفة كل منصة. افتح المنصة لمراجعة الملفات والطلبات بالتفصيل."
-        aside={
-          <label className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
-            الشهر
-            <Input
-              type="month"
-              value={month}
-              onChange={(event) => setMonth(event.target.value)}
-              className="num h-9 w-[152px] bg-card"
-            />
-          </label>
-        }
+        aside={<MonthPicker month={month} onChange={setMonth} />}
       />
 
       {query.isError ? (
@@ -62,6 +53,27 @@ function OperationsPage() {
             <RefreshCw className="size-3.5" /> إعادة المحاولة
           </Button>
         </div>
+      ) : null}
+
+      {overview && overview.imports.length === 0 ? (
+        <section className="rounded-2xl border border-dashed border-border bg-card px-5 py-6">
+          <h2 className="font-display text-[15px] font-bold">لا توجد ملفات في {monthLabel(month)}</h2>
+          <ol className="mt-3 list-inside list-decimal space-y-1.5 text-[12.5px] leading-6 text-muted-foreground">
+            <li>صدّر ملف الطلبات اليومي من بوابة كل منصة (يوم لكل ملف).</li>
+            <li>افتح المنصة أدناه واسحب ملفات الأيام دفعة واحدة؛ يُقرأ تاريخ كل ملف تلقائياً.</li>
+            <li>تابع التغطية في التقويم، والمؤشرات والفروع والطلبات بعد الرفع.</li>
+          </ol>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {OPERATION_PLATFORMS.map((platform) => (
+              <Button key={platform.id} asChild variant="outline" size="sm" className="gap-1.5">
+                <Link to="/operations/$platform" params={{ platform: platform.id }} search={{ month }}>
+                  <Upload className="size-3.5" />
+                  <PlatformName platform={platform.id} />
+                </Link>
+              </Button>
+            ))}
+          </div>
+        </section>
       ) : null}
 
       <section className="overflow-hidden rounded-2xl border border-border bg-ink text-ink-foreground">
