@@ -6,7 +6,7 @@
  * In running Arabic text, quote the name: «استرداد».
  */
 
-export type ProductKey = "mutabiq" | "kashif" | "radar" | "istirdad" | "aaid" | "raqeeb" | "ai";
+export type ProductKey = "mutabiq" | "kashif" | "radar" | "istirdad" | "aaid" | "raqeeb" | "nabd" | "ai";
 
 export interface Product {
   key: ProductKey;
@@ -25,6 +25,7 @@ export const PRODUCTS: Record<ProductKey, Product> = {
   radar: { key: "radar", name: "رادار", nameEn: "Radar", descriptor: "مركز الاستثناءات", descriptorEn: "Exceptions center", path: "/exceptions" },
   istirdad: { key: "istirdad", name: "استرداد", nameEn: "Istirdad", descriptor: "مركز التعويضات", descriptorEn: "Compensation center", path: "/compensation" },
   aaid: { key: "aaid", name: "عائد", nameEn: "Aaid", descriptor: "عائد العروض والإعلانات", descriptorEn: "Promotion & ad ROI", path: "/promotions" },
+  nabd: { key: "nabd", name: "نَبْض", nameEn: "Nabd", descriptor: "المتابعة اليومية", descriptorEn: "Daily tracking", path: "/operations" },
   raqeeb: { key: "raqeeb", name: "رقيب", nameEn: "Raqeeb", descriptor: "المراقب الذكي", descriptorEn: "Smart watch", path: "/dashboard" },
   ai: { key: "ai", name: "Tadqeeq AI", nameEn: "Tadqeeq AI", descriptor: "المساعد الذكي", descriptorEn: "AI assistant", path: "/ai" },
 };

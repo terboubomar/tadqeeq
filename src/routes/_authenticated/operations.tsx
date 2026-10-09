@@ -6,6 +6,7 @@ import { useState } from "react";
 import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
 import { MonthPicker } from "@/components/operations/OperationsKit";
 import { Button } from "@/components/ui/button";
+import { ProductName } from "@/components/ProductName";
 import { PageHeader } from "@/components/workspace/PageKit";
 import { count, percent, sar } from "@/lib/format";
 import { currentOperationMonth, OPERATION_PLATFORMS, operationPlatformLabel } from "@/lib/operations/catalog";
@@ -21,11 +22,12 @@ import {
   WATCHLIST_MIN_ORDERS,
 } from "@/lib/operations/overview";
 import type { OperationPlatform, OperationPlatformMonth } from "@/lib/operations/types";
+import { PRODUCTS, productPageTitle } from "@/lib/products";
 
 export const Route = createFileRoute("/_authenticated/operations")({
   head: () => ({
     meta: [
-      { title: "العمليات اليومية · تدقيق" },
+      { title: productPageTitle("nabd") },
       { name: "description", content: "متابعة أداء منصات التوصيل وفتح ملفات الطلبات اليومية." },
     ],
   }),
@@ -46,8 +48,8 @@ function OperationsPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "العمليات اليومية" }]}
-        title="العمليات اليومية"
+        crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "العمليات" }, { label: PRODUCTS.nabd.name }]}
+        title={<ProductName product="nabd" />}
         subtitle="نظرة سريعة على تكلفة كل منصة. افتح المنصة لمراجعة الملفات والطلبات بالتفصيل."
         aside={<MonthPicker month={month} onChange={setMonth} />}
       />
@@ -115,7 +117,7 @@ function OperationsPage() {
       {hasData ? <DataHealth platforms={platforms} month={month} /> : null}
 
       {hasData ? (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <SalesShare platforms={platforms} />
           <BranchWatchlist platforms={platforms} month={month} />
         </div>
