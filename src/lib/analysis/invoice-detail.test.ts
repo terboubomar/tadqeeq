@@ -50,7 +50,11 @@ const INVOICE = [
   DETAILS,
   ONLINE,
   SOA,
-  ...branchPages("Motto - Uhud", "RDF campaigns 30.0 12.35 370.44 Monthly subscription fees 1.0 200.0 200.0", "1,437.57"),
+  ...branchPages(
+    "Motto - Uhud",
+    "RDF campaigns 30.0 12.35 370.44 Monthly subscription fees 1.0 200.0 200.0 Avoidable wait time fees ÿ þ 7 9.13 100.0% 9.13",
+    "1,446.70",
+  ),
   ...branchPages("PAST - al mazrua", "Printers 1.0 500.0 500.0 Customer Compensation 104.35 100.0% 104.35", "1,471.48"),
   ...branchPages("PAST - Al Hamadaniyah", "Printers 1.0 500.0 500.0", "1,367.13"),
   ...branchPages("PAST - Al Khubar Ash shamaliyah", "Printers 1.0 500.0 500.0", "1,367.13"),
@@ -126,5 +130,21 @@ describe("statement of account (task 3)", () => {
 
   test("an invoice without the section has none", () => {
     expect(parseHungerInvoice([SUMMARY, DETAILS, ONLINE].join("\n")).statementOfAccount).toBeUndefined();
+  });
+});
+
+describe("branch waiting time fee", () => {
+  test("reads the per-branch row as the invoice prints it", () => {
+    expect(branch("Motto - Uhud")?.waitingTimeFees).toBe(9.13);
+  });
+
+  test("still reads the older wording", () => {
+    const [detail, online] = branchPages("Branch A", "Avoidable Waiting Time Fee 12.0 100.0% 12.0", "866.73");
+    const parsed = parseHungerInvoice([SUMMARY, DETAILS, ONLINE, detail, online].join("\n"));
+    expect(parsed.branches?.[0]?.waitingTimeFees).toBe(12);
+  });
+
+  test("a branch without the row has none", () => {
+    expect(branch("PAST - al mazrua")?.waitingTimeFees).toBeUndefined();
   });
 });
