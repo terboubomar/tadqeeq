@@ -82,6 +82,7 @@ import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
+import { Route as AuthenticatedOperationsPlatformDateRouteImport } from './routes/_authenticated/operations_.$platform_.$date'
 import { Route as ApiCompensationEvidenceEvidenceIdMediaRouteImport } from './routes/api/compensation/evidence/$evidenceId/media'
 
 const TermsRoute = TermsRouteImport.update({
@@ -457,6 +458,12 @@ const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
   path: '/lovable/email/auth/preview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedOperationsPlatformDateRoute =
+  AuthenticatedOperationsPlatformDateRouteImport.update({
+    id: '/operations_/$platform_/$date',
+    path: '/operations/$platform/$date',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const ApiCompensationEvidenceEvidenceIdMediaRoute =
   ApiCompensationEvidenceEvidenceIdMediaRouteImport.update({
     id: '/api/compensation/evidence/$evidenceId/media',
@@ -534,6 +541,7 @@ export interface FileRoutesByFullPath {
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
+  '/operations/$platform/$date': typeof AuthenticatedOperationsPlatformDateRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -607,6 +615,7 @@ export interface FileRoutesByTo {
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
+  '/operations/$platform/$date': typeof AuthenticatedOperationsPlatformDateRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -684,6 +693,7 @@ export interface FileRoutesById {
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients_/$workspaceId': typeof OpsClientsWorkspaceIdRoute
+  '/_authenticated/operations_/$platform_/$date': typeof AuthenticatedOperationsPlatformDateRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -761,6 +771,7 @@ export interface FileRouteTypes {
     | '/api/public/csp-report'
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
+    | '/operations/$platform/$date'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -834,6 +845,7 @@ export interface FileRouteTypes {
     | '/api/public/csp-report'
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
+    | '/operations/$platform/$date'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -910,6 +922,7 @@ export interface FileRouteTypes {
     | '/api/public/csp-report'
     | '/api/public/telegram-webhook'
     | '/ops/clients_/$workspaceId'
+    | '/_authenticated/operations_/$platform_/$date'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -1470,6 +1483,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/operations_/$platform_/$date': {
+      id: '/_authenticated/operations_/$platform_/$date'
+      path: '/operations/$platform/$date'
+      fullPath: '/operations/$platform/$date'
+      preLoaderRoute: typeof AuthenticatedOperationsPlatformDateRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/compensation/evidence/$evidenceId/media': {
       id: '/api/compensation/evidence/$evidenceId/media'
       path: '/api/compensation/evidence/$evidenceId/media'
@@ -1500,6 +1520,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSubscribeRoute: typeof AuthenticatedSubscribeRoute
   AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
   AuthenticatedOperationsPlatformRoute: typeof AuthenticatedOperationsPlatformRoute
+  AuthenticatedOperationsPlatformDateRoute: typeof AuthenticatedOperationsPlatformDateRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -1522,6 +1543,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSubscribeRoute: AuthenticatedSubscribeRoute,
   AuthenticatedTeamRoute: AuthenticatedTeamRoute,
   AuthenticatedOperationsPlatformRoute: AuthenticatedOperationsPlatformRoute,
+  AuthenticatedOperationsPlatformDateRoute:
+    AuthenticatedOperationsPlatformDateRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

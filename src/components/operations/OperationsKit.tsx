@@ -45,9 +45,9 @@ export function CoverageCalendar({
 }: {
   month: string;
   daysInMonth: number;
-  /** Day of month → the current upload of that day. */
+  /** Day of month → what opening that day passes on (its date). */
   uploaded: Map<number, string>;
-  onOpen: (importId: string) => void;
+  onOpen: (value: string) => void;
 }) {
   const [year, monthNumber] = month.split("-").map(Number);
   const offset = new Date(Date.UTC(year!, monthNumber! - 1, 1)).getUTCDay();
@@ -67,17 +67,17 @@ export function CoverageCalendar({
         ))}
         {Array.from({ length: daysInMonth }, (_, index) => {
           const day = index + 1;
-          const importId = uploaded.get(day);
-          const missing = !importId && day < lastUploaded;
+          const value = uploaded.get(day);
+          const missing = !value && day < lastUploaded;
           const future = isCurrentMonth && day > today.getDate();
           const label = `${day} ${monthLabel(month)}`;
-          if (importId) {
+          if (value) {
             return (
               <button
                 key={day}
                 type="button"
-                onClick={() => onOpen(importId)}
-                title={label + " · مرفوع، اضغط لفتح الملف"}
+                onClick={() => onOpen(value)}
+                title={label + " · مرفوع، اضغط لفتح اليوم"}
                 aria-label={label + " · مرفوع"}
                 className="num grid h-8 place-items-center rounded-md bg-success/15 text-[11.5px] font-semibold text-success hover:bg-success/25"
               >

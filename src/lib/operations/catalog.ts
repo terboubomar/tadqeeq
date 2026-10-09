@@ -51,3 +51,9 @@ export function currentOperationMonth(): string {
   const today = new Date();
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
 }
+
+export function operationPlatformLabel(platform: OperationPlatform): string {
+  if (platform === "hungerstation") return "هنقرستيشن";
+  if (platform === "keeta") return "كيتا";
+  return "جاهز";
+}
