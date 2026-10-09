@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { parseHungerInvoice } from "./pdf";
+import { parseCpcInvoice, parseHungerInvoice } from "./pdf";
 
 /**
  * A HungerStation commission invoice laid out like HS-2026/9-4871148 (one page per line, as
@@ -146,5 +146,40 @@ describe("branch waiting time fee", () => {
 
   test("a branch without the row has none", () => {
     expect(branch("PAST - al mazrua")?.waitingTimeFees).toBeUndefined();
+  });
+});
+
+describe("CPC invoice lines per branch", () => {
+  const cpc = (lines: string) =>
+    [
+      "Billing Instructions Cost per click (CPC) invoice contains the no. of clicks used per branch based on the agreed budget.",
+      "Each branch has a separate line in the invoice. HS-ADS-2026/9-0000001",
+      "Invoice Summary VAT Amount ÿ þ 7",
+      lines,
+      "Total Invoice Value Before VAT SAR 12898.64 ÿ þ VAT Value( 15.0 %) SAR 1934.79 % ( 15.0 )",
+      "Total Invoice Value After VAT SAR 14833.43 ÿ þ Total Invoice Net Value SAR 14833.43",
+    ].join("\n");
+  const LINES = [
+    "Booking for promoted places for branch Brand - North 854.98 5699.84 ÿ þ ? ' - ÿ þ",
+    "Booking for promoted places for branch Brand - South 1079.82 7198.8 ÿ þ ? ' - ÿ þ",
+  ].join(" ");
+
+  test("reads each branch line with its amount and VAT, in the invoice's VAT, Amount order", () => {
+    const figures = parseCpcInvoice(cpc(LINES));
+    expect(figures).toMatchObject({ totalExVat: 12898.64, vat: 1934.79, totalIncVat: 14833.43 });
+    expect(figures.cpcBranches).toEqual([
+      { branch: "Brand - North", amountExVat: 5699.84, vat: 854.98 },
+      { branch: "Brand - South", amountExVat: 7198.8, vat: 1079.82 },
+    ]);
+  });
+
+  test("lines that do not add up to the total before VAT are not kept", () => {
+    const figures = parseCpcInvoice(cpc(LINES.replace("7198.8", "7000.0")));
+    expect(figures.cpcBranches).toBeUndefined();
+    expect(figures.totalIncVat).toBe(14833.43);
+  });
+
+  test("an invoice with totals only has no branch lines", () => {
+    expect(parseCpcInvoice(cpc("")).cpcBranches).toBeUndefined();
   });
 });

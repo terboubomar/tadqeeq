@@ -1,4 +1,5 @@
 import type {
+  CpcBranchCharge,
   HungerInvoiceBranch,
   InvoiceChargeItem,
   InvoiceFigures,
@@ -444,7 +445,7 @@ export function parseCpcInvoice(raw: string): InvoiceFigures {
     /VAT Value\s*\(\s*[\d.]+\s*%\s*\)\s*(?:SAR\s*)?(\(?-?[\d,]+\.\d{1,2}\)?)/i,
   );
 
-  return build({
+  const figures = build({
     totalExVat: amountAfter(
       source,
       "Total Invoice Value Before VAT",
@@ -463,6 +464,27 @@ export function parseCpcInvoice(raw: string): InvoiceFigures {
       source.match(/HS-ADS-[A-Za-z0-9/-]+/i)?.[0] ??
       source.match(/HS-CPC-[A-Za-z0-9/-]+/i)?.[0],
   });
+  const cpcBranches = parseCpcBranches(source, figures.totalExVat);
+  return cpcBranches.length ? { ...figures, cpcBranches } : figures;
+}
+
+/**
+ * The invoice summary's per-branch lines: "… for branch <name> <VAT> <Amount>", in the order of its
+ * "VAT Amount" columns. Kept only when the amounts add up to the total before VAT, so a misread line
+ * never produces a split that disagrees with the invoice.
+ */
+function parseCpcBranches(source: string, totalExVat: number | undefined): CpcBranchCharge[] {
+  if (totalExVat === undefined) return [];
+  const re = new RegExp(`\\bfor branch\\s+(.+?)\\s+(${NUM})\\s+(${NUM})`, "gi");
+  const rows: CpcBranchCharge[] = [];
+  for (const match of source.matchAll(re)) {
+    const vat = toNumber(match[2]!);
+    const amountExVat = toNumber(match[3]!);
+    if (!Number.isFinite(vat) || !Number.isFinite(amountExVat)) return [];
+    rows.push({ branch: match[1]!.trim(), amountExVat, vat });
+  }
+  const sum = rows.reduce((total, row) => total + row.amountExVat, 0);
+  return rows.length && Math.abs(sum - totalExVat) < 0.05 ? rows : [];
 }
 
 const KEETA_GAP = "(?:[^0-9-]|-(?![\\d,]+\\.\\d)|\\d(?![\\d,]*\\.\\d))";

@@ -727,7 +727,10 @@ export function analyzeHungerStationSheets(
   summary.totalCollections = sum((row) => row.totalCollections ?? 0);
 
   const invoice = options.invoice ?? { lines: [] };
-  if (options.cpcInvoice?.totalIncVat) invoice.cpc = options.cpcInvoice.totalIncVat;
+  if (options.cpcInvoice?.totalIncVat) {
+    invoice.cpc = options.cpcInvoice.totalIncVat;
+    if (options.cpcInvoice.cpcBranches?.length) invoice.cpcBranches = options.cpcInvoice.cpcBranches;
+  }
 
   // Branch identity must be independent from the values being audited.
   // Match by normalized name first. When both sources contain exactly one
