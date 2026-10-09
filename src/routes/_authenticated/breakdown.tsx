@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/AppShell";
 import { BarList, ChartCard, StatTiles } from "@/components/dash/DashKit";
 import { Button } from "@/components/ui/button";
 import { exportXlsx, type ExportColumn } from "@/lib/export";
+import { vatBreakdown } from "@/lib/reporting-metrics";
 import { count, money, percent, sar } from "@/lib/format";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { keetaCostSplit, keetaOutsideInvoice } from "@/lib/keeta-cost";
@@ -125,6 +126,17 @@ function BreakdownPage() {
     { key: "label", header: "البند", type: "text" },
     { key: "amount", header: "المبلغ", type: "money" },
   ];
+  // Every platform's charge lines are stored before VAT.
+  const chargeColumns: ExportColumn<Line>[] = [columns[0]!, { key: "amount", header: "المبلغ (بدون الضريبة)", type: "money" }];
+  const vat = vatBreakdown(selected);
+  const vatSource = vat?.source === "invoice" ? "حسب الفاتورة" : "محتسبة: 15% من الرسوم";
+  const vatRows: Line[] = vat
+    ? [
+        { label: `رسوم المنصة (بدون الضريبة) · ${vatSource}`, amount: vat.totalChargesExVat },
+        { label: `ضريبة القيمة المضافة 15% · ${vatSource}`, amount: vat.vat15Pct },
+        { label: `رسوم المنصة (شامل الضريبة) · ${vatSource}`, amount: vat.totalChargesIncVat },
+      ]
+    : [];
 
   const ranked = charges.map((line, index) => ({ ...line, color: COLORS[index % COLORS.length] })).sort((x, y) => y.amount - x.amount);
   const largest = ranked[0];
@@ -148,8 +160,9 @@ function BreakdownPage() {
           onClick={() =>
             exportXlsx(
               [
-                { name: isHunger ? "الخصومات" : "تكاليف المنصة", rows: charges, columns },
+                { name: isHunger ? "الخصومات" : "تكاليف المنصة", rows: charges, columns: chargeColumns },
                 { name: isHunger ? "الخصومات التسويقية" : "مؤشرات التسوية", rows: discounts, columns },
+                ...(vatRows.length ? [{ name: "الضريبة", rows: vatRows, columns }] : []),
               ],
               `breakdown-${selected.period_start ?? "period"}`,
             )
@@ -183,7 +196,7 @@ function BreakdownPage() {
               ]
             : [
                 {
-                  label: isHunger ? "إجمالي خصومات المنصة" : "إجمالي تكلفة المنصة (بدون الضريبة)",
+                  label: isHunger ? "إجمالي خصومات المنصة (بدون الضريبة)" : "إجمالي تكلفة المنصة (بدون الضريبة)",
                   value: sar(total),
                   icon: Receipt,
                   tone: "negative" as const,
@@ -196,7 +209,7 @@ function BreakdownPage() {
       />
 
       <ChartCard
-        title={isHunger ? "تكوين خصومات المنصة" : isJahez ? "تكوين فاتورة جاهز بدون الضريبة" : "تكوين تكلفة كيتا بدون الضريبة"}
+        title={isHunger ? "تكوين خصومات المنصة بدون الضريبة" : isJahez ? "تكوين فاتورة جاهز بدون الضريبة" : "تكوين تكلفة كيتا بدون الضريبة"}
         action={<span className="text-[11.5px] text-muted-foreground">نسبة كل بند من إجمالي تكلفة المنصة</span>}
       >
         <div className="flex h-3 overflow-hidden rounded-full bg-muted">
