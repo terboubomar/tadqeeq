@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ChevronDown, ChevronLeft, ChevronRight, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, Loader2, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/workspace/PageKit";
 import { count } from "@/lib/format";
 import { operationPlatformLabel } from "@/lib/operations/catalog";
+import { isIncompleteDay } from "@/lib/operations/completeness";
 import { deleteOperationImport, getOperationMonth } from "@/lib/operations/operations.functions";
 import type { OperationImportHistoryItem, OperationPlatform } from "@/lib/operations/types";
 
@@ -185,6 +186,17 @@ function DayWorkspace({ platform, date }: { platform: OperationPlatform; date: s
             </details>
           ) : null}
         </section>
+      ) : null}
+
+      {selected && selected.sourceKind !== "jahez_adjustments" && isIncompleteDay(selected.summary) ? (
+        <div className="flex items-start gap-3 rounded-2xl border border-warning/40 bg-warning/15 px-5 py-3 text-[12px] leading-6">
+          <AlertTriangle className="mt-1 size-4 shrink-0 text-warning" />
+          <p>
+            هذا الملف يبدو غير مكتمل: {count(selected.summary.unsettledOrderCount ?? 0)} من {count(selected.summary.orderCount)} طلب
+            بلا عمولة أو أرباح، غالباً لأنه صُدّر قبل أن تحسبها المنصة، فتكلفة المنصة لهذا اليوم أقل من الحقيقة. أعد تصديره من
+            بوابة المنصة بعد يوم أو يومين وارفعه من صفحة {label}؛ يحل محل هذا الملف تلقائياً.
+          </p>
+        </div>
       ) : null}
 
       {selected ? <OrderLedger key={selected.id} importId={selected.id} selected={selected} platform={platform} /> : null}

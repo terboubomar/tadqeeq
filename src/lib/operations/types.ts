@@ -80,6 +80,11 @@ export interface OperationImportSummary {
   unmatchedAdjustments: number;
   /** Per-branch totals; absent on uploads saved before branches were kept. */
   branches?: OperationBranchSummary[];
+  /**
+   * Delivered orders with sales but no commission and no earnings yet: the platform had not settled them when the
+   * file was exported (HungerStation). Absent on uploads saved before this was counted.
+   */
+  unsettledOrderCount?: number;
 }
 
 export interface ParsedOperationImport {
@@ -99,6 +104,8 @@ export interface OperationImportResult {
   rows: number;
   orderCount: number;
   grossSales: number;
+  unsettledOrderCount: number;
+  incomplete: boolean;
   matchedAdjustments: number;
   unmatchedAdjustments: number;
 }
@@ -134,6 +141,9 @@ export interface OperationPlatformMonth {
 
 export interface OperationDay {
   date: string;
+  /** The day's file was exported before the platform settled most orders (see isIncompleteDay). */
+  incomplete: boolean;
+  unsettledOrderCount: number;
   orderCount: number;
   grossSales: number;
   chargesTotal: number;

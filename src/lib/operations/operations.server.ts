@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { requireWorkspacePermission } from "../server-auth.server";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL } from "../upload-validation";
 import { mapStoredOperationOrder, type StoredOperationOrder } from "./details";
+import { isIncompleteDay } from "./completeness";
 import { forecastFromCompleteMonthToDate } from "./forecast";
 import { parseOperationFile } from "./parser";
 import type {
@@ -151,6 +152,8 @@ export async function importOperationFileOnServer(form: FormData): Promise<Opera
     rows: result.rows,
     orderCount: parsed.summary.orderCount,
     grossSales: parsed.summary.grossSales,
+    unsettledOrderCount: parsed.summary.unsettledOrderCount ?? 0,
+    incomplete: isIncompleteDay(parsed.summary),
     matchedAdjustments: parsed.summary.matchedAdjustments,
     unmatchedAdjustments: parsed.summary.unmatchedAdjustments,
   };
@@ -429,6 +432,8 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
       target.settlementToDate += summary.settlementAmount;
       days.get(item.platform)!.set(item.business_date, {
         date: item.business_date,
+        incomplete: isIncompleteDay(summary),
+        unsettledOrderCount: summary.unsettledOrderCount ?? 0,
         orderCount: summary.orderCount,
         grossSales: summary.grossSales,
         chargesTotal: Math.abs(summary.chargesTotal),

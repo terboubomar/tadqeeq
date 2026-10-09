@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { CheckCircle2, CircleX, Info, Loader2, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CircleX, Info, Loader2, Upload } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
@@ -45,7 +45,7 @@ function PlatformOperationsPage() {
   return <PlatformWorkspace platform={platform} initialMonth={search.month} />;
 }
 
-type UploadState = "pending" | "uploading" | "saved" | "duplicate" | "error";
+type UploadState = "pending" | "uploading" | "saved" | "duplicate" | "incomplete" | "error";
 interface UploadItem {
   id: string;
   name: string;
@@ -114,10 +114,13 @@ function PlatformWorkspace({
           sourceKind === "jahez_adjustments"
             ? `${result.businessDate} · ${count(result.rows)} حركة${result.unmatchedAdjustments ? ` · ${count(result.unmatchedAdjustments)} بلا طلب مطابق` : ""}`
             : `${result.businessDate} · ${count(result.orderCount)} طلب · ${sar(result.grossSales)}`;
-        update(item.id, {
-          state: result.status === "duplicate" ? "duplicate" : "saved",
-          message: result.status === "duplicate" ? facts + " · مرفوع مسبقاً وتم تحديثه" : facts,
-        });
+        const stored = result.status === "duplicate" ? facts + " · مرفوع مسبقاً وتم تحديثه" : facts;
+        update(item.id, result.incomplete
+          ? {
+              state: "incomplete",
+              message: `${stored} · الملف يبدو غير مكتمل: ${count(result.unsettledOrderCount)} طلب بلا عمولة أو أرباح، أعد تصديره لاحقاً`,
+            }
+          : { state: result.status === "duplicate" ? "duplicate" : "saved", message: stored });
       } catch (error) {
         update(item.id, { state: "error", message: error instanceof Error ? error.message : "تعذّر رفع الملف." });
       }
@@ -130,6 +133,7 @@ function PlatformWorkspace({
   const costRatio = operationCostRatio(row?.chargesToDate ?? 0, row?.grossSales ?? 0);
   const commissionRatio = operationCommissionRatio(row?.commissionAmount ?? 0, row?.grossSales ?? 0);
   const hasData = history.length > 0;
+  const incompleteDays = (row?.days ?? []).filter((day) => day.incomplete);
 
   return (
     <div className="space-y-5">
@@ -208,6 +212,18 @@ function PlatformWorkspace({
           </div>
           {monthQuery.isFetching ? <Loader2 className="size-4 animate-spin text-ink-muted" /> : null}
         </div>
+        {incompleteDays.length ? (
+          <div className="flex items-start gap-3 border-b border-border bg-warning/15 px-5 py-3 text-[12px] leading-6">
+            <AlertTriangle className="mt-1 size-4 shrink-0 text-warning" />
+            <p>
+              {incompleteDays.length === 1 ? "ملف يوم " : "ملفات أيام "}
+              <span dir="ltr">{incompleteDays.map((day) => day.date.slice(8, 10) + "/" + day.date.slice(5, 7)).join("، ")}</span>{" "}
+              تبدو غير مكتملة: فيها {count(incompleteDays.reduce((sum, day) => sum + day.unsettledOrderCount, 0))} طلب مُسلَّم بلا عمولة أو أرباح،
+              غالباً لأنها صُدّرت قبل أن تحسبها المنصة، فتظهر تكلفة المنصة أقل من الحقيقة. أعد تصديرها من بوابة المنصة بعد يوم أو يومين
+              وارفعها هنا؛ تحل محل القديمة تلقائياً.
+            </p>
+          </div>
+        ) : null}
         {!hasData && !monthQuery.isLoading ? (
           <div className="flex items-start gap-3 border-b border-border bg-primary/5 px-5 py-4 text-[12.5px] leading-6">
             <Info className="mt-1 size-4 shrink-0 text-primary-text" />
@@ -222,6 +238,7 @@ function PlatformWorkspace({
         <div className="divide-y divide-border">
           {sources.map((source) => {
             const uploaded = new Map<number, string>();
+            const incomplete = new Set(source.kind === "jahez_adjustments" ? [] : incompleteDays.map((day) => Number(day.date.slice(8, 10))));
             for (const item of history) {
               if (item.sourceKind === source.kind && item.current) uploaded.set(Number(item.businessDate.slice(8, 10)), item.businessDate);
             }
@@ -242,13 +259,16 @@ function PlatformWorkspace({
                     onClear={() => setUploads((current) => ({ ...current, [source.kind]: [] }))}
                   />
                 </div>
-                <CoverageCalendar month={month} daysInMonth={daysInMonth} uploaded={uploaded} onOpen={openDay} />
+                <CoverageCalendar month={month} daysInMonth={daysInMonth} uploaded={uploaded} incomplete={incomplete} onOpen={openDay} />
               </div>
             );
           })}
         </div>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border px-5 py-2.5 text-[10.5px] text-muted-foreground">
           <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-success/30" /> مرفوع</span>
+          {incompleteDays.length ? (
+            <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-warning/30 ring-1 ring-warning" /> ملف غير مكتمل</span>
+          ) : null}
           <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm border border-dashed border-destructive/60" /> ناقص قبل آخر يوم مرفوع</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-muted" /> لم يُرفع بعد</span>
         </p>
@@ -364,6 +384,8 @@ function UploadResults({ items, onClear }: { items: UploadItem[]; onClear: () =>
           <li key={item.id} className="flex items-start gap-2 px-3 py-2 text-[11.5px]">
             {item.state === "saved" || item.state === "duplicate" ? (
               <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-success" />
+            ) : item.state === "incomplete" ? (
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning" />
             ) : item.state === "error" ? (
               <CircleX className="mt-0.5 size-3.5 shrink-0 text-destructive" />
             ) : (
