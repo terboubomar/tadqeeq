@@ -36,6 +36,7 @@ interface ImportRow {
   row_count: number;
   summary: OperationImportSummary;
   created_at: string;
+  superseded_at: string | null;
 }
 
 const SOURCE_KINDS = new Set<OperationSourceKind>([
@@ -46,8 +47,12 @@ const SOURCE_KINDS = new Set<OperationSourceKind>([
 ]);
 
 const TABLE_MISSING = "ميزة العمليات اليومية تحتاج تحديث قاعدة البيانات (migration 0049).";
+const CURRENT_MISSING = "العمليات اليومية تحتاج تحديث قاعدة البيانات (migration 0056).";
 
 function operationError(error: { code?: string; message: string }): Error {
+  if (/superseded_at/.test(error.message) && /does not exist|schema cache|Could not find/i.test(error.message)) {
+    return new Error(CURRENT_MISSING);
+  }
   if (
     error.code === "42P01" ||
     /operation_(imports|orders|adjustments)|import_operation_snapshot|delete_operation_import/i.test(
@@ -163,7 +168,7 @@ export async function getOperationImportDetailOnServer(input: {
   const db = client as unknown as LooseClient;
   const { data: importData, error: importError } = await db
     .from("operation_imports")
-    .select("id,source_kind,platform,business_date,original_name,row_count,summary,created_at")
+    .select("id,source_kind,platform,business_date,original_name,row_count,summary,created_at,superseded_at")
     .eq("workspace_id", workspaceId)
     .eq("id", input.importId)
     .eq("platform", input.platform)
@@ -182,6 +187,7 @@ export async function getOperationImportDetailOnServer(input: {
     rowCount: item.row_count,
     summary: item.summary,
     createdAt: item.created_at,
+    current: !item.superseded_at,
   };
 
   if (item.source_kind === "jahez_adjustments") {
@@ -268,6 +274,7 @@ const zeroPlatform = (platform: OperationPlatform): OperationPlatformMonth => ({
   paymentFeeAmount: 0,
   estimatedEarningsAmount: 0,
   cancellationCount: 0,
+  cancelledEarningsAmount: 0,
   chargesToDate: 0,
   settlementToDate: 0,
   forecastCharges: null,
@@ -283,7 +290,7 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
   const bounds = monthBounds(month);
   const { data, error } = await db
     .from("operation_imports")
-    .select("id,source_kind,platform,business_date,original_name,row_count,summary,created_at")
+    .select("id,source_kind,platform,business_date,original_name,row_count,summary,created_at,superseded_at")
     .eq("workspace_id", workspaceId)
     .gte("business_date", bounds.start)
     .lte("business_date", bounds.end)
@@ -292,9 +299,11 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
   if (error) throw operationError(error);
   const imports = (data ?? []) as ImportRow[];
 
-  // The newest upload owns one source/day. Older uploads remain visible in history but never double-count totals.
+  // Only the upload that owns a source/day's rows counts (migration 0056). Superseded uploads stay in the history,
+  // and a day whose current upload was deleted counts nothing rather than an older summary without rows.
   const latest = new Map<string, ImportRow>();
   for (const item of imports) {
+    if (item.superseded_at) continue;
     const key = `${item.source_kind}:${item.business_date}`;
     if (!latest.has(key)) latest.set(key, item);
   }
@@ -326,6 +335,7 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
       target.paymentFeeAmount += summary.paymentFeeAmount ?? 0;
       target.estimatedEarningsAmount += summary.estimatedEarningsAmount ?? 0;
       target.cancellationCount += summary.cancellationCount;
+      target.cancelledEarningsAmount += summary.cancelledEarningsAmount ?? 0;
       target.chargesToDate += summary.chargesTotal;
       target.settlementToDate += summary.settlementAmount;
     } else {
@@ -347,6 +357,7 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
       "commissionAmount",
       "paymentFeeAmount",
       "estimatedEarningsAmount",
+      "cancelledEarningsAmount",
       "chargesToDate",
       "settlementToDate",
     ] as const)
@@ -370,6 +381,7 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
     rowCount: item.row_count,
     summary: item.summary,
     createdAt: item.created_at,
+    current: !item.superseded_at,
   }));
   return { month, daysInMonth: bounds.days, platforms: [...platforms.values()], imports: history };
 }

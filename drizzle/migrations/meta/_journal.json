@@ -393,6 +393,13 @@
       "when": 1792513999573,
       "tag": "0055_journal_cost_centers",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1792600399573,
+      "tag": "0056_operation_imports_current",
+      "breakpoints": true
     }
   ]
 }

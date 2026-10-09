@@ -54,5 +54,6 @@
   "0052_account_workspaces": "45cccab2861dc83d95bd1fca47e7fb3bf8ea4ac12157ab8c387ea0f494e62c26",
   "0053_account_mcp_access": "1932b780327912affe025c4e789133be75595651cbdcb4850a37593f86d8a533",
   "0054_journal_invoice_accounts": "bac2c1cafffe8272997e3356a12a8cf1946ece5a90989a349ae7ddec2389965c",
-  "0055_journal_cost_centers": "0b389b1f5f3b99ff5e62ea28ee13d6aa3e2ed59ae0151ba74b9fc27710564460"
+  "0055_journal_cost_centers": "0b389b1f5f3b99ff5e62ea28ee13d6aa3e2ed59ae0151ba74b9fc27710564460",
+  "0056_operation_imports_current": "b656a1250045695a8b17e599b0d46d4cd0460020b60427baf16ba239e6b29835"
 }

@@ -26,6 +26,7 @@ const EMPTY_SUMMARY: OperationImportSummary = {
   paymentFeeAmount: 0,
   estimatedEarningsAmount: 0,
   cancellationCount: 0,
+  cancelledEarningsAmount: 0,
   chargesTotal: 0,
   settlementAmount: 0,
   adjustmentDebit: 0,
@@ -165,7 +166,7 @@ function summarize(
   return orders.reduce<OperationImportSummary>(
     (summary, order) => ({
       ...summary,
-      orderCount: summary.orderCount + 1,
+      orderCount: summary.orderCount + (order.excludedFromSales ? 0 : 1),
       grossSales: round(summary.grossSales + order.grossSales),
       deliveryAmount: round(summary.deliveryAmount + order.deliveryAmount),
       complaintCount: summary.complaintCount + (order.complaint ? 1 : 0),
@@ -185,6 +186,9 @@ function summarize(
         summary.estimatedEarningsAmount + order.estimatedEarningsAmount,
       ),
       cancellationCount: summary.cancellationCount + (/cancel/i.test(order.status ?? "") ? 1 : 0),
+      cancelledEarningsAmount: round(
+        (summary.cancelledEarningsAmount ?? 0) + (order.excludedFromSales ? order.settlementAmount : 0),
+      ),
       chargesTotal: round(summary.chargesTotal + order.chargesTotal),
       settlementAmount: round(summary.settlementAmount + order.settlementAmount),
     }),
@@ -228,6 +232,8 @@ function parseHungerstation(matrix: Matrix): ParsedOperationImport {
       const complaint = clean(row["Has complaint?"]).toLowerCase() === "y";
       const merchantFundedDiscount = Math.abs(money(row["Discount Funded by you"]));
       const merchantFundedVoucher = Math.abs(money(row["Voucher Funded by you"]));
+      // A cancelled order is not a sale; what HungerStation still pays for it stays in the payout.
+      const cancelled = /cancel/i.test(clean(row["Order status"]));
       const charges = [
         "Commission",
         "Operational charges",
@@ -247,11 +253,13 @@ function parseHungerstation(matrix: Matrix): ParsedOperationImport {
         branchName: clean(row["Restaurant name"]) || null,
         status: clean(row["Order status"]) || null,
         deliveryMode: clean(row["Delivery type"]) || null,
-        grossSales: round(
-          money(row["Subtotal"]) +
-            money(row["Packaging charges"]) +
-            money(row["Minimum order value fee"]),
-        ),
+        grossSales: cancelled
+          ? 0
+          : round(
+              money(row["Subtotal"]) +
+                money(row["Packaging charges"]) +
+                money(row["Minimum order value fee"]),
+            ),
         deliveryAmount: 0,
         complaint,
         complaintReason: complaint ? clean(row["Complaint reason"]) || null : null,
@@ -264,7 +272,10 @@ function parseHungerstation(matrix: Matrix): ParsedOperationImport {
         paymentFeeAmount: round(Math.abs(money(row["Online payment fee"]))),
         estimatedEarningsAmount: round(money(row["Estimated earnings"])),
         chargesTotal: round(charges.reduce((sum, column) => sum + money(row[column]), 0)),
-        settlementAmount: round(money(row["Payout amount"])),
+        // Estimated earnings is what the order earns: Subtotal minus commission, fees and discounts. Payout amount
+        // does not follow the order's own figures and stays in the raw row.
+        settlementAmount: round(money(row["Estimated earnings"])),
+        ...(cancelled ? { excludedFromSales: true } : {}),
         rawData: rawRecord(row),
       };
     }),
@@ -332,8 +343,47 @@ function parseLegacyKeeta(matrix: Matrix): ParsedOperationImport {
   };
 }
 
+const KEETA_AMOUNT_COLUMNS = [
+  "Earnings",
+  "Sales",
+  "Item sales",
+  "Top-up to minimum",
+  "Compensation",
+  "Promotion expense",
+  "Keeta promotion subsidies",
+  "Commission",
+  "Other expenses",
+  "Delivery fee",
+];
+
+/**
+ * Keeta lists an order twice when it compensates the store for it: the order's own row, and a row whose status ends
+ * with «*» carrying the compensation's amounts. Both belong to one order, so their amounts are added together and the
+ * order keeps the status of its own row.
+ */
+export function mergeKeetaOrderRows(records: Array<Record<string, Cell>>): Array<Record<string, Cell>> {
+  const byOrder = new Map<string, Array<Record<string, Cell>>>();
+  for (const record of records) {
+    const id = clean(record["Order ID"]);
+    byOrder.set(id, [...(byOrder.get(id) ?? []), record]);
+  }
+  return [...byOrder.values()].map((rows) => {
+    if (rows.length === 1) return rows[0]!;
+    const own = rows.find((row) => !clean(row["Order status"]).endsWith("*")) ?? rows[0]!;
+    const merged: Record<string, Cell> = { ...own };
+    for (const key of Object.keys(own)) {
+      if (KEETA_AMOUNT_COLUMNS.includes(key)) {
+        merged[key] = round(rows.reduce((sum, row) => sum + money(row[key]), 0));
+      } else if (!clean(merged[key]) || clean(merged[key]) === "-") {
+        merged[key] = rows.map((row) => row[key]).find((value) => clean(value) && clean(value) !== "-") ?? merged[key];
+      }
+    }
+    return merged;
+  });
+}
+
 function parseCurrentKeeta(matrix: Matrix): ParsedOperationImport {
-  const { records } = headerTable(matrix, [
+  const { records: rawRecords } = headerTable(matrix, [
     "Date",
     "Order ID",
     "Order status",
@@ -344,6 +394,7 @@ function parseCurrentKeeta(matrix: Matrix): ParsedOperationImport {
     "Other expenses",
     "Delivery fee",
   ]);
+  const records = mergeKeetaOrderRows(rawRecords);
   const orders = uniqueOrders(
     records.map((row): OperationOrder => {
       const orderId = clean(row["Order ID"]);

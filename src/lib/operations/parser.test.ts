@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import * as XLSX from "xlsx";
 
-import { parseOperationFile } from "./parser";
+import { mergeKeetaOrderRows, parseOperationFile } from "./parser";
 
 function workbookFile(name: string, rows: unknown[][]): File {
   const workbook = XLSX.utils.book_new();
@@ -256,4 +256,57 @@ describe("daily Operations parsers", () => {
     expect(first.summary.adjustmentDebit).toBe(30);
     expect(first.adjustments[0]?.fingerprint).toBe(second.adjustments[0]?.fingerprint);
   });
+
+  test("HungerStation: cancelled orders are not sales; the payout is Estimated earnings", async () => {
+    const file = new File(
+      [
+        [
+          "Order ID,Order received at,Order status,Delivery type,Subtotal,Commission,Online payment fee,Discount Funded by you,Estimated earnings,Payout amount",
+          "H-1,2026-10-01 12:00,Delivered,Pickup,130.00,29.32,2.50,2.50,95.68,72.00",
+          "H-2,2026-10-01 13:00,Cancelled,Platform delivery,68.00,0.00,0.00,0.00,20.40,20.40",
+        ].join("\n"),
+      ],
+      "Orders_1_Oct.csv",
+      { type: "text/csv" },
+    );
+    const result = await parseOperationFile(file, "hungerstation_orders");
+    expect(result.summary).toMatchObject({
+      orderCount: 1,
+      grossSales: 130,
+      cancellationCount: 1,
+      settlementAmount: 116.08,
+      cancelledEarningsAmount: 20.4,
+    });
+    expect(result.orders).toHaveLength(2);
+    expect(result.orders[1]).toMatchObject({ grossSales: 0, excludedFromSales: true });
+    // Payout amount stays in the stored row for reference.
+    expect(result.orders[0]?.rawData["Payout amount"]).toBe(72);
+  });
+
+  test("Keeta: an order listed twice (its row and the «*» compensation row) is one order with both amounts", async () => {
+    const header = ["Date", "Store ID", "Store name", "Order ID", "Order type", "Order status", "Cancellation type", "Earnings", "Sales", "Compensation", "Promotion expense", "Commission", "Other expenses", "Delivery fee"];
+    const file = workbookFile("keeta-split.xlsx", [
+      header,
+      [20261005, 1, "Branch", "5446823774992737", "Delivery", "Partial refund", "Cancelled by customer service", 0, 8.6, 0, 0, 0, 0, 0],
+      [20261005, 1, "Branch", "5446823774992737", "Delivery", "Partial refund*", "Cancelled by Keeta (compensation to store)", 0, 0, 0, 11, 6, 1.24, 19],
+      [20261005, 1, "Branch", "5446822000000001", "Delivery", "Completed", "-", 70, 100, 0, 10, 18, 2, 15],
+    ]);
+    const result = await parseOperationFile(file, "keeta_orders");
+    expect(result.orders).toHaveLength(2);
+    expect(result.orders[0]).toMatchObject({
+      orderId: "5446823774992737",
+      status: "Partial refund",
+      grossSales: 8.6,
+      commissionAmount: 6,
+      chargesTotal: 18.24,
+      deliveryAmount: 19,
+    });
+    expect(result.summary).toMatchObject({ orderCount: 2, grossSales: 108.6, chargesTotal: 48.24, settlementAmount: 70 });
+  });
+
+  test("Keeta merge keeps single rows untouched", () => {
+    const row = { "Order ID": "1", "Order status": "Completed", Sales: 10 };
+    expect(mergeKeetaOrderRows([row])).toEqual([row]);
+  });
 });
+
