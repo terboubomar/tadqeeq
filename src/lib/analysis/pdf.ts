@@ -1,4 +1,11 @@
-import type { HungerInvoiceBranch, InvoiceFigures, KeetaInvoiceBranch } from "./types";
+import type {
+  HungerInvoiceBranch,
+  InvoiceChargeItem,
+  InvoiceFigures,
+  InvoiceLineDetail,
+  InvoiceStatementOfAccount,
+  KeetaInvoiceBranch,
+} from "./types";
 
 /** Extract plain text from the first pages of a PDF, in the browser. */
 export async function extractPdfText(file: ArrayBuffer, maxPages = 3): Promise<string> {
@@ -107,6 +114,87 @@ function parseExtras(source: string): { label: string; amount: number }[] {
   return extras;
 }
 
+/**
+ * The commission rows of an Invoice Details section, each read as the invoice prints it:
+ * Quantity, AVG rate (a percentage or a SAR amount per unit) and Amount. For display only.
+ */
+const LINE_DETAILS: Array<{ key: string; label: string; unit: NonNullable<InvoiceLineDetail["unit"]>; keys: string[] }> = [
+  { key: "delivery_commission", label: "عمولة التوصيل", unit: "sar_base", keys: ["HS delivery commission"] },
+  { key: "pickup_commission", label: "عمولة الاستلام", unit: "sar_base", keys: ["HS Pickup Commission"] },
+  { key: "bank_fee_success", label: "رسوم البطاقات الناجحة", unit: "sar_base", keys: ["Successful Bank Fees", "Successful Bank Fee"] },
+  { key: "bank_fee_refunded", label: "رسوم البطاقات المستردة", unit: "sar_base", keys: ["Refunded Bank Fees", "Refunded Bank Fee"] },
+  { key: "wallet_fee", label: "رسوم مدفوعات المحافظ", unit: "sar_base", keys: ["Wallet Payments Fees", "Wallet Payments Fee", "Wallet Payment Fee"] },
+  {
+    key: "free_delivery_campaign",
+    label: "رسوم حملات التوصيل المجاني",
+    unit: "orders",
+    keys: ["Free Delivery fee campaign Charges", "Free Delivery fee campaign"],
+  },
+  { key: "rdf_campaigns", label: "حملات التوصيل المدعوم (RDF)", unit: "orders", keys: ["RDF campaigns"] },
+  { key: "printers", label: "الطابعات", unit: "count", keys: ["Printers"] },
+  { key: "customer_compensation", label: "تعويضات العملاء", unit: "sar_base", keys: ["Customer Compensation"] },
+  { key: "monthly_subscription", label: "الاشتراك الشهري", unit: "count", keys: ["Monthly subscription fees", "Monthly Subscription"] },
+  { key: "waiting_time", label: "رسوم وقت الانتظار", unit: "sar_base", keys: ["Avoidable wait time fees", "Avoidable Waiting Time Fee"] },
+];
+
+/** One row of an Invoice Details section: Quantity, AVG rate (with or without %), Amount. */
+function lineRow(source: string, labels: string[]): { quantity: number; rate: number; isPercent: boolean; amount: number } | undefined {
+  for (const label of labels) {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`${escaped}${GAP}{0,120}(${NUM})${GAP}{0,60}?(${NUM})(\\s*%)?${GAP}{0,60}?(${NUM})`, "i");
+    const match = source.match(re);
+    if (!match) continue;
+    const [quantity, rate, amount] = [match[1], match[2], match[4]].map((raw) => toNumber(raw ?? ""));
+    if ([quantity, rate, amount].every((value) => Number.isFinite(value))) {
+      return { quantity: quantity!, rate: rate!, isPercent: Boolean(match[3]), amount: amount! };
+    }
+  }
+  return undefined;
+}
+
+function parseLineDetails(section: string): InvoiceLineDetail[] {
+  return LINE_DETAILS.flatMap((line) => {
+    const row = lineRow(section, line.keys);
+    if (!row) return [];
+    return [{
+      key: line.key,
+      label: line.label,
+      quantity: row.quantity,
+      unit: line.unit,
+      avgRate: row.rate,
+      rateKind: row.isPercent ? ("percent" as const) : ("per_unit" as const),
+      amount: row.amount,
+    }];
+  });
+}
+
+/** The «Simple SOA of the Month» section, as printed; undefined when the invoice has none. */
+function parseStatementOfAccount(pages: string[]): InvoiceStatementOfAccount | undefined {
+  const page = pages.find((candidate) => /Simple SOA of the Month/i.test(candidate));
+  if (!page) return undefined;
+  const statement: InvoiceStatementOfAccount = {};
+  const fields: Array<[keyof InvoiceStatementOfAccount, string]> = [
+    ["openingBalance", "Opening Balance"],
+    ["commissionInvoice", "Total Commission Invoice"],
+    ["advertisingServicesInvoice", "Total Advertising Services Invoice"],
+    ["loanInstallmentInvoice", "Total Loan Installment Invoice"],
+    ["totalOnlineSales", "Total Online Sales"],
+    ["netMonthlyDueBalance", "Net Monthly Due Balance"],
+  ];
+  for (const [field, label] of fields) {
+    const value = amountAfter(page, label);
+    if (value !== undefined) statement[field] = value;
+  }
+  // "Opening Balance ( Advance payment + previous due balance )": its explanation in parentheses
+  // stops the ordinary label match, so read the first amount within the row's text instead.
+  if (statement.openingBalance === undefined) {
+    const match = page.match(new RegExp(`Opening Balance(?:[^0-9]|\\d(?![\\d,]*\\.\\d)){0,300}?(${NUM})`, "i"));
+    const value = match?.[1] ? toNumber(match[1]) : Number.NaN;
+    if (Number.isFinite(value)) statement.openingBalance = value;
+  }
+  return Object.keys(statement).length ? statement : undefined;
+}
+
 function cleanBranchName(page: string): string | undefined {
   const match = page.match(/Invoice Details\s+(.+?)\s+Commissions\b/i);
   if (!match?.[1]) return undefined;
@@ -171,6 +259,15 @@ function parseHungerBranch(detailPage: string, onlinePage: string): HungerInvoic
   const paymentFees = paymentFeeRowsFound ? sumNumbers(bankSuccess[2], bankRefunded[2], walletFee[2]) : undefined;
   const totalExVat = amountAfter(detailPage, "Total Commission");
   const invoiceOnlyCharges = sumNumbers(freeDelivery[2], printers[2], subscription[2]);
+  // The same rows, kept apart and labelled like the invoice-level extras so they can be matched.
+  const invoiceOnlyItems: InvoiceChargeItem[] = (
+    [
+      ["رسوم حملات التوصيل المجاني", freeDelivery[2]],
+      ["الطابعات", printers[2]],
+      ["الاشتراك الشهري", subscription[2]],
+    ] as Array<[string, number | undefined]>
+  ).flatMap(([label, amount]) => (amount !== undefined && Number.isFinite(amount) && amount !== 0 ? [{ label, amount }] : []));
+  const lineDetails = parseLineDetails(detailPage);
   const creditSales = amountsAfter(onlinePage, 3, "Credit Sales");
   const rejectedSales = amountsAfter(onlinePage, 3, "Rejected sales", "Rejected Sales");
 
@@ -193,6 +290,8 @@ function parseHungerBranch(detailPage: string, onlinePage: string): HungerInvoic
     compensation: compensation[2],
     waitingTimeFees: waiting[2],
     invoiceOnlyCharges,
+    ...(invoiceOnlyItems.length ? { invoiceOnlyItems } : {}),
+    ...(lineDetails.length ? { lineDetails } : {}),
     otherCommission:
       totalExVat !== undefined && paymentFees !== undefined ? totalExVat - salesCommission - paymentFees : undefined,
     totalExVat,
@@ -314,7 +413,24 @@ export function parseHungerInvoice(raw: string): InvoiceFigures {
   if (extras.length) {
     figures.extras = extras;
     figures.lines = [...figures.lines, ...extras];
+
+    // What no branch section lists stays at period level, never assigned to a branch.
+    const unallocated = extras.flatMap((extra) => {
+      const allocated = branches.reduce(
+        (sum, branch) =>
+          sum + (branch.invoiceOnlyItems ?? []).filter((item) => item.label === extra.label).reduce((total, item) => total + item.amount, 0),
+        0,
+      );
+      const rest = Math.round((extra.amount - allocated) * 100) / 100;
+      return rest > 0.005 ? [{ label: extra.label, amount: rest }] : [];
+    });
+    if (unallocated.length) figures.unallocatedCharges = unallocated;
   }
+
+  const lineDetails = aggregateCommissionPage ? parseLineDetails(aggregateCommissionPage) : [];
+  if (lineDetails.length) figures.lineDetails = lineDetails;
+  const statementOfAccount = parseStatementOfAccount(pages);
+  if (statementOfAccount) figures.statementOfAccount = statementOfAccount;
   return figures;
 }
 

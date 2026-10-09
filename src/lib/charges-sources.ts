@@ -309,6 +309,38 @@ export function branchBreakdown(
   }
 
   if (line.id.startsWith("hs-unmapped-invoice-extra-")) {
+    // Invoices read since the parser keeps each branch's rows apart: split this line by its own item.
+    const itemized = (period.invoice?.branches ?? []).some((branch) => branch.invoiceOnlyItems !== undefined);
+    if (itemized && line.label) {
+      const byInvoiceName = new Map(period.branches.filter((b) => b.invoiceBranchName).map((b) => [b.invoiceBranchName!, b.branch]));
+      const values = new Map(period.branches.map((b) => [b.branch, 0]));
+      for (const branch of period.invoice?.branches ?? []) {
+        for (const item of branch.invoiceOnlyItems ?? []) {
+          if (item.label !== line.label) continue;
+          const name = byInvoiceName.get(branch.branch ?? "") ?? branch.branch ?? "فرع في الفاتورة";
+          values.set(name, (values.get(name) ?? 0) + item.amount);
+        }
+      }
+      const unallocated = period.invoice?.unallocatedCharges?.find((item) => item.label === line.label)?.amount ?? 0;
+      const rows = sortedRows([...values.entries()].map(([name, value]) => ({ name, value })));
+      const total = rowsTotal(rows);
+      if (Math.abs(total) <= SPLIT_TOLERANCE && unallocated > SPLIT_TOLERANCE) {
+        return {
+          rows: [],
+          total: 0,
+          unavailable: "يظهر هذا البند في ملخص الفاتورة فقط ولا يرد في قسم أي فرع، لذلك يبقى غير موزّع على الفروع.",
+        };
+      }
+      return {
+        rows,
+        total,
+        caption:
+          unallocated > SPLIT_TOLERANCE
+            ? `من أقسام الفروع في فاتورة هنقرستيشن. ${unallocated.toFixed(2)} ر.س منه في ملخص الفاتورة فقط وغير موزّعة على الفروع.`
+            : "من أقسام الفروع في فاتورة هنقرستيشن: كل فرع بما يذكره قسمه في الفاتورة.",
+      };
+    }
+
     const invoiceBranches = (period.invoice?.branches ?? []).filter((branch) => Math.abs(branch.invoiceOnlyCharges ?? 0) > 0.005);
     if (invoiceBranches.length) {
       const byInvoiceName = new Map(period.branches.filter((b) => b.invoiceBranchName).map((b) => [b.invoiceBranchName!, b.branch]));

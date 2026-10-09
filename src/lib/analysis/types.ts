@@ -266,6 +266,10 @@ export interface HungerInvoiceBranch {
   compensation?: number;
   waitingTimeFees?: number;
   invoiceOnlyCharges?: number;
+  /** The rows behind invoiceOnlyCharges, as this branch's invoice section prints them. */
+  invoiceOnlyItems?: InvoiceChargeItem[];
+  /** Every commission row of this branch's section with its quantity and rate. */
+  lineDetails?: InvoiceLineDetail[];
   otherCommission?: number;
   totalExVat?: number;
   netBankCards?: number;
@@ -353,11 +357,53 @@ export interface JahezOrderReference {
   periodLabel?: string;
 }
 
+/** One invoice-only charge (a printer, a subscription), with the label shown in the app. */
+export interface InvoiceChargeItem {
+  label: string;
+  amount: number;
+}
+
+/**
+ * One commission row exactly as the invoice prints it: what was counted, at what rate, for how much.
+ * Read for display and explanation only; no audit figure is computed from it.
+ */
+export interface InvoiceLineDetail {
+  /** Stable id of the row, e.g. "delivery_commission". */
+  key: string;
+  /** Arabic label shown in the app. */
+  label: string;
+  /** The row's Quantity column: orders, a SAR base or a count; null when the invoice prints none. */
+  quantity: number | null;
+  unit: "orders" | "sar_base" | "count" | null;
+  /** The row's AVG rate column: a percentage (19.1 for 19.1%) or a SAR amount per unit; null when not printed. */
+  avgRate: number | null;
+  rateKind: "percent" | "per_unit" | null;
+  amount: number;
+}
+
+/** The «Simple SOA of the Month» section of a HungerStation invoice, as printed. */
+export interface InvoiceStatementOfAccount {
+  openingBalance?: number;
+  commissionInvoice?: number;
+  advertisingServicesInvoice?: number;
+  loanInstallmentInvoice?: number;
+  totalOnlineSales?: number;
+  netMonthlyDueBalance?: number;
+}
+
 export interface InvoiceFigures {
   /** Arabic label -> amount, in display order */
   lines: { label: string; amount: number }[];
   /** Fixed/extra charges that exist only on the invoice, never in the order sheet */
   extras?: { label: string; amount: number }[];
+  /** The summary Invoice Details rows with quantity and rate (HungerStation). */
+  lineDetails?: InvoiceLineDetail[];
+  /**
+   * The part of each invoice-only charge that no branch section lists: printed only in the
+   * consolidated summary, so it is not assigned to any branch.
+   */
+  unallocatedCharges?: InvoiceChargeItem[];
+  statementOfAccount?: InvoiceStatementOfAccount;
   salesCommission?: number;
   paymentFees?: number;
   /** Aggregate Wallet Payments Fee base reported on the HungerStation invoice. */
