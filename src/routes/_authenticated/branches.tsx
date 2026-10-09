@@ -11,13 +11,14 @@ import { Button } from "@/components/ui/button";
 import { branchJournalEntry, type JournalEntry } from "@/lib/journal-entries";
 
 import { listBranchRegistry, resolveBranchName } from "@/lib/branch-registry";
+import { displayBranchName, platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
 
 import { EmptyState } from "@/components/AppShell";
 import { ReportTable, type Column } from "@/components/ReportTable";
 import type { BranchRow as AnalysisBranchRow } from "@/lib/analysis/types";
 
 /** Display-only: Keeta "other" expenses without the POS installment, which they include. */
-type BranchRow = AnalysisBranchRow & { keetaOtherExclPosExVat?: number };
+type BranchRow = AnalysisBranchRow & { keetaOtherExclPosExVat?: number; platformCostPctGross?: number };
 import { useSelectedPeriod } from "@/lib/use-period";
 
 export const Route = createFileRoute("/_authenticated/branches")({
@@ -57,7 +58,8 @@ const HUNGER_COLUMNS: Column<BranchRow>[] = [
   { key: "jokerFees", header: "رسوم العروض" },
   { key: "waitingTimeFees", header: "وقت الانتظار" },
   { key: "invoiceOnlyBranchCharges", header: "بنود الفرع من الفاتورة فقط" },
-  { key: "totalCharges", header: "إجمالي الخصومات" },
+  { key: "totalCharges", header: "إجمالي الخصومات (بدون الضريبة)" },
+  { key: "platformCostPctGross", header: "تكلفة المنصة % من إجمالي المبيعات", type: "percent" },
   { key: "totalCollections", header: "التحصيلات المحتسبة" },
   { key: "invoiceCollections", header: "تحصيلات الفاتورة" },
   { key: "collectionsVariance", header: "فرق التحصيلات" },
@@ -99,7 +101,8 @@ const KEETA_COLUMNS: Column<BranchRow>[] = [
   { key: "keetaTotalCostExVat", header: "كل ما خصمته كيتا بدون الضريبة" },
   { key: "keetaInputVat", header: "ضريبة المدخلات" },
   { key: "keetaTotalCostInclVat", header: "كل ما خصمته كيتا شامل الضريبة" },
-  { key: "keetaPlatformCostPct", header: "تكلفة المنصة %", type: "percent" },
+  { key: "platformCostPctGross", header: "تكلفة المنصة % من إجمالي المبيعات", type: "percent" },
+  { key: "keetaPlatformCostPct", header: "تكلفة كيتا % من المبيعات بدون الضريبة", type: "percent" },
   { key: "keetaAvgOrderValueInclVat", header: "متوسط الطلب شامل الضريبة" },
 ];
 
@@ -128,6 +131,7 @@ const JAHEZ_COLUMNS: Column<BranchRow>[] = [
   { key: "jahezCompensationDuplicateAmount", header: "تكرار مشتبه" },
   { key: "jahezCompensationUnknownAmount", header: "تعويضات بدون طلب مصدر" },
   { key: "totalCharges", header: "تكلفة الفاتورة المحتسبة بدون الضريبة" },
+  { key: "platformCostPctGross", header: "تكلفة المنصة % من إجمالي المبيعات", type: "percent" },
 ];
 
 function BranchesPage() {
@@ -147,7 +151,8 @@ function BranchesPage() {
   const rows = selected.branches.map((b, index) => ({
     ...b,
     journalIndex: index,
-    branch: resolveBranchName(registry, selected.platform, b.branchId, b.branch) ?? b.branch,
+    branch: resolveBranchName(registry, selected.platform, b.branchId, b.branch) ?? displayBranchName(b.branch),
+    platformCostPctGross: platformCostPct(totalPlatformCharges(selected.platform, b), b.grossSales) ?? undefined,
     keetaOtherExclPosExVat:
       b.keetaOtherExpensesExVat === undefined ? undefined : b.keetaOtherExpensesExVat - (b.keetaPosFeesExVat ?? 0),
   }));

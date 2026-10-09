@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PRODUCTS, productPageTitle } from "@/lib/products";
 import { ProductName } from "@/components/ProductName";
-import { AlertTriangle, CheckCircle2, FileSearch, FileText, History, MinusCircle, ShieldAlert, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileSearch, FileText, History, MinusCircle, Percent, Receipt, ShieldAlert, Upload } from "lucide-react";
 import { useState } from "react";
 
 import { EmptyState } from "@/components/AppShell";
@@ -12,6 +12,7 @@ import { arabicDate, money, percent, sar } from "@/lib/format";
 import type { StoredPeriod } from "@/lib/periods";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
+import { vatBreakdown } from "@/lib/reporting-metrics";
 
 export const Route = createFileRoute("/_authenticated/invoice-check")({
   head: () => ({
@@ -118,6 +119,7 @@ function InvoiceCheckBody({ selected }: { selected: StoredPeriod }) {
   const matchedCount = Math.max(checks.length - flaggedPresent - missingCount - invoiceOnlyCount, 0);
   const keetaExcelOnly = selected.platform === "keeta" && !hasPdfInvoice && hasKeetaExcelControl;
   const overClaimed = totalDiff > DEFAULT_TOLERANCE;
+  const vat = vatBreakdown(selected);
   const underClaimed = totalDiff < -DEFAULT_TOLERANCE;
 
   const lineSummary =
@@ -220,6 +222,30 @@ function InvoiceCheckBody({ selected }: { selected: StoredPeriod }) {
               },
             ]}
           />
+          {vat ? (
+            <NumberTiles
+              items={[
+                {
+                  label: "رسوم المنصة (بدون الضريبة)",
+                  value: sar(vat.totalChargesExVat),
+                  hint: vat.source === "invoice" ? "حسب الفاتورة" : "محتسبة من بيانات الطلبات",
+                  icon: Receipt,
+                },
+                {
+                  label: "ضريبة القيمة المضافة 15%",
+                  value: sar(vat.vat15Pct),
+                  hint: vat.source === "invoice" ? "حسب الفاتورة" : "محتسبة: 15% من الرسوم",
+                  icon: Percent,
+                },
+                {
+                  label: "رسوم المنصة (شامل الضريبة)",
+                  value: sar(vat.totalChargesIncVat),
+                  hint: "لا تقارنها بأرقام «بدون الضريبة»",
+                  icon: Receipt,
+                },
+              ]}
+            />
+          ) : null}
           {overClaimed ? (
             <p className="text-[12.5px] leading-6 text-muted-foreground">
               المنصة طالبت بمبلغ أعلى من المحتسب. راجع البنود المعلَّمة وافتح استثناءً لكل فرق.

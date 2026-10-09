@@ -1,6 +1,13 @@
 import { buildPeriodSummaryAiPacket } from "@/lib/ai/period-summary-ai";
 import { buildPeriodExceptions } from "@/lib/exceptions";
 import type { StoredPeriod } from "@/lib/periods";
+import {
+  displayBranchName,
+  PLATFORM_COST_FORMULA,
+  platformCostPct,
+  totalPlatformCharges,
+  vatBreakdown,
+} from "@/lib/reporting-metrics";
 
 /**
  * What the MCP tools return about a period: the engine's numbers, shaped so an AI assistant can explain
@@ -14,6 +21,8 @@ const PLATFORM_NAMES: Record<StoredPeriod["platform"], string> = {
 };
 
 const round = (value: number | undefined | null) => (typeof value === "number" && Number.isFinite(value) ? Math.round(value * 100) / 100 : null);
+/** Ratios keep four decimals (0.2397), money keeps two. */
+const ratio = (value: number | undefined | null) => (typeof value === "number" && Number.isFinite(value) ? Math.round(value * 10000) / 10000 : null);
 
 /** One line per period for lists: dates and the headline numbers. */
 export function periodHeadline(period: Pick<StoredPeriod, "id" | "label" | "platform" | "period_start" | "period_end" | "created_at"> & { summary?: Partial<StoredPeriod["summary"]> | null }) {
@@ -31,7 +40,22 @@ export function periodHeadline(period: Pick<StoredPeriod, "id" | "label" | "plat
     commission_sar: round(s.commission),
     commission_pct: round(s.commissionPct),
     total_platform_charges_sar: round(s.totalCharges),
+    platform_cost_pct: ratio(platformCostPct(totalPlatformCharges(period.platform, s), s.grossSales)),
+    platform_cost_pct_formula: PLATFORM_COST_FORMULA,
+    ...(period.platform === "keeta" ? { platform_cost_pct_of_net: ratio(s.keetaPlatformCostPct) } : {}),
     branches: round(s.branchCount),
+  };
+}
+
+/** Charges excluding VAT, the VAT and the total including it, labelled by where they come from. */
+function chargesVat(period: StoredPeriod) {
+  const breakdown = vatBreakdown(period);
+  if (!breakdown) return null;
+  return {
+    total_charges_ex_vat_sar: round(breakdown.totalChargesExVat),
+    vat_15_pct_sar: round(breakdown.vat15Pct),
+    total_charges_inc_vat_sar: round(breakdown.totalChargesIncVat),
+    source: breakdown.source,
   };
 }
 
@@ -59,6 +83,7 @@ export function periodReadout(period: StoredPeriod, appUrl: string) {
     period: periodHeadline(period),
     open_in_tadqeeq: `${appUrl}/history`,
     invoice_check: invoiceChecks(period),
+    charges_vat: chargesVat(period),
     differences: {
       open_count: packet.exceptions.openCount,
       critical_count: packet.exceptions.criticalCount,
@@ -82,6 +107,7 @@ export function periodReadout(period: StoredPeriod, appUrl: string) {
     },
     costliest_branches: packet.topBranches.map((b) => ({
       branch: b.branch,
+      display_name: displayBranchName(b.branch),
       orders: b.orders,
       gross_sales_sar: round(b.grossSales),
       platform_cost_sar: round(b.platformCost),
@@ -95,16 +121,22 @@ export function periodReadout(period: StoredPeriod, appUrl: string) {
 /** Every branch in a period, largest platform cost first. */
 export function branchPerformance(period: StoredPeriod) {
   return (period.branches ?? [])
-    .map((b) => ({
-      branch: b.branch,
-      orders: b.orders,
-      gross_sales_sar: round(b.grossSales),
-      net_sales_sar: round(b.netSales),
-      commission_sar: round(b.commission),
-      commission_pct: round(b.commissionPct),
-      platform_cost_sar: round(period.platform === "keeta" ? (b.keetaTotalCostExVat ?? b.totalCharges) : b.totalCharges),
-      compensation_sar: round(b.compensation),
-    }))
+    .map((b) => {
+      const cost = totalPlatformCharges(period.platform, b as never);
+      return {
+        branch: b.branch,
+        display_name: displayBranchName(b.branch),
+        orders: b.orders,
+        gross_sales_sar: round(b.grossSales),
+        net_sales_sar: round(b.netSales),
+        commission_sar: round(b.commission),
+        commission_pct: round(b.commissionPct),
+        platform_cost_sar: round(cost),
+        platform_cost_pct: ratio(platformCostPct(cost, b.grossSales)),
+        ...(period.platform === "keeta" ? { platform_cost_pct_of_net: ratio(b.keetaPlatformCostPct) } : {}),
+        compensation_sar: round(b.compensation),
+      };
+    })
     .sort((left, right) => (right.platform_cost_sar ?? 0) - (left.platform_cost_sar ?? 0));
 }
 

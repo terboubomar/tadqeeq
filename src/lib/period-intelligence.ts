@@ -331,7 +331,7 @@ function buildPlatformMetrics(
     return [
       optionalMetric(
         "keeta_platform_cost_rate",
-        "نسبة تكلفة منصة كيتا",
+        "نسبة تكلفة كيتا من المبيعات بدون الضريبة",
         "ratio",
         c.keetaPlatformCostPct,
         p.keetaPlatformCostPct,

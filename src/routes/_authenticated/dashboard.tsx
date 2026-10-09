@@ -45,6 +45,7 @@ import { SmartWatchCard } from "@/components/smart-watch/SmartWatchCard";
 import { ActionBar, NumberTiles, PageHeader } from "@/components/workspace/PageKit";
 import { PRODUCTS } from "@/lib/products";
 import { keetaCostSplit, keetaOutsideInvoice } from "@/lib/keeta-cost";
+import { platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -406,7 +407,7 @@ function Dashboard() {
                         ? "عمولة + رسوم دفع + حملات + تعويضات"
                         : isJahez
                           ? "عمولة + رسوم مدفوعات + عروض توصيل"
-                          : `تكلفة فعلية ${percent(s.keetaPlatformCostPct ?? 0)} من المبيعات بدون الضريبة`,
+                          : `${percent(platformCostPct(totalPlatformCharges("keeta", s), s.grossSales) ?? 0)} من إجمالي المبيعات · ${percent(s.keetaPlatformCostPct ?? 0)} من المبيعات بدون الضريبة`,
                       icon: Receipt,
                       tone: "negative" as const,
                     },
