@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,18 +35,21 @@ const WEEKDAYS = ["ح", "ن", "ث", "ر", "خ", "ج", "س"];
 
 /**
  * The month's days, Sunday first: a day with a saved file is filled and opens it; missing days up to the last
- * uploaded one are marked, later days are faded.
+ * uploaded one are marked, later days are faded. A day whose file looks exported before settlement is shown in amber.
  */
 export function CoverageCalendar({
   month,
   daysInMonth,
   uploaded,
+  incomplete,
   onOpen,
 }: {
   month: string;
   daysInMonth: number;
   /** Day of month → what opening that day passes on (its date). */
   uploaded: Map<number, string>;
+  /** Uploaded days whose file looks incomplete. */
+  incomplete?: Set<number>;
   onOpen: (value: string) => void;
 }) {
   const [year, monthNumber] = month.split("-").map(Number);
@@ -71,6 +74,20 @@ export function CoverageCalendar({
           const missing = !value && day < lastUploaded;
           const future = isCurrentMonth && day > today.getDate();
           const label = `${day} ${monthLabel(month)}`;
+          if (value && incomplete?.has(day)) {
+            return (
+              <button
+                key={day}
+                type="button"
+                onClick={() => onOpen(value)}
+                title={label + " · الملف غير مكتمل، أعد تصديره ورفعه"}
+                aria-label={label + " · الملف غير مكتمل"}
+                className="num grid h-8 place-items-center rounded-md bg-warning/20 text-[11.5px] font-semibold text-foreground ring-1 ring-warning hover:bg-warning/30"
+              >
+                {day}
+              </button>
+            );
+          }
           if (value) {
             return (
               <button
@@ -118,13 +135,18 @@ const chartTooltip = {
   cursor: { fill: "var(--color-muted)", opacity: 0.5 },
 };
 
-/** Two small charts with one axis each: sales per day, and platform cost as a share of that day's sales. */
+/**
+ * Two small charts with one axis each: sales per day, and platform cost as a share of that day's sales.
+ * A day whose file is incomplete keeps its sales bar (faded) but stays out of the cost line, since its charges are understated.
+ */
 export function DailyTrend({ days }: { days: OperationDay[] }) {
   const data = days.map((day) => ({
     day: day.date.slice(8, 10) + "/" + day.date.slice(5, 7),
+    incomplete: day.incomplete,
     sales: Number(day.grossSales.toFixed(2)),
-    cost: day.grossSales > 0 ? Number(((day.chargesTotal / day.grossSales) * 100).toFixed(2)) : null,
+    cost: day.grossSales > 0 && !day.incomplete ? Number(((day.chargesTotal / day.grossSales) * 100).toFixed(2)) : null,
   }));
+  const incompleteDays = data.filter((day) => day.incomplete).map((day) => day.day);
   const average = days.reduce((sum, day) => sum + day.grossSales, 0) / Math.max(1, days.length);
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -139,7 +161,11 @@ export function DailyTrend({ days }: { days: OperationDay[] }) {
               <XAxis dataKey="day" tick={{ fontSize: 10.5 }} stroke="var(--color-muted-foreground)" />
               <YAxis tickFormatter={(value: number) => short(value)} tick={{ fontSize: 10.5 }} stroke="var(--color-muted-foreground)" width={40} />
               <Tooltip {...chartTooltip} formatter={(value: number) => [money(value) + " ر.س", "المبيعات"]} />
-              <Bar dataKey="sales" fill="var(--color-chart-1)" radius={[4, 4, 0, 0]} maxBarSize={22} />
+              <Bar dataKey="sales" fill="var(--color-chart-1)" radius={[4, 4, 0, 0]} maxBarSize={22}>
+                {data.map((day) => (
+                  <Cell key={day.day} fill="var(--color-chart-1)" fillOpacity={day.incomplete ? 0.3 : 1} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -166,6 +192,11 @@ export function DailyTrend({ days }: { days: OperationDay[] }) {
             </LineChart>
           </ResponsiveContainer>
         </div>
+        {incompleteDays.length ? (
+          <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+            العمود الباهت والغائب عن الخط: <span dir="ltr">{incompleteDays.join("، ")}</span> لأن ملفه غير مكتمل.
+          </p>
+        ) : null}
       </figure>
     </div>
   );

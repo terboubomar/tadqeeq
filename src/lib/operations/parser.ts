@@ -240,7 +240,11 @@ function summarize(
       { ...EMPTY_SUMMARY },
     ),
   );
-  return orders.length ? { ...totals, branches: branchSummaries(orders) } : totals;
+  if (!orders.length) return totals;
+  const unsettledOrderCount = orders.filter(
+    (order) => !order.excludedFromSales && order.grossSales > 0 && order.commissionAmount === 0 && order.estimatedEarningsAmount === 0,
+  ).length;
+  return { ...totals, branches: branchSummaries(orders), unsettledOrderCount };
 }
 
 function uniqueOrders(orders: OperationOrder[]): OperationOrder[] {

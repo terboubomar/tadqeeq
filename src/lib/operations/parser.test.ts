@@ -330,5 +330,23 @@ describe("daily Operations parsers", () => {
     ]);
     expect(branchSummaries([])).toEqual([]);
   });
+
+  test("counts delivered orders the platform has not settled yet (no commission and no earnings)", async () => {
+    const file = new File(
+      [
+        [
+          "Order ID,Order received at,Order status,Delivery type,Subtotal,Commission,Estimated earnings",
+          "H-1,2026-10-07 12:00,Delivered,Pickup,100.00,20.00,80.00",
+          "H-2,2026-10-07 13:00,Delivered,Pickup,50.00,0.00,0.00",
+          "H-3,2026-10-07 14:00,Cancelled,Pickup,30.00,0.00,0.00",
+          "H-4,2026-10-07 15:00,Delivered,Pickup,0.00,0.00,0.00",
+        ].join("\n"),
+      ],
+      "Orders_7_Oct.csv",
+      { type: "text/csv" },
+    );
+    const result = await parseOperationFile(file, "hungerstation_orders");
+    expect(result.summary.unsettledOrderCount).toBe(1);
+  });
 });
 
