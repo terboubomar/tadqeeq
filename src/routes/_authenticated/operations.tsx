@@ -117,7 +117,7 @@ function OperationsPage() {
       {hasData ? <DataHealth platforms={platforms} month={month} /> : null}
 
       {hasData ? (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <SalesShare platforms={platforms} />
           <BranchWatchlist platforms={platforms} month={month} />
         </div>
