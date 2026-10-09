@@ -76,6 +76,70 @@ function invoiceChecks(period: StoredPeriod) {
     });
 }
 
+/** Every row of the invoice's Invoice Details summary with what was counted, the rate and the amount. */
+function invoiceLines(period: StoredPeriod) {
+  return (period.invoice?.lineDetails ?? []).map((row) => ({
+    key: row.key,
+    line: row.label,
+    quantity: row.quantity,
+    unit: row.unit,
+    avg_rate: row.avgRate,
+    rate_kind: row.rateKind,
+    amount_sar: round(row.amount),
+  }));
+}
+
+/** Invoice-only charges the invoice prints only in its consolidated summary: on no branch. */
+export function unallocatedCharges(period: StoredPeriod) {
+  return (period.invoice?.unallocatedCharges ?? []).map((item) => ({
+    line: item.label,
+    amount_sar: round(item.amount),
+    allocation: "unallocated" as const,
+  }));
+}
+
+/** The statement of account as printed; the advertising invoice is verified against the CPC invoice when one was uploaded. */
+function statementOfAccount(period: StoredPeriod) {
+  const soa = period.invoice?.statementOfAccount;
+  if (!soa) return null;
+  const advertising = soa.advertisingServicesInvoice;
+  const cpc = period.invoice?.cpc;
+  const verified = typeof advertising === "number" && typeof cpc === "number" && Math.abs(advertising - cpc) < 0.01;
+  return {
+    opening_balance: round(soa.openingBalance),
+    commission_invoice: round(soa.commissionInvoice),
+    advertising_services_invoice: round(advertising),
+    advertising_status: advertising === undefined ? null : verified ? ("verified" as const) : ("not_verified" as const),
+    ...(verified ? { advertising_verified_against: "CPC invoice (incl. VAT)" } : {}),
+    loan_installment_invoice: round(soa.loanInstallmentInvoice),
+    net_monthly_due_balance: round(soa.netMonthlyDueBalance),
+    note: "Separate from the commission total; not added to platform charges.",
+  };
+}
+
+/** Customer compensation: what the invoice bills against what Tadqeeq recalculated from the order data. */
+function compensationComparison(period: StoredPeriod) {
+  const invoiced = period.invoice?.lineDetails?.find((row) => row.key === "customer_compensation")?.amount;
+  const recalculated = period.platform === "hungerstation" ? period.summary?.compensation : undefined;
+  if (typeof invoiced !== "number" || typeof recalculated !== "number") return null;
+  const difference = Math.round((recalculated - invoiced) * 100) / 100;
+  return {
+    invoiced: round(invoiced),
+    recalculated: round(recalculated),
+    recalculated_source: "Sum of the Compensated Orders sheet (incl. VAT) per branch ÷ 1.15",
+    difference,
+    within_tolerance: Math.abs(difference) <= 0.01,
+  };
+}
+
+/** Things the person should still check that are not audit differences: unverified invoices. */
+function openItems(period: StoredPeriod) {
+  const soa = statementOfAccount(period);
+  return soa?.advertising_status === "not_verified"
+    ? [{ what: "Advertising services invoice (statement of account)", amount_sar: soa.advertising_services_invoice, status: "not_verified", hint: "Upload the CPC invoice for this period to verify it." }]
+    : [];
+}
+
 /** Full readout of one period: headline numbers, invoice comparison, open differences and costliest branches. */
 export function periodReadout(period: StoredPeriod, appUrl: string) {
   const packet = buildPeriodSummaryAiPacket(period);
@@ -83,6 +147,10 @@ export function periodReadout(period: StoredPeriod, appUrl: string) {
     period: periodHeadline(period),
     open_in_tadqeeq: `${appUrl}/history`,
     invoice_check: invoiceChecks(period),
+    invoice_lines: invoiceLines(period),
+    unallocated_charges: unallocatedCharges(period),
+    statement_of_account: statementOfAccount(period),
+    compensation: compensationComparison(period),
     charges_vat: chargesVat(period),
     differences: {
       open_count: packet.exceptions.openCount,
@@ -114,12 +182,16 @@ export function periodReadout(period: StoredPeriod, appUrl: string) {
       commission_pct: round(b.commissionPct),
     })),
     platform_details: Object.fromEntries(Object.entries(packet.platformMetrics).map(([key, value]) => [key, round(value)])),
+    open_items: openItems(period),
     note: "All numbers come from Tadqeeq's accounting engine (SAR). Explain them; do not recalculate or change them.",
   };
 }
 
 /** Every branch in a period, largest platform cost first. */
 export function branchPerformance(period: StoredPeriod) {
+  const itemsByInvoiceName = new Map(
+    (period.invoice?.branches ?? []).map((branch) => [branch.branch ?? "", branch.invoiceOnlyItems ?? []]),
+  );
   return (period.branches ?? [])
     .map((b) => {
       const cost = totalPlatformCharges(period.platform, b as never);
@@ -135,6 +207,10 @@ export function branchPerformance(period: StoredPeriod) {
         platform_cost_pct: ratio(platformCostPct(cost, b.grossSales)),
         ...(period.platform === "keeta" ? { platform_cost_pct_of_net: ratio(b.keetaPlatformCostPct) } : {}),
         compensation_sar: round(b.compensation),
+        invoice_only_charges: (b.invoiceBranchName ? (itemsByInvoiceName.get(b.invoiceBranchName) ?? []) : []).map((item) => ({
+          line: item.label,
+          amount_sar: round(item.amount),
+        })),
       };
     })
     .sort((left, right) => (right.platform_cost_sar ?? 0) - (left.platform_cost_sar ?? 0));

@@ -427,6 +427,9 @@ function InvoiceCheckBody({ selected }: { selected: StoredPeriod }) {
         {!visibleChecks.length ? <p className="px-5 py-8 text-center text-sm text-muted-foreground">لا توجد بنود غير مطابقة — كل شيء ضمن هامش التسامح.</p> : null}
       </Section>
 
+      {selected.invoice?.lineDetails?.length ? <InvoiceLinesSection period={selected} /> : null}
+      {selected.invoice?.statementOfAccount ? <StatementSection period={selected} /> : null}
+
       <section className="grid items-start gap-4 lg:grid-cols-2">
         <Section
           title={keetaExcelOnly ? "الضوابط الرسمية كما وردت في Excel" : "بنود الفاتورة كما وردت"}
@@ -573,5 +576,124 @@ function Row({ label, value }: { label: string; value: string }) {
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="num font-semibold">{value}</dd>
     </div>
+  );
+}
+
+const UNIT_LABELS = { orders: "طلب", sar_base: "أساس ر.س", count: "عدد" } as const;
+
+/** Every summary row of the invoice as printed: what was counted, at what rate, for how much. */
+function InvoiceLinesSection({ period }: { period: StoredPeriod }) {
+  const lines = period.invoice?.lineDetails ?? [];
+  const compensation = lines.find((line) => line.key === "customer_compensation");
+  const recalculated = period.platform === "hungerstation" ? period.summary.compensation : undefined;
+  const compensationDiff =
+    compensation && typeof recalculated === "number" ? Math.round((recalculated - compensation.amount) * 100) / 100 : null;
+  const unallocated = period.invoice?.unallocatedCharges ?? [];
+
+  return (
+    <Section title="سطور الفاتورة كما وردت" summary={lines.length + " سطر · الكمية والمعدل والمبلغ"} defaultOpen={false}>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[600px] text-[13px]">
+          <thead className="bg-surface-raised text-[11.5px] text-muted-foreground">
+            <tr>
+              <th className="px-4 py-2.5 text-start font-semibold">السطر</th>
+              <th className="px-4 py-2.5 text-right font-semibold">الكمية</th>
+              <th className="px-4 py-2.5 text-right font-semibold">متوسط المعدل</th>
+              <th className="px-4 py-2.5 text-right font-semibold">المبلغ (بدون الضريبة)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((line) => (
+              <tr key={line.key} className="border-t border-border/70">
+                <td className="px-4 py-2.5 font-medium">{line.label}</td>
+                <td className="px-4 py-2.5 text-right">
+                  {line.quantity === null ? (
+                    "—"
+                  ) : (
+                    <span className="inline-flex items-baseline gap-1.5">
+                      <span className="num">{line.unit === "sar_base" ? money(line.quantity) : line.quantity.toLocaleString("en-US")}</span>
+                      {line.unit ? <span className="text-[11px] text-muted-foreground">{UNIT_LABELS[line.unit]}</span> : null}
+                    </span>
+                  )}
+                </td>
+                <td className="px-4 py-2.5 text-right">
+                  {line.avgRate === null ? (
+                    "—"
+                  ) : (
+                    <span className="num">{line.rateKind === "percent" ? line.avgRate + "%" : money(line.avgRate)}</span>
+                  )}
+                </td>
+                <td className="px-4 py-2.5 text-right">
+                  <span className="num font-semibold">{money(line.amount)}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="space-y-1.5 border-t border-border/70 px-4 py-3 text-[12px] leading-6 text-muted-foreground">
+        {compensation && compensationDiff !== null ? (
+          <p>
+            تعويضات العملاء: الفاتورة <span className="num">{money(compensation.amount)}</span> · المحتسب من ورقة Compensated Orders
+            (شامل الضريبة ÷ 1.15) <span className="num">{money(recalculated ?? 0)}</span> · الفرق{" "}
+            <span className="num">{compensationDiff.toFixed(2)}</span>
+            {Math.abs(compensationDiff) <= 0.01 ? " (ضمن هامش التقريب)" : ""}
+          </p>
+        ) : null}
+        {unallocated.length ? (
+          <p>
+            غير موزّعة على الفروع (في ملخص الفاتورة فقط):{" "}
+            {unallocated.map((item, index) => (
+              <span key={item.label}>
+                {index ? " · " : ""}
+                {item.label} <span className="num">{money(item.amount)}</span>
+              </span>
+            ))}
+          </p>
+        ) : null}
+      </div>
+    </Section>
+  );
+}
+
+/** «Simple SOA of the Month»: kept apart from the commission total; the advertising invoice checked against the CPC invoice. */
+function StatementSection({ period }: { period: StoredPeriod }) {
+  const soa = period.invoice?.statementOfAccount;
+  if (!soa) return null;
+  const cpc = period.invoice?.cpc;
+  const advertising = soa.advertisingServicesInvoice;
+  const verified = typeof advertising === "number" && typeof cpc === "number" && Math.abs(advertising - cpc) < 0.01;
+  const rows: Array<[string, number | undefined]> = [
+    ["الرصيد الافتتاحي (دفعة مقدمة + مستحق سابق)", soa.openingBalance],
+    ["فاتورة العمولة (شامل الضريبة)", soa.commissionInvoice],
+    ["فاتورة الخدمات الإعلانية (شامل الضريبة)", advertising],
+    ["فاتورة أقساط القرض", soa.loanInstallmentInvoice],
+    ["إجمالي المبيعات الإلكترونية", soa.totalOnlineSales],
+    ["صافي الرصيد الشهري المستحق", soa.netMonthlyDueBalance],
+  ];
+  return (
+    <Section title="كشف حساب الشهر" summary="كما ورد في الفاتورة · منفصل عن إجمالي العمولة" defaultOpen={false}>
+      <div className="space-y-3 p-5">
+        <dl className="space-y-2 text-sm">
+          {rows.map(([label, value]) =>
+            typeof value === "number" ? <Row key={label} label={label} value={sar(value)} /> : null,
+          )}
+        </dl>
+        {typeof advertising === "number" ? (
+          verified ? (
+            <p className="flex items-center gap-1.5 text-[12.5px] text-success">
+              <CheckCircle2 className="size-4" /> فاتورة الخدمات الإعلانية مطابقة لفاتورة CPC المرفوعة لهذه الفترة.
+            </p>
+          ) : (
+            <p className="flex items-center gap-1.5 text-[12.5px] text-warning">
+              <AlertTriangle className="size-4" /> لم يتم التحقق من فاتورة الخدمات الإعلانية: ارفع فاتورة CPC لهذه الفترة لمطابقتها.
+            </p>
+          )
+        ) : null}
+        <p className="text-[11.5px] leading-5 text-muted-foreground">
+          فاتورة الخدمات الإعلانية لا تُضاف إلى إجمالي العمولة أو رسوم المنصة.
+        </p>
+      </div>
+    </Section>
   );
 }

@@ -98,3 +98,56 @@ describe("reporting clarity (cost %, VAT, branch names)", () => {
     });
   });
 });
+
+describe("invoice detail (lines, branch charges, statement of account, compensation)", () => {
+  const detailed = {
+    ...period,
+    platform: "hungerstation",
+    summary: { ...period.summary, compensation: 2612.173913043478 },
+    branches: [
+      { branch: "Motto - Uhud", branchId: "m", invoiceBranchName: "Motto - Uhud ' - ' /", orders: 5, grossSales: 500, netSales: 400, commission: 50, commissionPct: 0.1, totalCharges: 260 },
+      { branch: "PAST - Al Nasim", branchId: "n", invoiceBranchName: "PAST - Al Nasim", orders: 5, grossSales: 500, netSales: 400, commission: 50, commissionPct: 0.1, totalCharges: 60 },
+    ],
+    invoice: {
+      checks: [],
+      cpc: 70624.35,
+      lineDetails: [
+        { key: "free_delivery_campaign", label: "رسوم حملات التوصيل المجاني", quantity: 338, unit: "orders", avgRate: 1.74, rateKind: "per_unit", amount: 587.83 },
+        { key: "customer_compensation", label: "تعويضات العملاء", quantity: 2612.17, unit: "sar_base", avgRate: 100, rateKind: "percent", amount: 2612.16 },
+      ],
+      unallocatedCharges: [{ label: "رسوم حملات التوصيل المجاني", amount: 587.83 }],
+      branches: [{ branch: "Motto - Uhud ' - ' /", invoiceOnlyCharges: 200, invoiceOnlyItems: [{ label: "الاشتراك الشهري", amount: 200 }] }],
+      statementOfAccount: { openingBalance: 442433.03, commissionInvoice: 365818.91, advertisingServicesInvoice: 70624.35, loanInstallmentInvoice: 0, netMonthlyDueBalance: -448341.54 },
+    },
+  } as unknown as StoredPeriod;
+  const readout = periodReadout(detailed, "https://tadqeeq.app");
+
+  test("invoice lines carry quantity, unit and average rate", () => {
+    expect(readout.invoice_lines[0]).toEqual({ key: "free_delivery_campaign", line: "رسوم حملات التوصيل المجاني", quantity: 338, unit: "orders", avg_rate: 1.74, rate_kind: "per_unit", amount_sar: 587.83 });
+  });
+
+  test("branch charges stay on their branch; summary-only charges are unallocated", () => {
+    const branches = branchPerformance(detailed);
+    expect(branches.find((b) => b.branch === "Motto - Uhud")?.invoice_only_charges).toEqual([{ line: "الاشتراك الشهري", amount_sar: 200 }]);
+    expect(branches.find((b) => b.branch === "PAST - Al Nasim")?.invoice_only_charges).toEqual([]);
+    expect(readout.unallocated_charges).toEqual([{ line: "رسوم حملات التوصيل المجاني", amount_sar: 587.83, allocation: "unallocated" }]);
+  });
+
+  test("the statement of account is separate and the advertising invoice is verified against CPC", () => {
+    expect(readout.statement_of_account).toMatchObject({
+      advertising_services_invoice: 70624.35,
+      advertising_status: "verified",
+      opening_balance: 442433.03,
+      net_monthly_due_balance: -448341.54,
+    });
+    expect(readout.open_items).toEqual([]);
+    const withoutCpc = periodReadout({ ...detailed, invoice: { ...detailed.invoice, cpc: undefined } } as unknown as StoredPeriod, "x");
+    expect(withoutCpc.statement_of_account?.advertising_status).toBe("not_verified");
+    expect(withoutCpc.open_items).toHaveLength(1);
+  });
+
+  test("compensation shows invoiced, recalculated with its source, and the exact difference", () => {
+    expect(readout.compensation).toMatchObject({ invoiced: 2612.16, recalculated: 2612.17, difference: 0.01, within_tolerance: true });
+    expect(readout.compensation?.recalculated_source).toContain("Compensated Orders");
+  });
+});
