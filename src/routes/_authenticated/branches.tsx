@@ -7,7 +7,9 @@ import { useState } from "react";
 import { BranchJournalsDialog, JournalEntryDialog } from "@/components/journal/JournalEntryDialog";
 import type { BranchJournal } from "@/components/journal/journal-export";
 import { useJournalAccounts } from "@/components/journal/use-journal-accounts";
+import { useJournalCostCenters } from "@/components/journal/use-journal-cost-centers";
 import { Button } from "@/components/ui/button";
+import { costCenterKey } from "@/lib/journal-cost-centers";
 import { branchJournalEntry, type JournalEntry } from "@/lib/journal-entries";
 
 import { listBranchRegistry, resolveBranchName } from "@/lib/branch-registry";
@@ -139,6 +141,8 @@ function BranchesPage() {
   const { data: registry = [] } = useQuery({ queryKey: ["branch-registry"], queryFn: listBranchRegistry });
   const accounts = useJournalAccounts();
   const [entry, setEntry] = useState<JournalEntry | null>(null);
+  const [entryKey, setEntryKey] = useState<string | undefined>(undefined);
+  const costCenters = useJournalCostCenters(selected?.platform);
   const [journals, setJournals] = useState<BranchJournal[] | null>(null);
 
   if (isLoading) {
@@ -163,6 +167,7 @@ function BranchesPage() {
       rows.map((row) => ({
         branch: row.branch,
         entry: branchJournalEntry(period, { ...period.branches[row.journalIndex]!, branch: row.branch }, accounts),
+        costCenterKey: costCenterKey(period.branches[row.journalIndex]!),
       })),
     );
   }
@@ -197,7 +202,9 @@ function BranchesPage() {
           label: "عرض القيد المحاسبي للفرع",
           onClick: (row) => {
             const branch = selected.branches[row["journalIndex"] as number];
-            if (branch) setEntry(branchJournalEntry(selected, { ...branch, branch: String(row["branch"]) }, accounts));
+            if (!branch) return;
+            setEntry(branchJournalEntry(selected, { ...branch, branch: String(row["branch"]) }, accounts));
+            setEntryKey(costCenterKey(branch));
           },
         }}
         caption={
@@ -208,8 +215,13 @@ function BranchesPage() {
               : "جاهز لا يوفّر تفاصيل فاتورة حسب الفرع في الملفات الحالية؛ يتم التحقق من Restaurant Amount لكل فرع، ويُضاف تقرير التعويضات حسب الفرع مع كشف التكرار والطلبات غير المعروفة. مطابقة الفاتورة الضريبية تبقى على إجمالي التاجر."
         }
       />
-      <JournalEntryDialog entry={entry} onClose={() => setEntry(null)} />
-      <BranchJournalsDialog title={selected.label} journals={journals} onClose={() => setJournals(null)} />
+      <JournalEntryDialog entry={entry} costCenter={entryKey ? costCenters[entryKey] : undefined} onClose={() => setEntry(null)} />
+      <BranchJournalsDialog
+        title={selected.label}
+        platform={selected.platform}
+        journals={journals?.map((journal) => ({ ...journal, costCenter: costCenters[journal.costCenterKey ?? ""] })) ?? null}
+        onClose={() => setJournals(null)}
+      />
     </div>
   );
 }

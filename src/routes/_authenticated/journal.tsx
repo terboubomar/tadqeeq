@@ -4,10 +4,18 @@ import { BookOpenCheck, Check, ChevronsUpDown, Layers, Scale } from "lucide-reac
 import { useMemo, useState } from "react";
 
 import { EmptyState } from "@/components/AppShell";
-import { AccountsButton, AccountsDialog, EntryNotes, EntryTable } from "@/components/journal/JournalEntryDialog";
+import {
+  AccountsButton,
+  AccountsDialog,
+  CostCentersButton,
+  CostCentersDialog,
+  EntryNotes,
+  EntryTable,
+} from "@/components/journal/JournalEntryDialog";
 import { ExportJournalsMenu } from "@/components/journal/ExportJournalsMenu";
 import { isBalanced, TREATMENT_NOTE, type BranchJournal } from "@/components/journal/journal-export";
 import { useJournalAccounts } from "@/components/journal/use-journal-accounts";
+import { useJournalCostCenters } from "@/components/journal/use-journal-cost-centers";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -15,6 +23,7 @@ import { ActionBar, NumberTiles, PageHeader } from "@/components/workspace/PageK
 import { listBranchRegistry, resolveBranchName } from "@/lib/branch-registry";
 import { displayBranchName } from "@/lib/reporting-metrics";
 import { arabicDate, money } from "@/lib/format";
+import { costCenterKey, type JournalPlatform } from "@/lib/journal-cost-centers";
 import { branchJournalEntry, periodJournalEntry, type JournalEntry } from "@/lib/journal-entries";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
@@ -42,13 +51,20 @@ function JournalPage() {
   const { selected, isLoading } = useSelectedPeriod();
   const { data: registry = [] } = useQuery({ queryKey: ["branch-registry"], queryFn: listBranchRegistry });
   const accounts = useJournalAccounts();
+  const costCenters = useJournalCostCenters(selected?.platform);
   const journals = useMemo<BranchJournal[]>(() => {
     if (!selected) return [];
     return selected.branches.map((branch) => {
       const name = resolveBranchName(registry, selected.platform, branch.branchId, branch.branch) ?? displayBranchName(branch.branch);
-      return { branch: name, entry: branchJournalEntry(selected, { ...branch, branch: name }, accounts) };
+      const key = costCenterKey(branch);
+      return {
+        branch: name,
+        entry: branchJournalEntry(selected, { ...branch, branch: name }, accounts),
+        costCenterKey: key,
+        costCenter: costCenters[key],
+      };
     });
-  }, [selected, registry, accounts]);
+  }, [selected, registry, accounts, costCenters]);
   const combined = useMemo(() => (selected ? periodJournalEntry(selected, accounts) : null), [selected, accounts]);
 
   if (isLoading) {
@@ -57,13 +73,24 @@ function JournalPage() {
   if (!selected || !combined) {
     return <EmptyState title="لا توجد فترات محفوظة" body="ارفع ملفات الفترة لعرض القيود المحاسبية." />;
   }
-  return <JournalReport title={selected.label} journals={journals} combined={combined} />;
+  return <JournalReport title={selected.label} platform={selected.platform} journals={journals} combined={combined} />;
 }
 
 /** The report body: tiles, a list of entries (combined + one per branch) and the chosen entry. */
-function JournalReport({ title, journals, combined }: { title: string; journals: BranchJournal[]; combined: JournalEntry }) {
+function JournalReport({
+  title,
+  platform,
+  journals,
+  combined,
+}: {
+  title: string;
+  platform: JournalPlatform;
+  journals: BranchJournal[];
+  combined: JournalEntry;
+}) {
   const [selection, setSelection] = useState<Selection>(journals.length ? 0 : "all");
   const [editing, setEditing] = useState(false);
+  const [editingCenters, setEditingCenters] = useState(false);
   const current = selection === "all" ? null : journals[selection];
   const shown = current?.entry ?? combined;
   const unbalanced = journals.filter((journal) => !isBalanced(journal.entry)).length;
@@ -85,6 +112,7 @@ function JournalReport({ title, journals, combined }: { title: string; journals:
           label={current ? "تصدير قيد الفرع" : "تصدير كل الفروع"}
         />
         <AccountsButton onClick={() => setEditing(true)} />
+        <CostCentersButton onClick={() => setEditingCenters(true)} />
       </ActionBar>
 
       <NumberTiles
@@ -122,6 +150,7 @@ function JournalReport({ title, journals, combined }: { title: string; journals:
               <p className="text-[12.5px] text-muted-foreground">
                 {shown.description}
                 {shown.date ? " · بتاريخ " + arabicDate(shown.date) : ""}
+                {current?.costCenter ? " · مركز التكلفة " + current.costCenter : ""}
               </p>
             </div>
           </header>
@@ -136,6 +165,7 @@ function JournalReport({ title, journals, combined }: { title: string; journals:
         </section>
 
       <AccountsDialog open={editing} onClose={() => setEditing(false)} />
+      <CostCentersDialog open={editingCenters} platform={platform} journals={journals} onClose={() => setEditingCenters(false)} />
     </div>
   );
 }

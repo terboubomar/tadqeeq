@@ -4,6 +4,10 @@ import type { JournalEntry } from "@/lib/journal-entries";
 export interface BranchJournal {
   branch: string;
   entry: JournalEntry;
+  /** The branch's cost center code, carried by every line of its entry. */
+  costCenter?: string;
+  /** What the cost center is saved under (see costCenterKey); absent for entries that are not one branch. */
+  costCenterKey?: string;
 }
 
 export const ENTRY_COLUMNS = [
@@ -12,17 +16,28 @@ export const ENTRY_COLUMNS = [
   { key: "debit", header: "مدين" },
   { key: "credit", header: "دائن" },
   { key: "memo", header: "البيان", type: "text" },
+  { key: "costCenter", header: "مركز التكلفة", type: "text" },
 ] as const;
 
-export type EntryRow = { entryNo?: number; branch?: string; code: string; account: string; debit?: number; credit?: number; memo: string };
+export type EntryRow = {
+  entryNo?: number;
+  branch?: string;
+  code: string;
+  account: string;
+  debit?: number;
+  credit?: number;
+  memo: string;
+  costCenter?: string;
+};
 
-export function entryRows(entry: JournalEntry): EntryRow[] {
+export function entryRows(entry: JournalEntry, costCenter = ""): EntryRow[] {
   return entry.lines.map((line) => ({
     code: line.account.code,
     account: line.account.name,
     debit: line.debit || undefined,
     credit: line.credit || undefined,
     memo: line.memo,
+    costCenter,
   }));
 }
 
@@ -45,7 +60,7 @@ export const TREATMENT_NOTE =
 /** One workbook: a ledger sheet with every line (entry number and branch on each) plus one sheet per branch. Entries are numbered from `firstNumber`. */
 export function exportBranchJournals(title: string, journals: BranchJournal[], firstNumber = 1) {
   const ledger: EntryRow[] = journals.flatMap((journal, index) =>
-    entryRows(journal.entry).map((row) => ({ entryNo: index + firstNumber, branch: journal.branch, ...row })),
+    entryRows(journal.entry, journal.costCenter).map((row) => ({ entryNo: index + firstNumber, branch: journal.branch, ...row })),
   );
   exportXlsx(
     [
@@ -57,7 +72,7 @@ export function exportBranchJournals(title: string, journals: BranchJournal[], f
       ...journals.map((journal, index) => ({
         name: sheetName(index + firstNumber - 1, journal.branch),
         rows: [
-          ...entryRows(journal.entry),
+          ...entryRows(journal.entry, journal.costCenter),
           { code: "", account: "الإجمالي", debit: journal.entry.totalDebit, credit: journal.entry.totalCredit, memo: journal.entry.description },
         ],
         columns: [...ENTRY_COLUMNS],

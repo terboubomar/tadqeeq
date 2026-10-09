@@ -11,17 +11,26 @@ import { exportBranchJournals, fileSlug, type BranchJournal } from "./journal-ex
  * - QuickBooks Online: Settings › Import data › Journal entries (Journal No., Journal Date, Account Name, Debits, Credits).
  * - Qoyod: Accounting › Manual journal entries › Import (its Arabic template, an empty row after each entry).
  * - Daftra: Add entry › Paste from sheet (account, description, debit, credit), one entry at a time.
- * Accounts go by their code when the workspace set one, otherwise by name.
+ * Accounts go by their code when the workspace set one, otherwise by name. The branch's cost center goes on every line
+ * where the import has a column for it: Odoo's analytic distribution (it takes the analytic account's number, not its
+ * name), a «Cost Center» reporting tag in Zoho Books, the Class in QuickBooks. Qoyod's and Daftra's imports have none.
  */
 export type AccountingSystem = "excel" | "odoo" | "zoho" | "quickbooks" | "qoyod" | "daftra";
 
-export const ACCOUNTING_SYSTEMS: Array<{ key: AccountingSystem; label: string; hint: string; needsCodes: boolean }> = [
-  { key: "excel", label: "Excel (تدقيق)", hint: "ملف القيود كما يظهر هنا: ورقة لكل القيود وورقة لكل فرع", needsCodes: false },
-  { key: "odoo", label: "Odoo", hint: "استيراد القيود من Journal Items › Import", needsCodes: true },
-  { key: "zoho", label: "Zoho Books", hint: "Manual Journals › Import · ملف CSV", needsCodes: false },
-  { key: "quickbooks", label: "QuickBooks Online", hint: "Import data › Journal entries · ملف CSV", needsCodes: false },
-  { key: "qoyod", label: "قيود Qoyod", hint: "قيود محاسبية يدوية › استيراد", needsCodes: true },
-  { key: "daftra", label: "دفترة Daftra", hint: "إضافة قيد › لصق من الشيت · ورقة لكل قيد", needsCodes: false },
+export const ACCOUNTING_SYSTEMS: Array<{
+  key: AccountingSystem;
+  label: string;
+  hint: string;
+  needsCodes: boolean;
+  /** How the import takes a cost center: a column, the analytic account's number, or not at all. */
+  costCenter: "column" | "numeric" | "none";
+}> = [
+  { key: "excel", label: "Excel (تدقيق)", hint: "ملف القيود كما يظهر هنا: ورقة لكل القيود وورقة لكل فرع", needsCodes: false, costCenter: "column" },
+  { key: "odoo", label: "Odoo", hint: "استيراد القيود من Journal Items › Import", needsCodes: true, costCenter: "numeric" },
+  { key: "zoho", label: "Zoho Books", hint: "Manual Journals › Import · ملف CSV", needsCodes: false, costCenter: "column" },
+  { key: "quickbooks", label: "QuickBooks Online", hint: "Import data › Journal entries · ملف CSV", needsCodes: false, costCenter: "column" },
+  { key: "qoyod", label: "قيود Qoyod", hint: "قيود محاسبية يدوية › استيراد", needsCodes: true, costCenter: "none" },
+  { key: "daftra", label: "دفترة Daftra", hint: "إضافة قيد › لصق من الشيت · ورقة لكل قيد", needsCodes: false, costCenter: "none" },
 ];
 
 export interface NumberedJournal extends BranchJournal {
@@ -46,9 +55,15 @@ export function dayFirst(date: string | null): string {
 
 const money = (value: number) => (value ? value : undefined);
 
-type OdooRow = { journal: string; ref: string; date: string; account: string; label: string; debit?: number; credit?: number };
+/** Odoo's analytic distribution: {"<analytic account id>": 100}, only when the cost center is that number. */
+export function odooAnalytic(costCenter: string | undefined): string {
+  const id = (costCenter ?? "").trim();
+  return /^\d+$/.test(id) ? JSON.stringify({ [id]: 100 }) : "";
+}
+
+type OdooRow = { journal: string; ref: string; date: string; account: string; label: string; debit?: number; credit?: number; analytic: string };
 export function odooRows(journals: NumberedJournal[]): OdooRow[] {
-  return journals.flatMap(({ entry, number }) =>
+  return journals.flatMap(({ entry, number, costCenter }) =>
     entry.lines.map((line, index) => ({
       journal: index === 0 ? "MISC" : "",
       ref: index === 0 ? entryReference(entry, number) + " · " + entry.description : "",
@@ -57,6 +72,7 @@ export function odooRows(journals: NumberedJournal[]): OdooRow[] {
       label: line.memo || entry.description,
       debit: money(line.debit),
       credit: money(line.credit),
+      analytic: odooAnalytic(costCenter),
     })),
   );
 }
@@ -68,11 +84,22 @@ const ODOO_COLUMNS: ExportColumn<OdooRow>[] = [
   { key: "label", header: "line_ids/name", type: "text" },
   { key: "debit", header: "line_ids/debit" },
   { key: "credit", header: "line_ids/credit" },
+  { key: "analytic", header: "line_ids/analytic_distribution", type: "text" },
 ];
 
-type ZohoRow = { date: string; ref: string; notes: string; currency: string; account: string; description: string; debit?: number; credit?: number };
+type ZohoRow = {
+  date: string;
+  ref: string;
+  notes: string;
+  currency: string;
+  account: string;
+  description: string;
+  debit?: number;
+  credit?: number;
+  costCenter: string;
+};
 export function zohoRows(journals: NumberedJournal[]): ZohoRow[] {
-  return journals.flatMap(({ entry, number }) =>
+  return journals.flatMap(({ entry, number, costCenter }) =>
     entry.lines.map((line) => ({
       date: entry.date ?? "",
       ref: entryReference(entry, number),
@@ -82,6 +109,7 @@ export function zohoRows(journals: NumberedJournal[]): ZohoRow[] {
       description: line.memo,
       debit: money(line.debit),
       credit: money(line.credit),
+      costCenter: costCenter ?? "",
     })),
   );
 }
@@ -94,11 +122,12 @@ const ZOHO_COLUMNS: ExportColumn<ZohoRow>[] = [
   { key: "description", header: "Description", type: "text" },
   { key: "debit", header: "Debit" },
   { key: "credit", header: "Credit" },
+  { key: "costCenter", header: "Cost Center", type: "text" },
 ];
 
-type QuickBooksRow = { no: string; date: string; account: string; debit?: number; credit?: number; description: string };
+type QuickBooksRow = { no: string; date: string; account: string; debit?: number; credit?: number; description: string; className: string };
 export function quickBooksRows(journals: NumberedJournal[]): QuickBooksRow[] {
-  return journals.flatMap(({ entry, number }) =>
+  return journals.flatMap(({ entry, number, costCenter }) =>
     entry.lines.map((line) => ({
       no: entryReference(entry, number),
       date: dayFirst(entry.date),
@@ -106,6 +135,7 @@ export function quickBooksRows(journals: NumberedJournal[]): QuickBooksRow[] {
       debit: money(line.debit),
       credit: money(line.credit),
       description: line.memo ? entry.description + " · " + line.memo : entry.description,
+      className: costCenter ?? "",
     })),
   );
 }
@@ -116,6 +146,7 @@ const QUICKBOOKS_COLUMNS: ExportColumn<QuickBooksRow>[] = [
   { key: "debit", header: "Debits" },
   { key: "credit", header: "Credits" },
   { key: "description", header: "Description", type: "text" },
+  { key: "className", header: "Class", type: "text" },
 ];
 
 type QoyodRow = { seq: string; date: string; description: string; type: string; code: string; contact: string; debit?: number; credit?: number; comment: string };
@@ -163,6 +194,16 @@ const DAFTRA_COLUMNS: ExportColumn<DaftraRow>[] = [
   { key: "debit", header: "مدين" },
   { key: "credit", header: "دائن" },
 ];
+
+/** True when some branch entry has a cost center. */
+export function hasCostCenters(journals: BranchJournal[]): boolean {
+  return journals.some((journal) => Boolean(journal.costCenter?.trim()));
+}
+
+/** True when a cost center is not an Odoo analytic account number, so Odoo's file leaves it out. */
+export function nonNumericCostCenters(journals: BranchJournal[]): boolean {
+  return journals.some((journal) => Boolean(journal.costCenter?.trim()) && !odooAnalytic(journal.costCenter));
+}
 
 /** True when some line has no account code: Odoo and Qoyod match accounts by code. */
 export function missingCodes(journals: BranchJournal[]): boolean {
