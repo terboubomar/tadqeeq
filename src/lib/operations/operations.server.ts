@@ -7,6 +7,9 @@ import { forecastFromCompleteMonthToDate } from "./forecast";
 import { parseOperationFile } from "./parser";
 import type {
   OperationAdjustmentDetail,
+  OperationBranchSummary,
+  OperationDay,
+  OperationOrderFilter,
   OperationImportDetail,
   OperationImportHistoryItem,
   OperationImportResult,
@@ -146,6 +149,8 @@ export async function importOperationFileOnServer(form: FormData): Promise<Opera
     businessDate: parsed.businessDate,
     sourceKind: parsed.sourceKind,
     rows: result.rows,
+    orderCount: parsed.summary.orderCount,
+    grossSales: parsed.summary.grossSales,
     matchedAdjustments: parsed.summary.matchedAdjustments,
     unmatchedAdjustments: parsed.summary.unmatchedAdjustments,
   };
@@ -158,11 +163,20 @@ export async function deleteOperationImportOnServer(importId: string): Promise<v
   if (error) throw operationError(error);
 }
 
+/** Search text safe for a PostgREST `or` filter: no separators, wildcards or quotes. */
+function searchTerm(value: string | undefined): string {
+  return (value ?? "").replace(/[,()%*"'\\:]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+}
+
 export async function getOperationImportDetailOnServer(input: {
   importId: string;
   platform: OperationPlatform;
   page: number;
   pageSize: number;
+  search?: string;
+  filter?: OperationOrderFilter;
+  branchId?: string;
+  branchName?: string;
 }): Promise<OperationImportDetail> {
   const { client, workspaceId } = await requireWorkspacePermission("financials.read");
   const db = client as unknown as LooseClient;
@@ -218,24 +232,57 @@ export async function getOperationImportDetailOnServer(input: {
       importItem,
       orders: [],
       adjustments,
+      totals: null,
       totalRows: count ?? adjustments.length,
       page: input.page,
       pageSize: input.pageSize,
     };
   }
 
-  const { data, error, count } = await db
-    .from("operation_orders")
-    .select(
-      "order_id,business_date,branch_id,branch_name,status,delivery_mode,gross_sales,delivery_amount,complaint,complaint_reason,refund_amount,charges_total,settlement_amount,raw_data",
-      { count: "exact" },
-    )
-    .eq("workspace_id", workspaceId)
-    .eq("source_import_id", input.importId)
-    .eq("platform", input.platform)
+  const term = searchTerm(input.search);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- PostgREST query builder (generated types lag migrations)
+  const filtered = (query: any) => {
+    let next = query
+      .eq("workspace_id", workspaceId)
+      .eq("source_import_id", input.importId)
+      .eq("platform", input.platform);
+    if (term) next = next.or(`order_id.ilike.*${term}*,branch_name.ilike.*${term}*`);
+    if (input.branchId) next = next.eq("branch_id", input.branchId);
+    else if (input.branchName) next = next.eq("branch_name", input.branchName);
+    if (input.filter === "cancelled") next = next.ilike("status", "%cancel%");
+    if (input.filter === "complaints") next = next.eq("complaint", true);
+    if (input.filter === "refunds") next = next.or("refund_amount.neq.0,refund_type.not.is.null");
+    return next;
+  };
+
+  const { data, error, count } = await filtered(
+    db
+      .from("operation_orders")
+      .select(
+        "order_id,business_date,branch_id,branch_name,status,delivery_mode,gross_sales,delivery_amount,complaint,complaint_reason,refund_amount,charges_total,settlement_amount,raw_data",
+        { count: "exact" },
+      ),
+  )
     .order("order_id", { ascending: true })
     .range(from, to);
   if (error) throw operationError(error);
+
+  // Totals of every matching row, not just this page (a day's file is a few thousand rows at most).
+  const totals = { grossSales: 0, chargesTotal: 0, settlementAmount: 0 };
+  const matching = count ?? 0;
+  for (let start = 0; start < matching; start += 1000) {
+    const { data: rows, error: totalsError } = await filtered(
+      db.from("operation_orders").select("order_id,gross_sales,charges_total,settlement_amount"),
+    )
+      .order("order_id", { ascending: true })
+      .range(start, start + 999);
+    if (totalsError) throw operationError(totalsError);
+    for (const row of (rows ?? []) as Array<{ gross_sales: number | string; charges_total: number | string; settlement_amount: number | string }>) {
+      totals.grossSales += Number(row.gross_sales) || 0;
+      totals.chargesTotal += Math.abs(Number(row.charges_total) || 0);
+      totals.settlementAmount += Number(row.settlement_amount) || 0;
+    }
+  }
   const orders = (data ?? []).map((row: StoredOperationOrder) =>
     mapStoredOperationOrder(input.platform, row),
   );
@@ -243,6 +290,11 @@ export async function getOperationImportDetailOnServer(input: {
     importItem,
     orders,
     adjustments: [],
+    totals: {
+      grossSales: rounded(totals.grossSales),
+      chargesTotal: rounded(totals.chargesTotal),
+      settlementAmount: rounded(totals.settlementAmount),
+    },
     totalRows: count ?? orders.length,
     page: input.page,
     pageSize: input.pageSize,
@@ -280,7 +332,34 @@ const zeroPlatform = (platform: OperationPlatform): OperationPlatformMonth => ({
   forecastCharges: null,
   forecastSettlement: null,
   forecastMissingDays: [],
+  days: [],
+  branches: [],
+  branchesComplete: true,
 });
+
+/** Adds one upload's branch totals into the month's, keyed like the uploads. */
+function addBranches(target: Map<string, OperationBranchSummary>, branches: OperationBranchSummary[]) {
+  for (const branch of branches) {
+    const current = target.get(branch.key);
+    if (!current) {
+      target.set(branch.key, { ...branch });
+      continue;
+    }
+    current.branchName ??= branch.branchName;
+    for (const key of [
+      "orderCount",
+      "grossSales",
+      "chargesTotal",
+      "commissionAmount",
+      "settlementAmount",
+      "cancellationCount",
+      "complaintCount",
+      "refundCount",
+    ] as const) {
+      current[key] += branch[key];
+    }
+  }
+}
 
 const rounded = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 
@@ -312,6 +391,16 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
     ["keeta", zeroPlatform("keeta")],
     ["jahez", zeroPlatform("jahez")],
   ]);
+  const monthBranches = new Map<OperationPlatform, Map<string, OperationBranchSummary>>([
+    ["hungerstation", new Map()],
+    ["keeta", new Map()],
+    ["jahez", new Map()],
+  ]);
+  const days = new Map<OperationPlatform, Map<string, OperationDay>>([
+    ["hungerstation", new Map()],
+    ["keeta", new Map()],
+    ["jahez", new Map()],
+  ]);
   const covered = new Map<OperationPlatform, Set<string>>([
     ["hungerstation", new Set()],
     ["keeta", new Set()],
@@ -338,6 +427,15 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
       target.cancelledEarningsAmount += summary.cancelledEarningsAmount ?? 0;
       target.chargesToDate += summary.chargesTotal;
       target.settlementToDate += summary.settlementAmount;
+      days.get(item.platform)!.set(item.business_date, {
+        date: item.business_date,
+        orderCount: summary.orderCount,
+        grossSales: summary.grossSales,
+        chargesTotal: Math.abs(summary.chargesTotal),
+        settlementAmount: summary.settlementAmount,
+      });
+      if (summary.branches) addBranches(monthBranches.get(item.platform)!, summary.branches);
+      else if (summary.orderCount > 0) target.branchesComplete = false;
     } else {
       target.refundCount += summary.matchedAdjustments + summary.unmatchedAdjustments;
       target.refundAmount += summary.adjustmentDebit;
@@ -371,6 +469,16 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
     target.forecastCharges = forecast.charges;
     target.forecastSettlement = forecast.settlement;
     target.forecastMissingDays = forecast.missingDays;
+    target.days = [...days.get(target.platform)!.values()].sort((a, b) => a.date.localeCompare(b.date));
+    target.branches = [...monthBranches.get(target.platform)!.values()]
+      .map((branch) => ({
+        ...branch,
+        grossSales: rounded(branch.grossSales),
+        chargesTotal: rounded(branch.chargesTotal),
+        commissionAmount: rounded(branch.commissionAmount),
+        settlementAmount: rounded(branch.settlementAmount),
+      }))
+      .sort((a, b) => b.grossSales - a.grossSales);
   }
   const history: OperationImportHistoryItem[] = imports.map((item) => ({
     id: item.id,

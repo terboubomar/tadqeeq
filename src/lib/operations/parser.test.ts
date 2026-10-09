@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import * as XLSX from "xlsx";
 
-import { mergeKeetaOrderRows, parseOperationFile } from "./parser";
+import { branchSummaries, mergeKeetaOrderRows, parseOperationFile } from "./parser";
 
 function workbookFile(name: string, rows: unknown[][]): File {
   const workbook = XLSX.utils.book_new();
@@ -307,6 +307,28 @@ describe("daily Operations parsers", () => {
   test("Keeta merge keeps single rows untouched", () => {
     const row = { "Order ID": "1", "Order status": "Completed", Sales: 10 };
     expect(mergeKeetaOrderRows([row])).toEqual([row]);
+  });
+
+  test("each upload keeps per-branch totals; cancelled HungerStation orders are not counted as orders", async () => {
+    const file = new File(
+      [
+        [
+          "Order ID,Order received at,Order status,Delivery type,Store ID,Restaurant name,Subtotal,Commission,Estimated earnings,Has complaint?",
+          "H-1,2026-10-01 12:00,Delivered,Pickup,10,North,100.00,20.00,80.00,N",
+          "H-2,2026-10-01 13:00,Delivered,Pickup,10,North,50.00,10.00,40.00,Y",
+          "H-3,2026-10-01 14:00,Cancelled,Pickup,10,North,30.00,0.00,0.00,N",
+          "H-4,2026-10-01 15:00,Delivered,Pickup,20,South,200.00,40.00,160.00,N",
+        ].join("\n"),
+      ],
+      "Orders.csv",
+      { type: "text/csv" },
+    );
+    const result = await parseOperationFile(file, "hungerstation_orders");
+    expect(result.summary.branches).toEqual([
+      expect.objectContaining({ key: "20", branchName: "South", orderCount: 1, grossSales: 200, commissionAmount: 40 }),
+      expect.objectContaining({ key: "10", branchName: "North", orderCount: 2, grossSales: 150, cancellationCount: 1, complaintCount: 1, settlementAmount: 120 }),
+    ]);
+    expect(branchSummaries([])).toEqual([]);
   });
 });
 
