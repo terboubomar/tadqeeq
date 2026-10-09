@@ -89,3 +89,75 @@ describe("chart of accounts", () => {
     expect(accounts.commission_expense).toEqual(DEFAULT_JOURNAL_ACCOUNTS.commission_expense);
   });
 });
+
+describe("HungerStation invoice-only charges and CPC advertising", () => {
+  const branch = (name: string, invoiceName: string, extra: Record<string, unknown> = {}) => ({
+    branch: name,
+    branchId: name,
+    invoiceBranchName: invoiceName,
+    orders: 10,
+    grossSales: 1150,
+    netSales: 1000,
+    commission: 100,
+    bankFeeSuccess: 10,
+    bankFeeRefunded: 0,
+    walletFee: 0,
+    rdfCampaigns: 0,
+    jokerFees: 0,
+    compensation: 0,
+    waitingTimeFees: 0,
+    ...extra,
+  });
+  const period = {
+    id: "p",
+    label: "HS Sept",
+    platform: "hungerstation",
+    period_start: "2026-09-01",
+    period_end: "2026-09-30",
+    summary: {},
+    branches: [branch("PAST -  North", "PAST - North ' /"), branch("PAST - South", "PAST - South ' /")],
+    invoice: {
+      lines: [],
+      branches: [
+        { branch: "PAST - North ' /", invoiceOnlyItems: [{ label: "الطابعات", amount: 500 }] },
+        { branch: "PAST - South ' /", invoiceOnlyItems: [{ label: "الاشتراك الشهري", amount: 200 }] },
+      ],
+      unallocatedCharges: [{ label: "رسوم حملات التوصيل المجاني", amount: 587.83 }],
+      cpc: 1495.03,
+      cpcBranches: [
+        { branch: "PAST - North", amountExVat: 1000, vat: 150 },
+        { branch: "PAST - Gone", amountExVat: 300, vat: 45.03 },
+      ],
+    },
+  } as unknown as StoredPeriod;
+
+  test("each branch carries its own printers, subscription and CPC line, with their VAT, against the receivable", () => {
+    const north = branchJournalEntry(period, period.branches[0]!);
+    expect(amount(north, "device_expense")).toBe(500);
+    expect(amount(north, "advertising_expense")).toBe(1000);
+    expect(amount(north, "subscription_expense")).toBe(0);
+    // 15% on commission, card fees and printers, plus the VAT printed on the CPC line.
+    expect(amount(north, "input_vat")).toBeCloseTo((100 + 10 + 500) * 0.15 + 150, 2);
+    expect(north.totalDebit).toBeCloseTo(north.totalCredit, 2);
+    expect(amount(north, "platform_receivable")).toBeCloseTo(1150 - (610 * 1.15 + 1150), 2);
+
+    const south = branchJournalEntry(period, period.branches[1]!);
+    expect(amount(south, "subscription_expense")).toBe(200);
+    expect(amount(south, "advertising_expense")).toBe(0);
+  });
+
+  test("a branch renamed for display keeps its invoice lines", () => {
+    const shown = branchJournalEntry(period, { ...period.branches[0]!, branch: "الشمال" });
+    expect(amount(shown, "advertising_expense")).toBe(1000);
+  });
+
+  test("the period entry adds what no branch carries and still balances", () => {
+    const whole = periodJournalEntry(period);
+    expect(amount(whole, "device_expense")).toBe(500);
+    expect(amount(whole, "subscription_expense")).toBe(200);
+    expect(amount(whole, "advertising_expense")).toBe(1300);
+    expect(amount(whole, "marketing_expense")).toBeCloseTo(587.83, 2);
+    expect(whole.totalDebit).toBeCloseTo(whole.totalCredit, 2);
+  });
+});
+

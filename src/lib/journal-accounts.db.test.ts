@@ -3,7 +3,7 @@ import type { PGlite } from "@electric-sql/pglite";
 
 import { activateAllWorkspaces, asUser, createMigratedDatabase } from "../test-support/database";
 
-/** Migration 0047: the chart of accounts for journal entries follows the workspace roles. */
+/** Migrations 0047 and 0054: the chart of accounts for journal entries follows the workspace roles. */
 const U = {
   ownerA: "00000000-0000-4000-8000-0000000007a1",
   auditorA: "00000000-0000-4000-8000-0000000007a2",
@@ -60,6 +60,13 @@ describe("journal account settings", () => {
   test("a company cannot write into another company's chart", async () => {
     const result = await asUser(db, U.ownerA, UPSERT, [wsB, U.ownerB, "output_vat", "1", "x", U.ownerA]);
     expect(result.error).not.toBeNull();
+  });
+
+  test("the devices, subscription and CPC advertising accounts can be mapped (migration 0054)", async () => {
+    for (const key of ["device_expense", "subscription_expense", "advertising_expense"]) {
+      const result = await asUser(db, U.ownerA, UPSERT, [wsA, U.ownerA, key, "5" + key.length, key, U.ownerA]);
+      expect(result.error).toBeNull();
+    }
   });
 
   test("only known entry accounts can be stored", async () => {
