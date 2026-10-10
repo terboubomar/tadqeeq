@@ -181,8 +181,9 @@ function PlatformWorkspace({
       ) : null}
 
       {hasData ? (
-        <section className="grid overflow-hidden rounded-2xl border border-border bg-card sm:grid-cols-2 xl:grid-cols-5">
+        <section className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border xl:grid-cols-5">
           <Kpi
+            wide
             label="المبيعات"
             value={sar(row?.grossSales)}
             hint={`${count(row?.orderCount)} طلب${row?.cancellationCount ? ` · ${count(row.cancellationCount)} ملغى` : ""}`}
@@ -197,7 +198,8 @@ function PlatformWorkspace({
           />
           <Kpi
             label="توقع نهاية الشهر"
-            value={row?.forecastSettlement == null ? "غير متاح بعد" : sar(row.forecastSettlement)}
+            value={row?.forecastSettlement == null ? null : sar(row.forecastSettlement)}
+            empty="غير متاح بعد"
             hint={forecastHint(row?.forecastMissingDays ?? [], row?.coveredDays ?? 0)}
           />
         </section>
@@ -406,11 +408,31 @@ function UploadResults({ items, onClear }: { items: UploadItem[]; onClear: () =>
 }
 
 
-function Kpi({ label, value, hint, strong }: { label: string; value: string; hint: string; strong?: boolean }) {
+/** One month figure. A missing value shows `empty` in body type, so Arabic words never sit in the number font. */
+function Kpi({
+  label,
+  value,
+  empty,
+  hint,
+  strong,
+  wide,
+}: {
+  label: string;
+  value: string | null;
+  empty?: string;
+  hint: string;
+  strong?: boolean;
+  /** Spans both columns on phones (the lead figure). */
+  wide?: boolean;
+}) {
   return (
-    <div className="min-w-0 border-b border-border px-4 py-4 last:border-b-0 sm:border-e sm:[&:nth-child(even)]:border-e-0 xl:border-b-0 xl:[&:nth-child(even)]:border-e xl:last:border-e-0">
+    <div className={cn("min-w-0 bg-card px-4 py-4", wide && "col-span-2 xl:col-span-1")}>
       <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className={cn("num mt-1 truncate text-[20px] font-semibold", strong && "text-primary")}>{value}</p>
+      {value == null ? (
+        <p className="mt-1.5 text-[15px] font-semibold text-muted-foreground">{empty}</p>
+      ) : (
+        <p className={cn("num mt-1 truncate text-[18px] font-semibold sm:text-[20px]", strong && "text-primary")}>{value}</p>
+      )}
       <p className="mt-1 text-[10.5px] leading-4 text-muted-foreground">{hint}</p>
     </div>
   );

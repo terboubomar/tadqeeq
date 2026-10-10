@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/workspace/PageKit";
 import { count } from "@/lib/format";
 import { operationPlatformLabel } from "@/lib/operations/catalog";
+import { formatArabicDate } from "@/lib/site-content";
 import { isIncompleteDay } from "@/lib/operations/completeness";
 import { deleteOperationImport, getOperationMonth } from "@/lib/operations/operations.functions";
 import { PRODUCTS } from "@/lib/products";
@@ -99,13 +100,13 @@ function DayWorkspace({ platform, date }: { platform: OperationPlatform; date: s
           { label: "الرئيسية", to: "/dashboard" },
           { label: PRODUCTS.nabd.name, to: "/operations" },
           { label },
-          { label: date },
+          { label: formatArabicDate(date) },
         ]}
         title={
           <span className="inline-flex items-center gap-2.5">
             <PlatformIcon platform={platform} className="size-8 rounded-lg" />
             <span>
-              {label} · <span className="num">{date}</span>
+              {label} · {formatArabicDate(date)}
             </span>
           </span>
         }
@@ -148,7 +149,7 @@ function DayWorkspace({ platform, date }: { platform: OperationPlatform; date: s
 
       {!monthQuery.isLoading && !files.length ? (
         <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-10 text-center text-[12.5px] text-muted-foreground">
-          لا توجد ملفات {label} ليوم <span className="num">{date}</span>.
+          لا توجد ملفات {label} ليوم {formatArabicDate(date)}.
         </div>
       ) : null}
 

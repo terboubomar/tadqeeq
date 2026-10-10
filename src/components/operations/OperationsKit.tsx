@@ -111,7 +111,7 @@ export function CoverageCalendar({
                 "num grid h-8 place-items-center rounded-md border text-[11.5px]",
                 missing ? "border-dashed border-destructive/50 text-destructive" : "border-transparent bg-muted/40 text-muted-foreground",
                 future && "opacity-40",
-                isCurrentMonth && day === today.getDate() && "ring-1 ring-primary",
+                isCurrentMonth && day === today.getDate() && "ring-1 ring-foreground/35",
               )}
             >
               {day}
