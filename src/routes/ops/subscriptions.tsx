@@ -43,9 +43,16 @@ function Subscriptions() {
   const usage = useQuery({ queryKey: ["ops-order-usage"], queryFn: () => workspaceOrderUsage({ data: {} }), enabled: ok });
   const [form, setForm] = useState<SubForm | null>(null);
 
+  // A subscription can also activate or suspend the client and settle its plan request.
+  const refresh = () =>
+    Promise.all(
+      [["ops-subs"], ["ops-plan-requests"], ["ops-clients"], ["ops-client"], ["ops-overview"], ["ops-tasks"], ["ops-logs"]].map((queryKey) =>
+        qc.invalidateQueries({ queryKey }),
+      ),
+    );
   const saveSub = useMutation({
     mutationFn: (f: SubForm) => saveSubscription({ data: f }),
-    onSuccess: () => { toast.success("تم حفظ الاشتراك"); setForm(null); void qc.invalidateQueries(); },
+    onSuccess: () => { toast.success("تم حفظ الاشتراك"); setForm(null); void refresh(); },
     onError: (e) => toast.error((e as Error).message),
   });
 

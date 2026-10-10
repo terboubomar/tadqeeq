@@ -25,14 +25,21 @@ function Payments() {
   const [file, setFile] = useState<File | null>(null);
   const [filter, setFilter] = useState("");
 
+  // A payment changes the payment list, client totals, the overview, tasks and the log; nothing else in ops.
+  const refresh = () =>
+    Promise.all(
+      [["ops-payments"], ["ops-clients"], ["ops-client"], ["ops-overview"], ["ops-tasks"], ["ops-logs"]].map((queryKey) =>
+        qc.invalidateQueries({ queryKey }),
+      ),
+    );
   const save = useMutation({
     mutationFn: async () => recordPayment({ data: { ...f, receiptDataUrl: file ? await readFile(file) : undefined } }),
-    onSuccess: () => { toast.success("تم تسجيل الدفعة"); setF({ ...f, amount: 0, reference: "", notes: "" }); setFile(null); void qc.invalidateQueries(); },
+    onSuccess: () => { toast.success("تم تسجيل الدفعة"); setF({ ...f, amount: 0, reference: "", notes: "" }); setFile(null); void refresh(); },
     onError: (e) => toast.error((e as Error).message),
   });
   const del = useMutation({
     mutationFn: (id: string) => deletePayment({ data: { id } }),
-    onSuccess: () => void qc.invalidateQueries(),
+    onSuccess: () => void refresh(),
     onError: (e) => toast.error((e as Error).message),
   });
 

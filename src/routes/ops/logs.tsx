@@ -23,8 +23,8 @@ function Logs() {
   return (
     <div>
       <OpsHeader title="السجلات" sub="آخر 300 حدث">
-        <div className="flex gap-2">
-        <Input placeholder="بحث بالعميل أو المنفّذ أو الإجراء" value={search} onChange={(e) => setSearch(e.target.value)} className="w-60" />
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+        <Input placeholder="بحث بالعميل أو المنفّذ أو الإجراء" value={search} onChange={(e) => setSearch(e.target.value)} className="min-w-0 flex-1 sm:w-60 sm:flex-none" />
         <select className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={src} onChange={(e) => setSrc(e.target.value as typeof src)}>
           <option value="all">الكل</option><option value="ops">إجراءات فريق العمليات</option><option value="client">أحداث العملاء</option>
         </select>
@@ -37,7 +37,7 @@ function Logs() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.source + r.id} className="border-t border-border align-top">
-                  <td className="whitespace-nowrap p-3"><span className="num">{new Date(r.createdAt).toLocaleString("ar-SA-u-ca-gregory-nu-latn", { timeZone: "Asia/Riyadh" })}</span></td>
+                  <td className="whitespace-nowrap p-3 tabular-nums">{new Date(r.createdAt).toLocaleString("ar-SA-u-ca-gregory-nu-latn", { timeZone: "Asia/Riyadh" })}</td>
                   <td className="p-3">{r.source === "ops" ? "العمليات" : "العميل"}</td>
                   <td className="p-3"><span className="font-medium">{opsActionLabel(r.action)}</span>{opsActionLabel(r.action) !== r.action ? <span className="block font-mono text-[10px] text-muted-foreground">{r.action}</span> : null}</td>
                   <td className="p-3 text-xs" dir="ltr">{r.actor}</td>

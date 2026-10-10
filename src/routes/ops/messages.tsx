@@ -59,7 +59,7 @@ function Messages() {
                   {m.company ? <span className="text-muted-foreground"> · {m.company}</span> : null}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  <span className="rounded bg-muted px-1.5 py-0.5">{contactTopicLabel(m.topic)}</span> <span className="num">{when(m.createdAt)}</span>
+                  <span className="rounded bg-muted px-1.5 py-0.5">{contactTopicLabel(m.topic)}</span> <span className="whitespace-nowrap tabular-nums">{when(m.createdAt)}</span>
                 </p>
               </div>
               {m.status === "new" ? (
@@ -86,7 +86,7 @@ function Messages() {
             </div>
             {m.status === "handled" && m.handledAt ? (
               <p className="mt-3 text-xs text-muted-foreground">
-                عولجت <span className="num">{when(m.handledAt)}</span>
+                عولجت <span className="whitespace-nowrap tabular-nums">{when(m.handledAt)}</span>
                 {m.handledBy ? ` · ${m.handledBy}` : ""}
               </p>
             ) : null}
