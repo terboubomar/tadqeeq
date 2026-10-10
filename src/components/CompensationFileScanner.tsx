@@ -208,13 +208,15 @@ export function CompensationFileScanner({
 
   async function handleFiles(files: FileList | null) {
     if (!files?.length) return;
+    // Copy the list now: the input is cleared right after this call starts, which empties the live FileList.
+    const chosen = Array.from(files);
     try {
       const all: CompensatedOrder[] = [];
-      for (const file of Array.from(files)) {
+      for (const file of chosen) {
         all.push(...extractCompensatedOrders(await file.arrayBuffer(), file.name));
       }
       setOrders(all);
-      setFileNames(Array.from(files).map((f) => f.name));
+      setFileNames(chosen.map((f) => f.name));
       setEvidence({});
       if (all.length === 0) toast.info("لم يتم العثور على طلبات فيها تعويض في الملف");
     } catch {
