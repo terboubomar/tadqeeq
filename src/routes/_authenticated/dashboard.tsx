@@ -33,7 +33,7 @@ import {
   YAxis,
 } from "recharts";
 import { EmptyState } from "@/components/AppShell";
-import { ActivityFeed, ChartCard, MetricCard, StatTiles, TrendCard, type FeedItem } from "@/components/dash/DashKit";
+import { ActivityFeed, ChartCard, MetricCard, TrendCard, type FeedItem, type StatTile } from "@/components/dash/DashKit";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { AI_UI_ENABLED } from "@/lib/ai/config";
 import { buildPeriodExceptions, summarizeExceptions } from "@/lib/exceptions";
@@ -43,8 +43,9 @@ import { reanalyzeAuditPeriod } from "@/lib/reanalyze-period.functions";
 import { setSelectedPeriodId, useSelectedPeriod } from "@/lib/use-period";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 import { SmartWatchCard } from "@/components/smart-watch/SmartWatchCard";
-import { ActionBar, NumberTiles, PageHeader } from "@/components/workspace/PageKit";
+import { ActionBar, PageHeader } from "@/components/workspace/PageKit";
 import { PRODUCTS } from "@/lib/products";
+import { cn } from "@/lib/utils";
 import { keetaCostSplit, keetaOutsideInvoice } from "@/lib/keeta-cost";
 import { PLATFORM_COST_FORMULA_AR, platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
 
@@ -278,6 +279,69 @@ function Dashboard() {
         ]
       : null;
 
+  /** The period's money figures: [0] gross sales (headline), [1-2] net sales and commission, the rest sit beside the headline. */
+  const statItems: StatTile[] = [
+              { label: "المبيعات الإجمالية (شامل الضريبة)", value: sar(s.grossSales), icon: ShoppingBag, tone: "gold" },
+              {
+                label: isHunger ? "صافي المبيعات الخاضعة للعمولة" : isJahez ? "صافي المطعم حسب جاهز" : "صافي التسوية المحتسب",
+                value: sar(s.netSales),
+                icon: TrendingUp,
+              },
+              {
+                label: isHunger ? "إجمالي العمولة" : isJahez ? "عمولة جاهز (بدون الضريبة)" : "عمولة كيتا (بدون الضريبة)",
+                value: sar(s.commission),
+                hint: `بنسبة ${percent(s.commissionPct)} من الأساس`,
+                icon: Percent,
+                tone: "negative",
+              },
+              ...(keetaSplit && keetaOutside
+                ? [
+                    {
+                      label: "فاتورة كيتا الضريبية (بدون الضريبة)",
+                      value: sar(keetaSplit.taxInvoice),
+                      hint: "عمولة الطلبات + رسوم الإعلانات",
+                      icon: Receipt,
+                      tone: "negative" as const,
+                    },
+                    {
+                      label: "مصاريف أخرى خارج الفاتورة",
+                      value: sar(keetaOutside.total),
+                      hint: keetaOutside.hint || undefined,
+                      icon: Receipt,
+                      tone: "negative" as const,
+                    },
+                    costPctTile,
+                    {
+                      label: "الطلبات",
+                      value: count(s.orders),
+                      hint: `متوسط الطلب ${sar(s.orders ? s.grossSales / s.orders : 0)}`,
+                      icon: ShoppingCart,
+                    },
+                  ]
+                : [
+                    {
+                      label: isHunger ? "إجمالي ما خصمته المنصة" : isJahez ? "فاتورة جاهز المحتسبة (بدون الضريبة)" : "إجمالي تكلفة كيتا (بدون الضريبة)",
+                      value: sar(s.totalCharges),
+                      hint: isHunger
+                        ? "عمولة + رسوم دفع + حملات + تعويضات"
+                        : isJahez
+                          ? "عمولة + رسوم مدفوعات + عروض توصيل"
+                          : `${percent(platformCostPct(totalPlatformCharges("keeta", s), s.grossSales) ?? 0)} من إجمالي المبيعات · ${percent(s.keetaPlatformCostPct ?? 0)} من المبيعات بدون الضريبة`,
+                      icon: Receipt,
+                      tone: "negative" as const,
+                    },
+                    costPctTile,
+                    { label: "الطلبات", value: count(s.orders), icon: ShoppingCart },
+                    { label: "متوسط قيمة الطلب", value: sar(s.orders ? s.grossSales / s.orders : 0), icon: Store },
+                  ]),
+  ];
+  const headline = statItems[0]!;
+  const restStats = statItems.slice(1);
+  const detailStats = restStats.slice(0, 2);
+  const supportingStats = restStats.slice(2);
+  const detailMetrics = [...detailStats, ...platformMetrics, ...(compensationMetrics ?? [])];
+  const detailCount = detailMetrics.length + (can("exceptions.read") ? 0 : 1);
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -336,186 +400,144 @@ function Dashboard() {
         ) : null}
       </ActionBar>
 
+      <section aria-labelledby="period-headline" className="panel overflow-hidden">
+        <div className="grid gap-6 p-5 sm:p-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] xl:gap-8">
+          <div className="min-w-0">
+            <p id="period-headline" className="text-[13px] text-muted-foreground">{headline.label}</p>
+            <p className="num mt-1 truncate text-[30px] font-semibold leading-tight tracking-[-0.02em] sm:text-[38px]">{headline.value}</p>
+            <dl className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border">
+              {supportingStats.map((item) => (
+                <div key={item.label} className="min-w-0 bg-card px-3.5 py-3">
+                  <dt className="flex items-center gap-1.5 text-[11.5px] leading-5 text-muted-foreground">
+                    <item.icon className="size-3.5 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </dt>
+                  <dd className={cn("num mt-1 truncate text-[17px] font-semibold", STAT_TONE[item.tone ?? "default"])}>{item.value}</dd>
+                  {item.hint ? <dd className="mt-0.5 text-[10.5px] leading-4 text-muted-foreground">{item.hint}</dd> : null}
+                </div>
+              ))}
+            </dl>
+          </div>
+          <figure className="min-w-0">
+            <figcaption className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <span className="text-[13px] font-semibold">
+                {isHunger ? "المبيعات والعمولة يومياً" : isJahez ? "المبيعات وعمولة جاهز يومياً" : "المبيعات وتكلفة المنصة يومياً"}
+              </span>
+              <span className="flex flex-wrap gap-x-4 text-[11.5px] text-muted-foreground">
+                <span>
+                  {isHunger ? "صافي المبيعات" : "المبيعات"} <span className="num text-foreground">{sar(salesTotal)}</span>
+                </span>
+                <span>
+                  متوسط يومي <span className="num text-foreground">{sar(days.length ? salesTotal / days.length : 0)}</span>
+                </span>
+                <span>
+                  {costLabel} <span className="num text-destructive">{sar(costTotal)}</span>
+                </span>
+              </span>
+            </figcaption>
+            <div className="mt-3 h-64 xl:h-72" dir="ltr">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={daily} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+                  <YAxis tickFormatter={(value: number) => short(value)} tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" width={44} />
+                  <Tooltip {...chartStyle} formatter={(value: number) => money(value)} />
+                  <Bar dataKey="مبيعات" fill="var(--color-chart-1)" radius={[4, 4, 0, 0]} maxBarSize={22} />
+                  <Line type="monotone" dataKey={costLabel} stroke="var(--color-chart-2)" strokeWidth={2} dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-2 flex justify-center gap-5 text-[11.5px] text-muted-foreground">
+              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-chart-1" /> {isHunger ? "صافي المبيعات" : "المبيعات"}</span>
+              <span className="flex items-center gap-1.5"><span className="h-0.5 w-3 rounded bg-chart-2" /> {costLabel}</span>
+            </div>
+          </figure>
+        </div>
+      </section>
+
+      <div className={cn("grid items-start gap-5", can("exceptions.read") && "xl:grid-cols-2")}>
       {can("exceptions.read") ? (
-        <section aria-labelledby="activities" className="space-y-2.5">
-          <h2 id="activities" className="font-display text-[15px] font-bold">الأنشطة</h2>
-          <NumberTiles
-            items={[
-              {
-                label: "الاستثناءات المفتوحة",
-                value: count(exceptionSummary.openCount),
-                hint: count(exceptionSummary.criticalCount) + " حرج",
-                icon: CircleAlert,
-                tone: exceptionSummary.openCount ? "danger" : "plain",
-                to: "/exceptions",
-              },
-              {
-                label: "قابل للاسترداد من المنصة",
-                value: sar(exceptionSummary.potentialRecovery),
-                hint: "تحت المراجعة " + sar(exceptionSummary.underReview),
-                icon: ShieldCheck,
-                tone: "gold",
-                to: "/exceptions",
-              },
-              {
-                label: "تم استرداده",
-                value: sar(exceptionSummary.recovered),
-                hint: "حسب المسجل في «" + PRODUCTS.radar.name + "»",
-                icon: Banknote,
-                tone: exceptionSummary.recovered > 0 ? "success" : "plain",
-                to: "/exceptions",
-              },
-              {
-                label: "الطلبات",
-                value: count(s.orders),
-                hint: "متوسط الطلب " + sar(s.orders ? s.grossSales / s.orders : 0),
-                icon: ShoppingCart,
-                to: "/daily",
-              },
-            ]}
-          />
+        <section aria-labelledby="attention" className="panel overflow-hidden">
+          <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+            <h2 id="attention" className="text-[14px] font-bold">يحتاج انتباهك</h2>
+            <Link to="/exceptions" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+              {PRODUCTS.radar.name} · الاستثناءات <ChevronLeft className="size-3.5" />
+            </Link>
+          </header>
+          <div className="grid grid-cols-3 gap-px border-b border-border bg-border">
+            <AttentionStat
+              label="الاستثناءات المفتوحة"
+              value={count(exceptionSummary.openCount)}
+              hint={count(exceptionSummary.criticalCount) + " حرج"}
+              tone={exceptionSummary.openCount ? "negative" : "default"}
+            />
+            <AttentionStat
+              label="قابل للاسترداد من المنصة"
+              value={sar(exceptionSummary.potentialRecovery)}
+              hint={"تحت المراجعة " + sar(exceptionSummary.underReview)}
+              tone="gold"
+            />
+            <AttentionStat
+              label="تم استرداده"
+              value={sar(exceptionSummary.recovered)}
+              hint={"حسب المسجل في «" + PRODUCTS.radar.name + "»"}
+              tone={exceptionSummary.recovered > 0 ? "positive" : "default"}
+            />
+          </div>
+          <div className="p-5">
+            <ActivityFeed items={attention} empty="لا توجد استثناءات مفتوحة في هذه الفترة." />
+          </div>
         </section>
       ) : null}
 
       <SmartWatchCard selected={selected} periods={periods} />
-
-      <div className="grid gap-5 xl:grid-cols-12">
-        <div className="space-y-5 xl:col-span-7">
-          <StatTiles
-            items={[
-              { label: "المبيعات الإجمالية (شامل الضريبة)", value: sar(s.grossSales), icon: ShoppingBag, tone: "gold" },
-              {
-                label: isHunger ? "صافي المبيعات الخاضعة للعمولة" : isJahez ? "صافي المطعم حسب جاهز" : "صافي التسوية المحتسب",
-                value: sar(s.netSales),
-                icon: TrendingUp,
-              },
-              {
-                label: isHunger ? "إجمالي العمولة" : isJahez ? "عمولة جاهز (بدون الضريبة)" : "عمولة كيتا (بدون الضريبة)",
-                value: sar(s.commission),
-                hint: `بنسبة ${percent(s.commissionPct)} من الأساس`,
-                icon: Percent,
-                tone: "negative",
-              },
-              ...(keetaSplit && keetaOutside
-                ? [
-                    {
-                      label: "فاتورة كيتا الضريبية (بدون الضريبة)",
-                      value: sar(keetaSplit.taxInvoice),
-                      hint: "عمولة الطلبات + رسوم الإعلانات",
-                      icon: Receipt,
-                      tone: "negative" as const,
-                    },
-                    {
-                      label: "مصاريف أخرى خارج الفاتورة",
-                      value: sar(keetaOutside.total),
-                      hint: keetaOutside.hint || undefined,
-                      icon: Receipt,
-                      tone: "negative" as const,
-                    },
-                    costPctTile,
-                    {
-                      label: "الطلبات",
-                      value: count(s.orders),
-                      hint: `متوسط الطلب ${sar(s.orders ? s.grossSales / s.orders : 0)}`,
-                      icon: ShoppingCart,
-                    },
-                  ]
-                : [
-                    {
-                      label: isHunger ? "إجمالي ما خصمته المنصة" : isJahez ? "فاتورة جاهز المحتسبة (بدون الضريبة)" : "إجمالي تكلفة كيتا (بدون الضريبة)",
-                      value: sar(s.totalCharges),
-                      hint: isHunger
-                        ? "عمولة + رسوم دفع + حملات + تعويضات"
-                        : isJahez
-                          ? "عمولة + رسوم مدفوعات + عروض توصيل"
-                          : `${percent(platformCostPct(totalPlatformCharges("keeta", s), s.grossSales) ?? 0)} من إجمالي المبيعات · ${percent(s.keetaPlatformCostPct ?? 0)} من المبيعات بدون الضريبة`,
-                      icon: Receipt,
-                      tone: "negative" as const,
-                    },
-                    costPctTile,
-                    { label: "الطلبات", value: count(s.orders), icon: ShoppingCart },
-                    { label: "متوسط قيمة الطلب", value: sar(s.orders ? s.grossSales / s.orders : 0), icon: Store },
-                  ]),
-            ]}
-          />
-          <div className="grid gap-5 md:grid-cols-2">
-            <TrendCard
-              value={percent(s.commissionPct)}
-              label={isHunger ? "نسبة العمولة" : "نسبة عمولة المنصة"}
-              description={`${costLabel} اليومية خلال الفترة · والشريط أدناه لآخر فترات ${selected.platform === "hungerstation" ? "هنقرستيشن" : selected.platform === "jahez" ? "جاهز" : "كيتا"}.`}
-              data={days.map((d) => ({ label: dayLabel(d.date), value: d.commission }))}
-              format={(v) => sar(v)}
-              band={history.map((p) => ({ value: percent(p.summary.commissionPct, 1), label: p.label }))}
-            />
-            <TrendCard
-              value={count(s.orders)}
-              label="الطلبات"
-              description="عدد الطلبات يومياً خلال الفترة."
-              variant="bars"
-              data={days.map((d) => ({ label: dayLabel(d.date), value: d.orders }))}
-              format={(v) => `${count(v)} طلب`}
-              band={[
-                { value: count(days.length ? Math.round(s.orders / days.length) : 0), label: "متوسط يومي" },
-                { value: count(busiest?.orders ?? 0), label: busiest ? `أعلى يوم ${dayLabel(busiest.date)}` : "أعلى يوم" },
-                { value: count(days.length), label: "أيام" },
-              ]}
-            />
-          </div>
-        </div>
-
-        <ChartCard
-          className="xl:col-span-5"
-          title={isHunger ? "المبيعات والعمولة يومياً" : isJahez ? "المبيعات وعمولة جاهز يومياً" : "المبيعات وتكلفة المنصة يومياً"}
-          totals={[
-            { label: isHunger ? "صافي المبيعات" : "المبيعات", value: sar(salesTotal) },
-            { label: "متوسط يومي", value: sar(days.length ? salesTotal / days.length : 0) },
-            { label: costLabel, value: sar(costTotal), tone: "negative" },
-          ]}
-        >
-          <div className="h-[23rem]" dir="ltr">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={daily} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
-                <YAxis tickFormatter={(value: number) => short(value)} tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" width={44} />
-                <Tooltip {...chartStyle} formatter={(value: number) => money(value)} />
-                <Bar dataKey="مبيعات" fill="var(--color-chart-1)" radius={[4, 4, 0, 0]} maxBarSize={22} />
-                <Line type="monotone" dataKey={costLabel} stroke="var(--color-chart-2)" strokeWidth={2} dot={false} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-3 flex justify-center gap-5 text-[11.5px] text-muted-foreground">
-            <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-chart-1" /> {isHunger ? "صافي المبيعات" : "المبيعات"}</span>
-            <span className="flex items-center gap-1.5"><span className="h-0.5 w-3 rounded bg-chart-2" /> {costLabel}</span>
-          </div>
-        </ChartCard>
       </div>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {platformMetrics.map((m) => (
-          <MetricCard key={m.label} label={m.label} value={m.value} hint={m.hint} icon={m.icon} tone={m.tone} />
-        ))}
-      </section>
+      <div className="grid gap-5 md:grid-cols-2">
+        <TrendCard
+          value={percent(s.commissionPct)}
+          label={isHunger ? "نسبة العمولة" : "نسبة عمولة المنصة"}
+          description={`${costLabel} اليومية خلال الفترة · والشريط أدناه لآخر فترات ${selected.platform === "hungerstation" ? "هنقرستيشن" : selected.platform === "jahez" ? "جاهز" : "كيتا"}.`}
+          data={days.map((d) => ({ label: dayLabel(d.date), value: d.commission }))}
+          format={(v) => sar(v)}
+          band={history.map((p) => ({ value: percent(p.summary.commissionPct, 1), label: p.label }))}
+        />
+        <TrendCard
+          value={count(s.orders)}
+          label="الطلبات"
+          description="عدد الطلبات يومياً خلال الفترة."
+          variant="bars"
+          data={days.map((d) => ({ label: dayLabel(d.date), value: d.orders }))}
+          format={(v) => `${count(v)} طلب`}
+          band={[
+            { value: count(days.length ? Math.round(s.orders / days.length) : 0), label: "متوسط يومي" },
+            { value: count(busiest?.orders ?? 0), label: busiest ? `أعلى يوم ${dayLabel(busiest.date)}` : "أعلى يوم" },
+            { value: count(days.length), label: "أيام" },
+          ]}
+        />
+      </div>
 
-      {compensationMetrics ? (
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {compensationMetrics.map((m) => (
+      <section aria-labelledby="period-details" className="space-y-2.5">
+        <h2 id="period-details" className="font-display text-[15px] font-bold">تفاصيل الفترة</h2>
+        <div className={cn("grid gap-4 sm:grid-cols-2", detailCount % 4 === 0 ? "xl:grid-cols-4" : "xl:grid-cols-3")}>
+          {detailMetrics.map((m) => (
             <MetricCard key={m.label} label={m.label} value={m.value} hint={m.hint} icon={m.icon} tone={m.tone} />
           ))}
-        </section>
-      ) : null}
+          {can("exceptions.read") ? null : (
+            <MetricCard label="أيام الفترة" value={count(days.length)} hint={`${arabicDate(selected.period_start)} — ${arabicDate(selected.period_end)}`} icon={CalendarDays} />
+          )}
+        </div>
+      </section>
 
-      <div className="grid gap-5 xl:grid-cols-12">
-        <ChartCard
-          className="xl:col-span-7"
-          title={isHunger ? "أعلى الفروع عمولةً" : isJahez ? "أعلى الفروع تكلفة فاتورة" : "أعلى الفروع تكلفة منصة"}
-          action={
-            <Link to="/branches" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-              كل الفروع <ChevronLeft className="size-3.5" />
-            </Link>
-          }
-          bodyClassName="p-0"
-        >
+      <ChartCard
+        title={isHunger ? "أعلى الفروع عمولةً" : isJahez ? "أعلى الفروع تكلفة فاتورة" : "أعلى الفروع تكلفة منصة"}
+        action={
+          <Link to="/branches" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+            كل الفروع <ChevronLeft className="size-3.5" />
+          </Link>
+        }
+        bodyClassName="p-0"
+      >
           <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] text-sm">
               <thead className="text-xs text-muted-foreground">
@@ -549,27 +571,25 @@ function Dashboard() {
               </tbody>
             </table>
           </div>
-        </ChartCard>
-
-        <div className="space-y-5 xl:col-span-5">
-          {can("exceptions.read") ? (
-            <>
-              <ChartCard
-                title="يحتاج انتباهك"
-                action={
-                  <Link to="/exceptions" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                    {PRODUCTS.radar.name} · الاستثناءات <ChevronLeft className="size-3.5" />
-                  </Link>
-                }
-              >
-                <ActivityFeed items={attention} empty="لا توجد استثناءات مفتوحة في هذه الفترة." />
-              </ChartCard>
-            </>
-          ) : (
-            <MetricCard label="أيام الفترة" value={count(days.length)} hint={`${arabicDate(selected.period_start)} — ${arabicDate(selected.period_end)}`} icon={CalendarDays} />
-          )}
-        </div>
-      </div>
+      </ChartCard>
     </div>
+  );
+}
+
+const STAT_TONE: Record<NonNullable<StatTile["tone"]>, string> = {
+  default: "text-foreground",
+  positive: "text-success",
+  negative: "text-destructive",
+  gold: "text-primary-text",
+};
+
+/** One figure in the «يحتاج انتباهك» row, linking to «رادار». */
+function AttentionStat({ label, value, hint, tone }: { label: string; value: string; hint: string; tone: NonNullable<StatTile["tone"]> }) {
+  return (
+    <Link to="/exceptions" className="min-w-0 bg-card px-3 py-3.5 transition-colors hover:bg-muted/40 sm:px-5 sm:py-4">
+      <p className="text-[11px] leading-4 text-muted-foreground sm:text-[12px]">{label}</p>
+      <p className={cn("num mt-1 truncate text-[15px] font-semibold sm:text-[20px]", STAT_TONE[tone])}>{value}</p>
+      <p className="mt-0.5 text-[10.5px] leading-4 text-muted-foreground sm:text-[11px]">{hint}</p>
+    </Link>
   );
 }
