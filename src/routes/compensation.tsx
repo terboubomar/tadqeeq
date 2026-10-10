@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { productPageTitle } from "@/lib/products";
 import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
 import { ArrowRight, FileSearch, FileSpreadsheet, FileText, LayoutDashboard, LogOut, Send } from "lucide-react";
 
 import { useCompensationCases } from "@/components/compensation/queries";
@@ -62,6 +63,12 @@ function CompensationShell() {
   const locked = context.onboardingStatus !== "active" && !context.trial && !context.isPlatformAdmin;
   const planLocked = !can("compensation.read") && context.planLockedPermissions.includes("compensation.read");
   const caseCount = useCompensationCases(!locked && can("compensation.read")).data?.length;
+  const navRef = useRef<HTMLElement>(null);
+
+  // On phones the sections scroll sideways: keep the open one in view.
+  useEffect(() => {
+    navRef.current?.querySelector("[data-current]")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [path]);
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -110,13 +117,18 @@ function CompensationShell() {
               </p>
             </div>
           </div>
-          <nav aria-label="أقسام استرداد" className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:overflow-visible">
+          <nav
+            ref={navRef}
+            aria-label="أقسام استرداد"
+            className="flex gap-1 overflow-x-auto px-3 pb-3 [scrollbar-width:none] lg:flex-col lg:overflow-visible"
+          >
             {items.map((item) => {
               const active = item.exact ? path === item.to : path.startsWith(item.to);
               return (
                 <Link
                   key={item.to}
                   to={item.to}
+                  data-current={active ? "" : undefined}
                   className={cn(
                     "flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors",
                     active

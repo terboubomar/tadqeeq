@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { COMPENSATION_CASES_KEY, formatTimestamp, useCompensationCases } from "@/components/compensation/queries";
-import { CompHeader, DraftBox, EvidenceActions, EvidenceThumb, Field, Tag } from "@/components/compensation/shared";
+import { CompHeader, DraftBox, EvidenceActions, EvidenceThumb, Field, Tag, Timestamp } from "@/components/compensation/shared";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,7 +127,7 @@ function EvidencePage() {
               setGeneratedCase(null);
             }}
             placeholder="رقم الطلب كاملاً أو آخر 4 أرقام منه"
-            className="h-12 border-foreground/60 bg-card ps-10 text-base"
+            className="h-12 bg-card ps-10 text-base"
             dir="ltr"
           />
         </div>
@@ -157,7 +157,7 @@ function EvidencePage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold">{item.branchName}</p>
-                    <p className="num mt-1 text-xs text-muted-foreground">{formatTimestamp(item.capturedAt)}</p>
+                    <Timestamp value={item.capturedAt} className="mt-1 block text-xs text-muted-foreground" />
                     <p className="mt-1 text-xs text-muted-foreground">{item.senderName || "مرسل غير معروف"}</p>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <Button
@@ -208,7 +208,7 @@ function EvidencePage() {
                         {match.branch} · {match.transactionType}
                       </p>
                     </div>
-                    <span className="num font-semibold">{sar(match.amount)}</span>
+                    <span className="whitespace-nowrap font-semibold tabular-nums">{sar(match.amount)}</span>
                   </div>
                   <p className="mt-2 text-sm">{match.reason || "بدون سبب مسجل"}</p>
                   <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
@@ -334,7 +334,7 @@ function EvidencePage() {
         {generatedCase ? (
           <div className="mt-6 grid gap-4 xl:grid-cols-2">
             <DraftBox title="العربية" value={generatedCase.draftAr} />
-            <DraftBox title="English" value={generatedCase.draftEn} />
+            <DraftBox title="English" value={generatedCase.draftEn} dir="ltr" />
           </div>
         ) : null}
       </section>

@@ -11,6 +11,7 @@ import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { searchCompensationEvidence } from "@/lib/compensation-evidence.functions";
 import type { CompensationEvidenceRecord } from "@/lib/compensation-evidence.server";
 import { sar } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const marks = () => (supabase as any).from("compensation_appeal_marks");
@@ -222,23 +223,54 @@ export function CompensationFileScanner({
   }
 
   const total = orders?.reduce((sum, o) => sum + o.amount, 0) ?? 0;
+  const submitted = orders?.filter((o) => done[o.key]).length ?? 0;
+  const clearList = () => {
+    if (window.confirm("مسح القائمة؟ (حالات الاعتراض تبقى محفوظة)")) {
+      setOrders(null);
+      setFileNames([]);
+    }
+  };
+
+  const evidenceCell = (order: CompensatedOrder) => {
+    const items = evidence[order.key];
+    return items && items.length > 0 ? (
+      <div className="space-y-2">{items.map((item) => <div key={item.id}>{renderEvidence(item)}</div>)}</div>
+    ) : (
+      <Button size="sm" variant="outline" disabled={loadingKey === order.key} onClick={() => lookup.mutate(order)}>
+        {loadingKey === order.key ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+        {items ? "لا يوجد — إعادة" : "جلب الدليل"}
+      </Button>
+    );
+  };
+
+  const doneButton = (order: CompensatedOrder) =>
+    done[order.key] ? (
+      <Button size="sm" variant="ghost" className="text-success hover:text-success" onClick={() => toggleDone(order.key)} title="إلغاء">
+        <CheckCircle2 className="size-4" /> تم تقديم الاعتراض
+        <RotateCcw className="size-3 opacity-60" />
+      </Button>
+    ) : (
+      <Button size="sm" variant="outline" onClick={() => toggleDone(order.key)}>
+        <CheckCircle2 className="size-4" /> تم — قُدّم الاعتراض
+      </Button>
+    );
 
   return (
-    <section className="rounded-[10px] border border-border bg-card p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">طلبات التعويض من الملف</h2>
-          <p className="text-sm text-muted-foreground">
+    <section className="overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-5">
+        <div className="min-w-0">
+          <h2 className="text-[17px] font-semibold">طلبات التعويض من الملف</h2>
+          <p className="mt-0.5 max-w-[65ch] text-sm text-muted-foreground">
             ارفع ملف المنصة (هنقرستيشن، كيتا، جاهز) ويظهر لك فقط الطلبات التي فيها تعويض.
           </p>
         </div>
         <div className="flex gap-2">
           {orders ? (
-            <Button variant="outline" size="sm" onClick={() => { if (window.confirm("مسح القائمة؟ (حالات الاعتراض تبقى محفوظة)")) { setOrders(null); setFileNames([]); } }}>
+            <Button variant="outline" size="sm" onClick={clearList}>
               <X className="size-4" /> مسح
             </Button>
           ) : null}
-          <Button onClick={() => inputRef.current?.click()}>
+          <Button size={orders ? "sm" : "default"} variant={orders ? "outline" : "default"} onClick={() => inputRef.current?.click()}>
             <Upload className="size-4" /> رفع ملف
           </Button>
         </div>
@@ -253,80 +285,101 @@ export function CompensationFileScanner({
       </div>
 
       {!orders ? (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => { e.preventDefault(); void handleFiles(e.dataTransfer.files); }}
-          className="mt-4 flex w-full flex-col items-center gap-2 rounded-[10px] border-2 border-dashed border-border p-8 text-muted-foreground hover:bg-muted/40"
-        >
-          <FileSpreadsheet className="size-8" />
-          <span className="text-sm">اسحب الملف هنا أو اضغط للاختيار (Excel / CSV)</span>
-        </button>
+        <div className="px-5 pb-5">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => { e.preventDefault(); void handleFiles(e.dataTransfer.files); }}
+            className="group flex w-full flex-col items-center gap-3 rounded-xl border border-dashed border-input bg-background px-6 py-10 text-center transition-colors hover:border-primary/50 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+          >
+            <span className="grid size-12 place-items-center rounded-full bg-primary/10 text-primary-text transition-transform duration-200 group-hover:-translate-y-0.5 motion-reduce:transition-none">
+              <FileSpreadsheet className="size-6" />
+            </span>
+            <span className="text-sm font-semibold text-foreground">اسحب الملف هنا أو اضغط للاختيار (Excel / CSV)</span>
+          </button>
+        </div>
       ) : (
-        <div className="mt-4 space-y-3">
-          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-            <span>{fileNames.join("، ")}</span>
-            <span>عدد الطلبات: <b className="text-foreground">{orders.length}</b></span>
-            <span>تم تقديم الاعتراض: <b className="text-foreground">{orders.filter((o) => done[o.key]).length} / {orders.length}</b></span>
-            <span>إجمالي التعويض: <b className="text-foreground">{sar(total)}</b></span>
-          </div>
-          <div className="max-h-[520px] overflow-auto rounded-[8px] border border-border">
+        <div>
+          <dl className="grid grid-cols-2 gap-px border-y border-border bg-border lg:grid-cols-4">
+            <ScanStat label="الملف" value={<span className="block truncate text-sm font-medium" title={fileNames.join("، ")}>{fileNames.join("، ") || "—"}</span>} />
+            <ScanStat label="عدد الطلبات" value={<span className="num">{orders.length}</span>} />
+            <ScanStat
+              label="تم تقديم الاعتراض"
+              value={
+                <span className="num">
+                  {submitted} <span className="text-sm font-normal text-muted-foreground">/ {orders.length}</span>
+                </span>
+              }
+            >
+              <div aria-hidden className="mt-2 h-1 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-1 rounded-full bg-success transition-[width] duration-300 motion-reduce:transition-none"
+                  style={{ width: `${orders.length ? (submitted / orders.length) * 100 : 0}%` }}
+                />
+              </div>
+            </ScanStat>
+            <ScanStat label="إجمالي التعويض" value={<span className="tabular-nums">{sar(total)}</span>} />
+          </dl>
+
+          <ul className="divide-y divide-border md:hidden">
+            {orders.map((order) => (
+              <li key={order.key} className={cn("space-y-2.5 px-5 py-3.5", done[order.key] && "bg-muted/50")}>
+                <div className="flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="block font-mono text-sm font-semibold tabular-nums"><bdi>{order.orderNumber}</bdi></span>
+                    <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
+                      {order.branch || "—"} · {order.reason}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-sm font-semibold tabular-nums">{sar(order.amount)}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {evidenceCell(order)}
+                  {doneButton(order)}
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden max-h-[560px] overflow-auto md:block">
             <table className="w-full min-w-[820px] text-sm">
-              <thead className="sticky top-0 bg-muted text-muted-foreground">
+              <thead className="sticky top-0 z-[1] bg-muted text-xs text-muted-foreground">
                 <tr>
-                  <th className="p-2 text-right font-medium">رقم الطلب</th>
-                  <th className="p-2 text-right font-medium">الفرع</th>
-                  <th className="p-2 text-right font-medium">النوع</th>
-                  <th className="p-2 text-left font-medium">المبلغ</th>
-                  <th className="p-2 text-right font-medium">الدليل</th>
-                  <th className="p-2 text-right font-medium">الحالة</th>
+                  <th className="px-5 py-2.5 text-start font-medium">رقم الطلب</th>
+                  <th className="px-2 py-2.5 text-start font-medium">الفرع</th>
+                  <th className="px-2 py-2.5 text-start font-medium">النوع</th>
+                  <th className="px-2 py-2.5 text-end font-medium">المبلغ</th>
+                  <th className="px-2 py-2.5 text-start font-medium">الدليل</th>
+                  <th className="px-5 py-2.5 text-start font-medium">الحالة</th>
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => {
-                  const items = evidence[order.key];
-                  return (
-                    <tr key={order.key} className={`border-t border-border align-top ${done[order.key] ? "bg-muted/50 text-muted-foreground" : ""}`}>
-                      <td className="p-2 font-mono tabular-nums">{order.orderNumber}</td>
-                      <td className="p-2">{order.branch || "—"}</td>
-                      <td className="p-2 text-muted-foreground">{order.reason}</td>
-                      <td className="p-2 text-left tabular-nums">{sar(order.amount)}</td>
-                      <td className="p-2">
-                        {items && items.length > 0 ? (
-                          <div className="space-y-2">{items.map((item) => <div key={item.id}>{renderEvidence(item)}</div>)}</div>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={loadingKey === order.key}
-                            onClick={() => lookup.mutate(order)}
-                          >
-                            {loadingKey === order.key ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-                            {items ? "لا يوجد — إعادة" : "جلب الدليل"}
-                          </Button>
-                        )}
-                      </td>
-                      <td className="p-2">
-                        {done[order.key] ? (
-                          <Button size="sm" variant="ghost" onClick={() => toggleDone(order.key)} title="إلغاء">
-                            <CheckCircle2 className="size-4 text-primary" /> تم تقديم الاعتراض
-                            <RotateCcw className="size-3 opacity-60" />
-                          </Button>
-                        ) : (
-                          <Button size="sm" onClick={() => toggleDone(order.key)}>
-                            <CheckCircle2 className="size-4" /> تم — قُدّم الاعتراض
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {orders.map((order) => (
+                  <tr key={order.key} className={cn("border-t border-border align-middle", done[order.key] && "bg-muted/50 text-muted-foreground")}>
+                    <td className="px-5 py-2.5"><span className="font-mono font-semibold tabular-nums" dir="ltr">{order.orderNumber}</span></td>
+                    <td className="whitespace-nowrap px-2 py-2.5">{order.branch || "—"}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground">{order.reason}</td>
+                    <td className="whitespace-nowrap px-2 py-2.5 text-end tabular-nums">{sar(order.amount)}</td>
+                    <td className="px-2 py-2.5">{evidenceCell(order)}</td>
+                    <td className="px-5 py-2.5">{doneButton(order)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </div>
       )}
     </section>
+  );
+}
+
+function ScanStat({ label, value, children }: { label: string; value: ReactNode; children?: ReactNode }) {
+  return (
+    <div className="min-w-0 bg-card px-5 py-3.5">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-1 text-lg font-semibold">{value}</dd>
+      {children}
+    </div>
   );
 }
