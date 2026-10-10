@@ -160,16 +160,21 @@ export const FEATURES: Array<{ name: string; nameEn: string; description: string
   },
 ];
 
-/** The short explainer film on the homepage. */
+/**
+ * The homepage film: a tour of every product with an Arabic voiceover. New file names on each new film,
+ * because /video/* is cached for 30 days.
+ */
 export const EXPLAINER_VIDEO = {
-  src: "/video/tadqeeq-explainer.mp4",
-  poster: "/video/tadqeeq-explainer-poster.jpg",
-  mobileSrc: "/video/tadqeeq-explainer-mobile.mp4",
-  mobilePoster: "/video/tadqeeq-explainer-mobile-poster.jpg",
-  /** 12 s silent loop (≈35 KB) that plays inside the widget. */
-  preview: "/video/tadqeeq-explainer-preview.mp4",
-  previewPoster: "/video/tadqeeq-explainer-preview.jpg",
-  durationIso: "PT1M55S",
+  src: "/video/tadqeeq-features.mp4",
+  poster: "/video/tadqeeq-features-poster.jpg",
+  mobileSrc: "/video/tadqeeq-features-mobile.mp4",
+  mobilePoster: "/video/tadqeeq-features-mobile-poster.jpg",
+  /** 12 s silent loop (≈37 KB) that plays inside the widget. */
+  preview: "/video/tadqeeq-features-preview.mp4",
+  previewPoster: "/video/tadqeeq-features-preview.jpg",
+  /** Shown on the widget and in the pop-up description. */
+  durationLabel: "1:44",
+  durationIso: "PT1M44S",
   // Full date-time with the Riyadh offset: Google rejects a bare date for VideoObject.uploadDate.
-  uploadDate: "2026-10-04T12:00:00+03:00",
+  uploadDate: "2026-10-10T05:00:00+03:00",
 };

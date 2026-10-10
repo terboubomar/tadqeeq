@@ -329,8 +329,9 @@ function homeSchema(plans: PublicPlan[]) {
     },
     {
       "@type": "VideoObject",
-      name: "كيف يشتغل تدقيق",
-      description: "من رفع ملف الطلبات والفاتورة إلى استرجاع التعويض بأدلة Telegram، في أقل من دقيقتين.",
+      name: "جولة في أدوات تدقيق",
+      description:
+        "مطابقة الفاتورة وخريطة الرسوم والاستثناءات والتعويضات وعائد العروض ورقيب ونَبْض للمتابعة اليومية والقيود المحاسبية والحساب والفريق والأسعار، في أقل من دقيقتين.",
       thumbnailUrl: `${SITE_URL}${EXPLAINER_VIDEO.poster}`,
       contentUrl: `${SITE_URL}${EXPLAINER_VIDEO.src}`,
       uploadDate: EXPLAINER_VIDEO.uploadDate,
@@ -801,7 +802,7 @@ function ExplainerVideoLauncher() {
             <button
               type="button"
               onClick={() => setOpen(true)}
-              aria-label="شاهد كيف يعمل تدقيق (فيديو بالصوت، دقيقة و55 ثانية)"
+              aria-label="شاهد كيف يعمل تدقيق (فيديو بالصوت، دقيقة و44 ثانية)"
               className="relative block aspect-[9/16] w-full overflow-hidden rounded-[20px] bg-ink shadow-[0_24px_50px_-16px_rgb(19_35_43/0.65)] ring-[3px] ring-primary transition-transform hover:-translate-y-1"
             >
               {animate ? (
@@ -825,7 +826,7 @@ function ExplainerVideoLauncher() {
                 </span>
                 <span className="text-[12px] font-bold leading-4 sm:text-sm">شاهد كيف يعمل</span>
                 <span className="hidden text-[11px] text-ink-muted sm:block">
-                  بالصوت · <span className="num">1:55</span>
+                  بالصوت · <span className="num">{EXPLAINER_VIDEO.durationLabel}</span>
                 </span>
               </span>
             </button>
@@ -849,7 +850,7 @@ function ExplainerVideoLauncher() {
           )}
         >
           <DialogTitle className="sr-only">كيف يشتغل تدقيق</DialogTitle>
-          <DialogDescription className="sr-only">فيديو تعريفي مدته دقيقة و55 ثانية.</DialogDescription>
+          <DialogDescription className="sr-only">فيديو تعريفي مدته دقيقة و44 ثانية.</DialogDescription>
           {open ? (
             <video
               key={mobile ? "mobile" : "wide"}
