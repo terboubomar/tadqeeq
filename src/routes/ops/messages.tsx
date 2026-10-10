@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Check, Loader2, Mail, Phone, RotateCcw } from "lucide-react";
-import { useState } from "react";
 import { toast } from "sonner";
 
 import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
@@ -10,7 +9,15 @@ import { contactTopicLabel } from "@/lib/contact";
 import { opsCan } from "@/lib/ops";
 import { listContactMessages, setContactMessageHandled } from "@/lib/ops.functions";
 
-export const Route = createFileRoute("/ops/messages")({ component: Messages });
+type MessageFilter = "new" | "handled" | "all";
+
+/** The filter lives in the address (new messages when absent), so a view can be shared. */
+export const Route = createFileRoute("/ops/messages")({
+  validateSearch: (search: Record<string, unknown>): { show?: Exclude<MessageFilter, "new"> } => ({
+    show: search["show"] === "handled" || search["show"] === "all" ? search["show"] : undefined,
+  }),
+  component: Messages,
+});
 
 const when = (iso: string) => new Date(iso).toLocaleString("ar-SA-u-ca-gregory-nu-latn", { timeZone: "Asia/Riyadh", dateStyle: "medium", timeStyle: "short" });
 /** wa.me needs digits only, without + or a leading 0. */
@@ -19,7 +26,10 @@ const whatsapp = (mobile: string) => `https://wa.me/${mobile.replace(/\D/g, "")}
 function Messages() {
   const role = useOpsRole();
   const qc = useQueryClient();
-  const [filter, setFilter] = useState<"new" | "handled" | "all">("new");
+  const navigate = useNavigate({ from: Route.fullPath });
+  const filter: MessageFilter = Route.useSearch().show ?? "new";
+  const setFilter = (show: MessageFilter) =>
+    void navigate({ search: (prev) => ({ ...prev, show: show === "new" ? undefined : show }), replace: true });
   const q = useQuery({ queryKey: ["ops-messages"], queryFn: () => listContactMessages({ data: {} }), enabled: opsCan(role, "clients") });
   const handle = useMutation({
     mutationFn: (input: { id: string; handled: boolean }) => setContactMessageHandled({ data: input }),
@@ -39,7 +49,7 @@ function Messages() {
   return (
     <div>
       <OpsHeader title="رسائل التواصل" sub={`من صفحة «تواصل معنا» · ${newCount} جديدة`}>
-        <select className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>
+        <select className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={filter} onChange={(e) => setFilter(e.target.value as MessageFilter)}>
           <option value="new">جديدة</option>
           <option value="handled">تمت معالجتها</option>
           <option value="all">الكل</option>

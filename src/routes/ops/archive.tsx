@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { opsCan } from "@/lib/ops";
@@ -9,14 +8,26 @@ import { listDeletedOpsClients, listOpsClients } from "@/lib/ops.functions";
 import { ClientListRow } from "@/components/OpsClientForms";
 import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
-export const Route = createFileRoute("/ops/archive")({ component: ArchivePage });
+/** Tab and search live in the address, so a view can be shared. */
+export const Route = createFileRoute("/ops/archive")({
+  validateSearch: (search: Record<string, unknown>): { tab?: "deleted"; q?: string } => ({
+    tab: search["tab"] === "deleted" ? "deleted" : undefined,
+    q: typeof search["q"] === "string" && search["q"] ? search["q"] : undefined,
+  }),
+  component: ArchivePage,
+});
 
 const when = (iso: string) => new Date(iso).toLocaleString("ar-SA-u-ca-gregory-nu-latn", { timeZone: "Asia/Riyadh", dateStyle: "medium", timeStyle: "short" });
 
 function ArchivePage() {
   const role = useOpsRole();
-  const [tab, setTab] = useState<"archived" | "deleted">("archived");
-  const [search, setSearch] = useState("");
+  const params = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const tab: "archived" | "deleted" = params.tab ?? "archived";
+  const search = params.q ?? "";
+  const setTab = (next: "archived" | "deleted") =>
+    void navigate({ search: (prev) => ({ ...prev, tab: next === "deleted" ? next : undefined }), replace: true });
+  const setSearch = (q: string) => void navigate({ search: (prev) => ({ ...prev, q: q || undefined }), replace: true });
   const allowed = opsCan(role, "clients");
   const clients = useQuery({ queryKey: ["ops-clients"], queryFn: () => listOpsClients({ data: {} }), enabled: allowed });
   const deleted = useQuery({ queryKey: ["ops-deleted-clients"], queryFn: () => listDeletedOpsClients({ data: {} }), enabled: allowed });

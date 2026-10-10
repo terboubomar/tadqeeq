@@ -1,17 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, Paperclip, Trash2 } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Download, Loader2, Paperclip, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { downloadCsv } from "@/lib/csv-download";
 import { opsCan, sarFmt } from "@/lib/ops";
 import { deletePayment, getReceiptUrl, listOpsClients, listPayments, recordPayment } from "@/lib/ops.functions";
 import { OpsConfirm, OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
-export const Route = createFileRoute("/ops/payments")({ component: Payments });
+/** The client filter lives in the address, so a filtered list can be shared. */
+export const Route = createFileRoute("/ops/payments")({
+  validateSearch: (search: Record<string, unknown>): { client?: string } => ({ client: typeof search["client"] === "string" && search["client"] ? search["client"] : undefined }),
+  component: Payments,
+});
 
 const readFile = (f: File) => new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = () => rej(new Error("تعذّر قراءة الملف")); r.readAsDataURL(f); });
 
@@ -23,7 +28,9 @@ function Payments() {
   const clients = useQuery({ queryKey: ["ops-clients"], queryFn: () => listOpsClients({ data: {} }), enabled: ok });
   const [f, setF] = useState({ workspaceId: "", amount: 0, paidOn: new Date().toISOString().slice(0, 10), reference: "", notes: "" });
   const [file, setFile] = useState<File | null>(null);
-  const [filter, setFilter] = useState("");
+  const navigate = useNavigate({ from: Route.fullPath });
+  const filter = Route.useSearch().client ?? "";
+  const setFilter = (client: string) => void navigate({ search: (prev) => ({ ...prev, client: client || undefined }), replace: true });
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   // A payment changes the payment list, client totals, the overview, tasks and the log; nothing else in ops.
@@ -62,7 +69,22 @@ function Payments() {
 
   return (
     <div className="space-y-5">
-      <OpsHeader title="المدفوعات" sub="تسجيل التحويلات البنكية يدوياً" />
+      <OpsHeader title="المدفوعات" sub="تسجيل التحويلات البنكية يدوياً">
+        <Button
+          variant="outline"
+          disabled={!rows.length}
+          onClick={() =>
+            downloadCsv(
+              `tadqeeq-payments-${new Date().toISOString().slice(0, 10)}.csv`,
+              ["تاريخ التحويل", "العميل", "المبلغ (ر.س)", "رقم المرجع", "ملاحظات", "إيصال مرفق"],
+              rows.map((p) => [p.paidOn, p.workspaceName, p.amount, p.reference, p.notes, p.hasReceipt ? "نعم" : "لا"]),
+            )
+          }
+        >
+          <Download className="size-4" />
+          تصدير CSV
+        </Button>
+      </OpsHeader>
       <section className="panel grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-6">
         <div className="space-y-1 lg:col-span-2"><Label>العميل</Label>
           <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={f.workspaceId} onChange={(e) => setF({ ...f, workspaceId: e.target.value })}>

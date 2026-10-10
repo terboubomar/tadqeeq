@@ -5,7 +5,7 @@ import { CheckCircle2, ChevronLeft, Loader2, Mail, MessageCircle } from "lucide-
 import { normalizeSaudiMobile } from "@/lib/onboarding";
 import { opsCan } from "@/lib/ops";
 import { getOpsTasks } from "@/lib/ops.functions";
-import { OPS_TASK_GROUPS, type OpsTask, type OpsTaskKind } from "@/lib/ops-tasks";
+import { OPS_TASK_GROUPS, renewalReminder, type OpsTask, type OpsTaskKind } from "@/lib/ops-tasks";
 import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
 export const Route = createFileRoute("/ops/tasks")({ component: Tasks });
@@ -88,6 +88,8 @@ function Tasks() {
 function TaskRow({ t }: { t: OpsTask }) {
   const when = exact(t.date, t.kind);
   const mobile = t.contactMobile ? normalizeSaudiMobile(t.contactMobile)?.slice(1) : null;
+  // Renewal and overdue tasks open WhatsApp or the mail app with the reminder already written; staff press send.
+  const reminder = when ? renewalReminder(t, when) : null;
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
       <div className="min-w-40 flex-1">
@@ -97,13 +99,33 @@ function TaskRow({ t }: { t: OpsTask }) {
           {when ? <span className="ms-1.5 opacity-70">· {when}</span> : null}
         </p>
       </div>
-      <div className="flex items-center gap-1">
-        {mobile ? (
+      <div className="flex flex-wrap items-center gap-1">
+        {reminder && mobile ? (
+          <a
+            href={`https://wa.me/${mobile}?text=${encodeURIComponent(reminder.body)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
+          >
+            <MessageCircle className="size-3.5" />
+            تذكير واتساب
+          </a>
+        ) : null}
+        {reminder && t.contactEmail ? (
+          <a
+            href={`mailto:${t.contactEmail}?subject=${encodeURIComponent(reminder.subject)}&body=${encodeURIComponent(reminder.body)}`}
+            className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
+          >
+            <Mail className="size-3.5" />
+            تذكير بالبريد
+          </a>
+        ) : null}
+        {mobile && !reminder ? (
           <a href={`https://wa.me/${mobile}`} target="_blank" rel="noreferrer" title={t.contactMobile ?? ""} className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="واتساب">
             <MessageCircle className="size-4" />
           </a>
         ) : null}
-        {t.contactEmail ? (
+        {t.contactEmail && !reminder ? (
           <a href={`mailto:${t.contactEmail}`} title={t.contactEmail} className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="بريد">
             <Mail className="size-4" />
           </a>

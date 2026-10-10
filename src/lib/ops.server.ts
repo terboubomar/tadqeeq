@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 import { dataUrlBytes, sniffFile } from "./file-sniff";
 import { hasVerifiedFactor, tokenClaims } from "./mfa";
+import { buildRevenueMovements, type RevenueEvent, type RevenueMonth } from "./ops-revenue";
 import { buildOpsTasks, type OpsTask, type OpsTaskClient } from "./ops-tasks";
 import { isPlanAddon, PLAN_ADDONS, PLAN_REQUEST_EVENT, TRIAL_UPLOAD_EVENT, type PlanAddon, type PlanFeature } from "./plans";
 import {
@@ -138,6 +139,46 @@ export async function getOpsOverviewOnServer() {
     collectedTotal: payRows.reduce((a, p) => a + Number(p["amount"]), 0),
     months,
   };
+}
+
+/** New / expansion / contraction / churned MRR for the last 12 months, rebuilt from the ops log (lib/ops-revenue). */
+export async function getOpsRevenueOnServer(): Promise<{ months: RevenueMonth[]; since: string | null }> {
+  await requireOps("overview");
+  const { data, error } = await db()
+    .from("ops_audit_log")
+    .select("action,entity_id,workspace_id,metadata,created_at")
+    .in("action", ["subscription.create", "subscription.update", DELETE_ACTION])
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  const events: RevenueEvent[] = ((data ?? []) as Row[]).flatMap((r): RevenueEvent[] => {
+    const at = String(r["created_at"]);
+    if (r["action"] === DELETE_ACTION) {
+      // A deleted client is logged against the workspace as the entity (its workspace row is gone).
+      return r["entity_id"] ? [{ workspaceId: String(r["entity_id"]), at, kind: "deleted" }] : [];
+    }
+    if (!r["workspace_id"]) return [];
+    const meta = (r["metadata"] ?? {}) as Row;
+    return [
+      {
+        workspaceId: String(r["workspace_id"]),
+        subscriptionId: (r["entity_id"] as string | null) ?? null,
+        at,
+        kind: "subscription",
+        status: typeof meta["status"] === "string" ? meta["status"] : undefined,
+        price: meta["price"] === undefined ? undefined : Number(meta["price"]),
+        cycle: typeof meta["cycle"] === "string" ? meta["cycle"] : undefined,
+        addonsYearly: Array.isArray(meta["addons"]) ? addonsYearly(meta["addons"]) : undefined,
+      },
+    ];
+  });
+  const months: string[] = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date();
+    d.setUTCDate(1);
+    d.setUTCMonth(d.getUTCMonth() - i);
+    months.push(d.toISOString().slice(0, 7));
+  }
+  return { months: buildRevenueMovements(events, months), since: events[0]?.at ?? null };
 }
 
 // ---------------- Clients ----------------
@@ -785,7 +826,13 @@ export async function saveSubscriptionOnServer(input: {
     : await db().from("subscriptions").insert(row).select("id").single();
   if (error) throw new Error(error.message);
   await syncAccessWithSubscription(actor, input.workspaceId, String(saved.id), input.status);
-  await log(actor, input.id ? "subscription.update" : "subscription.create", "subscription", input.id ?? null, input.workspaceId, { status: input.status, price: input.price, cycle: input.cycle });
+  // The revenue breakdown replays these events: keep the subscription id and, when the form sent them, the add-ons.
+  await log(actor, input.id ? "subscription.update" : "subscription.create", "subscription", String(saved.id), input.workspaceId, {
+    status: input.status,
+    price: input.price,
+    cycle: input.cycle,
+    ...(input.addons !== undefined ? { addons: input.addons.filter(isPlanAddon) } : {}),
+  });
 }
 
 /** Keeps the client's account in step with the subscription just saved (rules in subscriptionAccessChange). */

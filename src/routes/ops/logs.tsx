@@ -1,19 +1,32 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
 
 import { opsActionLabel, opsCan } from "@/lib/ops";
 import { Input } from "@/components/ui/input";
 import { getOpsLogs } from "@/lib/ops.functions";
 import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
-export const Route = createFileRoute("/ops/logs")({ component: Logs });
+type LogSource = "all" | "ops" | "client";
+
+/** Source and search live in the address, so a filtered log can be shared. */
+export const Route = createFileRoute("/ops/logs")({
+  validateSearch: (search: Record<string, unknown>): { source?: Exclude<LogSource, "all">; q?: string } => ({
+    source: search["source"] === "ops" || search["source"] === "client" ? search["source"] : undefined,
+    q: typeof search["q"] === "string" && search["q"] ? search["q"] : undefined,
+  }),
+  component: Logs,
+});
 
 function Logs() {
   const role = useOpsRole();
-  const [src, setSrc] = useState<"all" | "ops" | "client">("all");
-  const [search, setSearch] = useState("");
+  const params = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const src: LogSource = params.source ?? "all";
+  const search = params.q ?? "";
+  const setSrc = (source: LogSource) =>
+    void navigate({ search: (prev) => ({ ...prev, source: source === "all" ? undefined : source }), replace: true });
+  const setSearch = (q: string) => void navigate({ search: (prev) => ({ ...prev, q: q || undefined }), replace: true });
   const q = useQuery({ queryKey: ["ops-logs"], queryFn: () => getOpsLogs({ data: {} }), enabled: opsCan(role, "logs") });
   if (!opsCan(role, "logs")) return <OpsDenied />;
   const needle = search.trim().toLowerCase();
@@ -25,7 +38,7 @@ function Logs() {
       <OpsHeader title="السجلات" sub="آخر 300 حدث">
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
         <Input placeholder="بحث بالعميل أو المنفّذ أو الإجراء" value={search} onChange={(e) => setSearch(e.target.value)} className="min-w-0 flex-1 sm:w-60 sm:flex-none" />
-        <select className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={src} onChange={(e) => setSrc(e.target.value as typeof src)}>
+        <select className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={src} onChange={(e) => setSrc(e.target.value as LogSource)}>
           <option value="all">الكل</option><option value="ops">إجراءات فريق العمليات</option><option value="client">أحداث العملاء</option>
         </select>
         </div>
