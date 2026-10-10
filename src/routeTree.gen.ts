@@ -56,9 +56,11 @@ import { Route as CompensationScannerRouteImport } from './routes/compensation/s
 import { Route as CompensationEvidenceRouteImport } from './routes/compensation/evidence'
 import { Route as CompensationCasesRouteImport } from './routes/compensation/cases'
 import { Route as CompensationBranchesRouteImport } from './routes/compensation/branches'
+import { Route as AuthenticatedTrendsRouteImport } from './routes/_authenticated/trends'
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
 import { Route as AuthenticatedSubscribeRouteImport } from './routes/_authenticated/subscribe'
 import { Route as AuthenticatedSecurityRouteImport } from './routes/_authenticated/security'
+import { Route as AuthenticatedReportSchedulesRouteImport } from './routes/_authenticated/report-schedules'
 import { Route as AuthenticatedPromotionsRouteImport } from './routes/_authenticated/promotions'
 import { Route as AuthenticatedOperationsRouteImport } from './routes/_authenticated/operations'
 import { Route as AuthenticatedJournalRouteImport } from './routes/_authenticated/journal'
@@ -83,6 +85,7 @@ import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
+import { Route as ApiPublicCronReportSchedulesRouteImport } from './routes/api/public/cron/report-schedules'
 import { Route as AuthenticatedOperationsPlatformDateRouteImport } from './routes/_authenticated/operations_.$platform_.$date'
 import { Route as ApiCompensationEvidenceEvidenceIdMediaRouteImport } from './routes/api/compensation/evidence/$evidenceId/media'
 
@@ -324,6 +327,11 @@ const CompensationBranchesRoute = CompensationBranchesRouteImport.update({
   path: '/branches',
   getParentRoute: () => CompensationRoute,
 } as any)
+const AuthenticatedTrendsRoute = AuthenticatedTrendsRouteImport.update({
+  id: '/trends',
+  path: '/trends',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedTeamRoute = AuthenticatedTeamRouteImport.update({
   id: '/team',
   path: '/team',
@@ -339,6 +347,12 @@ const AuthenticatedSecurityRoute = AuthenticatedSecurityRouteImport.update({
   path: '/security',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedReportSchedulesRoute =
+  AuthenticatedReportSchedulesRouteImport.update({
+    id: '/report-schedules',
+    path: '/report-schedules',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedPromotionsRoute = AuthenticatedPromotionsRouteImport.update({
   id: '/promotions',
   path: '/promotions',
@@ -464,6 +478,12 @@ const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
   path: '/lovable/email/auth/preview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronReportSchedulesRoute =
+  ApiPublicCronReportSchedulesRouteImport.update({
+    id: '/api/public/cron/report-schedules',
+    path: '/api/public/cron/report-schedules',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedOperationsPlatformDateRoute =
   AuthenticatedOperationsPlatformDateRouteImport.update({
     id: '/operations_/$platform_/$date',
@@ -512,9 +532,11 @@ export interface FileRoutesByFullPath {
   '/journal': typeof AuthenticatedJournalRoute
   '/operations': typeof AuthenticatedOperationsRoute
   '/promotions': typeof AuthenticatedPromotionsRoute
+  '/report-schedules': typeof AuthenticatedReportSchedulesRoute
   '/security': typeof AuthenticatedSecurityRoute
   '/subscribe': typeof AuthenticatedSubscribeRoute
   '/team': typeof AuthenticatedTeamRoute
+  '/trends': typeof AuthenticatedTrendsRoute
   '/compensation/branches': typeof CompensationBranchesRoute
   '/compensation/cases': typeof CompensationCasesRoute
   '/compensation/evidence': typeof CompensationEvidenceRoute
@@ -549,6 +571,7 @@ export interface FileRoutesByFullPath {
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/operations/$platform/$date': typeof AuthenticatedOperationsPlatformDateRoute
+  '/api/public/cron/report-schedules': typeof ApiPublicCronReportSchedulesRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -587,9 +610,11 @@ export interface FileRoutesByTo {
   '/journal': typeof AuthenticatedJournalRoute
   '/operations': typeof AuthenticatedOperationsRoute
   '/promotions': typeof AuthenticatedPromotionsRoute
+  '/report-schedules': typeof AuthenticatedReportSchedulesRoute
   '/security': typeof AuthenticatedSecurityRoute
   '/subscribe': typeof AuthenticatedSubscribeRoute
   '/team': typeof AuthenticatedTeamRoute
+  '/trends': typeof AuthenticatedTrendsRoute
   '/compensation/branches': typeof CompensationBranchesRoute
   '/compensation/cases': typeof CompensationCasesRoute
   '/compensation/evidence': typeof CompensationEvidenceRoute
@@ -624,6 +649,7 @@ export interface FileRoutesByTo {
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/operations/$platform/$date': typeof AuthenticatedOperationsPlatformDateRoute
+  '/api/public/cron/report-schedules': typeof ApiPublicCronReportSchedulesRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -666,9 +692,11 @@ export interface FileRoutesById {
   '/_authenticated/journal': typeof AuthenticatedJournalRoute
   '/_authenticated/operations': typeof AuthenticatedOperationsRoute
   '/_authenticated/promotions': typeof AuthenticatedPromotionsRoute
+  '/_authenticated/report-schedules': typeof AuthenticatedReportSchedulesRoute
   '/_authenticated/security': typeof AuthenticatedSecurityRoute
   '/_authenticated/subscribe': typeof AuthenticatedSubscribeRoute
   '/_authenticated/team': typeof AuthenticatedTeamRoute
+  '/_authenticated/trends': typeof AuthenticatedTrendsRoute
   '/compensation/branches': typeof CompensationBranchesRoute
   '/compensation/cases': typeof CompensationCasesRoute
   '/compensation/evidence': typeof CompensationEvidenceRoute
@@ -703,6 +731,7 @@ export interface FileRoutesById {
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients_/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/_authenticated/operations_/$platform_/$date': typeof AuthenticatedOperationsPlatformDateRoute
+  '/api/public/cron/report-schedules': typeof ApiPublicCronReportSchedulesRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -745,9 +774,11 @@ export interface FileRouteTypes {
     | '/journal'
     | '/operations'
     | '/promotions'
+    | '/report-schedules'
     | '/security'
     | '/subscribe'
     | '/team'
+    | '/trends'
     | '/compensation/branches'
     | '/compensation/cases'
     | '/compensation/evidence'
@@ -782,6 +813,7 @@ export interface FileRouteTypes {
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
     | '/operations/$platform/$date'
+    | '/api/public/cron/report-schedules'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -820,9 +852,11 @@ export interface FileRouteTypes {
     | '/journal'
     | '/operations'
     | '/promotions'
+    | '/report-schedules'
     | '/security'
     | '/subscribe'
     | '/team'
+    | '/trends'
     | '/compensation/branches'
     | '/compensation/cases'
     | '/compensation/evidence'
@@ -857,6 +891,7 @@ export interface FileRouteTypes {
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
     | '/operations/$platform/$date'
+    | '/api/public/cron/report-schedules'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -898,9 +933,11 @@ export interface FileRouteTypes {
     | '/_authenticated/journal'
     | '/_authenticated/operations'
     | '/_authenticated/promotions'
+    | '/_authenticated/report-schedules'
     | '/_authenticated/security'
     | '/_authenticated/subscribe'
     | '/_authenticated/team'
+    | '/_authenticated/trends'
     | '/compensation/branches'
     | '/compensation/cases'
     | '/compensation/evidence'
@@ -935,6 +972,7 @@ export interface FileRouteTypes {
     | '/api/public/telegram-webhook'
     | '/ops/clients_/$workspaceId'
     | '/_authenticated/operations_/$platform_/$date'
+    | '/api/public/cron/report-schedules'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -977,6 +1015,7 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiPublicCspReportRoute: typeof ApiPublicCspReportRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
+  ApiPublicCronReportSchedulesRoute: typeof ApiPublicCronReportSchedulesRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
@@ -1314,6 +1353,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompensationBranchesRouteImport
       parentRoute: typeof CompensationRoute
     }
+    '/_authenticated/trends': {
+      id: '/_authenticated/trends'
+      path: '/trends'
+      fullPath: '/trends'
+      preLoaderRoute: typeof AuthenticatedTrendsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/team': {
       id: '/_authenticated/team'
       path: '/team'
@@ -1333,6 +1379,13 @@ declare module '@tanstack/react-router' {
       path: '/security'
       fullPath: '/security'
       preLoaderRoute: typeof AuthenticatedSecurityRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/report-schedules': {
+      id: '/_authenticated/report-schedules'
+      path: '/report-schedules'
+      fullPath: '/report-schedules'
+      preLoaderRoute: typeof AuthenticatedReportSchedulesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/promotions': {
@@ -1503,6 +1556,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/report-schedules': {
+      id: '/api/public/cron/report-schedules'
+      path: '/api/public/cron/report-schedules'
+      fullPath: '/api/public/cron/report-schedules'
+      preLoaderRoute: typeof ApiPublicCronReportSchedulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/operations_/$platform_/$date': {
       id: '/_authenticated/operations_/$platform_/$date'
       path: '/operations/$platform/$date'
@@ -1536,9 +1596,11 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedJournalRoute: typeof AuthenticatedJournalRoute
   AuthenticatedOperationsRoute: typeof AuthenticatedOperationsRoute
   AuthenticatedPromotionsRoute: typeof AuthenticatedPromotionsRoute
+  AuthenticatedReportSchedulesRoute: typeof AuthenticatedReportSchedulesRoute
   AuthenticatedSecurityRoute: typeof AuthenticatedSecurityRoute
   AuthenticatedSubscribeRoute: typeof AuthenticatedSubscribeRoute
   AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
+  AuthenticatedTrendsRoute: typeof AuthenticatedTrendsRoute
   AuthenticatedOperationsPlatformRoute: typeof AuthenticatedOperationsPlatformRoute
   AuthenticatedOperationsPlatformDateRoute: typeof AuthenticatedOperationsPlatformDateRoute
 }
@@ -1559,9 +1621,11 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedJournalRoute: AuthenticatedJournalRoute,
   AuthenticatedOperationsRoute: AuthenticatedOperationsRoute,
   AuthenticatedPromotionsRoute: AuthenticatedPromotionsRoute,
+  AuthenticatedReportSchedulesRoute: AuthenticatedReportSchedulesRoute,
   AuthenticatedSecurityRoute: AuthenticatedSecurityRoute,
   AuthenticatedSubscribeRoute: AuthenticatedSubscribeRoute,
   AuthenticatedTeamRoute: AuthenticatedTeamRoute,
+  AuthenticatedTrendsRoute: AuthenticatedTrendsRoute,
   AuthenticatedOperationsPlatformRoute: AuthenticatedOperationsPlatformRoute,
   AuthenticatedOperationsPlatformDateRoute:
     AuthenticatedOperationsPlatformDateRoute,
@@ -1659,6 +1723,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiPublicCspReportRoute: ApiPublicCspReportRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
+  ApiPublicCronReportSchedulesRoute: ApiPublicCronReportSchedulesRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
