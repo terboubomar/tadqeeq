@@ -78,7 +78,7 @@ ${AUDIENCE}
 ## Pages
 
 ${PUBLIC_PAGES.map((page) => `- [${page.title}](${SITE_URL}${page.path})`).join("\n")}
-- [Explainer video (Arabic, 1:55)](${SITE_URL}${EXPLAINER_VIDEO.src})
+- [Explainer video (Arabic, 1:44)](${SITE_URL}${EXPLAINER_VIDEO.src})
 - [Pricing](${SITE_URL}/#pricing): plans and prices as Markdown at [pricing.md](${SITE_URL}/pricing.md)
 - [FAQ](${SITE_URL}/#faq)
 - [Sign up](${SITE_URL}/auth?mode=signup)
@@ -182,7 +182,7 @@ ${FEATURES.map((feature) => `### ${feature.nameEn} (${feature.name})\n\n${featur
 
 ## Explainer video
 
-Arabic, 1 minute 55 seconds: ${SITE_URL}${EXPLAINER_VIDEO.src}
+Arabic, 1 minute 44 seconds: ${SITE_URL}${EXPLAINER_VIDEO.src}
 
 ## Product pages
 
