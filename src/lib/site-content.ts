@@ -72,6 +72,14 @@ export const FAQS: Array<[question: string, answer: string]> = [
   ],
   ["هل يغيّر الذكاء الاصطناعي أي رقم؟", "لا. الأرقام من المحرك المحاسبي، والذكاء الاصطناعي يشرح ويلخص النتائج فقط."],
   ["هل بيانات شركتي منفصلة؟", "نعم. لكل شركة مساحة خاصة، مع صلاحيات تحدد ما يراه ويعدله كل موظف."],
+  [
+    "هل أستطيع إدارة أكثر من شركة أو علامة تجارية في حساب واحد؟",
+    "نعم. لكل شركة أو علامة تجارية مساحة مستقلة ببياناتها وفروعها وفريقها، وتنتقل بينها من أعلى الشاشة دون تسجيل خروج. عدد الشركات المتاح يظهر في جدول مقارنة الباقات.",
+  ],
+  [
+    "هل أستطيع تحديد ما يراه كل موظف؟",
+    "نعم. لكل موظف دخول مستقل ودور: المالك أو المدير أو المدقق المالي أو مسؤول التعويضات أو مدير الفرع أو المشاهد. ويمكن حصر مدير الفرع في فروعه فقط. وكل تسجيل دخول بكلمة المرور يحتاج رمزاً من 6 أرقام يصل إلى البريد.",
+  ],
 ];
 
 /** What the product does, one line each (structured data featureList and the AI files). */
@@ -120,6 +128,18 @@ export const FEATURES: Array<{ name: string; nameEn: string; description: string
     nameEn: "Journal entries",
     description:
       "One journal entry per branch and platform from the audit result (sales, commission, payment fees, VAT, ads, devices, subscriptions) with a cost center per branch, exported for Excel, Odoo, Zoho Books, QuickBooks, Qoyod or Daftra.",
+  },
+  {
+    name: "عدة شركات وأدوار بنطاق الفروع",
+    nameEn: "Multiple companies, roles and branch scope",
+    description:
+      "One account holds several companies or brands, each with its own data, branches and team. Six roles (owner, admin, auditor, compensation officer, branch manager, viewer); branch managers can be limited to their branches. Password sign-ins need a 6-digit code sent by email, or an authenticator app.",
+  },
+  {
+    name: "العقود والتقارير وأرشيف الفترات",
+    nameEn: "Contracts, reports and period archive",
+    description:
+      "Versioned platform contracts (approved versions are locked), executive dashboard, branch, daily and line-item reports, saved periods with one-click re-analysis, and branch names matched once and remembered.",
   },
   {
     name: "قراءة ذكية للملفات",

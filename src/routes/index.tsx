@@ -11,7 +11,11 @@ import {
   CircleHelp,
   CreditCard,
   FileSpreadsheet,
+  FileText,
   HandCoins,
+  History,
+  LayoutDashboard,
+  Link2,
   LineChart,
   Menu,
   Percent,
@@ -19,6 +23,7 @@ import {
   RotateCcw,
   Scale,
   SearchCheck,
+  ShieldCheck,
   Store,
   Tag,
   Truck,
@@ -31,6 +36,7 @@ import {
   Columns3,
   Sparkles,
   Upload,
+  Users,
   Video,
   X,
   type LucideIcon,
@@ -581,6 +587,8 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         <AssistantSection />
 
         <Audiences />
+
+        <Capabilities />
 
         {plans.length ? <Pricing plans={plans} /> : null}
 
@@ -1201,6 +1209,75 @@ function ProductShowcase() {
       ctaLabel={(item) => `جرّب ${item.name}`}
       className="bg-background"
     />
+  );
+}
+
+const CAPABILITIES: Array<{ title: string; body: string; icon: LucideIcon }> = [
+  {
+    title: "عدة شركات في حساب واحد",
+    body: "لكل شركة أو علامة تجارية مساحة مستقلة ببياناتها وفروعها وفريقها، وتنتقل بينها من أعلى الشاشة. عدد الشركات حسب باقتك.",
+    icon: Building2,
+  },
+  {
+    title: "أدوار وصلاحيات بنطاق الفروع",
+    body: "المالك والمدير والمدقق المالي ومسؤول التعويضات ومدير الفرع والمشاهد، لكل موظف دخول مستقل، ومدير الفرع يرى فروعه فقط.",
+    icon: Users,
+  },
+  {
+    title: "دخول محمي برمز",
+    body: "كل تسجيل دخول بكلمة المرور يحتاج رمزاً من 6 أرقام يصل بريدك، ويمكنك استخدام تطبيق المصادقة بدلاً منه.",
+    icon: ShieldCheck,
+  },
+  {
+    title: "العقود وشروط المنصات",
+    body: "نسب العمولة والرسوم المتفق عليها مع كل منصة. النسخة المعتمدة تُقفل، وأي تغيير يبدأ من نسخة جديدة فيبقى تاريخ كل فترة كما هو.",
+    icon: FileText,
+  },
+  {
+    title: "اللوحة التنفيذية",
+    body: "المستحق والمخصوم والفرق لصالحك ونسبة تكلفة المنصة من المبيعات لكل فترة، في شاشة واحدة.",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "تقارير الفروع والأيام والبنود",
+    body: "رتّب الفروع حسب التكلفة أو الفرق، وتابع الحركة يوماً بيوم، واطّلع على تفصيل بنود الفاتورة لكل فترة.",
+    icon: LineChart,
+  },
+  {
+    title: "أرشيف الفترات وإعادة التحليل",
+    body: "كل فترة تُحفظ للرجوع إليها، وعند تعديل عقد أو ربط فرع تعيد تحليل الفترة بضغطة بدلاً من رفع الملفات من جديد.",
+    icon: History,
+  },
+  {
+    title: "ربط أسماء الفروع مرة واحدة",
+    body: "اسم الفرع في الفاتورة يختلف عن ملف الطلبات؟ تربطه مرة واحدة ويتذكره تدقيق في الأشهر القادمة.",
+    icon: Link2,
+  },
+];
+
+/** What the account gives every team, beyond the audit tools themselves. */
+function Capabilities() {
+  return (
+    <section id="platform" className="bg-[oklch(0.975_0.018_85)]">
+      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-24">
+        <SectionIntro eyebrow="الحساب والفريق والتقارير" title="كل شركاتك وفريقك وتقاريرك في حساب واحد.">
+          ما يحتاجه المالك والمالية ومديرو الفروع للعمل معاً، بأمان ومن دون جداول جانبية.
+        </SectionIntro>
+        <ul data-reveal className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {CAPABILITIES.map(({ title, body, icon: Icon }) => (
+            <li key={title} className="flex gap-3 rounded-[18px] border border-border bg-card p-4 sm:block sm:p-5">
+              <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary-text sm:size-10">
+                <Icon className="size-[18px]" />
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-[15px] font-bold sm:mt-4">{title}</h3>
+                <p className="mt-1.5 text-[13.5px] leading-7 text-muted-foreground sm:mt-2">{body}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }
 
