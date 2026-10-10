@@ -207,9 +207,11 @@ function OpsSignIn({ onDone }: { onDone: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
+    setError(null);
     try {
       const { data: session } = await supabase.auth.getSession();
       if (!session.session) {
@@ -223,7 +225,9 @@ function OpsSignIn({ onDone }: { onDone: () => void }) {
       }
       onDone();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "تعذّر الدخول");
+      const message = err instanceof Error ? err.message : "تعذّر الدخول";
+      setError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -235,8 +239,9 @@ function OpsSignIn({ onDone }: { onDone: () => void }) {
           <h1 className="text-lg font-bold">لوحة العمليات</h1>
           <p className="text-xs text-muted-foreground">للفريق الداخلي فقط</p>
         </div>
-        <div className="space-y-2"><Label>البريد الإلكتروني</Label><Input dir="ltr" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-        <div className="space-y-2"><Label>كلمة المرور</Label><Input dir="ltr" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+        <div className="space-y-2"><Label htmlFor="ops-email">البريد الإلكتروني</Label><Input id="ops-email" dir="ltr" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={error ? true : undefined} aria-describedby={error ? "ops-signin-error" : undefined} /></div>
+        <div className="space-y-2"><Label htmlFor="ops-password">كلمة المرور</Label><Input id="ops-password" dir="ltr" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} aria-invalid={error ? true : undefined} aria-describedby={error ? "ops-signin-error" : undefined} /></div>
+        {error ? <p id="ops-signin-error" role="alert" className="text-sm text-destructive">{error}</p> : null}
         <Button className="w-full" disabled={busy}>{busy ? <Loader2 className="size-4 animate-spin" /> : null}دخول</Button>
         <p className="text-[11px] text-muted-foreground">إذا كنت مسجلاً في التطبيق بحساب من الفريق، اضغط دخول مباشرة.</p>
       </form>

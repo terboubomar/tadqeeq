@@ -43,9 +43,16 @@ function Subscriptions() {
   const usage = useQuery({ queryKey: ["ops-order-usage"], queryFn: () => workspaceOrderUsage({ data: {} }), enabled: ok });
   const [form, setForm] = useState<SubForm | null>(null);
 
+  // A subscription can also activate or suspend the client and settle its plan request.
+  const refresh = () =>
+    Promise.all(
+      [["ops-subs"], ["ops-plan-requests"], ["ops-clients"], ["ops-client"], ["ops-overview"], ["ops-tasks"], ["ops-logs"]].map((queryKey) =>
+        qc.invalidateQueries({ queryKey }),
+      ),
+    );
   const saveSub = useMutation({
     mutationFn: (f: SubForm) => saveSubscription({ data: f }),
-    onSuccess: () => { toast.success("تم حفظ الاشتراك"); setForm(null); void qc.invalidateQueries(); },
+    onSuccess: () => { toast.success("تم حفظ الاشتراك"); setForm(null); void refresh(); },
     onError: (e) => toast.error((e as Error).message),
   });
 
@@ -68,6 +75,21 @@ function Subscriptions() {
   const formPlan = form ? plans.data?.find((p) => p.id === form.planId) ?? null : null;
   const planName = (id: string | null) => plans.data?.find((p) => p.id === id)?.name ?? "مخصص";
   const clientName = (id: string) => clients.data?.find((c) => c.workspaceId === id)?.name ?? "—";
+  /** Orders in the last two data months against the plan's limit; red when over it. */
+  const usageCell = (s: { workspaceId: string; planId: string | null }) => {
+    const u = usage.data?.find((x) => x.workspaceId === s.workspaceId) ?? { month: null, latest: 0, previous: 0 };
+    const limit = plans.data?.find((p) => p.id === s.planId)?.orderLimit ?? null;
+    const over = (n: number) => limit !== null && n > limit;
+    return (
+      <span title={[u.month ? `آخر شهر بيانات: ${u.month.slice(0, 7)}` : "", limit !== null ? `حد الباقة ${fmt(limit)}` : ""].filter(Boolean).join(" · ") || undefined}>
+        <span className={cn("num", over(u.latest) && "font-semibold text-destructive")}>{fmt(u.latest)}</span>
+        {" · "}
+        <span className={cn("num", over(u.previous) && "font-semibold text-destructive")}>{fmt(u.previous)}</span>
+        {limit !== null ? <span className="text-xs text-muted-foreground"> / <span className="num">{fmt(limit)}</span></span> : null}
+        {over(u.latest) && over(u.previous) ? <span className="block text-xs text-destructive">تجاوز شهرين: رقِّ الباقة</span> : null}
+      </span>
+    );
+  };
   const openRequests = requests.data ?? [];
 
   return (
@@ -158,7 +180,48 @@ function Subscriptions() {
         </section>
       ) : null}
 
-      <section className="panel overflow-x-auto">
+      <section className="space-y-2 md:hidden">
+        {subs.isLoading ? <Loader2 className="m-4 size-5 animate-spin" /> : null}
+        {(subs.data ?? []).map((s) => {
+          const late = s.status === "active" && s.endsOn && s.endsOn < new Date().toISOString().slice(0, 10);
+          return (
+            <article key={s.id} className="panel space-y-2 p-4 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{s.workspaceName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {planName(s.planId)}
+                    {s.addons.length ? " + إضافات" : ""} · {CYCLE_LABELS[s.cycle]}
+                  </p>
+                </div>
+                <span className="num shrink-0 font-semibold">{sarFmt(s.price)}</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <span className={late || s.status === "overdue" ? "font-semibold text-destructive" : "text-foreground"}>
+                  {SUBSCRIPTION_STATUS_LABELS[s.status]}
+                  {late ? " · انتهى" : ""}
+                </span>
+                <span>
+                  <span className="num">{s.startsOn}</span> ← <span className="num">{s.endsOn ?? "—"}</span>
+                </span>
+              </div>
+              <div className="flex items-end justify-between gap-3 border-t border-border pt-2 text-xs">
+                <div>
+                  <p className="text-muted-foreground">الطلبات (آخر شهر · قبله)</p>
+                  <div className="mt-0.5">{usageCell(s)}</div>
+                </div>
+                {role !== "support" ? (
+                  <Button size="sm" variant="outline" onClick={() => setForm({ ...s, notes: s.notes ?? undefined, addons: s.addons })}>
+                    تعديل
+                  </Button>
+                ) : null}
+              </div>
+            </article>
+          );
+        })}
+        {!subs.isLoading && !subs.data?.length ? <p className="panel p-6 text-center text-sm text-muted-foreground">لا توجد اشتراكات بعد.</p> : null}
+      </section>
+      <section className="panel hidden overflow-x-auto md:block">
         {subs.isLoading ? <Loader2 className="m-4 size-5 animate-spin" /> : (
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{["العميل", "الباقة", "السعر", "الدورة", "الطلبات (آخر شهر · قبله)", "الحالة", "البداية", "النهاية", ""].map((h) => <th key={h} className="p-3 text-start font-medium">{h}</th>)}</tr></thead>
@@ -171,20 +234,7 @@ function Subscriptions() {
                     <td className="p-3">{planName(s.planId)}{s.addons.length ? <span className="block text-xs text-muted-foreground">+ إضافات</span> : null}</td>
                     <td className="p-3"><span className="num">{sarFmt(s.price)}</span></td>
                     <td className="p-3">{CYCLE_LABELS[s.cycle]}</td>
-                    <td className="p-3">{(() => {
-                      const u = usage.data?.find((x) => x.workspaceId === s.workspaceId) ?? { month: null, latest: 0, previous: 0 };
-                      const limit = plans.data?.find((p) => p.id === s.planId)?.orderLimit ?? null;
-                      const over = (n: number) => limit !== null && n > limit;
-                      return (
-                        <span title={[u.month ? `آخر شهر بيانات: ${u.month.slice(0, 7)}` : "", limit !== null ? `حد الباقة ${fmt(limit)}` : ""].filter(Boolean).join(" · ") || undefined}>
-                          <span className={cn("num", over(u.latest) && "font-semibold text-destructive")}>{fmt(u.latest)}</span>
-                          {" · "}
-                          <span className={cn("num", over(u.previous) && "font-semibold text-destructive")}>{fmt(u.previous)}</span>
-                          {limit !== null ? <span className="text-xs text-muted-foreground"> / <span className="num">{fmt(limit)}</span></span> : null}
-                          {over(u.latest) && over(u.previous) ? <span className="block text-xs text-destructive">تجاوز شهرين: رقِّ الباقة</span> : null}
-                        </span>
-                      );
-                    })()}</td>
+                    <td className="p-3">{usageCell(s)}</td>
                     <td className="p-3"><span className={late || s.status === "overdue" ? "text-destructive" : ""}>{SUBSCRIPTION_STATUS_LABELS[s.status]}{late ? " · انتهى" : ""}</span></td>
                     <td className="p-3"><span className="num">{s.startsOn}</span></td>
                     <td className="p-3"><span className="num">{s.endsOn ?? "—"}</span></td>
