@@ -36,7 +36,9 @@ import { cn } from "@/lib/utils";
 export function EntryTable({ entry }: { entry: JournalEntry }) {
   const balanced = isBalanced(entry);
   return (
-    <div className="overflow-x-auto rounded-xl border border-border">
+    <>
+    <EntryLines entry={entry} balanced={balanced} />
+    <div className="hidden overflow-x-auto rounded-xl border border-border sm:block">
       <table className="w-full text-[13px] sm:min-w-[620px]">
         <thead className="bg-surface-raised text-[11.5px] text-muted-foreground">
           <tr>
@@ -81,6 +83,53 @@ export function EntryTable({ entry }: { entry: JournalEntry }) {
           </tr>
         </tfoot>
       </table>
+    </div>
+    </>
+  );
+}
+
+/** Phones: one row per line, so long account names and memos are readable instead of squeezed into table columns. */
+function EntryLines({ entry, balanced }: { entry: JournalEntry; balanced: boolean }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border sm:hidden">
+      <ul className="divide-y divide-border/70">
+        {entry.lines.map((line) => {
+          const credit = line.credit > 0;
+          return (
+            <li key={line.account.key} className={cn("flex items-start justify-between gap-3 px-3 py-2.5", credit && "ps-6")}>
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium leading-5">
+                  {line.account.code ? <span className="num me-1.5 text-[11px] text-muted-foreground">{line.account.code}</span> : null}
+                  {line.account.name}
+                </p>
+                {line.memo ? <p className="mt-0.5 text-[11.5px] leading-5 text-muted-foreground">{line.memo}</p> : null}
+              </div>
+              <div className="shrink-0 text-end">
+                <p className="num text-[13px] font-semibold">{money(credit ? line.credit : line.debit)}</p>
+                <p className="text-[10.5px] text-muted-foreground">{credit ? "دائن" : "مدين"}</p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="grid grid-cols-2 gap-2 border-t-2 border-border bg-surface-raised/50 px-3 py-2.5 text-[12px]">
+        <p>
+          <span className="block text-muted-foreground">إجمالي المدين</span>
+          <span className="num font-semibold">{money(entry.totalDebit)}</span>
+        </p>
+        <p>
+          <span className="block text-muted-foreground">إجمالي الدائن</span>
+          <span className="num font-semibold">{money(entry.totalCredit)}</span>
+        </p>
+        {balanced ? (
+          <span className="col-span-2 inline-flex items-center gap-1 text-success">
+            <CheckCircle2 className="size-3.5" />
+            متوازن
+          </span>
+        ) : (
+          <span className="col-span-2 text-destructive">غير متوازن</span>
+        )}
+      </div>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { ChevronDown, Download } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +30,7 @@ export function ExportJournalsMenu({
   label,
   variant = "default",
   onExcel,
+  className,
 }: {
   title: string;
   journals: BranchJournal[];
@@ -37,6 +39,8 @@ export function ExportJournalsMenu({
   variant?: "default" | "outline";
   /** Replaces the Excel (Tadqeeq) layout, e.g. for a single entry. */
   onExcel?: () => void;
+  /** Extra classes for the trigger button (e.g. full width on phones). */
+  className?: string;
 }) {
   function run(system: AccountingSystem) {
     const target = ACCOUNTING_SYSTEMS.find((item) => item.key === system)!;
@@ -63,7 +67,7 @@ export function ExportJournalsMenu({
   return (
     <DropdownMenu dir="rtl">
       <DropdownMenuTrigger asChild>
-        <Button type="button" size="sm" variant={variant} className="gap-1.5" disabled={!journals.length}>
+        <Button type="button" size="sm" variant={variant} className={cn("gap-1.5", className)} disabled={!journals.length}>
           <Download className="size-4" />
           {label}
           <ChevronDown className="size-3.5 opacity-70" />
