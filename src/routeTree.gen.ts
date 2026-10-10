@@ -37,6 +37,7 @@ import { Route as ProductsPromotionsRoiRouteImport } from './routes/products/pro
 import { Route as ProductsInvoiceReconciliationRouteImport } from './routes/products/invoice-reconciliation'
 import { Route as ProductsExceptionsCenterRouteImport } from './routes/products/exceptions-center'
 import { Route as ProductsDeliveryFeesMapRouteImport } from './routes/products/delivery-fees-map'
+import { Route as ProductsDailyTrackingRouteImport } from './routes/products/daily-tracking'
 import { Route as ProductsCompensationClaimsRouteImport } from './routes/products/compensation-claims'
 import { Route as OpsUsageRouteImport } from './routes/ops/usage'
 import { Route as OpsTasksRouteImport } from './routes/ops/tasks'
@@ -224,6 +225,11 @@ const ProductsExceptionsCenterRoute =
 const ProductsDeliveryFeesMapRoute = ProductsDeliveryFeesMapRouteImport.update({
   id: '/products/delivery-fees-map',
   path: '/products/delivery-fees-map',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsDailyTrackingRoute = ProductsDailyTrackingRouteImport.update({
+  id: '/products/daily-tracking',
+  path: '/products/daily-tracking',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductsCompensationClaimsRoute =
@@ -527,6 +533,7 @@ export interface FileRoutesByFullPath {
   '/ops/tasks': typeof OpsTasksRoute
   '/ops/usage': typeof OpsUsageRoute
   '/products/compensation-claims': typeof ProductsCompensationClaimsRoute
+  '/products/daily-tracking': typeof ProductsDailyTrackingRoute
   '/products/delivery-fees-map': typeof ProductsDeliveryFeesMapRoute
   '/products/exceptions-center': typeof ProductsExceptionsCenterRoute
   '/products/invoice-reconciliation': typeof ProductsInvoiceReconciliationRoute
@@ -601,6 +608,7 @@ export interface FileRoutesByTo {
   '/ops/tasks': typeof OpsTasksRoute
   '/ops/usage': typeof OpsUsageRoute
   '/products/compensation-claims': typeof ProductsCompensationClaimsRoute
+  '/products/daily-tracking': typeof ProductsDailyTrackingRoute
   '/products/delivery-fees-map': typeof ProductsDeliveryFeesMapRoute
   '/products/exceptions-center': typeof ProductsExceptionsCenterRoute
   '/products/invoice-reconciliation': typeof ProductsInvoiceReconciliationRoute
@@ -679,6 +687,7 @@ export interface FileRoutesById {
   '/ops/tasks': typeof OpsTasksRoute
   '/ops/usage': typeof OpsUsageRoute
   '/products/compensation-claims': typeof ProductsCompensationClaimsRoute
+  '/products/daily-tracking': typeof ProductsDailyTrackingRoute
   '/products/delivery-fees-map': typeof ProductsDeliveryFeesMapRoute
   '/products/exceptions-center': typeof ProductsExceptionsCenterRoute
   '/products/invoice-reconciliation': typeof ProductsInvoiceReconciliationRoute
@@ -757,6 +766,7 @@ export interface FileRouteTypes {
     | '/ops/tasks'
     | '/ops/usage'
     | '/products/compensation-claims'
+    | '/products/daily-tracking'
     | '/products/delivery-fees-map'
     | '/products/exceptions-center'
     | '/products/invoice-reconciliation'
@@ -831,6 +841,7 @@ export interface FileRouteTypes {
     | '/ops/tasks'
     | '/ops/usage'
     | '/products/compensation-claims'
+    | '/products/daily-tracking'
     | '/products/delivery-fees-map'
     | '/products/exceptions-center'
     | '/products/invoice-reconciliation'
@@ -908,6 +919,7 @@ export interface FileRouteTypes {
     | '/ops/tasks'
     | '/ops/usage'
     | '/products/compensation-claims'
+    | '/products/daily-tracking'
     | '/products/delivery-fees-map'
     | '/products/exceptions-center'
     | '/products/invoice-reconciliation'
@@ -954,6 +966,7 @@ export interface RootRouteChildren {
   GuidesJahezCommissionRoute: typeof GuidesJahezCommissionRoute
   GuidesKeetaInvoiceRoute: typeof GuidesKeetaInvoiceRoute
   ProductsCompensationClaimsRoute: typeof ProductsCompensationClaimsRoute
+  ProductsDailyTrackingRoute: typeof ProductsDailyTrackingRoute
   ProductsDeliveryFeesMapRoute: typeof ProductsDeliveryFeesMapRoute
   ProductsExceptionsCenterRoute: typeof ProductsExceptionsCenterRoute
   ProductsInvoiceReconciliationRoute: typeof ProductsInvoiceReconciliationRoute
@@ -1166,6 +1179,13 @@ declare module '@tanstack/react-router' {
       path: '/products/delivery-fees-map'
       fullPath: '/products/delivery-fees-map'
       preLoaderRoute: typeof ProductsDeliveryFeesMapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products/daily-tracking': {
+      id: '/products/daily-tracking'
+      path: '/products/daily-tracking'
+      fullPath: '/products/daily-tracking'
+      preLoaderRoute: typeof ProductsDailyTrackingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/products/compensation-claims': {
@@ -1628,6 +1648,7 @@ const rootRouteChildren: RootRouteChildren = {
   GuidesJahezCommissionRoute: GuidesJahezCommissionRoute,
   GuidesKeetaInvoiceRoute: GuidesKeetaInvoiceRoute,
   ProductsCompensationClaimsRoute: ProductsCompensationClaimsRoute,
+  ProductsDailyTrackingRoute: ProductsDailyTrackingRoute,
   ProductsDeliveryFeesMapRoute: ProductsDeliveryFeesMapRoute,
   ProductsExceptionsCenterRoute: ProductsExceptionsCenterRoute,
   ProductsInvoiceReconciliationRoute: ProductsInvoiceReconciliationRoute,

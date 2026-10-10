@@ -13,7 +13,6 @@ import {
   FileSpreadsheet,
   FileText,
   HandCoins,
-  History,
   LayoutDashboard,
   Link2,
   LineChart,
@@ -1212,72 +1211,234 @@ function ProductShowcase() {
   );
 }
 
-const CAPABILITIES: Array<{ title: string; body: string; icon: LucideIcon }> = [
+const CAPABILITIES: TourItem[] = [
   {
-    title: "عدة شركات في حساب واحد",
-    body: "لكل شركة أو علامة تجارية مساحة مستقلة ببياناتها وفروعها وفريقها، وتنتقل بينها من أعلى الشاشة. عدد الشركات حسب باقتك.",
+    key: "companies",
+    name: "عدة شركات في حساب واحد",
+    tagline: "كل علامة تجارية في مساحة مستقلة.",
+    body: "لكل شركة أو علامة تجارية بياناتها وفروعها وفريقها، وتنتقل بينها من أعلى الشاشة دون تسجيل خروج. عدد الشركات حسب باقتك.",
     icon: Building2,
   },
   {
-    title: "أدوار وصلاحيات بنطاق الفروع",
-    body: "المالك والمدير والمدقق المالي ومسؤول التعويضات ومدير الفرع والمشاهد، لكل موظف دخول مستقل، ومدير الفرع يرى فروعه فقط.",
+    key: "team",
+    name: "أدوار وصلاحيات",
+    tagline: "كل موظف يرى ما يخصه فقط.",
+    body: "المالك والمدير والمدقق المالي ومسؤول التعويضات ومدير الفرع والمشاهد. لكل موظف دخول مستقل، ومدير الفرع يمكن حصره في فروعه.",
     icon: Users,
   },
   {
-    title: "دخول محمي برمز",
+    key: "security",
+    name: "دخول محمي برمز",
+    tagline: "كلمة المرور وحدها لا تكفي.",
     body: "كل تسجيل دخول بكلمة المرور يحتاج رمزاً من 6 أرقام يصل بريدك، ويمكنك استخدام تطبيق المصادقة بدلاً منه.",
     icon: ShieldCheck,
   },
   {
-    title: "العقود وشروط المنصات",
-    body: "نسب العمولة والرسوم المتفق عليها مع كل منصة. النسخة المعتمدة تُقفل، وأي تغيير يبدأ من نسخة جديدة فيبقى تاريخ كل فترة كما هو.",
+    key: "contracts",
+    name: "العقود وأرشيف الفترات",
+    tagline: "كل فترة تبقى كما اعتُمدت.",
+    body: "نسب العمولة والرسوم المتفق عليها مع كل منصة في نسخ معتمدة تُقفل. كل فترة تُحفظ، وعند تعديل عقد أو ربط فرع تعيد تحليلها بضغطة دون رفع الملفات من جديد.",
     icon: FileText,
   },
   {
-    title: "اللوحة التنفيذية",
-    body: "المستحق والمخصوم والفرق لصالحك ونسبة تكلفة المنصة من المبيعات لكل فترة، في شاشة واحدة.",
+    key: "reports",
+    name: "اللوحة التنفيذية والتقارير",
+    tagline: "من الملخص إلى الفرع إلى اليوم.",
+    body: "المستحق والمخصوم والفرق ونسبة تكلفة المنصة في شاشة واحدة، مع تقارير الفروع والأيام والبنود. واسم الفرع في الفاتورة تربطه مرة واحدة ويتذكره تدقيق.",
     icon: LayoutDashboard,
-  },
-  {
-    title: "تقارير الفروع والأيام والبنود",
-    body: "رتّب الفروع حسب التكلفة أو الفرق، وتابع الحركة يوماً بيوم، واطّلع على تفصيل بنود الفاتورة لكل فترة.",
-    icon: LineChart,
-  },
-  {
-    title: "أرشيف الفترات وإعادة التحليل",
-    body: "كل فترة تُحفظ للرجوع إليها، وعند تعديل عقد أو ربط فرع تعيد تحليل الفترة بضغطة بدلاً من رفع الملفات من جديد.",
-    icon: History,
-  },
-  {
-    title: "ربط أسماء الفروع مرة واحدة",
-    body: "اسم الفرع في الفاتورة يختلف عن ملف الطلبات؟ تربطه مرة واحدة ويتذكره تدقيق في الأشهر القادمة.",
-    icon: Link2,
   },
 ];
 
 /** What the account gives every team, beyond the audit tools themselves. */
 function Capabilities() {
   return (
-    <section id="platform" className="bg-[oklch(0.975_0.018_85)]">
-      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-24">
-        <SectionIntro eyebrow="الحساب والفريق والتقارير" title="كل شركاتك وفريقك وتقاريرك في حساب واحد.">
-          ما يحتاجه المالك والمالية ومديرو الفروع للعمل معاً، بأمان ومن دون جداول جانبية.
-        </SectionIntro>
-        <ul data-reveal className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {CAPABILITIES.map(({ title, body, icon: Icon }) => (
-            <li key={title} className="flex gap-3 rounded-[18px] border border-border bg-card p-4 sm:block sm:p-5">
-              <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary-text sm:size-10">
-                <Icon className="size-[18px]" />
+    <PinnedTour
+      id="platform"
+      eyebrow="الحساب والفريق والتقارير"
+      title="كل شركاتك وفريقك وتقاريرك في حساب واحد."
+      hint="واصل التمرير لترى ما يحصل عليه فريقك."
+      items={CAPABILITIES}
+      renderVisual={(key, active) => <CapabilityVisual kind={key} active={active} />}
+      ctaLabel={() => "ابدأ مجاناً"}
+      className="bg-[oklch(0.975_0.018_85)] pb-4"
+    />
+  );
+}
+
+function CapabilityVisual({ kind, active }: { kind: string; active: boolean }) {
+  const card = "w-full max-w-md rounded-2xl bg-card p-5 shadow-[0_24px_48px_-28px_rgb(19_35_43/0.45)]";
+  const rise = (i: number) => ({
+    className: cn("transition-[opacity,transform] duration-500", active ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"),
+    style: { transitionDelay: `${0.15 + i * 0.12}s` },
+  });
+  if (kind === "companies") {
+    const companies: Array<[string, string, boolean]> = [
+      ["مطاعم الشرق", "12 فرعاً", true],
+      ["برجر الحي", "5 فروع", false],
+      ["قهوة المساء", "3 فروع", false],
+    ];
+    return (
+      <div className={card}>
+        <div className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5">
+          <span className="flex items-center gap-2 text-sm font-semibold">
+            <Building2 className="size-4 text-primary-text" /> مطاعم الشرق
+          </span>
+          <ChevronDown className="size-4 text-muted-foreground" />
+        </div>
+        <ul className="mt-2 space-y-1.5 rounded-xl border border-border p-1.5">
+          {companies.map(([name, branches, current], i) => (
+            <li key={name} {...rise(i)}>
+              <span className={cn("flex items-center justify-between rounded-lg px-3 py-2 text-[13px]", current ? "bg-secondary font-semibold" : "")}>
+                <span className="flex items-center gap-2">
+                  {current ? <Check className="size-4 text-success" /> : <span className="size-4" />}
+                  {name}
+                </span>
+                <span className="text-xs text-muted-foreground">{branches}</span>
               </span>
-              <div className="min-w-0">
-                <h3 className="text-[15px] font-bold sm:mt-4">{title}</h3>
-                <p className="mt-1.5 text-[13.5px] leading-7 text-muted-foreground sm:mt-2">{body}</p>
-              </div>
+            </li>
+          ))}
+        </ul>
+        <p {...rise(3)}>
+          <span className="mt-3 flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-xs">
+            <Plus className="size-3.5" /> إضافة شركة
+          </span>
+        </p>
+      </div>
+    );
+  }
+  if (kind === "team") {
+    const people: Array<[string, string, string]> = [
+      ["سارة", "مدقق / مالية", "كل الفروع"],
+      ["خالد", "مسؤول التعويضات", "كل الفروع"],
+      ["فهد", "مدير فرع", "العليا · الملقا"],
+    ];
+    return (
+      <div className={card}>
+        <p className="text-sm font-semibold">المستخدمون والصلاحيات</p>
+        <ul className="mt-4 space-y-2.5">
+          {people.map(([name, role, scope], i) => (
+            <li key={name} {...rise(i)}>
+              <span className="flex items-center gap-3 rounded-xl border border-border p-3">
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-sm font-bold text-primary-text">{name[0]}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-semibold">{name}</span>
+                  <span className="block text-xs text-muted-foreground">{role}</span>
+                </span>
+                <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px]">{scope}</span>
+              </span>
             </li>
           ))}
         </ul>
       </div>
-    </section>
+    );
+  }
+  if (kind === "security") {
+    const digits = ["4", "8", "2", "9", "1", "6"];
+    return (
+      <div className={cn(card, "text-center")}>
+        <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-secondary text-primary-text">
+          <ShieldCheck className="size-6" />
+        </span>
+        <p className="mt-3 text-sm font-semibold">أدخل الرمز المرسل إلى بريدك</p>
+        <div dir="ltr" className="mt-4 flex justify-center gap-2">
+          {digits.map((digit, i) => (
+            <span
+              key={i}
+              className={cn(
+                "num grid size-10 place-items-center rounded-lg border text-lg font-semibold transition-colors duration-300",
+                active ? "border-primary text-foreground" : "border-border text-transparent",
+              )}
+              style={{ transitionDelay: `${0.2 + i * 0.15}s` }}
+            >
+              {digit}
+            </span>
+          ))}
+        </div>
+        <p {...rise(8)}>
+          <span className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-success-soft px-3 py-2 text-xs font-semibold text-success">
+            <Check className="size-4" /> تم التحقق
+          </span>
+        </p>
+      </div>
+    );
+  }
+  if (kind === "contracts") {
+    const versions: Array<[string, string, string, string, string]> = [
+      ["النسخة 2", "18%", "1.8%", "معتمدة", "bg-success/15 text-success"],
+      ["النسخة 1", "20%", "2%", "مقفلة", "bg-muted text-muted-foreground"],
+    ];
+    return (
+      <div className={card}>
+        <p className="text-sm font-semibold">عقد هنقرستيشن</p>
+        <ul className="mt-4 space-y-2.5">
+          {versions.map(([name, commission, paymentFee, status, tone], i) => (
+            <li key={name} {...rise(i)}>
+              <span className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
+                <span>
+                  <span className="block text-[13px] font-semibold">{name}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    عمولة <bdi dir="ltr" className="num">{commission}</bdi> · رسوم دفع <bdi dir="ltr" className="num">{paymentFee}</bdi>
+                  </span>
+                </span>
+                <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold", tone)}>{status}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p {...rise(2)}>
+          <span className="mt-3 flex items-center justify-between rounded-xl bg-ink px-3.5 py-2.5 text-xs text-ink-foreground">
+            <span>فترة سبتمبر</span>
+            <span className="flex items-center gap-1.5 font-semibold text-primary">
+              <RotateCcw className="size-3.5" /> إعادة التحليل
+            </span>
+          </span>
+        </p>
+      </div>
+    );
+  }
+  const rows: Array<[string, number]> = [
+    ["العليا", 78],
+    ["الملقا", 62],
+    ["النرجس", 45],
+  ];
+  return (
+    <div className={card}>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        {(
+          [
+            ["المستحق", "142,415"],
+            ["المحوّل", "140,507"],
+            ["الفرق", "1,907.85"],
+          ] as const
+        ).map(([label, value], i) => (
+          <div key={label} {...rise(i)}>
+            <span className={cn("block rounded-xl px-2 py-2.5", i === 2 ? "bg-ink text-ink-foreground" : "bg-muted/60")}>
+              <span className={cn("block text-[10.5px]", i === 2 ? "text-ink-muted" : "text-muted-foreground")}>{label}</span>
+              <span className={cn("num mt-1 block text-[14px] font-semibold", i === 2 && "text-primary")}>{value}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 text-xs text-muted-foreground">الفرق حسب الفرع</p>
+      <div className="mt-2 space-y-2.5">
+        {rows.map(([branch, width], i) => (
+          <div key={branch} className="flex items-center gap-3 text-[12.5px]">
+            <span className="w-14 shrink-0">{branch}</span>
+            <span className="h-2 flex-1 rounded-full bg-muted">
+              <span
+                className="block h-2 rounded-full bg-chart-2 transition-[width] duration-1000 ease-out"
+                style={{ width: active ? `${width}%` : "0%", transitionDelay: `${0.4 + i * 0.12}s` }}
+              />
+            </span>
+          </div>
+        ))}
+      </div>
+      <p {...rise(5)}>
+        <span className="mt-4 flex items-center gap-2 rounded-lg bg-success-soft px-3 py-2 text-xs font-semibold text-success">
+          <Link2 className="size-3.5 shrink-0" /> فرع العليا مربوط باسمه في الفاتورة
+        </span>
+      </p>
+    </div>
   );
 }
 
