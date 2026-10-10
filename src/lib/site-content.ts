@@ -5,7 +5,7 @@
  */
 
 /** Last meaningful change to the public content (YYYY-MM-DD). */
-export const CONTENT_UPDATED = "2026-10-05";
+export const CONTENT_UPDATED = "2026-10-10";
 
 /** "4 أكتوبر 2026" for visible last-updated lines. */
 export function formatArabicDate(date: string): string {
@@ -30,7 +30,7 @@ export const FAQS: Array<[question: string, answer: string]> = [
   ],
   [
     "ما منتجات تدقيق؟",
-    "مُطابِق لمطابقة الفاتورة مع طلباتك وعقدك، وكاشِف لخريطة كل رسم تخصمه المنصة، ورادار لمتابعة الفروقات حتى تُغلق، واسترداد للاعتراض على التعويضات بأدلة Telegram، وعائد لربح كل عرض وإعلان بعد العمولة، ورقيب لتنبيهك لما هو غير معتاد في كل فرع، و Tadqeeq AI للإجابة عن أسئلتك عن أرقامك.",
+    "مُطابِق لمطابقة الفاتورة مع طلباتك وعقدك، وكاشِف لخريطة كل رسم تخصمه المنصة، ورادار لمتابعة الفروقات حتى تُغلق، واسترداد للاعتراض على التعويضات بأدلة Telegram، وعائد لربح كل عرض وإعلان بعد العمولة، ورقيب لتنبيهك لما هو غير معتاد في كل فرع، ونَبْض لمتابعة المبيعات وتكلفة كل منصة يوماً بيوم، و Tadqeeq AI للإجابة عن أسئلتك عن أرقامك.",
   ],
   [
     "ما المنصات التي يدعمها تدقيق؟",
@@ -53,6 +53,14 @@ export const FAQS: Array<[question: string, answer: string]> = [
   [
     "ما هو «رقيب» (المراقب الذكي) في تدقيق؟",
     "بعد كل رفع يقارن «رقيب» العمولة والرسوم والتعويضات لكل فرع بأشهره السابقة وبالفروع المشابهة، وينبّهك لما هو غير معتاد مرتباً حسب أثره بالريال، مثل ارتفاع عمولة طلبات الاستلام في فرع واحد. التنبيه لا يغيّر الأرقام؛ يوجّهك لما يستحق المراجعة أولاً.",
+  ],
+  [
+    "كيف أتابع تكلفة تطبيقات التوصيل يومياً قبل وصول الفاتورة؟",
+    "من «نَبْض» (المتابعة اليومية) في تدقيق: ترفع ملف الطلبات اليومي من بوابة هنقرستيشن أو كيتا أو جاهز، فيعرض مبيعات اليوم ونسبة تكلفة المنصة من المبيعات والتحويل المتوقع لنهاية الشهر لكل فرع. وإذا صُدّر الملف قبل أن تحسب المنصة العمولة والأرباح، ينبّهك لإعادة تصديره بدلاً من عرض نسبة أقل من الحقيقة.",
+  ],
+  [
+    "هل يجهّز تدقيق القيود المحاسبية لنظامي؟",
+    "نعم. من نتيجة التدقيق يجهّز تدقيق قيداً لكل فرع ومنصة يشمل المبيعات والعمولة ورسوم الدفع والضريبة والإعلانات والأجهزة والاشتراكات، مع مركز تكلفة لكل فرع. تختار حساباتك مرة واحدة، ثم تصدّر القيود بصيغة Excel أو Odoo أو Zoho Books أو QuickBooks أو قيود أو دفترة.",
   ],
   [
     "ماذا لو غيّرت المنصة صيغة ملفاتها؟",
@@ -78,7 +86,7 @@ export const FEATURES: Array<{ name: string; nameEn: string; description: string
     name: "كاشِف · خريطة الرسوم",
     nameEn: "Kashif · Fee map",
     description:
-      "Commission, payment fees, free-delivery campaigns, VAT on fees, offers, compensations and unclassified lines, per platform and branch. For Keeta, the tax invoice and the deductions outside it are shown separately.",
+      "Commission, payment fees, free-delivery campaigns, VAT on fees, offers, compensations and unclassified lines, per platform and branch. For Keeta, the tax invoice and the deductions outside it are shown separately; HungerStation CPC ad invoices are split per branch.",
   },
   {
     name: "رادار · مركز الاستثناءات",
@@ -100,6 +108,18 @@ export const FEATURES: Array<{ name: string; nameEn: string; description: string
     name: "رقيب · المراقب الذكي",
     nameEn: "Raqeeb · Smart watch",
     description: "Compares each branch with its own history and similar branches after every upload, and ranks unusual fees by their impact in SAR.",
+  },
+  {
+    name: "نَبْض · المتابعة اليومية",
+    nameEn: "Nabd · Daily tracking",
+    description:
+      "Upload the daily order file from HungerStation, Keeta or Jahez to follow sales, platform cost as a share of sales, cost per order and the month-end payout forecast per platform and branch. Files exported before the platform settled commissions are flagged instead of showing a cost that is too low.",
+  },
+  {
+    name: "القيود المحاسبية",
+    nameEn: "Journal entries",
+    description:
+      "One journal entry per branch and platform from the audit result (sales, commission, payment fees, VAT, ads, devices, subscriptions) with a cost center per branch, exported for Excel, Odoo, Zoho Books, QuickBooks, Qoyod or Daftra.",
   },
   {
     name: "قراءة ذكية للملفات",
