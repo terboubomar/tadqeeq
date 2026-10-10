@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Check, CheckCircle2, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -126,9 +126,11 @@ function AuthPage() {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-background">
-      <main className="flex min-h-screen justify-center px-5 py-12 sm:px-8 sm:py-16 lg:py-20">
-        <div className="w-full max-w-[440px]">
+    <div dir="rtl" className="min-h-[100dvh] bg-background">
+      <main className="grid min-h-[100dvh] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+        <div className="relative flex justify-center overflow-hidden px-4 py-10 sm:px-8 sm:py-14 lg:items-center lg:py-12">
+          <span aria-hidden="true" className="pointer-events-none absolute -top-32 -start-32 size-80 rounded-full bg-primary/10" />
+          <div className="relative w-full max-w-[440px]">
           <header className="text-center">
             <h1 className="flex justify-center">
               <span className="sr-only">تدقيق</span>
@@ -140,7 +142,10 @@ function AuthPage() {
                 <LogoWordmark aria-hidden="true" className="h-11 text-ink sm:h-12" />
               </Link>
             </h1>
-            <h2 className="mt-8 font-display text-2xl font-semibold leading-relaxed text-ink sm:text-[1.75rem]">
+          </header>
+          <div className="mt-8 rounded-2xl border border-border bg-card px-5 py-7 shadow-[0_1px_3px_rgb(19_35_43/0.06),0_18px_40px_-24px_rgb(19_35_43/0.28)] sm:px-8 sm:py-9">
+          <header className="text-center">
+            <h2 className="font-display text-2xl font-semibold leading-relaxed text-ink sm:text-[1.6rem]">
               {mfaStep
                 ? "التحقق بخطوتين"
                 : emailStep
@@ -183,7 +188,8 @@ function AuthPage() {
           ) : mode === "signup" && signupSentTo ? (
             <div className="mt-8 space-y-4" role="status">
               <p className="rounded-md border border-border bg-success-soft p-4 text-sm leading-7">
-                تم إنشاء حسابك ✅ تحقق من بريدك{" "}
+                <CheckCircle2 aria-hidden="true" className="me-1.5 inline size-4 align-[-3px] text-success" />
+                تم إنشاء حسابك. تحقق من بريدك{" "}
                 <span dir="ltr" className="font-semibold">
                   {signupSentTo}
                 </span>{" "}
@@ -202,7 +208,7 @@ function AuthPage() {
               </Button>
               <Button
                 variant="outline"
-                className="h-12 w-full bg-card"
+                className="h-12 w-full"
                 onClick={() => {
                   setSignupSentTo(null);
                   setMode("signin");
@@ -214,7 +220,7 @@ function AuthPage() {
           ) : mode === "reset" ? (
             resetSentTo ? (
               <div className="mt-8 space-y-4">
-                <p className="rounded-md border border-border bg-card p-4 text-sm leading-7">
+                <p className="rounded-md border border-border bg-background p-4 text-sm leading-7">
                   إذا كان{" "}
                   <span dir="ltr" className="font-semibold">
                     {resetSentTo}
@@ -222,7 +228,7 @@ function AuthPage() {
                   مسجّلاً لدينا، سيصلك خلال دقائق رابط لتعيين كلمة مرور جديدة. تحقق من صندوق الرسائل
                   غير المرغوب فيها إن لم تجده.
                 </p>
-                <Button variant="outline" className="h-12 w-full bg-card" onClick={() => setResetSentTo(null)}>
+                <Button variant="outline" className="h-12 w-full" onClick={() => setResetSentTo(null)}>
                   إرسال الرابط مرة أخرى
                 </Button>
               </div>
@@ -238,7 +244,7 @@ function AuthPage() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="you@company.com"
-                    className="h-12 bg-card"
+                    className="h-12 bg-background"
                     required
                   />
                 </div>
@@ -259,7 +265,7 @@ function AuthPage() {
                       value={name}
                       onChange={(event) => setName(event.target.value)}
                       placeholder="اسمك الكامل"
-                      className="h-12 bg-card"
+                      className="h-12 bg-background"
                       required
                     />
                   </div>
@@ -273,7 +279,7 @@ function AuthPage() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="you@company.com"
-                    className="h-12 bg-card"
+                    className="h-12 bg-background"
                     required
                   />
                 </div>
@@ -297,7 +303,7 @@ function AuthPage() {
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     placeholder="كلمة المرور"
-                    className="h-12 bg-card"
+                    className="h-12 bg-background"
                     minLength={mode === "signup" ? 8 : undefined}
                     autoComplete={mode === "signup" ? "new-password" : "current-password"}
                     required
@@ -358,8 +364,62 @@ function AuthPage() {
               رجوع لتسجيل الدخول
             </button>
           ) : null}
+          </div>
+          </div>
         </div>
+        <AuthAside signup={mode === "signup"} />
       </main>
     </div>
+  );
+}
+
+/**
+ * Wide screens: what Tadqeeq does, beside the form, with a small example of a difference it finds.
+ * Hidden on phones so the form stays first.
+ */
+function AuthAside({ signup }: { signup: boolean }) {
+  const points = signup
+    ? ["ارفع ملف الطلبات وفاتورة المنصة واعرف الفرق.", "هنقرستيشن وكيتا وجاهز في مساحة واحدة.", "بيانات كل شركة منفصلة، وكل دخول محمي برمز."]
+    : ["إعادة احتساب كل بند من طلباتك وعقدك.", "كل فرق باسم الفرع ومبلغه ومصدره.", "قيود محاسبية جاهزة لنظامك."];
+  return (
+    <aside aria-hidden="true" className="relative hidden overflow-hidden p-4 lg:block">
+      <div className="relative flex h-full flex-col justify-center overflow-hidden rounded-[28px] bg-ink px-12 py-14 text-ink-foreground">
+        <span className="pointer-events-none absolute -top-24 -end-24 size-72 rounded-full bg-primary/15" />
+        <span className="pointer-events-none absolute -bottom-40 -start-24 size-[26rem] rounded-full border border-primary/25" />
+        <div className="relative max-w-md">
+          <p className="font-display text-[1.9rem] font-extrabold leading-[1.45]">
+            {signup ? "ابدأ بتدقيق فترة واحدة مجاناً." : "راجع فاتورتك القادمة قبل أن تدفعها."}
+          </p>
+          <ul className="mt-6 space-y-3 text-[15px] text-ink-foreground/90">
+            {points.map((point) => (
+              <li key={point} className="flex items-center gap-2.5">
+                <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+                  <Check className="size-3" />
+                </span>
+                {point}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-10 rounded-2xl bg-card p-5 text-foreground shadow-[0_30px_60px_-30px_rgb(0_0_0/0.5)]">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-muted/60 p-3.5">
+                <p className="text-xs text-muted-foreground">حسب فاتورة المنصة</p>
+                <p className="num mt-1.5 text-xl font-semibold">16,590.00</p>
+              </div>
+              <div className="rounded-xl bg-muted/60 p-3.5">
+                <p className="text-xs text-muted-foreground">حسب عقدك</p>
+                <p className="num mt-1.5 text-xl font-semibold text-success">14,931.00</p>
+              </div>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <span className="rounded-full bg-ink px-3.5 py-1.5 text-sm text-ink-foreground">
+                الفرق <span className="num text-primary">1,659.00</span>
+              </span>
+              <span className="text-[11px] text-muted-foreground">مثال توضيحي</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
   );
 }
