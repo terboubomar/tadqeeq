@@ -10,6 +10,7 @@ import { ONBOARDING_STATUS_LABELS } from "@/lib/onboarding";
 import { CYCLE_LABELS, sarFmt, SUBSCRIPTION_STATUS_LABELS } from "@/lib/ops";
 import { deleteOpsClient, updateOpsClient } from "@/lib/ops.functions";
 import type { OpsClient } from "@/lib/ops.server";
+import { HEALTH_LABELS, type ClientHealth, type HealthLevel } from "@/lib/ops-health";
 
 export function ClientAvatar({ c, size = "size-10" }: { c: Pick<OpsClient, "name" | "logoUrl">; size?: string }) {
   return c.logoUrl ? (
@@ -26,8 +27,26 @@ export function ClientStatusBadge({ c }: { c: Pick<OpsClient, "archived" | "stat
   return <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${tone}`}>{ONBOARDING_STATUS_LABELS[c.status] ?? c.status}</span>;
 }
 
+const HEALTH_DOT: Record<HealthLevel, string> = { green: "bg-success", amber: "bg-warning", red: "bg-destructive" };
+
+export function HealthDot({ level }: { level: HealthLevel }) {
+  return <span aria-hidden className={`inline-block size-2 shrink-0 rounded-full ${HEALTH_DOT[level]}`} />;
+}
+
+/** Health level with its reasons on hover; amber and red also show the label. */
+function HealthTag({ health }: { health: ClientHealth }) {
+  const reasons = health.signals.filter((signal) => signal.level !== "green").map((signal) => signal.reason);
+  const title = `${HEALTH_LABELS[health.level]}${reasons.length ? ": " + reasons.join("، ") : ""}`;
+  return (
+    <span title={title} className="inline-flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+      <HealthDot level={health.level} />
+      {health.level === "green" ? <span className="sr-only">{title}</span> : <span>{HEALTH_LABELS[health.level]}</span>}
+    </span>
+  );
+}
+
 /** One client in a list; the whole row opens the client's profile. On phones the details drop to one line under the name. */
-export function ClientListRow({ c, meta }: { c: OpsClient; meta?: string }) {
+export function ClientListRow({ c, meta, health }: { c: OpsClient; meta?: string; health?: ClientHealth }) {
   const subscription = c.subscriptionStatus
     ? `${SUBSCRIPTION_STATUS_LABELS[c.subscriptionStatus]} · ${sarFmt(c.subscriptionPrice ?? 0)} ${CYCLE_LABELS[c.subscriptionCycle ?? "monthly"]}`
     : "بدون اشتراك";
@@ -40,7 +59,10 @@ export function ClientListRow({ c, meta }: { c: OpsClient; meta?: string }) {
       <ClientAvatar c={c} />
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2 sm:block">
-          <p className="min-w-0 truncate font-semibold">{c.name}</p>
+          <p className="flex min-w-0 items-center gap-2 font-semibold">
+            <span className="truncate">{c.name}</span>
+            {health?.signals.length ? <HealthTag health={health} /> : null}
+          </p>
           <span className="shrink-0 sm:hidden">
             <ClientStatusBadge c={c} />
           </span>

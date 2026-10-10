@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { downloadCsv } from "@/lib/csv-download";
 import { CYCLE_LABELS, opsCan, sarFmt, SUBSCRIPTION_STATUS_LABELS, type Cycle, type SubscriptionStatus } from "@/lib/ops";
 import { listOpsClients, listPlanRequests, listPlans, listSubscriptions, saveSubscription, workspaceOrderUsage } from "@/lib/ops.functions";
 import { PLAN_ADDONS, planIncludesAddon, type PlanAddon } from "@/lib/plans";
@@ -46,7 +47,7 @@ function Subscriptions() {
   // A subscription can also activate or suspend the client and settle its plan request.
   const refresh = () =>
     Promise.all(
-      [["ops-subs"], ["ops-plan-requests"], ["ops-clients"], ["ops-client"], ["ops-overview"], ["ops-tasks"], ["ops-logs"]].map((queryKey) =>
+      [["ops-subs"], ["ops-plan-requests"], ["ops-revenue"], ["ops-clients"], ["ops-client"], ["ops-overview"], ["ops-tasks"], ["ops-logs"]].map((queryKey) =>
         qc.invalidateQueries({ queryKey }),
       ),
     );
@@ -91,11 +92,40 @@ function Subscriptions() {
     );
   };
   const openRequests = requests.data ?? [];
+  function exportCsv() {
+    downloadCsv(
+      `tadqeeq-subscriptions-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["العميل", "الباقة", "الإضافات", "السعر (ر.س)", "الدورة", "الحالة", "البداية", "النهاية", "طلبات آخر شهر", "طلبات الشهر قبله", "حد الباقة", "ملاحظات"],
+      (subs.data ?? []).map((s) => {
+        const u = usage.data?.find((x) => x.workspaceId === s.workspaceId);
+        return [
+          s.workspaceName,
+          planName(s.planId),
+          PLAN_ADDONS.filter((a) => s.addons.includes(a.key)).map((a) => a.label).join("، "),
+          s.price,
+          CYCLE_LABELS[s.cycle],
+          SUBSCRIPTION_STATUS_LABELS[s.status],
+          s.startsOn,
+          s.endsOn,
+          u?.latest ?? null,
+          u?.previous ?? null,
+          plans.data?.find((p) => p.id === s.planId)?.orderLimit ?? null,
+          s.notes,
+        ];
+      }),
+    );
+  }
 
   return (
     <div className="space-y-6">
       <OpsHeader title="الاشتراكات" sub="اشتراك كل عميل ومواعيد التجديد">
-        {role !== "support" ? <Button onClick={() => setForm(blank())}>+ اشتراك جديد</Button> : null}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" disabled={!subs.data?.length} onClick={exportCsv}>
+            <Download className="size-4" />
+            تصدير CSV
+          </Button>
+          {role !== "support" ? <Button onClick={() => setForm(blank())}>+ اشتراك جديد</Button> : null}
+        </div>
       </OpsHeader>
 
       {openRequests.length ? (

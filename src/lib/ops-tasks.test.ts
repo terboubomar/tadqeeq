@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildOpsTasks, type OpsTaskClient } from "./ops-tasks";
+import { buildOpsTasks, renewalReminder, type OpsTaskClient } from "./ops-tasks";
 
 const now = new Date("2026-09-27T12:00:00Z");
 const client = (over: Partial<OpsTaskClient>): OpsTaskClient => ({
@@ -82,5 +82,16 @@ describe("buildOpsTasks", () => {
         client({ name: "stopped", status: "suspended" }),
       ]),
     ).toEqual(["never:inactive", "idle:inactive"]);
+  });
+});
+
+describe("renewalReminder", () => {
+  test("renewal and overdue tasks get a ready message; other tasks none", () => {
+    const due = renewalReminder({ kind: "renewal_due", name: "مطاعم المذاق" }, "20 أكتوبر 2026");
+    expect(due?.subject).toBe("تذكير بتجديد اشتراك تدقيق");
+    expect(due?.body).toContain("مرحباً مطاعم المذاق،");
+    expect(due?.body).toContain("ينتهي في 20 أكتوبر 2026");
+    expect(renewalReminder({ kind: "overdue", name: "x" }, "1 أكتوبر 2026")?.body).toContain("انتهى اشتراككم في تدقيق في 1 أكتوبر 2026");
+    expect(renewalReminder({ kind: "new_signup", name: "x" }, "")).toBeNull();
   });
 });

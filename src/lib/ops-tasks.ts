@@ -118,3 +118,16 @@ export function buildOpsTasks(clients: OpsTaskClient[], now: Date, opts: { finan
   // Upcoming meetings and renewals soonest first; everything else oldest (most waiting) first.
   return tasks.sort((a, b) => order.get(a.kind)! - order.get(b.kind)! || (a.date ?? "").localeCompare(b.date ?? ""));
 }
+
+/** Ready-to-send reminder for a renewal or overdue task (WhatsApp text and email subject/body); null for other tasks. */
+export function renewalReminder(task: Pick<OpsTask, "kind" | "name">, endDate: string): { subject: string; body: string } | null {
+  if (task.kind !== "renewal_due" && task.kind !== "overdue") return null;
+  const lead =
+    task.kind === "renewal_due"
+      ? `نذكّركم بأن اشتراككم في تدقيق ينتهي في ${endDate}.`
+      : `انتهى اشتراككم في تدقيق في ${endDate} ولم يصلنا التجديد بعد.`;
+  return {
+    subject: "تذكير بتجديد اشتراك تدقيق",
+    body: `مرحباً ${task.name}،\n${lead} للتجديد يكفي الرد على هذه الرسالة وسنرسل لكم الفاتورة.\n\nشكراً لكم،\nفريق تدقيق`,
+  };
+}
