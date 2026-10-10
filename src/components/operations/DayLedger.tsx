@@ -15,6 +15,7 @@ import type {
   OperationOrderFilter,
   OperationPlatform,
 } from "@/lib/operations/types";
+import { formatArabicDate } from "@/lib/site-content";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 50;
@@ -113,7 +114,7 @@ export function OrderLedger({
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
         <div className="min-w-0">
           <h2 className="truncate font-display text-[15px] font-bold">
-            {selected ? `${isAdjustments ? "حركات" : "طلبات"} ${selected.businessDate}` : "تفاصيل الملف"}
+            {selected ? `${isAdjustments ? "حركات" : "طلبات"} ${formatArabicDate(selected.businessDate)}` : "تفاصيل الملف"}
           </h2>
           <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">
             {selected ? `${selected.originalName} · ${operationSourceLabels[selected.sourceKind]}${selected.current ? "" : " · مستبدل"}` : ""}
@@ -182,7 +183,8 @@ export function OrderLedger({
           <TotalCell label="المبيعات" value={sar(detail.totals.grossSales)} />
           <TotalCell
             label="تكلفة المنصة"
-            value={`${sar(detail.totals.chargesTotal)} · ${percent(operationCostRatio(detail.totals.chargesTotal, detail.totals.grossSales))}`}
+            value={sar(detail.totals.chargesTotal)}
+            note={percent(operationCostRatio(detail.totals.chargesTotal, detail.totals.grossSales))}
           />
           <TotalCell label="صافي التحويل" value={sar(detail.totals.settlementAmount)} />
         </div>
@@ -219,11 +221,14 @@ export function OrderLedger({
   );
 }
 
-function TotalCell({ label, value }: { label: string; value: string }) {
+function TotalCell({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <div className="min-w-0">
       <p className="text-muted-foreground">{label}</p>
-      <p className="num mt-0.5 truncate font-semibold">{value}</p>
+      <p className="mt-0.5 flex min-w-0 items-baseline gap-1.5">
+        <span className="num truncate font-semibold">{value}</span>
+        {note ? <span className="num shrink-0 text-muted-foreground">{note}</span> : null}
+      </p>
     </div>
   );
 }

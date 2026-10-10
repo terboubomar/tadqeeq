@@ -88,7 +88,7 @@ function OperationsPage() {
       ) : null}
 
       <section className="overflow-hidden rounded-2xl border border-border bg-ink text-ink-foreground">
-        <div className="grid grid-cols-1 divide-y divide-white/10 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-y-0">
+        <div className="grid grid-cols-2 gap-px bg-white/10 lg:grid-cols-4">
           <OverviewMetric label="إجمالي المبيعات" value={sar(totals.grossSales)} highlighted />
           <OverviewMetric
             label="تكلفة المنصات"
@@ -150,9 +150,9 @@ function OperationsPage() {
                 to="/operations/$platform"
                 params={{ platform: platform.id }}
                 search={{ month }}
-                className="group grid gap-4 px-4 py-5 transition-colors hover:bg-muted/35 sm:grid-cols-[minmax(220px,1.25fr)_repeat(5,minmax(96px,0.6fr))_auto] sm:items-center sm:px-5"
+                className="group grid grid-cols-2 gap-x-4 gap-y-3.5 px-4 py-5 transition-colors hover:bg-muted/35 sm:grid-cols-[minmax(220px,1.25fr)_repeat(5,minmax(96px,0.6fr))_auto] sm:items-center sm:gap-4 sm:px-5"
               >
-                <div className="flex min-w-0 items-center gap-3">
+                <div className="col-span-2 flex min-w-0 items-center gap-3 sm:col-span-1">
                   <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-border bg-background">
                     <PlatformIcon platform={platform.id} className="size-7 rounded-lg" />
                   </span>
@@ -165,25 +165,27 @@ function OperationsPage() {
                     </span>
                   </span>
                 </div>
-                <Metric label="المبيعات" value={row?.coveredDays ? sar(row.grossSales) : "—"} />
-                <Metric label="تكلفة المنصة" value={row?.coveredDays ? percent(costRatio) : "—"} />
-                <Metric
-                  label="التكلفة لكل طلب"
-                  value={row?.orderCount ? sar(operationCostPerOrder(row.chargesToDate, row.orderCount)) : "—"}
-                />
-                <Metric
-                  label="نسبة العمولة"
-                  value={row?.coveredDays ? percent(commissionRatio) : "—"}
-                />
-                <Metric
-                  label="التغطية"
-                  value={
-                    row?.coveredDays
-                      ? `${count(row.coveredDays)} / ${count(overview?.daysInMonth)}`
-                      : "—"
-                  }
-                  hint={row?.coveredDays ? `${count(row.orderCount)} طلب` : "لا توجد ملفات"}
-                />
+                {row?.coveredDays ? (
+                  <>
+                    <Metric label="المبيعات" value={sar(row.grossSales)} />
+                    <Metric label="تكلفة المنصة" value={percent(costRatio)} />
+                    <Metric
+                      label="التكلفة لكل طلب"
+                      value={row.orderCount ? sar(operationCostPerOrder(row.chargesToDate, row.orderCount)) : "—"}
+                    />
+                    <Metric label="نسبة العمولة" value={percent(commissionRatio)} />
+                    <Metric
+                      label="التغطية"
+                      value={`${count(row.coveredDays)} / ${count(overview?.daysInMonth)}`}
+                      hint={`${count(row.orderCount)} طلب`}
+                    />
+                  </>
+                ) : (
+                  <p className="col-span-2 flex items-center gap-2 text-[12.5px] text-muted-foreground sm:col-span-5">
+                    <Upload className="size-4 shrink-0" />
+                    لا توجد ملفات في {monthLabel(month)}. افتح المنصة لرفع ملفات الأيام.
+                  </p>
+                )}
                 <ArrowLeft className="hidden size-4 text-muted-foreground transition-transform group-hover:-translate-x-1 sm:block" />
               </Link>
             );
@@ -345,9 +347,9 @@ function OverviewMetric({
   highlighted?: boolean;
 }) {
   return (
-    <div className="px-5 py-4">
+    <div className="min-w-0 bg-ink px-4 py-4 sm:px-5">
       <p className="text-[11.5px] text-ink-muted">{label}</p>
-      <p className={`num mt-1 text-[25px] font-semibold ${highlighted ? "text-primary" : ""}`}>
+      <p className={`num mt-1 truncate text-[16px] font-semibold sm:text-[25px] ${highlighted ? "text-primary" : ""}`}>
         {value}
       </p>
       {hint ? <p className="mt-1 text-[11px] text-ink-muted">{hint}</p> : null}
@@ -357,7 +359,7 @@ function OverviewMetric({
 
 function Metric({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="grid grid-cols-[110px_1fr] items-baseline gap-2 sm:block">
+    <div className="min-w-0">
       <p className="text-[10.5px] text-muted-foreground">{label}</p>
       <p className="num mt-1 text-[14px] font-semibold">{value}</p>
       {hint ? <p className="mt-0.5 text-[10.5px] text-muted-foreground">{hint}</p> : null}
