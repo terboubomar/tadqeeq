@@ -110,9 +110,12 @@ function JournalReport({
           journals={current ? [current] : journals}
           firstNumber={current ? (selection as number) + 1 : 1}
           label={current ? "تصدير قيد الفرع" : "تصدير كل الفروع"}
+          className="w-full sm:w-auto"
         />
-        <AccountsButton onClick={() => setEditing(true)} />
-        <CostCentersButton onClick={() => setEditingCenters(true)} />
+        <div className="grid w-full grid-cols-2 gap-1.5 empty:hidden sm:flex sm:w-auto">
+          <AccountsButton onClick={() => setEditing(true)} />
+          <CostCentersButton onClick={() => setEditingCenters(true)} />
+        </div>
       </ActionBar>
 
       <NumberTiles
@@ -147,11 +150,21 @@ function JournalReport({
                   </span>
                 ) : null}
               </h2>
-              <p className="text-[12.5px] text-muted-foreground">
-                {shown.description}
-                {shown.date ? " · بتاريخ " + arabicDate(shown.date) : ""}
-                {current?.costCenter ? " · مركز التكلفة " + current.costCenter : ""}
-              </p>
+              <p className="text-[12.5px] text-muted-foreground">{shown.description}</p>
+              {shown.date || current?.costCenter ? (
+                <p className="flex flex-wrap gap-1.5 pt-1.5 text-[11.5px]">
+                  {shown.date ? (
+                    <span className="rounded-full border border-border px-2.5 py-0.5 text-muted-foreground">
+                      بتاريخ <span className="text-foreground">{arabicDate(shown.date)}</span>
+                    </span>
+                  ) : null}
+                  {current?.costCenter ? (
+                    <span className="rounded-full border border-border px-2.5 py-0.5 text-muted-foreground">
+                      مركز التكلفة <span className="num text-foreground">{current.costCenter}</span>
+                    </span>
+                  ) : null}
+                </p>
+              ) : null}
             </div>
           </header>
           {current ? null : (
