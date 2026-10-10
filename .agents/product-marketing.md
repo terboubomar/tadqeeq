@@ -1,6 +1,6 @@
 # Product Marketing Context
 
-_Version 1.1 · 2026-10-05 · read by the marketing skills (seo-audit, competitors, copywriting, …) before they ask questions._
+_Version 1.2 · 2026-10-10 · read by the marketing skills (seo-audit, competitors, copywriting, …) before they ask questions._
 
 ## Product Overview
 
@@ -14,8 +14,10 @@ _Version 1.1 · 2026-10-05 · read by the marketing skills (seo-audit, competito
   - **استرداد (Istirdad) · مركز التعويضات**: cashiers send order video/receipt photos in the branch Telegram group; the bot links evidence to the order number; dispute letters in Arabic and English; recovery tracking.
   - **عائد (Aaid) · عائد العروض والإعلانات**: real profit per promotion/ad campaign after commission, discounts and ad spend.
   - **رقيب (Raqeeb) · المراقب الذكي**: compares each branch with its history and similar branches after every upload, ranks unusual fees by SAR impact.
+  - **نَبْض (Nabd) · المتابعة اليومية**: upload the daily order file (HungerStation, Keeta, Jahez) to follow sales, platform cost %, cost per order and month-end payout forecast per platform and branch; flags files exported before the platform settled commissions. In-app only (no public product page yet).
   - **Tadqeeq AI · المساعد الذكي**: answers questions about the numbers in Arabic; never changes them. Also usable from Claude and ChatGPT (MCP) on the top plan or with the add-on.
-  - Also: branch comparison, period close and re-analysis, contracts, team roles and permissions, optional two-step sign-in.
+  - **القيود المحاسبية (journal entries)**: one entry per branch and platform from the audit result, cost center per branch, export for Excel, Odoo, Zoho Books, QuickBooks, Qoyod (قيود) and Daftra (دفترة).
+  - Also: several companies/brands per account (workspace switcher, limit per plan); six roles (owner, admin, auditor, compensation officer, branch manager, viewer) with branch scope; every password sign-in needs a 6-digit email code (or an authenticator app); versioned contracts (approved versions locked); executive dashboard, branch/daily/line-item reports; saved periods and re-analysis; branch names matched once. Shown in the homepage section «الحساب والفريق والتقارير».
 - **Pricing** (order-based, live in the database; homepage pricing section and `/pricing.md`): البداية 299 SAR/month up to 15,000 orders; النمو 499 SAR up to 45,000; الشاملة 799 SAR unlimited, includes استرداد + Tadqeeq AI + Claude/ChatGPT. Add-on (استرداد + Tadqeeq AI + MCP) 399 SAR every 4 months on the other plans. Yearly = 2 months free. Free trial: one upload. Prices exclude VAT; bank transfer after invoice.
 - **Public pages**: `/`, `/guides` (+ 3 guides), `/contact`, `/privacy`, `/terms`, `/refund-policy`, `/cookies`.
 
@@ -86,3 +88,4 @@ Calm, precise, Saudi-friendly Modern Standard Arabic with light Gulf phrasing in
 
 - 1.0 (2026-09-27): initial context from the app, homepage and competitor scan.
 - 1.1 (2026-10-05): product names, order-based pricing and add-on, public pages.
+- 1.2 (2026-10-10): نَبْض (daily tracking), journal entries with cost centers and accounting-system exports, CPC ad invoices per branch in كاشِف; account, team and reports capabilities on the homepage.

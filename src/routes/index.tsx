@@ -1,7 +1,9 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import {
+  Activity,
   ArrowLeft,
   ArrowUp,
+  BookOpen,
   Building2,
   Calculator,
   Check,
@@ -9,7 +11,11 @@ import {
   CircleHelp,
   CreditCard,
   FileSpreadsheet,
+  FileText,
   HandCoins,
+  History,
+  LayoutDashboard,
+  Link2,
   LineChart,
   Menu,
   Percent,
@@ -17,6 +23,7 @@ import {
   RotateCcw,
   Scale,
   SearchCheck,
+  ShieldCheck,
   Store,
   Tag,
   Truck,
@@ -29,6 +36,7 @@ import {
   Columns3,
   Sparkles,
   Upload,
+  Users,
   Video,
   X,
   type LucideIcon,
@@ -217,7 +225,7 @@ const AUDIENCES: TourItem[] = [
     tagline: "اعرف كم تأخذ المنصة فعلاً من كل طلب.",
     body: "ارفع ملفين في نهاية الشهر واعرف قبل السداد إن كانت الفاتورة صحيحة.",
     icon: Store,
-    points: ["ملخص واضح للمستحق والمخصوم والفرق", "مقارنة الرسوم بين الفروع", "مطالبة تعويض جاهزة بالأدلة"],
+    points: ["ملخص واضح للمستحق والمخصوم والفرق", "نسبة تكلفة كل منصة يوماً بيوم", "مطالبة تعويض جاهزة بالأدلة"],
   },
   {
     key: "finance",
@@ -239,9 +247,9 @@ const AUDIENCES: TourItem[] = [
     key: "accounting",
     name: "فريق المحاسبة",
     tagline: "الأرقام التي تحتاجها من دون جداول يدوية.",
-    body: "تدقيق منظم وسريع مع نتائج قابلة للتصدير والمراجعة.",
+    body: "تدقيق منظم وسريع، وقيود الشهر جاهزة للاستيراد في نظامك المحاسبي.",
     icon: FileSpreadsheet,
-    points: ["نتائج قابلة للتصدير", "مصدر واضح لكل رقم", "وصول حسب الدور"],
+    points: ["قيود لكل فرع بمركز تكلفته", "تصدير إلى Odoo وZoho وQuickBooks وقيود ودفترة", "مصدر واضح لكل رقم"],
   },
 ];
 
@@ -394,9 +402,9 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
       <ExplainerVideoLauncher />
       <div className="flex items-center justify-center gap-3 bg-ink px-4 py-2.5 text-center text-xs text-ink-foreground sm:text-[13px]">
         <span className="lp-pulse shrink-0 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-primary-foreground">جديد</span>
-        <span className="hidden sm:inline">شاهد كيف يشتغل تدقيق في دقيقتين، من رفع الفاتورة إلى استرجاع التعويض</span>
-        <span className="sm:hidden">شاهد كيف يشتغل تدقيق في دقيقتين</span>
-        <a href="#video" className="shrink-0 font-semibold text-primary">شاهد الفيديو ←</a>
+        <span className="hidden sm:inline">«{PRODUCTS.nabd.name}» لمتابعة تكلفة كل منصة يومياً، وقيود محاسبية جاهزة لنظامك</span>
+        <span className="sm:hidden">«{PRODUCTS.nabd.name}» لمتابعة تكلفة المنصات يومياً</span>
+        <a href="#products" className="shrink-0 font-semibold text-primary">اكتشف الجديد ←</a>
       </div>
 
       <div className="sticky top-0 z-40 px-3 pt-3 sm:px-6 sm:pt-4">
@@ -579,6 +587,8 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         <AssistantSection />
 
         <Audiences />
+
+        <Capabilities />
 
         {plans.length ? <Pricing plans={plans} /> : null}
 
@@ -880,7 +890,7 @@ const SHOWCASE: TourItem[] = [
     descriptor: PRODUCTS.kashif.descriptor,
     product: "kashif",
     tagline: "أين يذهب كل ريال تخصمه المنصة.",
-    body: "كل خصم في الفاتورة مصنف: عمولة، رسوم دفع، حملات، ضريبة. وأي بند لا يطابق الخريطة يظهر كبند غير مصنف بدلاً من أن يختفي.",
+    body: "كل خصم في الفاتورة مصنف: عمولة، رسوم دفع، حملات، ضريبة، وفواتير إعلانات CPC موزعة على الفروع. وأي بند لا يطابق الخريطة يظهر كبند غير مصنف بدلاً من أن يختفي.",
     icon: PieChart,
   },
   {
@@ -918,6 +928,22 @@ const SHOWCASE: TourItem[] = [
     tagline: "يقارن كل فرع بتاريخه، وينبّهك لما هو غير معتاد.",
     body: "بعد كل رفع يقارن تدقيق العمولة والرسوم والتعويضات لكل فرع بأشهره السابقة وبالفروع المشابهة، ويرتب التنبيهات حسب أثرها بالريال.",
     icon: Eye,
+  },
+  {
+    key: "daily",
+    name: PRODUCTS.nabd.name,
+    descriptor: PRODUCTS.nabd.descriptor,
+    product: "nabd",
+    tagline: "تكلفة كل منصة، يوماً بيوم، قبل أن تصل الفاتورة.",
+    body: "ارفع ملف الطلبات اليومي من هنقرستيشن أو كيتا أو جاهز، وتابع المبيعات ونسبة تكلفة المنصة والتحويل المتوقع لنهاية الشهر لكل فرع. وإذا صُدّر الملف قبل أن تحسب المنصة عمولتها، ينبّهك بدلاً من أن يعرض نسبة خاطئة.",
+    icon: Activity,
+  },
+  {
+    key: "journal",
+    name: "القيود المحاسبية",
+    tagline: "قيود الشهر جاهزة لنظامك المحاسبي.",
+    body: "من نتيجة التدقيق يجهّز تدقيق قيداً لكل فرع ومنصة: المبيعات والعمولة والرسوم والضريبة والإعلانات والأجهزة والاشتراكات، مع مركز تكلفة لكل فرع. صدّرها إلى Excel أو Odoo أو Zoho Books أو QuickBooks أو قيود أو دفترة.",
+    icon: BookOpen,
   },
   {
     key: "columns",
@@ -1183,6 +1209,75 @@ function ProductShowcase() {
       ctaLabel={(item) => `جرّب ${item.name}`}
       className="bg-background"
     />
+  );
+}
+
+const CAPABILITIES: Array<{ title: string; body: string; icon: LucideIcon }> = [
+  {
+    title: "عدة شركات في حساب واحد",
+    body: "لكل شركة أو علامة تجارية مساحة مستقلة ببياناتها وفروعها وفريقها، وتنتقل بينها من أعلى الشاشة. عدد الشركات حسب باقتك.",
+    icon: Building2,
+  },
+  {
+    title: "أدوار وصلاحيات بنطاق الفروع",
+    body: "المالك والمدير والمدقق المالي ومسؤول التعويضات ومدير الفرع والمشاهد، لكل موظف دخول مستقل، ومدير الفرع يرى فروعه فقط.",
+    icon: Users,
+  },
+  {
+    title: "دخول محمي برمز",
+    body: "كل تسجيل دخول بكلمة المرور يحتاج رمزاً من 6 أرقام يصل بريدك، ويمكنك استخدام تطبيق المصادقة بدلاً منه.",
+    icon: ShieldCheck,
+  },
+  {
+    title: "العقود وشروط المنصات",
+    body: "نسب العمولة والرسوم المتفق عليها مع كل منصة. النسخة المعتمدة تُقفل، وأي تغيير يبدأ من نسخة جديدة فيبقى تاريخ كل فترة كما هو.",
+    icon: FileText,
+  },
+  {
+    title: "اللوحة التنفيذية",
+    body: "المستحق والمخصوم والفرق لصالحك ونسبة تكلفة المنصة من المبيعات لكل فترة، في شاشة واحدة.",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "تقارير الفروع والأيام والبنود",
+    body: "رتّب الفروع حسب التكلفة أو الفرق، وتابع الحركة يوماً بيوم، واطّلع على تفصيل بنود الفاتورة لكل فترة.",
+    icon: LineChart,
+  },
+  {
+    title: "أرشيف الفترات وإعادة التحليل",
+    body: "كل فترة تُحفظ للرجوع إليها، وعند تعديل عقد أو ربط فرع تعيد تحليل الفترة بضغطة بدلاً من رفع الملفات من جديد.",
+    icon: History,
+  },
+  {
+    title: "ربط أسماء الفروع مرة واحدة",
+    body: "اسم الفرع في الفاتورة يختلف عن ملف الطلبات؟ تربطه مرة واحدة ويتذكره تدقيق في الأشهر القادمة.",
+    icon: Link2,
+  },
+];
+
+/** What the account gives every team, beyond the audit tools themselves. */
+function Capabilities() {
+  return (
+    <section id="platform" className="bg-[oklch(0.975_0.018_85)]">
+      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-24">
+        <SectionIntro eyebrow="الحساب والفريق والتقارير" title="كل شركاتك وفريقك وتقاريرك في حساب واحد.">
+          ما يحتاجه المالك والمالية ومديرو الفروع للعمل معاً، بأمان ومن دون جداول جانبية.
+        </SectionIntro>
+        <ul data-reveal className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {CAPABILITIES.map(({ title, body, icon: Icon }) => (
+            <li key={title} className="flex gap-3 rounded-[18px] border border-border bg-card p-4 sm:block sm:p-5">
+              <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary-text sm:size-10">
+                <Icon className="size-[18px]" />
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-[15px] font-bold sm:mt-4">{title}</h3>
+                <p className="mt-1.5 text-[13.5px] leading-7 text-muted-foreground sm:mt-2">{body}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }
 
@@ -1525,6 +1620,100 @@ function ShowcaseVisual({ kind, active }: { kind: string; active: boolean }) {
         <p className="mt-4 rounded-xl bg-secondary p-3 text-xs text-foreground/80">
           أثر التنبيه هذا الشهر: <span className="num font-semibold">1,240 ر.س</span>
         </p>
+      </div>
+    );
+  }
+  if (kind === "daily") {
+    const days: Array<[string, number, boolean]> = [
+      ["01", 72, false],
+      ["02", 66, false],
+      ["03", 71, false],
+      ["04", 60, false],
+      ["05", 68, false],
+      ["06", 74, false],
+      ["07", 70, true],
+    ];
+    return (
+      <div className={card}>
+        <p className="flex items-center gap-2 text-sm font-semibold">
+          <Activity className="size-4 text-primary-text" /> {PRODUCTS.nabd.name} <span className="font-normal text-muted-foreground">· {PRODUCTS.nabd.descriptor}</span>
+        </p>
+        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+          {(
+            [
+              ["المبيعات", "861,071"],
+              ["تكلفة المنصة", "27.6%"],
+              ["التحويل المتوقع", "2.3M"],
+            ] as const
+          ).map(([label, value]) => (
+            <div key={label} className="rounded-xl bg-muted/60 px-2 py-2.5">
+              <p className="text-[11px] text-muted-foreground">{label}</p>
+              <p className="num mt-1 text-[15px] font-semibold">{value}</p>
+            </div>
+          ))}
+        </div>
+        <div dir="ltr" className="mt-4 flex h-24 items-end gap-2">
+          {days.map(([day, height, incomplete], i) => (
+            <div key={day} className="flex h-full flex-1 flex-col items-center gap-1">
+              <div className="relative w-full flex-1">
+                <div
+                  className={cn("absolute inset-x-0 bottom-0 rounded-t-md transition-[height] duration-1000 ease-out", incomplete ? "bg-chart-1/30" : "bg-chart-1")}
+                  style={{ height: active ? `${height}%` : "0%", transitionDelay: `${i * 0.08}s` }}
+                />
+              </div>
+              <span className="num text-[10px] text-muted-foreground">{Number(day)}</span>
+            </div>
+          ))}
+        </div>
+        <p
+          className={cn("mt-4 rounded-xl bg-warning/15 p-3 text-xs font-semibold text-warning transition-opacity duration-700", active ? "opacity-100" : "opacity-0")}
+          style={{ transitionDelay: "0.8s" }}
+        >
+          ملف يوم 7 غير مكتمل: طلبات بلا عمولة بعد، أعد تصديره لاحقاً
+        </p>
+      </div>
+    );
+  }
+  if (kind === "journal") {
+    const lines: Array<[string, string, string]> = [
+      ["ذمم المنصات", "112,418.40", ""],
+      ["عمولة المنصات", "26,312.75", ""],
+      ["ضريبة المدخلات", "3,946.91", ""],
+      ["إيرادات المبيعات", "", "124,067.88"],
+      ["ضريبة المخرجات", "", "18,610.18"],
+    ];
+    return (
+      <div className={card}>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold">قيد فرع العليا · هنقرستيشن</p>
+          <span className="shrink-0 rounded-full bg-secondary px-2.5 py-0.5 text-[11px]">مركز تكلفة: العليا</span>
+        </div>
+        <div className="mt-4 overflow-hidden rounded-xl border border-border text-[12px] sm:text-[12.5px]">
+          <div className="grid grid-cols-[1fr_auto_auto] gap-2 bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground sm:gap-3 sm:px-3">
+            <span>الحساب</span>
+            <span className="w-[4.6rem] text-end sm:w-20">مدين</span>
+            <span className="w-[4.6rem] text-end sm:w-20">دائن</span>
+          </div>
+          {lines.map(([account, debit, credit], i) => (
+            <div
+              key={account}
+              className={cn("grid grid-cols-[1fr_auto_auto] gap-2 border-t border-border px-2.5 py-1.5 transition-opacity duration-500 sm:gap-3 sm:px-3 sm:py-2", active ? "opacity-100" : "opacity-0")}
+              style={{ transitionDelay: `${0.1 + i * 0.12}s` }}
+            >
+              <span className="truncate">{account}</span>
+              <span className="num w-[4.6rem] text-end sm:w-20">{debit}</span>
+              <span className="num w-[4.6rem] text-end sm:w-20">{credit}</span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 text-[11px] text-muted-foreground">تصدير إلى</p>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {["Excel", "Odoo", "Zoho Books", "QuickBooks", "قيود", "دفترة"].map((system) => (
+            <span key={system} className="rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold">
+              {system}
+            </span>
+          ))}
+        </div>
       </div>
     );
   }
