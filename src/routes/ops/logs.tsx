@@ -30,7 +30,28 @@ function Logs() {
         </select>
         </div>
       </OpsHeader>
-      <section className="panel overflow-x-auto">
+      <section className="space-y-2 md:hidden">
+        {q.isLoading ? <Loader2 className="m-4 size-5 animate-spin" /> : null}
+        {rows.map((r) => (
+          <article key={r.source + r.id} className="panel p-4 text-sm">
+            <div className="flex items-start justify-between gap-3">
+              <p className="min-w-0 font-medium">{opsActionLabel(r.action)}</p>
+              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{r.source === "ops" ? "العمليات" : "العميل"}</span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {r.workspace} · <span dir="ltr">{r.actor}</span>
+            </p>
+            <p className="mt-0.5 whitespace-nowrap text-[11px] tabular-nums text-muted-foreground">
+              {new Date(r.createdAt).toLocaleString("ar-SA-u-ca-gregory-nu-latn", { timeZone: "Asia/Riyadh" })}
+            </p>
+            {r.details && r.details !== "{}" ? (
+              <p className="mt-1.5 truncate font-mono text-[11px] text-muted-foreground" dir="ltr" title={r.details}>{r.details}</p>
+            ) : null}
+          </article>
+        ))}
+        {!q.isLoading && !rows.length ? <p className="panel p-6 text-center text-sm text-muted-foreground">لا توجد أحداث.</p> : null}
+      </section>
+      <section className="panel hidden overflow-x-auto md:block">
         {q.isLoading ? <Loader2 className="m-4 size-5 animate-spin" /> : (
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{["الوقت", "المصدر", "الإجراء", "المنفّذ", "العميل", "التفاصيل"].map((h) => <th key={h} className="p-3 text-start font-medium">{h}</th>)}</tr></thead>

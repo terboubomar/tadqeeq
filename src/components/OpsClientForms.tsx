@@ -26,32 +26,43 @@ export function ClientStatusBadge({ c }: { c: Pick<OpsClient, "archived" | "stat
   return <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${tone}`}>{ONBOARDING_STATUS_LABELS[c.status] ?? c.status}</span>;
 }
 
-/** One client in a list; the whole row opens the client's profile. */
+/** One client in a list; the whole row opens the client's profile. On phones the details drop to one line under the name. */
 export function ClientListRow({ c, meta }: { c: OpsClient; meta?: string }) {
+  const subscription = c.subscriptionStatus
+    ? `${SUBSCRIPTION_STATUS_LABELS[c.subscriptionStatus]} · ${sarFmt(c.subscriptionPrice ?? 0)} ${CYCLE_LABELS[c.subscriptionCycle ?? "monthly"]}`
+    : "بدون اشتراك";
   return (
     <Link
       to="/ops/clients/$workspaceId"
       params={{ workspaceId: c.workspaceId }}
-      className="panel flex flex-wrap items-center gap-x-4 gap-y-2 p-4 transition-colors hover:border-foreground/25"
+      className="panel flex items-center gap-x-4 gap-y-2 p-4 transition-colors hover:border-foreground/25"
     >
       <ClientAvatar c={c} />
-      <div className="min-w-44 flex-1">
-        <p className="font-semibold">{c.name}</p>
-        {c.accountOf ? (
-          <p className="text-xs text-primary-text">شركة تابعة لحساب «{c.accountOf}»</p>
-        ) : null}
-        <p className="text-xs text-muted-foreground" dir="ltr">{c.ownerEmail ?? c.contactEmail ?? "—"}</p>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2 sm:block">
+          <p className="min-w-0 truncate font-semibold">{c.name}</p>
+          <span className="shrink-0 sm:hidden">
+            <ClientStatusBadge c={c} />
+          </span>
+        </div>
+        {c.accountOf ? <p className="truncate text-xs text-primary-text">شركة تابعة لحساب «{c.accountOf}»</p> : null}
+        <p className="truncate text-xs text-muted-foreground" dir="ltr" style={{ textAlign: "right" }}>
+          {c.ownerEmail ?? c.contactEmail ?? "—"}
+        </p>
+        <p className="mt-1 text-[11.5px] leading-5 text-muted-foreground sm:hidden">
+          {subscription} · <span className="num">{c.users}</span> مستخدم · {meta ?? <span className="num">{c.createdAt.slice(0, 10)}</span>}
+        </p>
       </div>
-      <ClientStatusBadge c={c} />
-      <span className="w-40 text-xs text-muted-foreground">
-        {c.subscriptionStatus
-          ? `${SUBSCRIPTION_STATUS_LABELS[c.subscriptionStatus]} · ${sarFmt(c.subscriptionPrice ?? 0)} ${CYCLE_LABELS[c.subscriptionCycle ?? "monthly"]}`
-          : "بدون اشتراك"}
+      <span className="hidden shrink-0 sm:inline">
+        <ClientStatusBadge c={c} />
+      </span>
+      <span className="hidden w-40 shrink-0 text-xs text-muted-foreground sm:block">
+        {subscription}
         {c.subscriptionFromAccount ? <span className="block">من اشتراك الحساب</span> : null}
       </span>
-      <span className="w-20 text-xs text-muted-foreground"><span className="num">{c.users}</span> مستخدم</span>
-      <span className="w-28 text-xs text-muted-foreground">{meta ?? <span className="num">{c.createdAt.slice(0, 10)}</span>}</span>
-      <ChevronLeft className="size-4 text-muted-foreground" />
+      <span className="hidden w-20 shrink-0 text-xs text-muted-foreground md:block"><span className="num">{c.users}</span> مستخدم</span>
+      <span className="hidden w-28 shrink-0 text-xs text-muted-foreground md:block">{meta ?? <span className="num">{c.createdAt.slice(0, 10)}</span>}</span>
+      <ChevronLeft className="size-4 shrink-0 text-muted-foreground" />
     </Link>
   );
 }

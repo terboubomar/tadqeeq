@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { opsCan, sarFmt } from "@/lib/ops";
 import { deletePayment, getReceiptUrl, listOpsClients, listPayments, recordPayment } from "@/lib/ops.functions";
-import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
+import { OpsConfirm, OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
 export const Route = createFileRoute("/ops/payments")({ component: Payments });
 
@@ -24,6 +24,7 @@ function Payments() {
   const [f, setF] = useState({ workspaceId: "", amount: 0, paidOn: new Date().toISOString().slice(0, 10), reference: "", notes: "" });
   const [file, setFile] = useState<File | null>(null);
   const [filter, setFilter] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   // A payment changes the payment list, client totals, the overview, tasks and the log; nothing else in ops.
   const refresh = () =>
@@ -39,9 +40,21 @@ function Payments() {
   });
   const del = useMutation({
     mutationFn: (id: string) => deletePayment({ data: { id } }),
-    onSuccess: () => void refresh(),
+    onSuccess: () => {
+      setDeleteId(null);
+      void refresh();
+    },
     onError: (e) => toast.error((e as Error).message),
   });
+
+  async function openReceipt(id: string) {
+    try {
+      const url = await getReceiptUrl({ data: { id } });
+      if (url) window.open(url, "_blank");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
 
   if (!ok) return <OpsDenied />;
   const rows = (pays.data ?? []).filter((p) => !filter || p.workspaceId === filter);
@@ -72,7 +85,36 @@ function Payments() {
         <p className="text-sm">الإجمالي: <b className="num">{sarFmt(total)}</b></p>
       </div>
 
-      <section className="panel overflow-x-auto">
+      <section className="space-y-2 md:hidden">
+        {rows.map((p) => (
+          <article key={p.id} className="panel flex items-start gap-3 p-4 text-sm">
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-semibold">{p.workspaceName}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                <span className="num">{p.paidOn}</span>
+                {p.reference ? <> · {p.reference}</> : null}
+              </p>
+              {p.notes ? <p className="mt-1 text-xs text-muted-foreground">{p.notes}</p> : null}
+            </div>
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <span className="num font-semibold">{sarFmt(p.amount)}</span>
+              <div className="flex gap-1">
+                {p.hasReceipt ? (
+                  <Button size="sm" variant="ghost" aria-label="الإيصال" title="الإيصال" onClick={() => void openReceipt(p.id)}>
+                    <Paperclip className="size-4" />
+                  </Button>
+                ) : null}
+                <Button size="sm" variant="ghost" aria-label="حذف الدفعة" title="حذف" onClick={() => setDeleteId(p.id)}>
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            </div>
+          </article>
+        ))}
+        {!rows.length ? <p className="panel p-6 text-center text-sm text-muted-foreground">لا توجد مدفوعات.</p> : null}
+      </section>
+
+      <section className="panel hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{["التاريخ", "العميل", "المبلغ", "المرجع", "ملاحظات", ""].map((h) => <th key={h} className="p-3 text-start font-medium">{h}</th>)}</tr></thead>
           <tbody>
@@ -84,8 +126,8 @@ function Payments() {
                 <td className="p-3">{p.reference ?? "—"}</td>
                 <td className="p-3 text-muted-foreground">{p.notes ?? ""}</td>
                 <td className="flex gap-1 p-3">
-                  {p.hasReceipt ? <Button size="sm" variant="ghost" onClick={async () => { try { const url = await getReceiptUrl({ data: { id: p.id } }); if (url) window.open(url, "_blank"); } catch (e) { toast.error((e as Error).message); } }}><Paperclip className="size-4" /></Button> : null}
-                  <Button size="sm" variant="ghost" onClick={() => { if (window.confirm("حذف هذه الدفعة؟")) del.mutate(p.id); }}><Trash2 className="size-4" /></Button>
+                  {p.hasReceipt ? <Button size="sm" variant="ghost" aria-label="الإيصال" title="الإيصال" onClick={() => void openReceipt(p.id)}><Paperclip className="size-4" /></Button> : null}
+                  <Button size="sm" variant="ghost" aria-label="حذف الدفعة" title="حذف" onClick={() => setDeleteId(p.id)}><Trash2 className="size-4" /></Button>
                 </td>
               </tr>
             ))}
@@ -93,6 +135,18 @@ function Payments() {
           </tbody>
         </table>
       </section>
+      <OpsConfirm
+        open={deleteId !== null}
+        title="حذف هذه الدفعة؟"
+        description={(() => {
+          const row = (pays.data ?? []).find((x) => x.id === deleteId);
+          return row ? `${row.workspaceName} · ${sarFmt(row.amount)} · ${row.paidOn}. يُحذف الإيصال المرفق معها ولا يمكن التراجع.` : undefined;
+        })()}
+        confirmLabel="حذف"
+        busy={del.isPending}
+        onConfirm={() => deleteId && del.mutate(deleteId)}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   );
 }

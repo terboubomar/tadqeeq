@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
 import { ClientAvatar, ClientStatusBadge, DeleteClientConfirm, EditClientForm } from "@/components/OpsClientForms";
-import { OpsDenied, useOpsRole } from "@/components/OpsShared";
+import { OpsConfirm, OpsDenied, useOpsRole } from "@/components/OpsShared";
 import {
   normalizeSaudiMobile,
   ONBOARDING_STATUS_LABELS,
@@ -544,9 +544,11 @@ function BillingTab({ p }: { p: OpsClientProfile }) {
 
 function TeamTab({ p }: { p: OpsClientProfile }) {
   const qc = useQueryClient();
+  const [resetFor, setResetFor] = useState<OpsClientProfile["members"][number] | null>(null);
   const reset = useMutation({
     mutationFn: (membershipId: string) => resetMemberTwoFactor({ data: { workspaceId: p.client.workspaceId, membershipId } }),
     onSuccess: () => {
+      setResetFor(null);
       toast.success("تمت إعادة التعيين — يدخل المستخدم بكلمة المرور ويمكنه تفعيله من جديد.");
       void qc.invalidateQueries({ queryKey: ["ops-client", p.client.workspaceId] });
     },
@@ -554,6 +556,15 @@ function TeamTab({ p }: { p: OpsClientProfile }) {
   });
   return (
     <div className="space-y-4">
+      <OpsConfirm
+        open={resetFor !== null}
+        title={`إعادة تعيين التحقق بخطوتين لـ ${resetFor?.email ?? resetFor?.fullName ?? "المستخدم"}؟`}
+        description="تأكد من هويته أولاً (اتصال من رقم الشركة المسجّل)."
+        confirmLabel="إعادة تعيين"
+        busy={reset.isPending}
+        onConfirm={() => resetFor && reset.mutate(resetFor.id)}
+        onCancel={() => setResetFor(null)}
+      />
       <Card title={`المستخدمون (${p.members.length})`}>
         {!p.members.length ? (
           <Empty text="لا يوجد مستخدمون." />
@@ -577,9 +588,7 @@ function TeamTab({ p }: { p: OpsClientProfile }) {
                         size="sm"
                         variant="outline"
                         disabled={reset.isPending}
-                        onClick={() => {
-                          if (window.confirm(`إعادة تعيين التحقق بخطوتين لـ ${m.email ?? m.fullName ?? "المستخدم"}؟ تأكد من هويته أولاً (اتصال من رقم الشركة المسجّل).`)) reset.mutate(m.id);
-                        }}
+                        onClick={() => setResetFor(m)}
                       >
                         إعادة تعيين
                       </Button>

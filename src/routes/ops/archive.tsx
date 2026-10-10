@@ -35,7 +35,7 @@ function ArchivePage() {
   return (
     <div>
       <OpsHeader title="الأرشيف والمحذوفة" sub="العملاء الموقوفون يمكن استعادتهم · المحذوفون نهائياً يبقى لهم قيد فقط">
-        <Input placeholder="بحث بالاسم، السجل، البريد" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" />
+        <Input placeholder="بحث بالاسم، السجل، البريد" value={search} onChange={(e) => setSearch(e.target.value)} className="w-full sm:w-56" />
       </OpsHeader>
       <div className="mb-4 inline-flex rounded-lg border border-border bg-background p-1 text-sm">
         {([
@@ -69,7 +69,23 @@ function ArchivePage() {
           <Empty text="لا يوجد عملاء مؤرشفون." />
         )
       ) : removed.length ? (
-        <div className="panel overflow-x-auto">
+        <>
+        <div className="space-y-2 md:hidden">
+          {removed.map((d, i) => (
+            <article key={`${d.workspaceId ?? d.name}-${i}`} className="panel p-4 text-sm">
+              <p className="font-semibold">{d.name}</p>
+              {d.legalName ? <p className="text-xs text-muted-foreground">{d.legalName}</p> : null}
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                حُذف <span className="whitespace-nowrap tabular-nums">{when(d.deletedAt)}</span>
+                {d.deletedBy ? <> · <span dir="ltr">{d.deletedBy}</span></> : null}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                السجل <span className="num">{d.crNumber ?? "—"}</span> · <span className="num">{d.usersDeleted}</span> مستخدم · <span className="num">{d.filesRemoved}</span> ملف
+              </p>
+            </article>
+          ))}
+        </div>
+        <div className="panel hidden overflow-x-auto md:block">
           <table className="w-full min-w-[720px] text-sm">
             <thead className="border-b border-border text-start text-xs text-muted-foreground">
               <tr>
@@ -90,7 +106,7 @@ function ArchivePage() {
                     <p>{d.ownerEmail ?? d.contactEmail ?? "—"}</p>
                     {d.contactMobile ? <p className="text-muted-foreground">{d.contactMobile}</p> : null}
                   </td>
-                  <td className="px-4 py-3 text-xs">{when(d.deletedAt)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-xs tabular-nums">{when(d.deletedAt)}</td>
                   <td className="px-4 py-3 text-xs" dir="ltr">{d.deletedBy ?? "—"}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground"><span className="num">{d.usersDeleted}</span> مستخدم · <span className="num">{d.filesRemoved}</span> ملف</td>
                 </tr>
@@ -98,6 +114,7 @@ function ArchivePage() {
             </tbody>
           </table>
         </div>
+        </>
       ) : (
         <Empty text="لم يُحذف أي عميل نهائياً بعد." />
       )}
