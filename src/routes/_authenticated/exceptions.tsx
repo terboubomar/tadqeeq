@@ -3,8 +3,6 @@ import { PRODUCTS, productPageTitle } from "@/lib/products";
 import { ProductName } from "@/components/ProductName";
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  AlertTriangle,
-  BadgeDollarSign,
   Calculator,
   CheckCircle2,
   CircleDollarSign,
@@ -12,10 +10,10 @@ import {
   Eye,
   FileSearch,
   History,
+  Info,
   Loader2,
   RefreshCw,
   Search,
-  ShieldAlert,
   Sparkles,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -25,7 +23,7 @@ import { EmptyState } from "@/components/AppShell";
 import { AI_UI_ENABLED } from "@/lib/ai/config";
 import { explainExceptionWithAi } from "@/lib/ai/exception-ai.functions";
 import type { ExceptionAiResult } from "@/lib/ai/exception-ai";
-import { ActionBar, ActionDivider, DetailPanel, ListDetail, NumberTiles, PageHeader } from "@/components/workspace/PageKit";
+import { ActionBar, ActionDivider, DetailPanel, ListDetail, PageHeader } from "@/components/workspace/PageKit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -53,7 +51,7 @@ import {
   type ExceptionStatus,
   type ExceptionWorkflowEntry,
 } from "@/lib/exceptions";
-import { arabicDate, sar } from "@/lib/format";
+import { arabicDate, money, sar } from "@/lib/format";
 import { updateExceptionWorkflow } from "@/lib/periods";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
@@ -168,36 +166,11 @@ function ExceptionsPage() {
         }
       />
 
-      <NumberTiles
-        items={[
-          {
-            label: "الاستثناءات المفتوحة",
-            value: String(summary.openCount),
-            hint: summary.criticalCount + " حرجة",
-            icon: ShieldAlert,
-            tone: summary.openCount ? "danger" : "plain",
-          },
-          {
-            label: "المبالغ محل المراجعة",
-            value: sar(summary.underReview),
-            hint: "بعد منع التكرار بين الإجمالي والفروع",
-            icon: AlertTriangle,
-          },
-          {
-            label: "قابلية الاسترداد المحتملة",
-            value: sar(summary.potentialRecovery),
-            hint: "الفروقات المستقلة ذات الاتجاه المالي الواضح",
-            icon: CircleDollarSign,
-            tone: "gold",
-          },
-          {
-            label: "تم استرداده",
-            value: sar(summary.recovered),
-            hint: "حسب المبالغ المسجلة في سير العمل",
-            icon: BadgeDollarSign,
-            tone: summary.recovered > 0 ? "success" : "plain",
-          },
-        ]}
+      <RadarSummary
+        summary={summary}
+        exceptions={exceptions}
+        severity={severity}
+        onSeverity={setSeverity}
       />
 
       <ActionBar>
@@ -226,22 +199,10 @@ function ExceptionsPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={severity} onValueChange={setSeverity}>
-          <SelectTrigger aria-label="الأهمية" className="h-9 w-auto min-w-36 gap-2 rounded-lg">
-            <SelectValue placeholder="الأهمية" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">كل مستويات الأهمية</SelectItem>
-            {Object.entries(EXCEPTION_SEVERITY_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </ActionBar>
 
-      <p className="text-[12px] leading-6 text-muted-foreground">
+      <p className="flex max-w-[90ch] items-start gap-2 text-[12px] leading-6 text-muted-foreground">
+        <Info className="mt-1 size-3.5 shrink-0" aria-hidden />
         يعرض فقط الفروقات المستقلة القابلة للإجراء في الملف المحدد؛ المجاميع الرقابية والبنود غير القابلة للتحقق تبقى في مطابقة الفاتورة.
       </p>
 
@@ -293,6 +254,131 @@ function ExceptionsPage() {
   );
 }
 
+const SEVERITY_ORDER: ExceptionSeverity[] = ["critical", "high", "medium", "low"];
+
+/**
+ * One card for the period: potential recovery as the headline figure, the other three figures beside it, and the
+ * open exceptions split by severity. The severity legend is also the severity filter.
+ */
+function RadarSummary({
+  summary,
+  exceptions,
+  severity,
+  onSeverity,
+}: {
+  summary: ReturnType<typeof summarizeExceptions>;
+  exceptions: AuditException[];
+  severity: string;
+  onSeverity: (value: string) => void;
+}) {
+  const open = exceptions.filter((item) => item.status !== "closed" && item.status !== "recovered");
+  const bySeverity = SEVERITY_ORDER.map((level) => {
+    const items = open.filter((item) => item.severity === level);
+    return { level, count: items.length, amount: items.reduce((sum, item) => sum + item.reviewAmount, 0) };
+  });
+  return (
+    <section aria-label="ملخص الاستثناءات" className="overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="grid grid-cols-2 gap-px bg-border lg:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(0,1fr))]">
+        <div className="col-span-2 bg-card px-5 py-5 lg:col-span-1">
+          <p className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
+            <CircleDollarSign className="size-4 text-primary-text" aria-hidden />
+            قابلية الاسترداد المحتملة
+          </p>
+          <p className="mt-2 flex items-baseline gap-1.5">
+            <span className="num text-[30px] font-semibold leading-none tracking-[-0.02em] text-primary-text sm:text-[36px]">
+              {money(summary.potentialRecovery)}
+            </span>
+            <span className="text-[13px] text-muted-foreground">ر.س</span>
+          </p>
+          <p className="mt-2 text-[12px] leading-5 text-muted-foreground">الفروقات المستقلة ذات الاتجاه المالي الواضح</p>
+        </div>
+        <SummaryStat
+          label="الاستثناءات المفتوحة"
+          value={String(summary.openCount)}
+          hint={summary.criticalCount ? `${summary.criticalCount} حرجة` : "لا يوجد حرج"}
+          tone={summary.criticalCount ? "danger" : undefined}
+        />
+        <SummaryStat label="المبالغ محل المراجعة" value={sar(summary.underReview)} hint="بعد منع التكرار بين الإجمالي والفروع" />
+        <SummaryStat
+          label="تم استرداده"
+          value={sar(summary.recovered)}
+          hint="حسب المبالغ المسجلة في سير العمل"
+          tone={summary.recovered > 0 ? "success" : undefined}
+          wide
+        />
+      </div>
+      {open.length ? (
+        <div className="border-t border-border px-5 py-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-[12.5px] font-semibold">المفتوحة حسب الأهمية</p>
+            {severity !== "all" ? (
+              <button type="button" onClick={() => onSeverity("all")} className="text-[12px] font-semibold text-primary-text underline-offset-4 hover:underline">
+                كل المستويات
+              </button>
+            ) : null}
+          </div>
+          <div className="mt-2.5 flex h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
+            {bySeverity.map(({ level, count }) =>
+              count ? <span key={level} className={cn("h-full", SEVERITY_MARK[level])} style={{ width: `${(count / open.length) * 100}%` }} /> : null,
+            )}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="تصفية حسب الأهمية">
+            {bySeverity.map(({ level, count, amount }) => (
+              <button
+                key={level}
+                type="button"
+                aria-pressed={severity === level}
+                disabled={!count}
+                onClick={() => onSeverity(severity === level ? "all" : level)}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] transition-colors disabled:opacity-45",
+                  severity === level ? "border-foreground bg-foreground text-background" : "border-border bg-background hover:border-foreground/30",
+                )}
+              >
+                <span className={cn("size-2 rounded-[2px]", SEVERITY_MARK[level])} aria-hidden />
+                {EXCEPTION_SEVERITY_LABELS[level]}
+                <span className="num font-semibold">{count}</span>
+                {count ? <span className={cn("num hidden sm:inline", severity === level ? "text-background/70" : "text-muted-foreground")}>{sar(amount)}</span> : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  hint,
+  tone,
+  wide = false,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  tone?: "danger" | "success";
+  /** Spans both columns on phones (the odd one out of three). */
+  wide?: boolean;
+}) {
+  return (
+    <div className={cn("min-w-0 bg-card px-5 py-5", wide && "col-span-2 lg:col-span-1")}>
+      <p className="text-[12.5px] text-muted-foreground">{label}</p>
+      <p
+        className={cn(
+          "num mt-2 truncate text-[19px] font-semibold tracking-[-0.01em] sm:text-[22px]",
+          tone === "danger" && "text-destructive",
+          tone === "success" && "text-success",
+        )}
+      >
+        {value}
+      </p>
+      <p className="mt-1.5 text-[11.5px] leading-5 text-muted-foreground">{hint}</p>
+    </div>
+  );
+}
+
 const STATUS_PILL: Record<ExceptionStatus, string> = {
   new: "bg-destructive-soft text-destructive",
   reviewing: "bg-secondary text-primary-text",
@@ -339,14 +425,13 @@ function ExceptionList({
     <>
       <section className="hidden overflow-hidden rounded-2xl border border-border bg-card md:block">
         <div data-scroll className="max-h-[72vh] overflow-auto">
-          <table className="w-full min-w-[760px] border-collapse text-[13px]">
+          <table className="w-full min-w-[680px] border-collapse text-[13px]">
             <thead className="sticky top-0 z-10 bg-surface-raised">
               <tr className="text-xs text-muted-foreground">
                 <Th>الاستثناء</Th>
                 <Th>الفرع</Th>
-                <Th>المنصة</Th>
-                <Th>الفرق</Th>
-                <Th>محل المراجعة</Th>
+                <Th end>الفرق</Th>
+                <Th end>محل المراجعة</Th>
                 <Th>الحالة</Th>
               </tr>
             </thead>
@@ -380,7 +465,6 @@ function ExceptionList({
                         <span className="text-muted-foreground">إجمالي الفترة</span>
                       )}
                     </Td>
-                    <Td><PlatformName platform={item.platform} /></Td>
                     <MoneyCell value={item.difference} signed />
                     <MoneyCell value={item.reviewAmount} />
                     <Td><StatusPill status={item.status} /></Td>
@@ -397,16 +481,19 @@ function ExceptionList({
             <button
               type="button"
               onClick={() => onOpen(item)}
-              className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-start"
+              className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-start transition-colors hover:bg-secondary/35"
             >
-              <span className={cn("size-2.5 shrink-0 rounded-[3px]", SEVERITY_MARK[item.severity])} />
+              <span className={cn("mt-1.5 size-2.5 shrink-0 self-start rounded-[3px]", SEVERITY_MARK[item.severity])} />
               <span className="min-w-0 flex-1">
-                <span className="block font-semibold">{item.label}</span>
+                <span className="block font-semibold leading-6">{item.label}</span>
                 <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
-                  {item.branch ?? "إجمالي الفترة"} · {EXCEPTION_STATUS_LABELS[item.status]}
+                  {item.branch ?? "إجمالي الفترة"} · {EXCEPTION_SEVERITY_LABELS[item.severity]}
                 </span>
               </span>
-              <span className="num shrink-0 text-[13px] font-semibold">{sar(item.reviewAmount)}</span>
+              <span className="flex shrink-0 flex-col items-end gap-1">
+                <span className="num text-[13px] font-semibold">{sar(item.reviewAmount)}</span>
+                <StatusPill status={item.status} />
+              </span>
             </button>
           </li>
         ))}
@@ -931,28 +1018,28 @@ function auditTimestamp(value: string): string {
   }).format(date);
 }
 
-function Th({ children }: { children: ReactNode }) {
+function Th({ children, end = false }: { children: ReactNode; end?: boolean }) {
   return (
-    <th className="whitespace-nowrap border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold">
+    <th className={cn("whitespace-nowrap border-b border-border px-3.5 py-2.5 text-[11.5px] font-semibold", end ? "text-end" : "text-start")}>
       {children}
     </th>
   );
 }
 
-function Td({ children }: { children: ReactNode }) {
-  return <td className="whitespace-nowrap border-b border-border/60 px-3.5 py-2.5">{children}</td>;
+function Td({ children, end = false }: { children: ReactNode; end?: boolean }) {
+  return <td className={cn("whitespace-nowrap border-b border-border/60 px-3.5 py-2.5", end && "text-end")}>{children}</td>;
 }
 
 function MoneyCell({ value, signed = false }: { value?: number; signed?: boolean }) {
   if (value === undefined) {
     return (
-      <Td>
+      <Td end>
         <span className="text-muted-foreground">—</span>
       </Td>
     );
   }
   return (
-    <Td>
+    <Td end>
       <span
         className={cn(
           "num font-medium",

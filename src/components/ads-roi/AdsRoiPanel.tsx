@@ -544,30 +544,46 @@ function AdsRoiResults(props: ResultsProps) {
         </div>
       ) : null}
 
-      <section
-        aria-label="المؤشرات الرئيسية"
-        className="audit-kpi-strip grid grid-cols-2 lg:grid-cols-4 [&>*]:border-s [&>*]:border-border/70 [&>*:first-child]:border-s-0"
-      >
-        <Kpi label="الإنفاق الإعلاني" value={money(totals.spent)} hint={<><span className="num">{count(totals.orders)}</span> طلب · <span className="num">{ratioText(totals.costPerOrder)}</span> للطلب</>} />
-        <Kpi label="مبيعات من الإعلانات" value={money(totals.gmv)} hint="شاملة الضريبة" />
-        <Kpi
-          label="ROAS"
-          value={ratioText(totals.roas)}
-          hint={
-            result.brands.length === 1 && result.brands[0]?.breakEvenRoas != null ? (
-              <>التعادل عند <span className="num">{result.brands[0].breakEvenRoas.toFixed(2)}</span></>
-            ) : (
-              "المبيعات ÷ الإنفاق"
-            )
-          }
-        />
-        <div className="bg-foreground px-[18px] py-[15px] text-background">
-          <p className="text-[11.5px] font-medium leading-5 opacity-75">الربح بعد الإعلان</p>
-          <p className={cn("num mt-1.5 text-[21px] font-semibold", totals.profit < 0 ? "text-destructive" : "text-primary")}>
-            {signed(totals.profit)}
-          </p>
-          <p className="mt-1 text-[11.5px] leading-5 opacity-75">{profitLabel + foodNote}</p>
+      <section aria-label="المؤشرات الرئيسية" className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="grid grid-cols-2 gap-px bg-border lg:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(0,1fr))]">
+          <div className="col-span-2 bg-card px-5 py-5 lg:col-span-1">
+            <p className="text-[12.5px] text-muted-foreground">الربح بعد الإعلان</p>
+            <p className="mt-2 flex items-baseline gap-1.5">
+              <span
+                className={cn(
+                  "num text-[30px] font-semibold leading-none tracking-[-0.02em] sm:text-[36px]",
+                  totals.profit < 0 ? "text-destructive" : "text-success",
+                )}
+              >
+                {signed(totals.profit)}
+              </span>
+              <span className="text-[13px] text-muted-foreground">ر.س</span>
+            </p>
+            <p className="mt-2 text-[12px] leading-5 text-muted-foreground">{profitLabel + foodNote}</p>
+          </div>
+          <Kpi label="الإنفاق الإعلاني" value={money(totals.spent)} hint={<><span className="num">{count(totals.orders)}</span> طلب · <span className="num">{ratioText(totals.costPerOrder)}</span> للطلب</>} />
+          <Kpi label="مبيعات من الإعلانات" value={money(totals.gmv)} hint="شاملة الضريبة" />
+          <Kpi
+            wide
+            label="ROAS"
+            value={ratioText(totals.roas)}
+            hint={
+              result.brands.length === 1 && result.brands[0]?.breakEvenRoas != null ? (
+                <>التعادل عند <span className="num">{result.brands[0].breakEvenRoas.toFixed(2)}</span></>
+              ) : (
+                "المبيعات ÷ الإنفاق"
+              )
+            }
+          />
         </div>
+        <VerdictBar
+          result={result}
+          active={filter}
+          onPick={(next) => {
+            setFilter(next);
+            setTab("campaigns");
+          }}
+        />
       </section>
 
       <ActionsPanel result={result} onOpenSettings={() => setTab("settings")} />
@@ -641,7 +657,16 @@ function AdsRoiResults(props: ResultsProps) {
           </Button>
           </div>
         </div>
-        <div className="max-h-[520px] overflow-auto rounded-lg border border-border/70">
+        <ul className="divide-y divide-border/70 rounded-lg border border-border/70 md:hidden">
+          {shownCampaigns.length === 0 ? (
+            <li className="py-6 text-center text-[12.5px] text-muted-foreground">
+              {needle ? "لا توجد حملة تطابق البحث." : "لا توجد حملات في هذا التصنيف."}
+            </li>
+          ) : (
+            shownCampaigns.map((campaign) => <CampaignCard key={campaign.key} campaign={campaign} />)
+          )}
+        </ul>
+        <div className="hidden max-h-[520px] overflow-auto rounded-lg border border-border/70 md:block">
           <table className="w-full min-w-[920px] border-collapse text-[12.5px]">
             <thead className="sticky top-0 z-10 bg-card">
               <tr className="text-muted-foreground">
@@ -690,7 +715,25 @@ function AdsRoiResults(props: ResultsProps) {
           </Button>
           </div>
         </div>
-        <div className="max-h-[520px] overflow-auto rounded-lg border border-border/70">
+        <ul className="divide-y divide-border/70 rounded-lg border border-border/70 md:hidden">
+          {sortedBranches.map((branch) => (
+            <li key={branch.restaurantId} className="space-y-1.5 px-3 py-3 text-[12.5px]">
+              <div className="flex items-start justify-between gap-3">
+                <span className="min-w-0 font-semibold">{branch.branchName}</span>
+                <span className={cn("num shrink-0 font-semibold", branch.profit < 0 ? "text-destructive" : "text-success")}>{signed(branch.profit)}</span>
+              </div>
+              <p className="text-muted-foreground">
+                إنفاق <span className="num">{money(branch.spent)}</span> · مبيعات <span className="num">{money(branch.gmv)}</span> · ROAS{" "}
+                <span className="num">{ratioText(branch.roas)}</span>
+              </p>
+              <p className="text-muted-foreground">
+                <span className="num">{count(branch.campaigns)}</span> حملة · <span className="num">{count(branch.orders)}</span> طلب · التعادل{" "}
+                <span className="num">{branch.breakEvenRoas == null ? "لا يربح" : branch.breakEvenRoas.toFixed(2)}</span>
+              </p>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden max-h-[520px] overflow-auto rounded-lg border border-border/70 md:block">
           <table className="w-full min-w-[900px] border-collapse text-[12.5px]">
             <thead className="sticky top-0 z-10 bg-card">
               <tr className="text-muted-foreground">
@@ -984,6 +1027,40 @@ function CampaignRow({ campaign }: { campaign: CampaignResult }) {
   );
 }
 
+/** A campaign on phones: branch and id, ROAS against break-even, profit and the recommendation. */
+function CampaignCard({ campaign }: { campaign: CampaignResult }) {
+  const scale = 10;
+  const width = Math.min((campaign.roas ?? 0) / scale, 1) * 100;
+  const tick = campaign.breakEvenRoas == null ? null : Math.min(campaign.breakEvenRoas / scale, 1) * 100;
+  return (
+    <li className="space-y-2 px-3 py-3 text-[12.5px]">
+      <div className="flex items-start justify-between gap-3">
+        <span className="min-w-0">
+          <span className="block font-semibold">{campaign.branchName}</span>
+          <CampaignId campaign={campaign} />
+        </span>
+        <span className="flex shrink-0 flex-col items-end gap-1">
+          <span className={cn("num font-semibold", campaign.profit < 0 ? "text-destructive" : campaign.status === "thin" ? "text-warning" : "text-success")}>
+            {signed(campaign.profit)}
+          </span>
+          <span className={cn("rounded-full px-2 py-0.5 text-[11.5px] font-semibold", ACTION_CLASS[campaign.action])}>{ACTION_LABEL[campaign.action]}</span>
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="num w-11 font-semibold">{ratioText(campaign.roas)}</span>
+        <div className="relative h-2 flex-1 rounded bg-muted" aria-hidden="true">
+          <div className={cn("absolute inset-y-0 start-0 rounded", BAR_CLASS[campaign.status])} style={{ width: `${width}%` }} />
+          {tick != null ? <div className="absolute -inset-y-1 w-0.5 bg-foreground" style={{ insetInlineStart: `${tick}%` }} /> : null}
+        </div>
+      </div>
+      <p className="text-muted-foreground">
+        إنفاق <span className="num">{money(campaign.spent)}</span> · مبيعات <span className="num">{money(campaign.gmv)}</span> · طلبات{" "}
+        <span className="num">{campaign.orders == null ? "—" : (campaign.ordersEstimated ? "≈" : "") + count(campaign.orders)}</span>
+      </p>
+    </li>
+  );
+}
+
 function Cell({ children, className, plain }: { children: ReactNode; className?: string; plain?: boolean }) {
   return (
     <td className={cn("px-1.5 py-2.5", !plain && "border-b border-border/60", className)}>
@@ -992,12 +1069,69 @@ function Cell({ children, className, plain }: { children: ReactNode; className?:
   );
 }
 
-function Kpi({ label, value, hint }: { label: string; value: string; hint: ReactNode }) {
+function Kpi({ label, value, hint, wide = false }: { label: string; value: string; hint: ReactNode; wide?: boolean }) {
   return (
-    <div className="bg-card px-[18px] py-[15px]">
-      <p className="text-[11.5px] font-medium leading-5 text-muted-foreground">{label}</p>
-      <p className="num mt-1.5 text-[21px] font-semibold tracking-[-0.01em]">{value}</p>
-      <p className="mt-1 text-[11.5px] leading-5 text-muted-foreground">{hint}</p>
+    <div className={cn("min-w-0 bg-card px-5 py-5", wide && "col-span-2 lg:col-span-1")}>
+      <p className="text-[12.5px] text-muted-foreground">{label}</p>
+      <p className="num mt-2 truncate text-[19px] font-semibold tracking-[-0.01em] sm:text-[22px]">{value}</p>
+      <p className="mt-1.5 text-[11.5px] leading-5 text-muted-foreground">{hint}</p>
+    </div>
+  );
+}
+
+const VERDICT_ORDER: CampaignStatus[] = ["loss", "thin", "profit"];
+
+/**
+ * Campaigns by result, sized by ad spend: where the money went. Each legend item opens the campaigns tab filtered to
+ * that group (losing and near-break-even share the "attention" filter).
+ */
+function VerdictBar({
+  result,
+  active,
+  onPick,
+}: {
+  result: AdsRoiResult;
+  active: CampaignFilter;
+  onPick: (filter: CampaignFilter) => void;
+}) {
+  const { verdict, totals } = result;
+  if (!result.campaigns.length || totals.spent <= 0) return null;
+  return (
+    <div className="border-t border-border px-5 py-4">
+      <p className="text-[12.5px] font-semibold">أين ذهب الإنفاق</p>
+      <div className="mt-2.5 flex h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
+        {VERDICT_ORDER.map((status) =>
+          verdict[status].spent > 0 ? (
+            <span key={status} className={cn("h-full", BAR_CLASS[status])} style={{ width: `${(verdict[status].spent / totals.spent) * 100}%` }} />
+          ) : null,
+        )}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="عرض الحملات حسب النتيجة">
+        {VERDICT_ORDER.map((status) => {
+          const filter: CampaignFilter = status === "profit" ? "profit" : "attention";
+          const on = active === filter && verdict[status].campaigns > 0;
+          return (
+            <button
+              key={status}
+              type="button"
+              aria-pressed={on}
+              disabled={!verdict[status].campaigns}
+              onClick={() => onPick(filter)}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] transition-colors disabled:opacity-45",
+                on ? "border-foreground bg-foreground text-background" : "border-border bg-background hover:border-foreground/30",
+              )}
+            >
+              <span className={cn("size-2 rounded-[2px]", BAR_CLASS[status])} aria-hidden />
+              {STATUS_LABEL[status]}
+              <span className="num font-semibold">{verdict[status].campaigns}</span>
+              <span className={cn("hidden sm:inline", on ? "text-background/70" : "text-muted-foreground")}>
+                إنفاق <span className="num">{money(verdict[status].spent)}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
