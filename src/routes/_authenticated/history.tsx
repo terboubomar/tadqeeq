@@ -1,17 +1,21 @@
 import { PageHeader } from "@/components/workspace/PageKit";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Trash2 } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { arabicDate, count, money, percent } from "@/lib/format";
+import { exportXlsx } from "@/lib/export";
 import { deletePeriod } from "@/lib/periods";
+import { platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
 import { setSelectedPeriodId, useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
 import { PlatformName } from "@/components/brand/PlatformLogo";
+
+const PLATFORM_LABELS = { hungerstation: "هنقرستيشن", keeta: "كيتا", jahez: "جاهز" } as const;
 
 export const Route = createFileRoute("/_authenticated/history")({
   head: () => ({
@@ -54,6 +58,51 @@ function HistoryPage() {
         crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التقارير" }, { label: "الفترات السابقة" }]}
         title="الفترات السابقة"
         subtitle="اضغط على أي فترة لعرضها في باقي التقارير."
+        aside={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() =>
+              exportXlsx(
+                [
+                  {
+                    name: "الفترات",
+                    rows: periods.map((period) => ({
+                      label: period.label,
+                      platform: PLATFORM_LABELS[period.platform],
+                      start: period.period_start ?? "",
+                      end: period.period_end ?? "",
+                      orders: period.summary?.orders ?? 0,
+                      sales: period.summary?.grossSales ?? 0,
+                      commission: period.summary?.commission ?? 0,
+                      commissionPct: period.summary?.commissionPct ?? 0,
+                      charges: period.summary?.totalCharges ?? 0,
+                      costPct: platformCostPct(totalPlatformCharges(period.platform, period.summary), period.summary?.grossSales) ?? 0,
+                    })),
+                    columns: [
+                      { key: "label", header: "الفترة" },
+                      { key: "platform", header: "المنصة" },
+                      { key: "start", header: "من" },
+                      { key: "end", header: "إلى" },
+                      { key: "orders", header: "الطلبات", type: "number" },
+                      { key: "sales", header: "المبيعات", type: "money" },
+                      { key: "commission", header: "العمولة", type: "money" },
+                      { key: "commissionPct", header: "نسبة العمولة %", type: "percent" },
+                      { key: "charges", header: "إجمالي الخصومات", type: "money" },
+                      { key: "costPct", header: "تكلفة المنصة %", type: "percent" },
+                    ],
+                  },
+                ],
+                "tadqeeq-periods",
+              )
+            }
+          >
+            <Download className="size-3.5" />
+            تصدير Excel
+          </Button>
+        }
       />
 
       <section className="overflow-hidden rounded-[10px] border border-border bg-white">

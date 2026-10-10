@@ -85,10 +85,12 @@ export const PRIVATE_PAGES = [
   "/journal",
   "/mcp",
   "/promotions",
+  "/report-schedules",
   "/reset-password",
   "/security",
   "/subscribe",
   "/team",
+  "/trends",
 ];
 
 /** Crawlable so search engines can see their noindex tag, but never listed in the sitemap. */
