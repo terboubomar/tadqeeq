@@ -20,3 +20,9 @@ Tadqeeq is a production-critical product. It is not an MVP. Preserve existing be
 - Keep every change narrowly scoped and preserve unrelated code. Do not use a task as permission for opportunistic changes.
 - Do not claim that work is ready to merge or deploy without evidence from the required checks.
 - Follow the user's stated rules and acceptance criteria exactly. When requirements are ambiguous or conflict with these rules, stop and ask rather than guessing.
+
+## Design work
+
+- For any UI or visual design task, use the `taste-skill` skill (`.claude/skills/taste-skill`) for layout, hierarchy, states, motion and mobile behaviour.
+- For typography (type scale, weights, line height, letter spacing, numeric figures, heading hierarchy), use the `design-md-library` skill (`.claude/skills/design-md-library`) and say which reference was used.
+- Both are guidance inside these rules: keep Tadqeeq's own fonts, colour tokens and Arabic RTL layout, change only what the user asked for, and add no new UI or font libraries unless the user asks.
