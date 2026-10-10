@@ -210,7 +210,7 @@ function PlatformWorkspace({
           <div>
             <h2 className="font-display text-[15px] font-bold">ملفات {monthLabel(month)}</h2>
             <p className="mt-0.5 text-[11.5px] text-ink-muted">
-              ملف لكل يوم · يمكنك اختيار أو سحب عدة أيام معاً · الحد الأقصى {MAX_UPLOAD_SIZE_LABEL} للملف
+              ملف لكل يوم · يمكنك اختيار أو سحب عدة أيام معاً · الحد الأقصى <bdi dir="ltr">{MAX_UPLOAD_SIZE_LABEL}</bdi> للملف
             </p>
           </div>
           {monthQuery.isFetching ? <Loader2 className="size-4 animate-spin text-ink-muted" /> : null}
@@ -218,7 +218,7 @@ function PlatformWorkspace({
         {incompleteDays.length ? (
           <div className="flex items-start gap-3 border-b border-border bg-warning/15 px-5 py-3 text-[12px] leading-6">
             <AlertTriangle className="mt-1 size-4 shrink-0 text-warning" />
-            <p>
+            <p className="max-w-[80ch]">
               {incompleteDays.length === 1 ? "ملف يوم " : "ملفات أيام "}
               <span dir="ltr">{incompleteDays.map((day) => day.date.slice(8, 10) + "/" + day.date.slice(5, 7)).join("، ")}</span>{" "}
               تبدو غير مكتملة: فيها {count(incompleteDays.reduce((sum, day) => sum + day.unsettledOrderCount, 0))} طلب مُسلَّم بلا عمولة أو أرباح،
@@ -246,13 +246,14 @@ function PlatformWorkspace({
               if (item.sourceKind === source.kind && item.current) uploaded.set(Number(item.businessDate.slice(8, 10)), item.businessDate);
             }
             return (
-              <div key={source.kind} className="grid gap-4 px-4 py-4 sm:px-5 lg:grid-cols-[minmax(0,1fr)_17rem]">
+              <div key={source.kind} className="grid gap-5 px-4 py-5 sm:px-5 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-6">
                 <div className="min-w-0 space-y-3">
                   <div>
-                    <p className="text-[13px] font-semibold">{source.title}</p>
+                    <p className="text-[13.5px] font-semibold">{source.title}</p>
                     <p className="mt-0.5 text-[11.5px] text-muted-foreground">
                       {source.note} · {count(uploaded.size)} من {count(daysInMonth)} يوم مرفوع
                     </p>
+                    <CoverageBar uploaded={uploaded.size} incomplete={[...uploaded.keys()].filter((day) => incomplete.has(day)).length} days={daysInMonth} />
                   </div>
                   {canUpload ? (
                     <DropZone accept={source.accept} disabled={busy} onFiles={(files) => void uploadFiles(source.kind, files)} />
@@ -262,7 +263,9 @@ function PlatformWorkspace({
                     onClear={() => setUploads((current) => ({ ...current, [source.kind]: [] }))}
                   />
                 </div>
-                <CoverageCalendar month={month} daysInMonth={daysInMonth} uploaded={uploaded} incomplete={incomplete} onOpen={openDay} />
+                <div className="lg:border-s lg:border-border lg:ps-6">
+                  <CoverageCalendar month={month} daysInMonth={daysInMonth} uploaded={uploaded} incomplete={incomplete} onOpen={openDay} />
+                </div>
               </div>
             );
           })}
@@ -321,9 +324,21 @@ function forecastHint(missingDays: number[], coveredDays: number): string {
   return "توقع تشغيلي بمعدل الأيام المرفوعة";
 }
 
+/** How much of the month this source covers; incomplete days show in the warning colour. */
+function CoverageBar({ uploaded, incomplete, days }: { uploaded: number; incomplete: number; days: number }) {
+  const share = (value: number) => `${Math.min(100, (value / Math.max(days, 1)) * 100)}%`;
+  return (
+    <div aria-hidden className="mt-2.5 flex h-1 overflow-hidden rounded-full bg-muted">
+      <span className="h-full bg-success/70 transition-[width] duration-500 motion-reduce:transition-none" style={{ width: share(uploaded - incomplete) }} />
+      <span className="h-full bg-warning transition-[width] duration-500 motion-reduce:transition-none" style={{ width: share(incomplete) }} />
+    </div>
+  );
+}
+
 /** Click or drop several daily files at once. */
 function DropZone({ accept, disabled, onFiles }: { accept: string; disabled: boolean; onFiles: (files: File[]) => void }) {
   const [over, setOver] = useState(false);
+  const formats = accept.split(",").map((format) => format.replace(".", "").toUpperCase());
   return (
     <label
       onDragOver={(event) => {
@@ -337,14 +352,30 @@ function DropZone({ accept, disabled, onFiles }: { accept: string; disabled: boo
         if (!disabled) onFiles([...event.dataTransfer.files]);
       }}
       className={cn(
-        "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-input bg-background px-4 py-5 text-center transition-colors hover:bg-muted/50",
-        over && "border-primary bg-primary/5",
+        "group flex cursor-pointer items-center gap-3.5 rounded-xl border border-dashed border-input bg-background px-4 py-4 transition-[background-color,border-color,transform] duration-200 hover:border-primary/50 hover:bg-primary/[0.03] focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-card active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100 sm:py-5",
+        over && "border-solid border-primary bg-primary/5",
         disabled && "pointer-events-none opacity-60",
       )}
     >
-      {disabled ? <Loader2 className="size-5 animate-spin text-muted-foreground" /> : <Upload className="size-5 text-primary-text" />}
-      <span className="text-[12.5px] font-medium">{disabled ? "جارٍ رفع الملفات…" : "اسحب ملفات الأيام هنا أو اضغط للاختيار"}</span>
-      <span className="text-[11px] text-muted-foreground">يمكن اختيار عدة ملفات · {accept.replaceAll(",", " ")}</span>
+      <span
+        className={cn(
+          "grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary-text transition-transform duration-200 motion-reduce:transition-none",
+          over ? "-translate-y-0.5" : "group-hover:-translate-y-0.5",
+        )}
+      >
+        {disabled ? <Loader2 className="size-[18px] animate-spin" /> : <Upload className="size-[18px]" />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13px] font-semibold">{disabled ? "جارٍ رفع الملفات…" : "اسحب ملفات الأيام هنا أو اضغط للاختيار"}</span>
+        <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+          يمكن اختيار عدة ملفات
+          {formats.map((format) => (
+            <span key={format} dir="ltr" className="rounded border border-border bg-card px-1.5 py-px font-mono text-[10px] font-medium tracking-wide text-foreground/75">
+              {format}
+            </span>
+          ))}
+        </span>
+      </span>
       <input
         type="file"
         multiple
@@ -367,9 +398,9 @@ function UploadResults({ items, onClear }: { items: UploadItem[]; onClear: () =>
   const done = finished === items.length;
   const failed = items.filter((item) => item.state === "error").length;
   return (
-    <div className="rounded-xl border border-border" aria-live="polite">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2 text-[11.5px]">
-        <span className="font-medium">
+    <div className="overflow-hidden rounded-xl border border-border bg-background" aria-live="polite">
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5 text-[12px]">
+        <span className="font-semibold">
           {done
             ? failed
               ? `اكتمل الرفع · ${count(items.length - failed)} نجح · ${count(failed)} تعذّر`
@@ -377,26 +408,47 @@ function UploadResults({ items, onClear }: { items: UploadItem[]; onClear: () =>
             : `جارٍ الرفع ${count(finished)} من ${count(items.length)}`}
         </span>
         {done ? (
-          <button type="button" onClick={onClear} className="text-muted-foreground hover:text-foreground">
+          <button
+            type="button"
+            onClick={onClear}
+            className="rounded-md px-2 py-1 text-[11.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
             إخفاء
           </button>
         ) : null}
       </div>
-      <ul className="max-h-56 divide-y divide-border overflow-y-auto">
+      <div aria-hidden className="h-0.5 bg-border">
+        <span
+          className={cn(
+            "block h-full transition-[width] duration-300 motion-reduce:transition-none",
+            done ? (failed ? "bg-warning" : "bg-success") : "bg-primary",
+          )}
+          style={{ width: `${(finished / items.length) * 100}%` }}
+        />
+      </div>
+      <ul className="max-h-64 divide-y divide-border overflow-y-auto">
         {items.map((item) => (
-          <li key={item.id} className="flex items-start gap-2 px-3 py-2 text-[11.5px]">
-            {item.state === "saved" || item.state === "duplicate" ? (
-              <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-success" />
-            ) : item.state === "incomplete" ? (
-              <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning" />
-            ) : item.state === "error" ? (
-              <CircleX className="mt-0.5 size-3.5 shrink-0 text-destructive" />
-            ) : (
-              <Loader2 className={cn("mt-0.5 size-3.5 shrink-0 text-muted-foreground", item.state === "uploading" && "animate-spin")} />
+          <li
+            key={item.id}
+            className={cn(
+              "flex items-start gap-2.5 px-3 py-2.5 text-[11.5px]",
+              item.state === "error" && "bg-destructive/[0.04]",
+              item.state === "incomplete" && "bg-warning/10",
+              item.state === "pending" && "opacity-60",
             )}
-            <span className="min-w-0">
-              <span className="block truncate font-medium">{item.name}</span>
-              <span className={cn("block text-muted-foreground", item.state === "error" && "text-destructive")}>
+          >
+            {item.state === "saved" || item.state === "duplicate" ? (
+              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
+            ) : item.state === "incomplete" ? (
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
+            ) : item.state === "error" ? (
+              <CircleX className="mt-0.5 size-4 shrink-0 text-destructive" />
+            ) : (
+              <Loader2 className={cn("mt-0.5 size-4 shrink-0 text-muted-foreground", item.state === "uploading" && "animate-spin text-primary-text")} />
+            )}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[12px] font-medium" title={item.name}>{item.name}</span>
+              <span className={cn("mt-0.5 block leading-5 text-muted-foreground", item.state === "error" && "text-destructive")}>
                 {item.message ?? (item.state === "uploading" ? "جارٍ القراءة والحفظ…" : "في الانتظار")}
               </span>
             </span>
