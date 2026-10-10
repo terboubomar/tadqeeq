@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { copyText } from "@/components/compensation/queries";
+import { copyText, formatTimestamp } from "@/components/compensation/queries";
 import { fetchEvidenceMedia, saveEvidenceFile, type EvidenceMediaFile } from "@/components/compensation/evidence-media";
 import { caseStatusLabel } from "@/lib/compensation-overview";
 import { cn } from "@/lib/utils";
@@ -32,57 +32,67 @@ export function CompHeader({
   );
 }
 
-/** Number card in the page-kit tile style: `featured` is the gold headline, `good` green, `bad` red. */
+/**
+ * Number card in the page-kit tile style: `featured` is the gold headline; `good` / `bad` colour the
+ * figure only, so the grid keeps one card level. `unit` (e.g. ر.س) sits after the figure in body type.
+ */
 export function Kpi({
   label,
   value,
+  unit,
   hint,
   tone,
   featured = false,
+  className,
   children,
 }: {
   label: string;
   value: ReactNode;
+  unit?: string;
   hint?: ReactNode;
   tone?: "good" | "bad";
   featured?: boolean;
+  className?: string;
   children?: ReactNode;
 }) {
   return (
     <div
       className={cn(
-        "min-w-0 rounded-xl border p-3.5",
-        featured
-          ? "border-primary bg-primary text-primary-foreground"
-          : tone === "good"
-            ? "border-success/25 bg-success-soft"
-            : tone === "bad"
-              ? "border-destructive/25 bg-destructive-soft"
-              : "border-border bg-card",
+        "flex min-w-0 flex-col rounded-xl border p-4",
+        featured ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card",
+        className,
       )}
     >
+      <p className={cn("text-[12.5px]", featured ? "text-primary-foreground/80" : "text-muted-foreground")}>{label}</p>
       <p
         className={cn(
-          "text-[12.5px]",
-          featured ? "text-primary-foreground/80" : tone === "good" ? "text-success/85" : tone === "bad" ? "text-destructive/85" : "text-muted-foreground",
-        )}
-      >
-        {label}
-      </p>
-      <p
-        className={cn(
-          "num mt-2 truncate text-right text-[20px] font-semibold sm:text-2xl",
+          "mt-2 flex min-w-0 items-baseline gap-1.5 font-semibold",
+          featured ? "text-[26px] sm:text-[34px]" : "text-[20px] sm:text-2xl",
           tone === "good" && !featured && "text-success",
           tone === "bad" && !featured && "text-destructive",
         )}
       >
-        {value}
+        <span className="num truncate">{value}</span>
+        {unit ? (
+          <span className={cn("shrink-0 text-[12px] font-medium", featured ? "text-primary-foreground/80" : "text-muted-foreground")}>
+            {unit}
+          </span>
+        ) : null}
       </p>
       {hint ? (
-        <p className={cn("mt-1.5 text-xs", featured ? "text-primary-foreground/80" : "text-muted-foreground")}>{hint}</p>
+        <p className={cn("mt-1.5 text-xs leading-5", featured ? "text-primary-foreground/80" : "text-muted-foreground")}>{hint}</p>
       ) : null}
       {children}
     </div>
+  );
+}
+
+/** A formatted date and time. Arabic month and day words stay in body type and RTL order (never `num`). */
+export function Timestamp({ value, className }: { value: string; className?: string }) {
+  return (
+    <time dateTime={value} className={cn("whitespace-nowrap tabular-nums", className)}>
+      {formatTimestamp(value)}
+    </time>
   );
 }
 
@@ -131,7 +141,7 @@ export function Tag({ positive, children }: { positive: boolean; children: React
   );
 }
 
-export function DraftBox({ title, value }: { title: string; value: string }) {
+export function DraftBox({ title, value, dir }: { title: string; value: string; dir?: "ltr" | "rtl" }) {
   return (
     <div className="rounded-lg border border-border bg-surface-raised p-4">
       <div className="flex items-center justify-between gap-3">
@@ -141,7 +151,7 @@ export function DraftBox({ title, value }: { title: string; value: string }) {
           نسخ
         </Button>
       </div>
-      <pre className="mt-3 whitespace-pre-wrap font-sans text-sm leading-7">{value}</pre>
+      <pre dir={dir} className="mt-3 whitespace-pre-wrap text-start font-sans text-sm leading-7">{value}</pre>
     </div>
   );
 }

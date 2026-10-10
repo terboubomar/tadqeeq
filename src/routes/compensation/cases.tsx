@@ -5,7 +5,7 @@ import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { COMPENSATION_CASES_KEY, formatTimestamp, useCompensationCases } from "@/components/compensation/queries";
-import { CompHeader, DraftBox, Field, StatusBadge } from "@/components/compensation/shared";
+import { CompHeader, DraftBox, Field, StatusBadge, Timestamp } from "@/components/compensation/shared";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
 import {
@@ -287,6 +287,7 @@ function CasesPage() {
                     <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
                       {[PLATFORM_LABELS[r.platform], r.branchName || "—", r.evidenceId ? "دليل مرفق" : "بلا دليل"].join(" · ")}
                     </span>
+                    <FollowUpNote item={r} />
                   </span>
                   <span className="flex shrink-0 flex-col items-end gap-1">
                     <span className="num text-[13px] font-semibold">{money(r.compensationAmount)}</span>
@@ -325,12 +326,12 @@ function CasesPage() {
                         {r.orderNumber}
                       </button>
                     </td>
-                    <td className="px-2"><PlatformName platform={r.platform} /></td>
-                    <td className="px-2">{r.branchName || "—"}</td>
-                    <td className="max-w-[220px] truncate px-2" title={r.compensationReason}>
+                    <td className="whitespace-nowrap px-2"><PlatformName platform={r.platform} /></td>
+                    <td className="whitespace-nowrap px-2">{r.branchName || "—"}</td>
+                    <td className="max-w-[180px] truncate px-2" title={r.compensationReason}>
                       {r.compensationReason}
                     </td>
-                    <td className="px-2">
+                    <td className="whitespace-nowrap px-2">
                       <span className="num">{money(r.compensationAmount)}</span>
                       {isCaseRecovered(r) && caseRecoveredAmount(r) < r.compensationAmount ? (
                         <span className="block text-[11px] text-warning">
@@ -338,14 +339,14 @@ function CasesPage() {
                         </span>
                       ) : null}
                     </td>
-                    <td className={cn("px-2", r.evidenceId ? "text-success" : "text-muted-foreground")}>
+                    <td className={cn("whitespace-nowrap px-2", r.evidenceId ? "text-success" : "text-muted-foreground")}>
                       {r.evidenceId ? "مرفق" : "لا يوجد"}
                     </td>
-                    <td className="px-2">
+                    <td className="w-[150px] px-2 py-2.5">
                       <StatusBadge status={r.status} />
                       <FollowUpNote item={r} />
                     </td>
-                    <td className="px-2 text-xs text-muted-foreground"><span className="num">{formatTimestamp(r.updatedAt)}</span></td>
+                    <td className="px-2 text-xs text-muted-foreground"><Timestamp value={r.updatedAt} /></td>
                     <td className="px-2">
                       {canManage && nextCaseActions(r.status)[0] ? (
                         <Button
@@ -570,6 +571,7 @@ function CaseView({
               <span
                 className={cn(
                   "rounded-full px-2.5 py-1",
+                  "inline-flex items-center gap-1",
                   current
                     ? "bg-ink font-semibold text-ink-foreground"
                     : done
@@ -577,6 +579,7 @@ function CaseView({
                       : "bg-muted text-muted-foreground",
                 )}
               >
+                {done ? <Check className="size-3" /> : null}
                 {caseStatusLabel(step)}
               </span>
               {index < CASE_WORKFLOW.length - 1 ? <span className="text-muted-foreground">←</span> : null}
@@ -713,11 +716,14 @@ function CaseView({
       {workflow.history.length ? (
         <div>
           <p className="text-xs font-semibold text-muted-foreground">سجل الحالة</p>
-          <ol className="mt-2 space-y-1.5 border-s-2 border-border ps-3 text-sm">
+          <ol className="mt-2 space-y-2 border-s border-border ps-4 text-sm">
             {[...workflow.history].reverse().map((entry, index) => (
-              <li key={entry.at + index} className="flex flex-wrap items-baseline gap-x-2">
+              <li
+                key={entry.at + index}
+                className="relative flex flex-wrap items-baseline gap-x-2 before:absolute before:-start-[21px] before:top-1.5 before:size-2.5 before:rounded-full before:border-2 before:border-card before:bg-border first:before:bg-primary"
+              >
                 <span className="font-semibold">{caseStatusLabel(entry.status)}</span>
-                <span className="num text-xs text-muted-foreground">{formatTimestamp(entry.at)}</span>
+                <Timestamp value={entry.at} className="text-xs text-muted-foreground" />
                 {entry.note ? <span className="w-full text-xs text-muted-foreground">{entry.note}</span> : null}
               </li>
             ))}
@@ -732,7 +738,7 @@ function CaseView({
       </div>
       <div className="grid gap-3 lg:grid-cols-2">
         <DraftBox title="العربية" value={item.draftAr} />
-        <DraftBox title="English" value={item.draftEn} />
+        <DraftBox title="English" value={item.draftEn} dir="ltr" />
       </div>
       {canManage || canDelete ? (
         <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
@@ -895,8 +901,8 @@ function FollowUpNote({ item }: { item: CompensationCaseRecord }) {
   const followUp = caseFollowUp(item);
   if (!followUp) return null;
   return (
-    <span className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-warning">
-      <AlarmClock className="size-3" />
+    <span className="mt-1 flex items-start gap-1 text-[11px] font-semibold leading-4 text-warning">
+      <AlarmClock className="mt-0.5 size-3 shrink-0" />
       {followUp.label}
     </span>
   );

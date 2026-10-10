@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Clipboard, Loader2, Plus } from "lucide-react";
+import { Clipboard, Loader2, Plus, Send } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { copyText, formatTimestamp, TELEGRAM_CONNECTIONS_KEY, useTelegramConnections } from "@/components/compensation/queries";
-import { CompHeader } from "@/components/compensation/shared";
+import { copyText, TELEGRAM_CONNECTIONS_KEY, useTelegramConnections } from "@/components/compensation/queries";
+import { CompHeader, Timestamp } from "@/components/compensation/shared";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,13 +95,14 @@ function BranchesPage() {
     <div className="space-y-5">
       <CompHeader title="ربط الفروع (Telegram)" sub="قروب خاص لكل فرع يرسل فيه الكاشير فيديو أو صورة الطلب">
         {status?.botUsername ? (
-          <span className="num text-sm text-muted-foreground" dir="ltr">
-            @{status.botUsername}
+          <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-background px-3 text-[12.5px] text-muted-foreground">
+            <Send className="size-3.5 text-primary-text" />
+            <span className="font-mono" dir="ltr">@{status.botUsername}</span>
           </span>
         ) : null}
       </CompHeader>
 
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">فروع مربوطة</p>
           <p className="num mt-2 text-2xl font-bold">
@@ -132,7 +133,7 @@ function BranchesPage() {
             ) : null}
           </div>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="col-span-2 rounded-xl border border-border bg-card p-4 sm:col-span-1">
           <p className="text-xs text-muted-foreground">إعداد البوت</p>
           <p className={cn("mt-2 text-sm font-semibold", status?.configured ? "text-success" : "text-warning")}>
             {statusQuery.isLoading ? "…" : status?.configured ? "المفاتيح مضافة" : "مفاتيح البوت غير مضافة على الخادم"}
@@ -266,7 +267,53 @@ function BranchesPage() {
         ) : connections.length === 0 ? (
           <p className="p-8 text-center text-sm text-muted-foreground">لم يُربط أي فرع بعد.</p>
         ) : (
-          <div className="mt-3 overflow-x-auto">
+          <>
+          <ul className="mt-3 divide-y divide-border/70 border-t border-border md:hidden">
+            {connections.map((c) => (
+              <li key={c.id} className="px-5 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold">{c.branchName}</span>
+                    <span className="mt-0.5 block truncate text-[11.5px] text-muted-foreground">
+                      {c.chatId ? c.chatTitle || String(c.chatId) : "بانتظار /connect"}
+                      {c.lastMessageAt ? (
+                        <>
+                          {" · "}
+                          <Timestamp value={c.lastMessageAt} />
+                        </>
+                      ) : null}
+                    </span>
+                  </span>
+                  <ConnectionBadge active={c.active} linked={Boolean(c.chatId)} />
+                </div>
+                {canManage ? (
+                  <div className="mt-2.5 flex gap-2">
+                    {!c.chatId || !c.active ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={connectMutation.isPending}
+                        onClick={() => connectMutation.mutate(c.branchId)}
+                      >
+                        رمز ربط جديد
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={activeMutation.isPending}
+                      onClick={() => activeMutation.mutate({ id: c.id, active: !c.active })}
+                    >
+                      {c.active ? "إيقاف" : "تفعيل"}
+                    </Button>
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 hidden overflow-x-auto md:block">
             <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-muted/50 text-xs text-muted-foreground">
                 <tr>
@@ -280,20 +327,13 @@ function BranchesPage() {
               <tbody>
                 {connections.map((c) => (
                   <tr key={c.id} className="border-t border-border/70">
-                    <td className="px-5 py-3 font-semibold">{c.branchName}</td>
+                    <td className="whitespace-nowrap px-5 py-3 font-semibold">{c.branchName}</td>
                     <td className="px-2 text-muted-foreground">{c.chatId ? c.chatTitle || String(c.chatId) : "بانتظار /connect"}</td>
-                    <td className="px-2 text-xs text-muted-foreground"><span className="num">
-                      {c.lastMessageAt ? formatTimestamp(c.lastMessageAt) : "—"}
-                    </span></td>
+                    <td className="px-2 text-xs text-muted-foreground">
+                      {c.lastMessageAt ? <Timestamp value={c.lastMessageAt} /> : "—"}
+                    </td>
                     <td className="px-2">
-                      <span
-                        className={cn(
-                          "rounded-full px-2.5 py-1 text-xs font-semibold",
-                          c.active && c.chatId ? "bg-success/15 text-success" : "bg-muted text-muted-foreground",
-                        )}
-                      >
-                        {!c.active ? "موقوف" : c.chatId ? "مربوط" : "بانتظار الربط"}
-                      </span>
+                      <ConnectionBadge active={c.active} linked={Boolean(c.chatId)} />
                     </td>
                     {canManage ? (
                       <td className="px-2 text-end">
@@ -326,8 +366,22 @@ function BranchesPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </section>
     </div>
+  );
+}
+
+function ConnectionBadge({ active, linked }: { active: boolean; linked: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-block shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold",
+        active && linked ? "bg-success/15 text-success" : "bg-muted text-muted-foreground",
+      )}
+    >
+      {!active ? "موقوف" : linked ? "مربوط" : "بانتظار الربط"}
+    </span>
   );
 }
