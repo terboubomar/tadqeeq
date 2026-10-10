@@ -3,6 +3,7 @@ import { ArrowLeft, Info } from "lucide-react";
 
 import { GuideShell, Section } from "@/components/guides/GuidePages";
 import { PlatformIcon } from "@/components/brand/PlatformLogo";
+import { NabdWorkflow } from "@/components/products/NabdWorkflow";
 import { ProductIcon } from "@/components/products/ProductIcon";
 import { guideBySlug } from "@/lib/guides";
 import { PRODUCT_PAGES, PRODUCTS_INDEX, type ProductPage } from "@/lib/product-pages";
@@ -57,6 +58,7 @@ export function ProductLandingPage({ page }: { page: ProductPage }) {
             الخطط والأسعار
           </a>
         </div>
+        {page.product === "nabd" ? <NabdWorkflow /> : null}
         {page.sections.map((section) => (
           <Section key={section.heading} section={section} />
         ))}
@@ -122,7 +124,7 @@ export function ProductsIndexPage() {
     <GuideShell>
       <h1 className="font-display text-3xl font-extrabold leading-[1.45] sm:text-4xl">{PRODUCTS_INDEX.title}</h1>
       <p className="mt-4 text-[17px] leading-8 text-muted-foreground">
-        كل منتج يغطي جزءاً من مراجعة فواتير هنقرستيشن وجاهز وكيتا: من مطابقة الفاتورة مع طلباتك وعقدك، إلى متابعة الفروقات واسترداد التعويضات وقياس عائد الإعلانات.
+        كل منتج يغطي جزءاً من مراجعة فواتير هنقرستيشن وجاهز وكيتا: من مطابقة الفاتورة مع طلباتك وعقدك، إلى متابعة الفروقات واسترداد التعويضات وقياس عائد الإعلانات ومتابعة تكلفة كل منصة يوماً بيوم.
       </p>
       <ul className="mt-10 grid gap-4">
         {PRODUCT_PAGES.map((page) => (
