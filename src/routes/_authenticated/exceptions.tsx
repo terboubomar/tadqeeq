@@ -203,7 +203,7 @@ function ExceptionsPage() {
 
       <p className="flex max-w-[90ch] items-start gap-2 text-[12px] leading-6 text-muted-foreground">
         <Info className="mt-1 size-3.5 shrink-0" aria-hidden />
-        يعرض فقط الفروقات المستقلة القابلة للإجراء في الملف المحدد؛ المجاميع الرقابية والبنود غير القابلة للتحقق تبقى في مطابقة الفاتورة.
+        الفروقات القابلة للإجراء في هذا الملف فقط.
       </p>
 
       {exceptions.length === 0 ? (
@@ -831,8 +831,7 @@ function AiExplanationPanel({ item }: { item: AuditException }) {
             </span>
           </div>
           <p className="mt-1.5 max-w-xl text-xs leading-6 text-muted-foreground">
-            يفسّر الاستثناء اعتماداً على الأدلة المنظمة التي حسبها Tadqeeq. لا يغيّر الأرقام أو
-            حالة التدقيق، ولا تُرسل ملفات Excel أو CSV أو PDF الخام.
+            شرح مبني على أدلة التدقيق، لا يغيّر الأرقام.
           </p>
         </div>
 

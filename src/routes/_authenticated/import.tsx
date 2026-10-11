@@ -394,7 +394,6 @@ function ImportPage() {
         <PageHeader
           crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "الإعداد" }, { label: "رفع البيانات" }]}
           title="رفع بيانات فترة جديدة"
-          subtitle="أكمل كل خطوة على حدة. لن ينتقل تدقيق للمرحلة التالية قبل اكتمال البيانات المطلوبة."
         />
         {search.mcp ? (
           <p className="mt-3 flex items-start gap-2 rounded-[10px] bg-secondary p-3 text-[13.5px] leading-6">
@@ -610,8 +609,7 @@ function ImportPage() {
       </section>
 
       <p className="px-1 text-[11.5px] leading-6 text-muted-foreground">
-        تُرفع ملفات المصدر إلى خادم Tadqeeq الخاص، ثم ينفّذ الخادم التحليل الحتمي ويحفظ النتيجة
-        والملفات الأصلية مع بصمة SHA-256. ملفات المصدر لا تُرسل إلى Tadqeeq AI.
+        الملفات تُحفظ على خادم تدقيق ولا تُرسل إلى Tadqeeq AI.
       </p>
     </div>
   );
@@ -1023,7 +1021,7 @@ function ReviewStep({
           <div>
             <p className="text-[13px] font-semibold">جاهز لبدء التحليل</p>
             <p className="mt-1 text-xs leading-6 text-muted-foreground">
-              راجع الملفات أدناه. لن يغيّر Tadqeeq قواعد المحاسبة أو بيانات المصدر أثناء التحليل.
+              راجع الملفات أدناه.
             </p>
           </div>
         </div>
@@ -1195,7 +1193,7 @@ function RunDialog({
               الوقت المنقضي: <span className="num">{elapsed}</span> ث
             </p>
             <DialogDescription className="text-[13px] leading-6">
-              قراءة الطلبات ثم مطابقتها مع الفاتورة وحفظ الفترة. يستغرق عادة أقل من دقيقة، وقد يطول مع ملفات PDF الكبيرة. لا تغلق الصفحة حتى ينتهي.
+              يستغرق عادة أقل من دقيقة. لا تغلق الصفحة.
             </DialogDescription>
           </div>
         ) : notice?.kind === "error" ? (

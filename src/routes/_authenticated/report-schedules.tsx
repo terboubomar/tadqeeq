@@ -122,7 +122,7 @@ function ReportSchedulesPage() {
       <PageHeader
         crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التقارير" }, { label: "جدولة التقارير" }]}
         title="جدولة التقارير"
-        subtitle="ملخص بالبريد لأرقام آخر شهر ومقارنتها بالشهر السابق، مع رابط لفتح التقارير في تدقيق."
+        subtitle="ملخص الأرقام بالبريد."
         aside={
           canManage && !form ? (
             <Button type="button" size="sm" onClick={() => setForm(EMPTY)}>

@@ -57,7 +57,7 @@ function SubscribePage() {
         <PageHeader
           crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "الاشتراك" }]}
           title="باقتك"
-          subtitle="اشتراكك واستخدامك هذا الشهر، والباقات التي يمكنك الترقية إليها."
+          subtitle="اشتراكك واستخدامك هذا الشهر."
         />
         {plans.isLoading ? (
           <p className="py-16 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>
@@ -79,7 +79,7 @@ function SubscribePage() {
       <PageHeader
         crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "الاشتراك" }]}
         title={context.trial ? "اشترك في تدقيق" : subscribed ? "كل الباقات" : "باقتك وترقيتها"}
-        subtitle="تدفع حسب عدد طلباتك فقط. الفروع والمنصات والمستخدمون بلا حدود في كل الباقات."
+        subtitle="تدفع حسب عدد طلباتك فقط."
       />
       {subscribed ? (
         <button type="button" onClick={() => setShowAll(false)} className="text-sm font-semibold text-primary-text hover:underline">
@@ -278,8 +278,7 @@ function PlanPicker({ plans: allPlans }: { plans: PublicPlan[] }) {
                 <span>
                   <span className="block font-bold">إضافة: {addon.label}</span>
                   <span className="mt-1 block text-sm leading-7 text-muted-foreground">
-                    الكاشير يرسل فيديو الطلب في قروب الفرع، وتدقيق يربطه برقم الطلب ويجهّز طلب مراجعة التعويض. ومعه Tadqeeq AI للأسئلة عن أرقامك،
-                    والتدقيق من داخل Claude و ChatGPT.
+                    فيديو الطلب من قروب الفرع يُربط بالطلب لطلب التعويض، مع Tadqeeq AI والتدقيق من Claude و ChatGPT.
                   </span>
                   <span className="mt-1 block text-sm font-semibold">
                     {inPlan ? (
