@@ -286,7 +286,8 @@ function parseHungerstation(matrix: Matrix): ParsedOperationImport {
       ];
       return {
         orderId,
-        businessDate: isoDate(row["Order received at"]),
+        // An order cancelled before it was received has no received time; HungerStation only fills Cancelled at.
+        businessDate: isoDate(clean(row["Order received at"]) ? row["Order received at"] : row["Cancelled at"]),
         branchId: clean(row["Store ID"]) || null,
         branchName: clean(row["Restaurant name"]) || null,
         status: clean(row["Order status"]) || null,

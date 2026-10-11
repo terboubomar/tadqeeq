@@ -283,6 +283,24 @@ describe("daily Operations parsers", () => {
     expect(result.orders[0]?.rawData["Payout amount"]).toBe(72);
   });
 
+  test("HungerStation: an order cancelled before it was received takes its date from Cancelled at", async () => {
+    const file = new File(
+      [
+        [
+          "Order ID,Order received at,Order status,Delivery type,Cancelled at,Subtotal,Estimated earnings",
+          "H-1,2026-10-09 12:00,Delivered,Pickup,,50.00,40.00",
+          "H-2,,Cancelled,Pickup,2026-10-09 15:02,72.00,0.00",
+        ].join("\n"),
+      ],
+      "Oct_9_.csv",
+      { type: "text/csv" },
+    );
+    const result = await parseOperationFile(file, "hungerstation_orders");
+    expect(result.businessDate).toBe("2026-10-09");
+    expect(result.orders[1]).toMatchObject({ businessDate: "2026-10-09", grossSales: 0, excludedFromSales: true });
+    expect(result.summary).toMatchObject({ orderCount: 1, cancellationCount: 1 });
+  });
+
   test("Keeta: an order listed twice (its row and the «*» compensation row) is one order with both amounts", async () => {
     const header = ["Date", "Store ID", "Store name", "Order ID", "Order type", "Order status", "Cancellation type", "Earnings", "Sales", "Compensation", "Promotion expense", "Commission", "Other expenses", "Delivery fee"];
     const file = workbookFile("keeta-split.xlsx", [
