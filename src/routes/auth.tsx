@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { Check, CheckCircle2, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -11,6 +11,16 @@ import { LogoWordmark } from "@/components/brand/Logo";
 import { EmailCodeStep, MfaCodeStep } from "@/components/TwoFactor";
 import { getEmailCodeStatus } from "@/lib/email-signin.functions";
 import { needsMfaCode } from "@/lib/mfa";
+import {
+  appOriginFor,
+  HANDOFF_STATE_KEY,
+  handoffUrl,
+  isLoginHost,
+  loginUrl,
+  safeState,
+  usesLoginSubdomain,
+  type LoginSearch,
+} from "@/lib/login-host";
 import { safeNextPath } from "@/lib/redirects";
 
 export const Route = createFileRoute("/auth")({
@@ -23,13 +33,54 @@ export const Route = createFileRoute("/auth")({
       { property: "og:description", content: "سجّل الدخول لمراجعة فواتير تطبيقات التوصيل." },
     ],
   }),
-  validateSearch: (search: Record<string, unknown>): { mode?: "signup" | "reset"; next?: string } => {
+  validateSearch: (search: Record<string, unknown>): LoginSearch => {
     const next = safeNextPath(search["next"]);
     const mode = search["mode"] === "signup" ? ("signup" as const) : search["mode"] === "reset" ? ("reset" as const) : undefined;
-    return { ...(mode ? { mode } : {}), ...(next ? { next } : {}) };
+    const state = safeState(search["state"]);
+    return { ...(mode ? { mode } : {}), ...(next ? { next } : {}), ...(state ? { state } : {}) };
+  },
+  // On tadqeeq.app, signing in and signing up happen on login.tadqeeq.app (see login-host).
+  beforeLoad: ({ search }) => {
+    if (typeof window !== "undefined" && usesLoginSubdomain(window.location.host)) throw redirect({ href: toLoginSubdomain(search) });
   },
   component: AuthPage,
 });
+
+/** The login subdomain's address for this request, with a one-time state this tab checks on the way back. */
+function toLoginSubdomain(search: LoginSearch): string {
+  const state = crypto.randomUUID();
+  try {
+    sessionStorage.setItem(HANDOFF_STATE_KEY, state);
+  } catch {
+    // Storage blocked: the app asks the person to confirm the account instead.
+  }
+  return loginUrl(window.location.host, { mode: search.mode, next: search.next, state });
+}
+
+/**
+ * On login.tadqeeq.app: give the signed-in session to tadqeeq.app and forget it here, so only the app keeps
+ * (and refreshes) it.
+ */
+async function handOffToApp(next: string | undefined, state: string | undefined) {
+  const { data } = await supabase.auth.getSession();
+  const session = data.session;
+  if (!session) return;
+  await supabase.auth.stopAutoRefresh();
+  const storageKey = (supabase.auth as unknown as { storageKey?: string }).storageKey ?? "";
+  try {
+    for (const key of Object.keys(localStorage)) if (storageKey && key.startsWith(storageKey)) localStorage.removeItem(key);
+  } catch {
+    // Storage blocked: nothing kept here to clear.
+  }
+  window.location.replace(
+    handoffUrl(appOriginFor(window.location.host, window.location.protocol), {
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+      next,
+      state,
+    }),
+  );
+}
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -44,10 +95,18 @@ function AuthPage() {
   const next = search.next;
   const [mfaStep, setMfaStep] = useState(false);
   const [emailStep, setEmailStep] = useState(false);
-  const go = () => (next ? window.location.assign(next) : navigate({ to: "/dashboard", replace: true }));
-  const returnUrl = () => window.location.origin + (next ?? "");
+  const onLoginHost = () => isLoginHost(window.location.host);
+  const go = () =>
+    onLoginHost()
+      ? void handOffToApp(next, search.state)
+      : next
+        ? window.location.assign(next)
+        : navigate({ to: "/dashboard", replace: true });
+  // Email links always open the app itself, also when sent from the login subdomain.
+  const appOrigin = () => (onLoginHost() ? appOriginFor(window.location.host, window.location.protocol) : window.location.origin);
+  const returnUrl = () => appOrigin() + (next ?? "");
   // New accounts land on a clear "email confirmed" page unless they were heading somewhere specific.
-  const confirmUrl = () => (next ? returnUrl() : `${window.location.origin}/email-confirmed`);
+  const confirmUrl = () => (next ? returnUrl() : `${appOrigin()}/email-confirmed`);
   const [resendWait, setResendWait] = useState(0);
   useEffect(() => {
     if (resendWait <= 0) return;
@@ -76,6 +135,11 @@ function AuthPage() {
   };
 
   useEffect(() => {
+    // A server-rendered first visit to tadqeeq.app/auth moves to the login subdomain here.
+    if (usesLoginSubdomain(window.location.host)) {
+      window.location.replace(toLoginSubdomain(search));
+      return;
+    }
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) void finishSignIn();
     });
@@ -87,7 +151,7 @@ function AuthPage() {
     try {
       if (mode === "reset") {
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: `${appOrigin()}/reset-password`,
         });
         if (error) throw error;
         setResetSentTo(email.trim());
@@ -137,6 +201,12 @@ function AuthPage() {
               <Link
                 to="/"
                 aria-label="العودة إلى الصفحة الرئيسية"
+                onClick={(event) => {
+                  // On the login subdomain the home page is the main site.
+                  if (!onLoginHost()) return;
+                  event.preventDefault();
+                  window.location.assign(appOrigin());
+                }}
                 className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4"
               >
                 <LogoWordmark aria-hidden="true" className="h-11 text-ink sm:h-12" />

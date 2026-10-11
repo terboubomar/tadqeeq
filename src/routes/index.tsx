@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { isLoginHost } from "@/lib/login-host";
 import { isOpsHost } from "@/lib/ops";
 import { getRequestHost } from "@/lib/ops.functions";
 import {
@@ -72,9 +73,14 @@ import { PlatformIcon, PlatformName, PlatformWordmark } from "@/components/brand
 import { PLATFORM_KEYS } from "@/lib/platforms";
 
 export const Route = createFileRoute("/")({
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     const host = typeof window !== "undefined" ? window.location.host : await getRequestHost();
     if (isOpsHost(host)) throw redirect({ to: "/ops" });
+    // login.tadqeeq.app opens straight on sign-in (or sign-up with ?mode=signup).
+    if (isLoginHost(host)) {
+      const mode = (location.search as Record<string, unknown>)["mode"];
+      throw redirect({ to: "/auth", search: mode === "signup" || mode === "reset" ? { mode } : {} });
+    }
   },
   head: ({ loaderData }) => ({
     meta: [
