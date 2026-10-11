@@ -1,6 +1,32 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { AlertTriangle, CalendarClock, ChevronDown, Lock, LogOut, PanelRightClose, PanelRightOpen, Sparkles, Upload } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  BookText,
+  CalendarClock,
+  CalendarDays,
+  ChartLine,
+  ChevronDown,
+  FileCheck2,
+  FileSignature,
+  HandCoins,
+  History,
+  LayoutDashboard,
+  ListTree,
+  Lock,
+  LogOut,
+  Megaphone,
+  PanelRightClose,
+  PanelRightOpen,
+  Radar,
+  ReceiptText,
+  Sparkles,
+  Store,
+  Upload,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -90,6 +116,40 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
 ];
 
 const NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items);
+
+/** The icon beside each page in the sidebar and the phone menu (Lucide, one stroke and size throughout). */
+const NAV_ICONS: Record<string, LucideIcon> = {
+  "/dashboard": LayoutDashboard,
+  "/ai": Sparkles,
+  [PRODUCTS.nabd.path]: Activity,
+  [PRODUCTS.mutabiq.path]: FileCheck2,
+  [PRODUCTS.kashif.path]: ReceiptText,
+  [PRODUCTS.aaid.path]: Megaphone,
+  [PRODUCTS.radar.path]: Radar,
+  [PRODUCTS.istirdad.path]: HandCoins,
+  "/trends": ChartLine,
+  "/branches": Store,
+  "/journal": BookText,
+  "/daily": CalendarDays,
+  "/breakdown": ListTree,
+  "/history": History,
+  "/report-schedules": CalendarClock,
+  "/import": Upload,
+  "/contracts": FileSignature,
+  "/team": Users,
+};
+
+/** A page's nav icon; pages without one get a small dot so labels stay aligned. */
+function NavIcon({ to, className }: { to: string; className?: string }) {
+  const Icon = NAV_ICONS[to];
+  return Icon ? (
+    <Icon aria-hidden="true" strokeWidth={1.75} className={cn("shrink-0", className)} />
+  ) : (
+    <span aria-hidden="true" className={cn("grid shrink-0 place-items-center", className)}>
+      <span className="size-1 rounded-full bg-current" />
+    </span>
+  );
+}
 
 
 const ROUTE_PERMISSIONS: Record<string, WorkspacePermission> = {
@@ -337,9 +397,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                                 : "border-transparent text-ink-muted hover:bg-ink-2 hover:text-ink-foreground",
                             )}
                           >
-                            <span className={cn("flex min-w-0 items-baseline gap-1.5", item.locked && "opacity-60")}>
-                              <span>{item.label}</span>
-                              {item.hint ? <span className="truncate text-[11px] font-normal opacity-60">{item.hint}</span> : null}
+                            <span className={cn("flex min-w-0 items-center gap-2.5", item.locked && "opacity-60")}>
+                              <NavIcon to={item.to} className={cn("size-4", active ? "text-primary" : "opacity-80")} />
+                              <span className="flex min-w-0 items-baseline gap-1.5">
+                                <span>{item.label}</span>
+                                {item.hint ? <span className="truncate text-[11px] font-normal opacity-60">{item.hint}</span> : null}
+                              </span>
                             </span>
                             {item.locked ? (
                               <Lock aria-label="متاح بعد الاشتراك" className="size-3.5 shrink-0 text-primary" />
@@ -496,6 +559,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                       : "border-ink-2 bg-ink-2 text-ink-muted",
                   )}
                 >
+                  <NavIcon to={item.to} className="size-3.5" />
                   {item.label}
                   {item.locked ? <Lock aria-label="متاح بعد الاشتراك" className="size-3 text-primary" /> : null}
                   {badge ? (
