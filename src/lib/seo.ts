@@ -94,7 +94,7 @@ export const PRIVATE_PAGES = [
 ];
 
 /** Crawlable so search engines can see their noindex tag, but never listed in the sitemap. */
-export const NOINDEX_PAGES = ["/auth"];
+export const NOINDEX_PAGES = ["/auth", "/auth-handoff"];
 
 /** AI search and assistant crawlers, named so it is explicit that they may read and cite public pages. */
 export const AI_CRAWLERS = [

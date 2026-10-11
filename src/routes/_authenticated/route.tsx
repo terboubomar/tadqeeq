@@ -5,6 +5,7 @@ import { WorkspaceAccessProvider } from "@/components/WorkspaceAccessProvider";
 import { loadSupabase } from "@/integrations/supabase/lazy-client";
 import { getEmailCodeStatus } from "@/lib/email-signin.functions";
 import { needsMfaCode } from "@/lib/mfa";
+import { appOriginFor, isLoginHost } from "@/lib/login-host";
 import { isOpsHost } from "@/lib/ops";
 import { NOINDEX } from "@/lib/seo";
 
@@ -13,6 +14,8 @@ export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async ({ location }) => {
     if (isOpsHost(window.location.host)) throw redirect({ to: "/ops" });
+    // The login subdomain only signs people in; the app itself runs on the main domain.
+    if (isLoginHost(window.location.host)) throw redirect({ href: appOriginFor(window.location.host, window.location.protocol) + location.href });
     const supabase = await loadSupabase();
     const { data, error } = await supabase.auth.getUser();
     // Come back to the same page after signing in (e.g. an upload link from an AI assistant).

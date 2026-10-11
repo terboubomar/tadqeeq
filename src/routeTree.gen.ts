@@ -24,6 +24,7 @@ import { Route as EmailConfirmedRouteImport } from './routes/email-confirmed'
 import { Route as CookiesRouteImport } from './routes/cookies'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CompensationRouteImport } from './routes/compensation'
+import { Route as AuthHandoffRouteImport } from './routes/auth-handoff'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AcceptInviteRouteImport } from './routes/accept-invite'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -162,6 +163,11 @@ const ContactRoute = ContactRouteImport.update({
 const CompensationRoute = CompensationRouteImport.update({
   id: '/compensation',
   path: '/compensation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthHandoffRoute = AuthHandoffRouteImport.update({
+  id: '/auth-handoff',
+  path: '/auth-handoff',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -501,6 +507,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
+  '/auth-handoff': typeof AuthHandoffRoute
   '/compensation': typeof CompensationRouteWithChildren
   '/contact': typeof ContactRoute
   '/cookies': typeof CookiesRoute
@@ -581,6 +588,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
+  '/auth-handoff': typeof AuthHandoffRoute
   '/contact': typeof ContactRoute
   '/cookies': typeof CookiesRoute
   '/email-confirmed': typeof EmailConfirmedRoute
@@ -661,6 +669,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/accept-invite': typeof AcceptInviteRoute
   '/auth': typeof AuthRoute
+  '/auth-handoff': typeof AuthHandoffRoute
   '/compensation': typeof CompensationRouteWithChildren
   '/contact': typeof ContactRoute
   '/cookies': typeof CookiesRoute
@@ -743,6 +752,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accept-invite'
     | '/auth'
+    | '/auth-handoff'
     | '/compensation'
     | '/contact'
     | '/cookies'
@@ -823,6 +833,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accept-invite'
     | '/auth'
+    | '/auth-handoff'
     | '/contact'
     | '/cookies'
     | '/email-confirmed'
@@ -902,6 +913,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/accept-invite'
     | '/auth'
+    | '/auth-handoff'
     | '/compensation'
     | '/contact'
     | '/cookies'
@@ -984,6 +996,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AcceptInviteRoute: typeof AcceptInviteRoute
   AuthRoute: typeof AuthRoute
+  AuthHandoffRoute: typeof AuthHandoffRoute
   CompensationRoute: typeof CompensationRouteWithChildren
   ContactRoute: typeof ContactRoute
   CookiesRoute: typeof CookiesRoute
@@ -1127,6 +1140,13 @@ declare module '@tanstack/react-router' {
       path: '/compensation'
       fullPath: '/compensation'
       preLoaderRoute: typeof CompensationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth-handoff': {
+      id: '/auth-handoff'
+      path: '/auth-handoff'
+      fullPath: '/auth-handoff'
+      preLoaderRoute: typeof AuthHandoffRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -1691,6 +1711,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AcceptInviteRoute: AcceptInviteRoute,
   AuthRoute: AuthRoute,
+  AuthHandoffRoute: AuthHandoffRoute,
   CompensationRoute: CompensationRouteWithChildren,
   ContactRoute: ContactRoute,
   CookiesRoute: CookiesRoute,
