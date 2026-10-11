@@ -611,34 +611,40 @@ function CaseView({
             </label>
           ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
-            {actions.map((action) => (
-              <Button
-                key={action.status}
-                type="button"
-                size="sm"
-                variant={action.tone === "primary" ? "default" : "outline"}
-                className={cn(
-                  action.tone === "good" && "border-success/40 text-success hover:bg-success/10",
-                  action.tone === "bad" && "border-destructive/40 text-destructive hover:bg-destructive/10",
-                )}
-                disabled={update.isPending}
-                aria-pressed={pending === action.status}
-                onClick={() => {
-                  if (NEEDS_DETAILS.has(action.status)) {
-                    setPending(action.status);
-                    return;
-                  }
-                  update.mutate({
-                    item,
-                    patch: { status: action.status, aggregatorCaseReference: reference.trim() || null },
-                  });
-                }}
-                aria-busy={update.isPending && !pending}
-              >
-                {update.isPending && !pending ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                {action.label}
-              </Button>
-            ))}
+            {actions.map((action) => {
+              // Spin only the action actually clicked; when an action needs extra
+              // details the confirm button in the panel below owns the spinner.
+              const running =
+                update.isPending && !pending && update.variables?.patch.status === action.status;
+              return (
+                <Button
+                  key={action.status}
+                  type="button"
+                  size="sm"
+                  variant={action.tone === "primary" ? "default" : "outline"}
+                  className={cn(
+                    action.tone === "good" && "border-success/40 text-success hover:bg-success/10",
+                    action.tone === "bad" && "border-destructive/40 text-destructive hover:bg-destructive/10",
+                  )}
+                  disabled={update.isPending}
+                  aria-pressed={pending === action.status}
+                  onClick={() => {
+                    if (NEEDS_DETAILS.has(action.status)) {
+                      setPending(action.status);
+                      return;
+                    }
+                    update.mutate({
+                      item,
+                      patch: { status: action.status, aggregatorCaseReference: reference.trim() || null },
+                    });
+                  }}
+                  aria-busy={running}
+                >
+                  {running ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                  {action.label}
+                </Button>
+              );
+            })}
           </div>
           {pending ? (
             <div className="mt-3 space-y-2 rounded-md border border-border bg-card p-3">
