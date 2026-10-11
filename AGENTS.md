@@ -9,6 +9,7 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 - Password sign-ins require a per-session 6-digit email code (email_signin_codes + private.email_code_satisfied, checked in server-auth and the _authenticated gate); why: second step without an authenticator app.
+- Sign-in and sign-up live on login.tadqeeq.app; tadqeeq.app/auth forwards there and the session returns via /auth-handoff (src/lib/login-host.ts, LOGIN_SUBDOMAIN_LIVE); why: dedicated login host without moving the app off its domain.
 
 ## Project operating rules
 
