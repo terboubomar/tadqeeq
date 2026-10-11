@@ -14,7 +14,6 @@ import {
   FileText,
   HandCoins,
   LayoutDashboard,
-  Link2,
   LineChart,
   Menu,
   Percent,
@@ -43,6 +42,8 @@ import {
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { isLoginHost } from "@/lib/login-host";
+import { SUITES } from "@/lib/suites";
+import { MizanMark } from "@/components/brand/SuiteMarks";
 import { isOpsHost } from "@/lib/ops";
 import { getRequestHost } from "@/lib/ops.functions";
 import {
@@ -61,7 +62,7 @@ import {
 } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 import { listPublicPlans } from "@/lib/plans.functions";
-import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
+import { LogoWordmark } from "@/components/brand/Logo";
 import { LEGAL_COMPANY, LEGAL_DOCS } from "@/lib/legal";
 import { productPageFor } from "@/lib/product-pages";
 import { ProductsMenu, ProductsMenuList } from "@/components/products/ProductsMenu";
@@ -357,13 +358,6 @@ function homeSchema(plans: PublicPlan[]) {
   };
 }
 
-const BARS = [
-  [82, 74],
-  [64, 61],
-  [92, 78],
-  [55, 54],
-];
-
 function LandingRoute() {
   const plans = Route.useLoaderData();
   return <Landing plans={plans} />;
@@ -475,8 +469,9 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
 
       <main>
         <section className="overflow-hidden">
-          <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:py-20">
-            <div className="lp-stagger flex flex-col gap-6">
+          <div className="mx-auto max-w-7xl px-4 pt-12 sm:px-6 lg:pt-20">
+            <div className="lp-stagger grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] lg:items-end lg:gap-14">
+              <div>
               <p className="flex items-center gap-2.5 text-[13px] font-semibold text-primary-text">
                 <span aria-hidden="true" className="flex">
                   {PLATFORM_KEYS.map((key, i) => (
@@ -485,9 +480,11 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
                 </span>
                 تدقيق فواتير هنقرستيشن وكيتا وجاهز
               </p>
-              <h1 className="font-display text-4xl font-extrabold leading-[1.3] sm:text-5xl lg:text-[3.15rem]">
+              <h1 className="mt-5 font-display text-[2.15rem] font-extrabold leading-[1.3] sm:text-5xl lg:text-[3.3rem]">
                 لا تدفع فاتورة هنقرستيشن أو جاهز أو كيتا قبل ما تتأكد منها.
               </h1>
+              </div>
+              <div className="flex flex-col gap-6">
               <p className="max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
                 تدقيق يعيد احتساب كل بند في فاتورة تطبيق التوصيل من ملف طلباتك ومعادلات عقدك، يكشف الفرق لكل فرع، ويجهّز مطالبة التعويض بأدلتها.
               </p>
@@ -513,8 +510,18 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
                   </li>
                 ))}
               </ul>
+              </div>
             </div>
-            <HeroDashboard />
+            <div data-reveal className="mt-12 lg:mt-16">
+              <AppShot
+                priority
+                src="/home/app-dashboard.webp"
+                alt="اللوحة التنفيذية في تدقيق: المبيعات اليومية والعمولة ونسبة تكلفة المنصة لكل فترة"
+                width={1800}
+                height={1125}
+              />
+              <p className="mt-3 text-center text-xs text-muted-foreground">اللوحة التنفيذية كما تظهر في تدقيق، {DEMO_NOTE}.</p>
+            </div>
           </div>
         </section>
 
@@ -532,7 +539,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         </section>
 
         <section className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:py-28">
-          <SectionIntro eyebrow="المشكلة" title="ثلاث منصات، ثلاث صيغ، وفاتورة لا تُراجع.">
+          <SectionIntro title="ثلاث منصات، ثلاث صيغ، وفاتورة لا تُراجع.">
             كل منصة تكتب خصوماتها بطريقتها. ومن دون إعادة احتساب، تُدفع الفاتورة كما وصلت — بعمولتها ورسومها وتعويضاتها.
           </SectionIntro>
           <div data-reveal className="grid gap-4 sm:grid-cols-2">
@@ -565,30 +572,15 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
           </div>
         </section>
 
-        <HowItWorks />
+        <HowSteps />
 
-        <section id="features" className="bg-[oklch(0.975_0.018_85)]">
-          <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:py-28">
-            <SectionIntro eyebrow="مُطابِق · مطابقة الفاتورة" title="ما خصمته المنصة. ما يقوله عقدك. والفرق بينهما.">
-              ارفع الفاتورة ويعيد تدقيق بناءها بنداً بنداً من ملف الطلبات. عند الاختلاف ترى البند والنسبة المحتسبة والنسبة المتفق عليها.
-              <Link
-                to="/auth"
-                search={{ mode: "signup" }}
-                className="mt-6 inline-flex h-11 w-fit items-center gap-2 rounded-full bg-ink px-5 text-sm font-semibold text-ink-foreground"
-              >
-                جرّب مُطابِق
-                <ArrowLeft className="size-4" />
-              </Link>
-            </SectionIntro>
-            <InvoiceMock />
-          </div>
-        </section>
+        <DayWithTadqeeq />
 
-        <CompensationFlow />
+        <TwoPlatforms />
 
-        <ProductShowcase />
+        <CompensationSteps />
 
-        <ChecksGrid />
+        <ChecksList />
 
         <AssistantSection />
 
@@ -984,240 +976,6 @@ function TourMoreLink({ item, className }: { item: TourItem; className: string }
   );
 }
 
-/** Scroll-pinned tour: the section stays on screen while scrolling moves through the items. */
-function PinnedTour({
-  id,
-  eyebrow,
-  title,
-  hint,
-  items,
-  renderVisual,
-  ctaLabel,
-  className,
-}: {
-  id: string;
-  eyebrow?: string;
-  title: string;
-  hint: string;
-  items: TourItem[];
-  renderVisual: (key: string, active: boolean) => ReactNode;
-  ctaLabel: (item: TourItem) => string;
-  className?: string;
-}) {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [state, setState] = useState({ index: 0, progress: 0 });
-  const count = items.length;
-
-  useEffect(() => {
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      const track = trackRef.current;
-      if (!track) return;
-      const rect = track.getBoundingClientRect();
-      const scrollable = rect.height - window.innerHeight;
-      const raw = scrollable > 0 ? Math.min(1, Math.max(0, -rect.top / scrollable)) : 0;
-      const scaled = raw * count;
-      const index = Math.min(count - 1, Math.floor(scaled));
-      const progress = raw >= 1 ? 1 : scaled - index;
-      setState((prev) =>
-        prev.index === index && Math.abs(prev.progress - progress) < 0.01 ? prev : { index, progress },
-      );
-    };
-    const onScroll = () => {
-      if (!frame) frame = window.requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-      if (frame) window.cancelAnimationFrame(frame);
-    };
-  }, [count]);
-
-  function jumpTo(index: number) {
-    const track = trackRef.current;
-    if (!track) return;
-    const top = track.getBoundingClientRect().top + window.scrollY;
-    const scrollable = track.offsetHeight - window.innerHeight;
-    window.scrollTo({ top: top + (scrollable * (index + 0.05)) / count, behavior: "smooth" });
-  }
-
-  const current = items[state.index] ?? items[0]!;
-  const counter = (i: number) => `${String(i + 1).padStart(2, "0")} / ${String(count).padStart(2, "0")}`;
-
-  return (
-    <section id={id} aria-labelledby={`${id}-title`} className={className}>
-      <div className="mx-auto max-w-7xl px-4 pt-20 text-center sm:px-6 lg:pt-28">
-        <div data-reveal>
-          {eyebrow ? (
-            <p className="flex items-center justify-center gap-2 text-[13px] font-semibold text-primary-text">
-              <span className="size-1.5 rounded-full bg-primary" />
-              {eyebrow}
-            </p>
-          ) : null}
-          <h2 id={`${id}-title`} className="mt-3 font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]">
-            {title}
-          </h2>
-          <p className="mt-3 text-base text-muted-foreground">
-            {hint}
-          </p>
-        </div>
-      </div>
-
-      <div ref={trackRef} className="relative hidden lg:block" style={{ height: `${count * 85 + 40}vh` }}>
-        <div className="sticky top-0 flex h-screen items-center">
-          <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center gap-14 px-6 pt-20">
-            <div>
-              <div key={current.key} className="lp-stagger flex flex-col">
-                <div className="flex items-center gap-3">
-                  <span className="grid size-12 place-items-center rounded-2xl bg-secondary text-primary-text">
-                    <current.icon className="size-6" />
-                  </span>
-                  <span className="num text-sm text-muted-foreground" dir="ltr">
-                    {counter(state.index)}
-                  </span>
-                </div>
-                <h3 className="mt-5 font-display text-5xl font-extrabold leading-[1.25]">
-                  {current.name}
-                  {current.descriptor ? <span className="ms-3 align-middle text-lg font-semibold text-primary-text">{current.descriptor}</span> : null}
-                </h3>
-                <p className="mt-4 text-xl font-medium text-foreground/85">{current.tagline}</p>
-                <p className="mt-3 max-w-lg text-base leading-8 text-muted-foreground">{current.body}</p>
-                {current.points ? (
-                  <ul className="mt-4 space-y-2 text-[15px]">
-                    {current.points.map((point) => (
-                      <li key={point} className="flex items-center gap-2.5">
-                        <Check className="size-4 shrink-0 text-success" />
-                        {point}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                <div className="mt-6 flex flex-wrap items-center gap-3">
-                  <Link
-                    to="/auth"
-                    search={{ mode: "signup" }}
-                    className="inline-flex h-12 w-fit items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-semibold text-ink-foreground transition-transform hover:-translate-y-0.5"
-                  >
-                    {ctaLabel(current)}
-                    <ArrowLeft className="size-4" />
-                  </Link>
-                  <TourMoreLink item={current} className="h-12 px-5 text-[15px]" />
-                </div>
-              </div>
-              <ol className="mt-8 border-t border-border pt-4">
-                {items.map((item, index) => {
-                  const fill = index < state.index ? 1 : index === state.index ? state.progress : 0;
-                  return (
-                    <li key={item.key}>
-                      <button
-                        type="button"
-                        onClick={() => jumpTo(index)}
-                        aria-current={index === state.index ? "step" : undefined}
-                        className={cn(
-                          "flex w-full items-center gap-4 py-2 text-start text-[15px] transition-colors",
-                          index === state.index ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        <span className="relative h-0.5 w-12 shrink-0 overflow-hidden rounded-full bg-border">
-                          <span
-                            className="absolute inset-y-0 start-0 rounded-full bg-primary"
-                            style={{ width: `${Math.round(fill * 100)}%` }}
-                          />
-                        </span>
-                        {item.name}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-            <div className="relative h-[560px] overflow-hidden rounded-[28px] bg-secondary">
-              <span aria-hidden="true" className="absolute -top-24 -start-24 size-72 rounded-full bg-primary/10" />
-              <span aria-hidden="true" className="absolute -bottom-40 -end-24 size-[26rem] rounded-full border border-primary/25" />
-              {items.map((item, index) => (
-                <div
-                  key={item.key}
-                  aria-hidden={index !== state.index}
-                  className={cn(
-                    "absolute inset-0 grid place-items-center p-10 transition-[opacity,transform] duration-700 ease-out",
-                    index === state.index
-                      ? "translate-y-0 scale-100 opacity-100"
-                      : index < state.index
-                        ? "pointer-events-none -translate-y-10 scale-95 opacity-0"
-                        : "pointer-events-none translate-y-10 scale-95 opacity-0",
-                  )}
-                >
-                  {renderVisual(item.key, index === state.index)}
-                </div>
-              ))}
-              <span className="absolute bottom-4 start-5 rounded-full bg-card/80 px-2.5 py-1 text-[11px] text-muted-foreground">
-                مثال توضيحي
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <MobilePinned
-        labels={items.map((item) => item.name)}
-        panelClass="bg-secondary"
-        fillClass="bg-primary"
-        renderVisual={(index, active) => renderVisual(items[index]!.key, active)}
-        renderText={(index) => {
-          const item = items[index]!;
-          return (
-            <>
-              <div className="flex items-center gap-2.5">
-                <span className="grid size-9 place-items-center rounded-xl bg-secondary text-primary-text">
-                  <item.icon className="size-[18px]" />
-                </span>
-                <span className="num text-xs text-muted-foreground" dir="ltr">
-                  {counter(index)}
-                </span>
-              </div>
-              <h3 className="mt-2 font-display text-2xl font-extrabold">
-                {item.name}
-                {item.descriptor ? <span className="ms-2 align-middle text-sm font-semibold text-primary-text">{item.descriptor}</span> : null}
-              </h3>
-              <p className="mt-1 text-[15px] font-medium">{item.tagline}</p>
-              <p className="mt-1 text-[13px] leading-6 text-muted-foreground">{item.body}</p>
-              <TourMoreLink item={item} className="mt-2 h-9 px-3.5 text-[13px]" />
-              {item.points ? (
-                <ul className="mt-2 flex flex-wrap gap-1.5">
-                  {item.points.map((point) => (
-                    <li key={point} className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs">
-                      <Check className="size-3.5 shrink-0 text-success" />
-                      {point}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </>
-          );
-        }}
-      />
-    </section>
-  );
-}
-
-function ProductShowcase() {
-  return (
-    <PinnedTour
-      id="products"
-      title="كل أداة في تدقيق، وهي تعمل."
-      hint="واصل التمرير للانتقال من أداة إلى أخرى."
-      items={SHOWCASE}
-      renderVisual={(key, active) => <ShowcaseVisual kind={key} active={active} />}
-      ctaLabel={(item) => `جرّب ${item.name}`}
-      className="bg-background"
-    />
-  );
-}
-
 const CAPABILITIES: TourItem[] = [
   {
     key: "companies",
@@ -1255,1081 +1013,6 @@ const CAPABILITIES: TourItem[] = [
     icon: LayoutDashboard,
   },
 ];
-
-/** What the account gives every team, beyond the audit tools themselves. */
-function Capabilities() {
-  return (
-    <PinnedTour
-      id="platform"
-      eyebrow="الحساب والفريق والتقارير"
-      title="كل شركاتك وفريقك وتقاريرك في حساب واحد."
-      hint="واصل التمرير لترى ما يحصل عليه فريقك."
-      items={CAPABILITIES}
-      renderVisual={(key, active) => <CapabilityVisual kind={key} active={active} />}
-      ctaLabel={() => "ابدأ مجاناً"}
-      className="bg-[oklch(0.975_0.018_85)] pb-4"
-    />
-  );
-}
-
-function CapabilityVisual({ kind, active }: { kind: string; active: boolean }) {
-  const card = "w-full max-w-md rounded-2xl bg-card p-5 shadow-[0_24px_48px_-28px_rgb(19_35_43/0.45)]";
-  const rise = (i: number) => ({
-    className: cn("transition-[opacity,transform] duration-500", active ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"),
-    style: { transitionDelay: `${0.15 + i * 0.12}s` },
-  });
-  if (kind === "companies") {
-    const companies: Array<[string, string, boolean]> = [
-      ["مطاعم الشرق", "12 فرعاً", true],
-      ["برجر الحي", "5 فروع", false],
-      ["قهوة المساء", "3 فروع", false],
-    ];
-    return (
-      <div className={card}>
-        <div className="flex items-center justify-between rounded-xl border border-border px-3 py-2.5">
-          <span className="flex items-center gap-2 text-sm font-semibold">
-            <Building2 className="size-4 text-primary-text" /> مطاعم الشرق
-          </span>
-          <ChevronDown className="size-4 text-muted-foreground" />
-        </div>
-        <ul className="mt-2 space-y-1.5 rounded-xl border border-border p-1.5">
-          {companies.map(([name, branches, current], i) => (
-            <li key={name} {...rise(i)}>
-              <span className={cn("flex items-center justify-between rounded-lg px-3 py-2 text-[13px]", current ? "bg-secondary font-semibold" : "")}>
-                <span className="flex items-center gap-2">
-                  {current ? <Check className="size-4 text-success" /> : <span className="size-4" />}
-                  {name}
-                </span>
-                <span className="text-xs text-muted-foreground">{branches}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-        <p {...rise(3)}>
-          <span className="mt-3 flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-xs">
-            <Plus className="size-3.5" /> إضافة شركة
-          </span>
-        </p>
-      </div>
-    );
-  }
-  if (kind === "team") {
-    const people: Array<[string, string, string]> = [
-      ["سارة", "مدقق / مالية", "كل الفروع"],
-      ["خالد", "مسؤول التعويضات", "كل الفروع"],
-      ["فهد", "مدير فرع", "العليا · الملقا"],
-    ];
-    return (
-      <div className={card}>
-        <p className="text-sm font-semibold">المستخدمون والصلاحيات</p>
-        <ul className="mt-4 space-y-2.5">
-          {people.map(([name, role, scope], i) => (
-            <li key={name} {...rise(i)}>
-              <span className="flex items-center gap-3 rounded-xl border border-border p-3">
-                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary text-sm font-bold text-primary-text">{name[0]}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-semibold">{name}</span>
-                  <span className="block text-xs text-muted-foreground">{role}</span>
-                </span>
-                <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px]">{scope}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
-  if (kind === "security") {
-    const digits = ["4", "8", "2", "9", "1", "6"];
-    return (
-      <div className={cn(card, "text-center")}>
-        <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-secondary text-primary-text">
-          <ShieldCheck className="size-6" />
-        </span>
-        <p className="mt-3 text-sm font-semibold">أدخل الرمز المرسل إلى بريدك</p>
-        <div dir="ltr" className="mt-4 flex justify-center gap-2">
-          {digits.map((digit, i) => (
-            <span
-              key={i}
-              className={cn(
-                "num grid size-10 place-items-center rounded-lg border text-lg font-semibold transition-colors duration-300",
-                active ? "border-primary text-foreground" : "border-border text-transparent",
-              )}
-              style={{ transitionDelay: `${0.2 + i * 0.15}s` }}
-            >
-              {digit}
-            </span>
-          ))}
-        </div>
-        <p {...rise(8)}>
-          <span className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-success-soft px-3 py-2 text-xs font-semibold text-success">
-            <Check className="size-4" /> تم التحقق
-          </span>
-        </p>
-      </div>
-    );
-  }
-  if (kind === "contracts") {
-    const versions: Array<[string, string, string, string, string]> = [
-      ["النسخة 2", "18%", "1.8%", "معتمدة", "bg-success/15 text-success"],
-      ["النسخة 1", "20%", "2%", "مقفلة", "bg-muted text-muted-foreground"],
-    ];
-    return (
-      <div className={card}>
-        <p className="text-sm font-semibold">عقد هنقرستيشن</p>
-        <ul className="mt-4 space-y-2.5">
-          {versions.map(([name, commission, paymentFee, status, tone], i) => (
-            <li key={name} {...rise(i)}>
-              <span className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
-                <span>
-                  <span className="block text-[13px] font-semibold">{name}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    عمولة <bdi dir="ltr" className="num">{commission}</bdi> · رسوم دفع <bdi dir="ltr" className="num">{paymentFee}</bdi>
-                  </span>
-                </span>
-                <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold", tone)}>{status}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-        <p {...rise(2)}>
-          <span className="mt-3 flex items-center justify-between rounded-xl bg-ink px-3.5 py-2.5 text-xs text-ink-foreground">
-            <span>فترة سبتمبر</span>
-            <span className="flex items-center gap-1.5 font-semibold text-primary">
-              <RotateCcw className="size-3.5" /> إعادة التحليل
-            </span>
-          </span>
-        </p>
-      </div>
-    );
-  }
-  const rows: Array<[string, number]> = [
-    ["العليا", 78],
-    ["الملقا", 62],
-    ["النرجس", 45],
-  ];
-  return (
-    <div className={card}>
-      <div className="grid grid-cols-3 gap-2 text-center">
-        {(
-          [
-            ["المستحق", "142,415"],
-            ["المحوّل", "140,507"],
-            ["الفرق", "1,907.85"],
-          ] as const
-        ).map(([label, value], i) => (
-          <div key={label} {...rise(i)}>
-            <span className={cn("block rounded-xl px-2 py-2.5", i === 2 ? "bg-ink text-ink-foreground" : "bg-muted/60")}>
-              <span className={cn("block text-[10.5px]", i === 2 ? "text-ink-muted" : "text-muted-foreground")}>{label}</span>
-              <span className={cn("num mt-1 block text-[14px] font-semibold", i === 2 && "text-primary")}>{value}</span>
-            </span>
-          </div>
-        ))}
-      </div>
-      <p className="mt-4 text-xs text-muted-foreground">الفرق حسب الفرع</p>
-      <div className="mt-2 space-y-2.5">
-        {rows.map(([branch, width], i) => (
-          <div key={branch} className="flex items-center gap-3 text-[12.5px]">
-            <span className="w-14 shrink-0">{branch}</span>
-            <span className="h-2 flex-1 rounded-full bg-muted">
-              <span
-                className="block h-2 rounded-full bg-chart-2 transition-[width] duration-1000 ease-out"
-                style={{ width: active ? `${width}%` : "0%", transitionDelay: `${0.4 + i * 0.12}s` }}
-              />
-            </span>
-          </div>
-        ))}
-      </div>
-      <p {...rise(5)}>
-        <span className="mt-4 flex items-center gap-2 rounded-lg bg-success-soft px-3 py-2 text-xs font-semibold text-success">
-          <Link2 className="size-3.5 shrink-0" /> فرع العليا مربوط باسمه في الفاتورة
-        </span>
-      </p>
-    </div>
-  );
-}
-
-function Audiences() {
-  return (
-    <PinnedTour
-      id="who"
-      eyebrow="لمن تدقيق"
-      title="لمن يملك الأرقام ويُسأل عنها."
-      hint="واصل التمرير لترى ما يحصل عليه كل دور."
-      items={AUDIENCES}
-      renderVisual={(key, active) => <AudienceVisual kind={key} active={active} />}
-      ctaLabel={() => "ابدأ التدقيق"}
-      className="bg-muted pb-4"
-    />
-  );
-}
-
-function AudienceVisual({ kind, active }: { kind: string; active: boolean }) {
-  const card = "w-full max-w-md rounded-2xl bg-card p-5 shadow-[0_24px_48px_-28px_rgb(19_35_43/0.45)]";
-  if (kind === "owner") {
-    const rows: Array<[string, string, string]> = [
-      ["المستحق حسب عقدك", "142,415.00", "text-foreground"],
-      ["المحوّل من المنصة", "140,507.15", "text-foreground"],
-      ["الفرق لصالحك", "1,907.85", "text-primary-text"],
-    ];
-    return (
-      <div className={card}>
-        <p className="flex items-center gap-1.5 text-sm font-semibold">
-          ملخص الشهر · <PlatformName platform="hungerstation" />
-        </p>
-        <div className="mt-4 space-y-2.5">
-          {rows.map(([label, value, tone], i) => (
-            <div
-              key={label}
-              className={cn(
-                "flex items-center justify-between rounded-xl px-3.5 py-3 transition-[opacity,transform] duration-500",
-                i === rows.length - 1 ? "bg-ink text-ink-foreground" : "bg-background",
-                active ? "translate-x-0 opacity-100" : "translate-x-6 opacity-0",
-              )}
-              style={{ transitionDelay: `${0.1 + i * 0.12}s` }}
-            >
-              <span className="text-sm">{label}</span>
-              <span className={cn("num text-lg font-semibold", i === rows.length - 1 ? "text-primary" : tone)}>{value}</span>
-            </div>
-          ))}
-        </div>
-        <p className="mt-4 flex items-center gap-2 text-[13px] text-success">
-          <Check className="size-4" /> مطالبة التعويض جاهزة بالأدلة
-        </p>
-      </div>
-    );
-  }
-  if (kind === "finance") {
-    const steps: Array<[string, boolean]> = [
-      ["رفع ملفات الفترة", true],
-      ["إعادة احتساب البنود", true],
-      ["مراجعة 3 استثناءات", true],
-      ["اعتماد الفترة", false],
-    ];
-    return (
-      <div className={card}>
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold">إغلاق سبتمبر · جاهز</p>
-          <span className="rounded-full bg-warning/15 px-2.5 py-1 text-[11px] font-semibold text-warning">بانتظار الاعتماد</span>
-        </div>
-        <ol className="mt-4 space-y-2.5">
-          {steps.map(([label, done], i) => (
-            <li
-              key={label}
-              className={cn("flex items-center gap-3 rounded-xl border border-border p-3 text-sm transition-[opacity,transform] duration-500", active ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0")}
-              style={{ transitionDelay: `${0.1 + i * 0.12}s` }}
-            >
-              <span className={cn("grid size-6 place-items-center rounded-full", done ? "bg-success text-white" : "border-2 border-primary")}>
-                {done ? <Check className="size-3.5" /> : null}
-              </span>
-              <span className={done ? "" : "font-semibold"}>{label}</span>
-              <span className="ms-auto text-xs text-muted-foreground">{done ? "مكتمل" : "التالي"}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
-    );
-  }
-  if (kind === "group") {
-    const branches: Array<[string, number]> = [
-      ["فرع العليا", 21.4],
-      ["فرع الملقا", 22.1],
-      ["فرع النرجس", 25.8],
-      ["فرع الروضة", 20.9],
-    ];
-    return (
-      <div className={card}>
-        <p className="text-sm font-semibold">نسبة الخصومات حسب الفرع</p>
-        <div className="mt-4 space-y-3.5">
-          {branches.map(([name, rate], i) => {
-            const high = rate > 25;
-            return (
-              <div key={name}>
-                <div className="flex justify-between text-[13px]">
-                  <span>{name}</span>
-                  <span className={cn("num font-semibold", high ? "text-destructive" : "text-muted-foreground")}>{rate}%</span>
-                </div>
-                <div className="mt-1.5 h-2.5 rounded-full bg-muted">
-                  <div
-                    className={cn("h-2.5 rounded-full transition-[width] duration-1000 ease-out", high ? "bg-destructive" : "bg-chart-2")}
-                    style={{ width: active ? `${rate * 3.2}%` : "0%", transitionDelay: `${i * 0.12}s` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <p className="mt-4 rounded-xl bg-secondary p-3 text-xs">فرع النرجس أعلى بـ 4 نقاط من بقية الفروع، والفرق يتكرر كل شهر.</p>
-      </div>
-    );
-  }
-  const rows: Array<[string, string, string]> = [
-    ["عمولة المبيعات", "16,590.00", "+1,659.00"],
-    ["ضريبة العمولة", "2,488.50", "+248.85"],
-    ["رسوم الدفع", "1,204.30", "مطابق"],
-  ];
-  return (
-    <div className={card}>
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold">نتيجة التدقيق</p>
-        <span className="flex items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-semibold text-success">
-          <FileSpreadsheet className="size-3.5" /> تصدير Excel
-        </span>
-      </div>
-      <div className="mt-4 overflow-hidden rounded-xl border border-border text-[13px]">
-        <div className="grid grid-cols-3 bg-muted px-3 py-2 text-xs text-muted-foreground">
-          <span>البند</span>
-          <span>الفاتورة</span>
-          <span>الفرق</span>
-        </div>
-        {rows.map(([label, value, diff], i) => (
-          <div
-            key={label}
-            className={cn("grid grid-cols-3 border-t border-border px-3 py-2.5 transition-opacity duration-500", active ? "opacity-100" : "opacity-0")}
-            style={{ transitionDelay: `${0.15 + i * 0.12}s` }}
-          >
-            <span>{label}</span>
-            <span className="num">{value}</span>
-            <span className={cn(diff === "مطابق" ? "font-semibold text-success" : "num text-destructive")}>{diff}</span>
-          </div>
-        ))}
-      </div>
-      <p className="mt-3 text-xs text-muted-foreground">كل رقم مربوط بسطره في ملف الطلبات والفاتورة.</p>
-    </div>
-  );
-}
-
-function ShowcaseVisual({ kind, active }: { kind: string; active: boolean }) {
-  const card = "w-full max-w-md rounded-2xl bg-card p-5 shadow-[0_24px_48px_-28px_rgb(19_35_43/0.45)]";
-  if (kind === "invoice") {
-    return (
-      <div className="flex w-full max-w-md flex-col gap-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-card p-4">
-            <p className="text-xs text-muted-foreground">حسب فاتورة المنصة</p>
-            <p className="num mt-2 text-2xl font-semibold">16,590.00</p>
-          </div>
-          <div className="rounded-2xl bg-card p-4 shadow-[0_20px_40px_-24px_rgb(19_35_43/0.35)]">
-            <p className="text-xs text-muted-foreground">حسب عقدك</p>
-            <p className="num mt-2 text-2xl font-semibold text-success">14,931.00</p>
-          </div>
-        </div>
-        <div className={card}>
-          <div className="flex justify-between text-sm">
-            <span>عمولة المبيعات</span>
-            <span className="text-xs text-muted-foreground">
-              محتسبة <span className="num">20%</span> · متفق عليها <span className="num">18%</span>
-            </span>
-          </div>
-          <div className="mt-4 flex items-center justify-between">
-            <span className="lp-pulse rounded-full bg-ink px-3.5 py-2 text-sm text-ink-foreground">
-              الفرق <span className="num text-primary">+1,659.00</span>
-            </span>
-            <span className="flex items-center gap-1.5 text-sm text-success">
-              <Check className="size-4" /> مطالبة جاهزة
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  if (kind === "charges") {
-    const rows: Array<[string, number, string]> = [
-      ["عمولة المبيعات", 62, "bg-chart-2"],
-      ["رسوم الدفع الإلكتروني", 14, "bg-primary"],
-      ["حملات التوصيل المجاني", 12, "bg-chart-3"],
-      ["ضريبة القيمة المضافة", 9, "bg-chart-5"],
-      ["بنود غير مصنفة", 3, "bg-destructive"],
-    ];
-    return (
-      <div className={card}>
-        <p className="text-sm font-semibold">توزيع خصومات المنصة</p>
-        <div className="mt-4 space-y-3.5">
-          {rows.map(([label, value, color], i) => (
-            <div key={label}>
-              <div className="flex justify-between text-[13px]">
-                <span>{label}</span>
-                <span className="num text-muted-foreground">{value}%</span>
-              </div>
-              <div className="mt-1.5 h-2 rounded-full bg-muted">
-                <div
-                  className={cn("h-2 rounded-full transition-[width] duration-1000 ease-out", color)}
-                  style={{ width: active ? `${value}%` : "0%", transitionDelay: `${i * 0.12}s` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-  if (kind === "exceptions") {
-    const rows: Array<[string, string, string, string]> = [
-      ["عمولة أعلى من العقد", "فرع العليا", "مفتوح", "bg-destructive/12 text-destructive"],
-      ["تعويض على فرع خاطئ", "فرع الملقا", "قيد المعالجة", "bg-warning/15 text-warning"],
-      ["رسوم حملة غير متفق عليها", "فرع النرجس", "مغلق", "bg-success/15 text-success"],
-    ];
-    return (
-      <div className={card}>
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold">الاستثناءات المفتوحة</p>
-          <span className="num rounded-full bg-muted px-2 py-0.5 text-xs">3</span>
-        </div>
-        <div className="mt-4 space-y-2.5">
-          {rows.map(([title, branch, status, tone], i) => (
-            <div
-              key={title}
-              className={cn("flex items-center justify-between gap-3 rounded-xl border border-border p-3 transition-[opacity,transform] duration-500", active ? "translate-x-0 opacity-100" : "translate-x-6 opacity-0")}
-              style={{ transitionDelay: `${0.15 + i * 0.12}s` }}
-            >
-              <div>
-                <p className="text-[13px] font-semibold">{title}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{branch}</p>
-              </div>
-              <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold", tone)}>{status}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-  if (kind === "compensation") {
-    return (
-      <div className="flex w-full max-w-md items-center gap-3">
-        <div className="lp-float w-40 shrink-0 rounded-2xl bg-card p-3 shadow-[0_20px_40px_-24px_rgb(19_35_43/0.35)]">
-          <p className="text-[11px] font-semibold">قروب فرع الملقا</p>
-          <div className="lp-rec relative mt-2 grid h-28 place-items-center rounded-xl bg-ink/90 text-ink-foreground">
-            <Video className="size-6" />
-          </div>
-          <p className="lp-pop mt-2 rounded-lg bg-success-soft px-2 py-1.5 text-[11px] text-success">✓ تم الربط بالطلب</p>
-        </div>
-        <div className="flex-1 rounded-2xl bg-card p-4">
-          <p className="num text-xs text-muted-foreground">HS-88214073</p>
-          <p className="num mt-1 text-2xl font-semibold">142.50 <span className="text-xs">ر.س</span></p>
-          <p className="mt-1 text-xs text-muted-foreground">طلب ناقص · فرع الملقا</p>
-          <p className="lp-pop mt-3 rounded-lg bg-success-soft p-2 text-xs font-semibold text-success" style={{ animationDelay: "0.8s" }}>
-            يوجد دليل فيديو
-          </p>
-          <p className="lp-pop mt-2 w-fit rounded-full bg-ink px-3 py-1.5 text-xs text-ink-foreground" style={{ animationDelay: "1.6s" }}>
-            ملف الاعتراض جاهز
-          </p>
-        </div>
-      </div>
-    );
-  }
-  if (kind === "promotions") {
-    const rows: Array<[string, number, string, boolean]> = [
-      ["خصم 20% على الوجبات", 78, "1.8x", true],
-      ["توصيل مجاني فوق 50 ر.س", 46, "1.1x", true],
-      ["خصم 30% للعملاء الجدد", 24, "0.6x", false],
-    ];
-    return (
-      <div className={card}>
-        <p className="text-sm font-semibold">العائد على كل عرض</p>
-        <div className="mt-4 space-y-4">
-          {rows.map(([label, width, roi, good], i) => (
-            <div key={label}>
-              <div className="flex justify-between text-[13px]">
-                <span>{label}</span>
-                <span className={cn("num font-semibold", good ? "text-success" : "text-destructive")}>{roi}</span>
-              </div>
-              <div className="mt-1.5 h-2.5 rounded-full bg-muted">
-                <div
-                  className={cn("h-2.5 rounded-full transition-[width] duration-1000 ease-out", good ? "bg-success" : "bg-destructive")}
-                  style={{ width: active ? `${width}%` : "0%", transitionDelay: `${i * 0.15}s` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="mt-4 rounded-xl bg-secondary p-3 text-xs text-foreground/80">العرض الثالث كلّف أكثر مما جلب من مبيعات إضافية.</p>
-      </div>
-    );
-  }
-  if (kind === "watch") {
-    const rows: Array<[string, string, string, boolean]> = [
-      ["عمولة طلبات الاستلام · فرع العليا", "21.4%", "16.2%", true],
-      ["رسوم الدفع · فرع الملقا", "2.2%", "ضمن المعتاد", false],
-      ["التعويضات · فرع النرجس", "0.4%", "ضمن المعتاد", false],
-    ];
-    return (
-      <div className={card}>
-        <div className="flex items-center justify-between">
-          <p className="flex items-center gap-2 text-sm font-semibold">
-            <Eye className="size-4 text-primary-text" /> رقيب <span className="font-normal text-muted-foreground">· المراقب الذكي</span>
-          </p>
-          <span className="rounded-full bg-destructive/12 px-2.5 py-0.5 text-[11px] font-semibold text-destructive">تنبيه واحد</span>
-        </div>
-        <div className="mt-4 space-y-2.5">
-          {rows.map(([label, value, usual, alert], i) => (
-            <div
-              key={label}
-              className={cn(
-                "flex items-center justify-between gap-3 rounded-xl border p-3 transition-[opacity,transform] duration-500",
-                alert ? "border-destructive/40 bg-destructive/6" : "border-border",
-                active ? "translate-x-0 opacity-100" : "translate-x-6 opacity-0",
-              )}
-              style={{ transitionDelay: `${0.15 + i * 0.12}s` }}
-            >
-              <p className="text-[13px] font-semibold">{label}</p>
-              <p className="shrink-0 text-end">
-                <span className={cn("num block text-sm font-semibold", alert && "text-destructive")}>{value}</span>
-                <span className={cn("block text-[11px]", alert ? "text-destructive" : "text-success")}>{alert ? (
-                    <>
-                      المعتاد <bdi dir="ltr">{usual}</bdi>
-                    </>
-                  ) : (
-                    `✓ ${usual}`
-                  )}</span>
-              </p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-4 rounded-xl bg-secondary p-3 text-xs text-foreground/80">
-          أثر التنبيه هذا الشهر: <span className="num font-semibold">1,240 ر.س</span>
-        </p>
-      </div>
-    );
-  }
-  if (kind === "daily") {
-    const days: Array<[string, number, boolean]> = [
-      ["01", 72, false],
-      ["02", 66, false],
-      ["03", 71, false],
-      ["04", 60, false],
-      ["05", 68, false],
-      ["06", 74, false],
-      ["07", 70, true],
-    ];
-    return (
-      <div className={card}>
-        <p className="flex items-center gap-2 text-sm font-semibold">
-          <Activity className="size-4 text-primary-text" /> {PRODUCTS.nabd.name} <span className="font-normal text-muted-foreground">· {PRODUCTS.nabd.descriptor}</span>
-        </p>
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-          {(
-            [
-              ["المبيعات", "861,071"],
-              ["تكلفة المنصة", "27.6%"],
-              ["التحويل المتوقع", "2.3M"],
-            ] as const
-          ).map(([label, value]) => (
-            <div key={label} className="rounded-xl bg-muted/60 px-2 py-2.5">
-              <p className="text-[11px] text-muted-foreground">{label}</p>
-              <p className="num mt-1 text-[15px] font-semibold">{value}</p>
-            </div>
-          ))}
-        </div>
-        <div dir="ltr" className="mt-4 flex h-24 items-end gap-2">
-          {days.map(([day, height, incomplete], i) => (
-            <div key={day} className="flex h-full flex-1 flex-col items-center gap-1">
-              <div className="relative w-full flex-1">
-                <div
-                  className={cn("absolute inset-x-0 bottom-0 rounded-t-md transition-[height] duration-1000 ease-out", incomplete ? "bg-chart-1/30" : "bg-chart-1")}
-                  style={{ height: active ? `${height}%` : "0%", transitionDelay: `${i * 0.08}s` }}
-                />
-              </div>
-              <span className="num text-[10px] text-muted-foreground">{Number(day)}</span>
-            </div>
-          ))}
-        </div>
-        <p
-          className={cn("mt-4 rounded-xl bg-warning/15 p-3 text-xs font-semibold text-warning transition-opacity duration-700", active ? "opacity-100" : "opacity-0")}
-          style={{ transitionDelay: "0.8s" }}
-        >
-          ملف يوم 7 غير مكتمل: طلبات بلا عمولة بعد، أعد تصديره لاحقاً
-        </p>
-      </div>
-    );
-  }
-  if (kind === "journal") {
-    const lines: Array<[string, string, string]> = [
-      ["ذمم المنصات", "112,418.40", ""],
-      ["عمولة المنصات", "26,312.75", ""],
-      ["ضريبة المدخلات", "3,946.91", ""],
-      ["إيرادات المبيعات", "", "124,067.88"],
-      ["ضريبة المخرجات", "", "18,610.18"],
-    ];
-    return (
-      <div className={card}>
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold">قيد فرع العليا · هنقرستيشن</p>
-          <span className="shrink-0 rounded-full bg-secondary px-2.5 py-0.5 text-[11px]">مركز تكلفة: العليا</span>
-        </div>
-        <div className="mt-4 overflow-hidden rounded-xl border border-border text-[12px] sm:text-[12.5px]">
-          <div className="grid grid-cols-[1fr_auto_auto] gap-2 bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground sm:gap-3 sm:px-3">
-            <span>الحساب</span>
-            <span className="w-[4.6rem] text-end sm:w-20">مدين</span>
-            <span className="w-[4.6rem] text-end sm:w-20">دائن</span>
-          </div>
-          {lines.map(([account, debit, credit], i) => (
-            <div
-              key={account}
-              className={cn("grid grid-cols-[1fr_auto_auto] gap-2 border-t border-border px-2.5 py-1.5 transition-opacity duration-500 sm:gap-3 sm:px-3 sm:py-2", active ? "opacity-100" : "opacity-0")}
-              style={{ transitionDelay: `${0.1 + i * 0.12}s` }}
-            >
-              <span className="truncate">{account}</span>
-              <span className="num w-[4.6rem] text-end sm:w-20">{debit}</span>
-              <span className="num w-[4.6rem] text-end sm:w-20">{credit}</span>
-            </div>
-          ))}
-        </div>
-        <p className="mt-4 text-[11px] text-muted-foreground">تصدير إلى</p>
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {["Excel", "Odoo", "Zoho Books", "QuickBooks", "قيود", "دفترة"].map((system) => (
-            <span key={system} className="rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold">
-              {system}
-            </span>
-          ))}
-        </div>
-      </div>
-    );
-  }
-  if (kind === "columns") {
-    return (
-      <div className={cn(card, "flex flex-col gap-4")}>
-        <p className="text-sm font-semibold">المنصة غيّرت ملفها</p>
-        <div dir="ltr" className="flex flex-wrap items-center gap-2.5 font-mono text-[13px]">
-          <span className="rounded-lg border border-border px-2.5 py-1.5 text-muted-foreground line-through">Commission</span>
-          <ArrowLeft className="size-4 rotate-180 text-primary-text" />
-          <span className={cn("rounded-lg border border-primary px-2.5 py-1.5 transition-opacity duration-700", active ? "opacity-100" : "opacity-0")} style={{ transitionDelay: "0.3s" }}>
-            Commission Amount
-          </span>
-          <Check className={cn("size-5 text-success transition-opacity duration-500", active ? "opacity-100" : "opacity-0")} style={{ transitionDelay: "0.8s" }} />
-        </div>
-        <p className="rounded-xl bg-success-soft p-3 text-xs font-semibold text-success">✓ تأكيد بسيط مرة واحدة، ويتذكره تدقيق للملفات القادمة</p>
-        <p className="rounded-xl bg-warning/15 p-3 text-xs font-semibold text-warning">عمود مالي جديد: «Packaging fee» · راجعه قبل اعتماد النتيجة</p>
-      </div>
-    );
-  }
-  return (
-    <div className={cn(card, "flex flex-col gap-3")}>
-      <p className="flex items-center gap-2 text-xs font-semibold text-primary-text">
-        <Sparkles className="size-4" /> Tadqeeq AI
-      </p>
-      <p className="w-fit self-end rounded-2xl rounded-ee-sm bg-ink px-3.5 py-2 text-sm text-ink-foreground">ما الذي أكل أكثر من إيراداتي هذا الشهر؟</p>
-      <p className={cn("rounded-2xl rounded-es-sm bg-muted px-3.5 py-2.5 text-sm leading-7 transition-opacity duration-700", active ? "opacity-100" : "opacity-0")} style={{ transitionDelay: "0.4s" }}>
-        العمولة أخذت 20% من المبيعات في هنقرستيشن، أعلى بنقطتين من عقدك. الفرق <span className="num font-semibold">1,659.00 ر.س</span> ومسجل كاستثناء جاهز للمطالبة.
-      </p>
-      <p className="text-[11px] text-muted-foreground">الأرقام من المحرك المحاسبي، والصياغة من الذكاء الاصطناعي.</p>
-    </div>
-  );
-}
-
-type CheckState = "idle" | "scanning" | "checked";
-
-function CheckCard({
-  item,
-  state,
-  flagged,
-  compact = false,
-  selected = false,
-  onSelect,
-}: {
-  item: CheckItem;
-  state: CheckState;
-  flagged: boolean;
-  compact?: boolean;
-  selected?: boolean;
-  onSelect?: () => void;
-}) {
-  const dark = flagged && state === "checked";
-  const Icon = item.icon;
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-current={selected ? "step" : undefined}
-      className={cn(
-        "group relative h-full w-full overflow-hidden rounded-[14px] border text-start transition-[border-color,background-color,box-shadow,transform,opacity] duration-500 hover:-translate-y-1",
-        compact ? "p-4" : "p-5",
-        dark
-          ? "border-ink bg-ink text-ink-foreground"
-          : state === "scanning" || selected
-            ? "border-primary bg-card shadow-[0_0_0_4px_oklch(0.66_0.13_70/0.18)]"
-            : "border-border bg-card hover:border-primary/50",
-      )}
-    >
-      {state === "scanning" ? <span aria-hidden="true" className="lp-scanbar absolute inset-y-0 w-1/3" /> : null}
-      <div className="relative flex items-start justify-between gap-3">
-        <span
-          className={cn(
-            "grid place-items-center rounded-xl transition-colors duration-500",
-            compact ? "size-9" : "size-10",
-            dark ? "bg-ink-foreground/10 text-primary" : "bg-muted text-primary-text",
-          )}
-        >
-          <Icon className="size-5" />
-        </span>
-        <span
-          className={cn(
-            "rounded-full px-2 py-0.5 text-[11px] font-semibold transition-all duration-300",
-            state === "checked" ? "scale-100 opacity-100" : "scale-75 opacity-0",
-            flagged ? "bg-primary text-primary-foreground" : "bg-success/15 text-success",
-          )}
-        >
-          {flagged ? "يحتاج مراجعة" : "✓ تم التحقق"}
-        </span>
-      </div>
-      <h3 className={cn("relative font-bold", compact ? "mt-3 text-[15px]" : "mt-4")}>{item.title}</h3>
-      <p className={cn("relative mt-1.5 text-[13px]", dark ? "text-ink-muted" : "text-muted-foreground")}>{item.body}</p>
-      <span className={cn("relative mt-3 block text-[11px] font-semibold", dark ? "text-primary" : "text-primary-text")}>
-        {onSelect ? "كيف نتحقق؟" : null}
-      </span>
-    </button>
-  );
-}
-
-function CheckExplainer({ item, index, flagged }: { item: CheckItem; index: number; flagged: boolean }) {
-  const Icon = item.icon;
-  return (
-    <div key={item.title} className="lp-stagger mt-3 rounded-2xl border border-border bg-card p-5">
-      <div className="flex items-center gap-3">
-        <span className={cn("grid size-10 place-items-center rounded-xl", flagged ? "bg-ink text-primary" : "bg-secondary text-primary-text")}>
-          <Icon className="size-5" />
-        </span>
-        <div>
-          <p className="num text-[11px] text-muted-foreground" dir="ltr">
-            {String(index + 1).padStart(2, "0")} / {String(CHECKS.length).padStart(2, "0")}
-          </p>
-          <p className="font-bold">{item.title}</p>
-        </div>
-      </div>
-      <p className="mt-3 text-[11px] font-semibold text-primary-text">كيف نتحقق</p>
-      <p className="mt-1 text-sm leading-7 text-foreground/85">{item.how}</p>
-      <p className="mt-3 rounded-xl bg-muted px-3 py-2.5 text-[13px]">
-        <span className="font-semibold">مثال: </span>
-        {item.example}
-      </p>
-    </div>
-  );
-}
-
-/** 0..1 progress of scrolling through a tall track whose child is sticky. */
-function useTrackProgress<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
-  const [progress, setProgress] = useState(0);
-  useEffect(() => {
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      const el = ref.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const scrollable = rect.height - window.innerHeight;
-      const raw = scrollable > 0 ? Math.min(1, Math.max(0, -rect.top / scrollable)) : 0;
-      setProgress((prev) => (Math.abs(prev - raw) < 0.004 ? prev : raw));
-    };
-    const onScroll = () => {
-      if (!frame) frame = window.requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-      if (frame) window.cancelAnimationFrame(frame);
-    };
-  }, []);
-  return [ref, progress] as const;
-}
-
-/** Scales its child down (never up) so it fits the box, whatever the phone's height. */
-function FitBox({ children }: { children: ReactNode }) {
-  const outerRef = useRef<HTMLDivElement>(null);
-  const innerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-  useEffect(() => {
-    const outer = outerRef.current;
-    const inner = innerRef.current;
-    if (!outer || !inner || typeof ResizeObserver === "undefined") return;
-    const measure = () => {
-      const next = Math.min(1, (outer.clientHeight - 24) / inner.offsetHeight);
-      setScale(next > 0 ? Math.round(next * 100) / 100 : 1);
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(outer);
-    observer.observe(inner);
-    measure();
-    return () => observer.disconnect();
-  }, []);
-  return (
-    <div ref={outerRef} className="absolute inset-0 grid place-items-center overflow-hidden px-3">
-      <div ref={innerRef} className="grid w-full place-items-center" style={{ transform: `scale(${scale})` }}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-/** Phone version of the pinned sections: progress segments, the current step's text, and its visual fitted below. */
-function MobilePinned({
-  labels,
-  stepVh = 60,
-  panelClass,
-  fillClass,
-  renderText,
-  renderVisual,
-}: {
-  labels: string[];
-  stepVh?: number;
-  panelClass: string;
-  fillClass: string;
-  renderText: (index: number) => ReactNode;
-  renderVisual: (index: number, active: boolean) => ReactNode;
-}) {
-  const [trackRef, progress] = useTrackProgress<HTMLDivElement>();
-  const count = labels.length;
-  const scaled = Math.min(0.999, progress / 0.92) * count;
-  const active = Math.min(count - 1, Math.floor(scaled));
-  const within = progress >= 0.92 ? 1 : scaled - active;
-
-  function jumpTo(index: number) {
-    const track = trackRef.current;
-    if (!track) return;
-    const top = track.getBoundingClientRect().top + window.scrollY;
-    const scrollable = track.offsetHeight - window.innerHeight;
-    window.scrollTo({ top: top + scrollable * 0.92 * ((index + 0.15) / count), behavior: "smooth" });
-  }
-
-  return (
-    <div ref={trackRef} className="relative lg:hidden" style={{ height: `${100 + count * stepVh}vh` }}>
-      <div className="sticky top-0 flex h-[100svh] flex-col px-4 pt-[84px] pb-4 sm:px-6 sm:pt-[96px]">
-        <div className="mx-auto flex min-h-0 w-full max-w-xl flex-1 flex-col">
-          <div className="flex gap-1.5">
-            {labels.map((label, index) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => jumpTo(index)}
-                aria-label={label}
-                aria-current={index === active ? "step" : undefined}
-                className="flex-1 py-2"
-              >
-                <span className="block h-1 overflow-hidden rounded-full bg-foreground/10">
-                  <span
-                    className={cn("block h-full rounded-full transition-[width] duration-300 ease-out", fillClass)}
-                    style={{ width: `${Math.round((index < active ? 1 : index === active ? within : 0) * 100)}%` }}
-                  />
-                </span>
-              </button>
-            ))}
-          </div>
-          <div key={active} className="lp-stagger mt-1.5 flex shrink-0 flex-col">
-            {renderText(active)}
-          </div>
-          <div className={cn("relative mt-3 min-h-0 flex-1 overflow-hidden rounded-3xl", panelClass)}>
-            {labels.map((label, index) => (
-              <div
-                key={label}
-                aria-hidden={index !== active}
-                className={cn(
-                  "absolute inset-0 transition-[opacity,transform] duration-500 ease-out",
-                  index === active
-                    ? "translate-y-0 opacity-100"
-                    : index < active
-                      ? "pointer-events-none -translate-y-6 opacity-0"
-                      : "pointer-events-none translate-y-6 opacity-0",
-                )}
-              >
-                <FitBox>{renderVisual(index, index === active)}</FitBox>
-              </div>
-            ))}
-            <span className="absolute bottom-3 start-4 rounded-full bg-card/80 px-2.5 py-1 text-[10px] text-muted-foreground">
-              مثال توضيحي
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Where the audit is for a 0..1 scroll progress: `active` lines are checked, the next one is being scanned. */
-function checkProgress(progress: number) {
-  // Slightly shorter than the track so the last card settles before the section unpins.
-  const active = Math.min(CHECKS.length, Math.floor(Math.min(1, progress / 0.9) * CHECKS.length));
-  const focus = Math.min(active, CHECKS.length - 1);
-  return { active, verified: Math.min(active, CHECKS.length - 1), done: active >= CHECKS.length, focus };
-}
-
-function ChecksGrid() {
-  const [trackRef, progress] = useTrackProgress<HTMLDivElement>();
-  const [mobileTrackRef, mobileProgress] = useTrackProgress<HTMLDivElement>();
-  const desktop = checkProgress(progress);
-  const mobile = checkProgress(mobileProgress);
-
-  function jumpTo(track: HTMLDivElement | null, index: number) {
-    if (!track) return;
-    const top = track.getBoundingClientRect().top + window.scrollY;
-    const scrollable = track.offsetHeight - window.innerHeight;
-    window.scrollTo({ top: top + scrollable * 0.9 * ((index + 0.3) / CHECKS.length), behavior: "smooth" });
-  }
-
-  const intro = (heading: "h2" | "aria") => (
-    <SectionIntro eyebrow="ما الذي نراجعه" title="كل بند في الفاتورة، لا الإجمالي فقط." heading={heading}>
-      أي خصم لا يطابق خريطة الرسوم يظهر كبند غير مصنف بدلاً من أن يمر دون أن يلاحظه أحد.
-    </SectionIntro>
-  );
-
-  const status = ({ active, verified, done }: ReturnType<typeof checkProgress>) => (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          تم التحقق من <span className="num text-2xl font-semibold text-foreground">{verified}</span> من{" "}
-          <span className="num">{CHECKS.length - 1}</span> بنود
-        </p>
-        <span className={cn("text-xs font-semibold", done ? "text-success" : "text-primary-text")}>
-          {done ? "اكتمل التدقيق" : "جارٍ التدقيق"}
-        </span>
-      </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-2 rounded-full bg-primary transition-[width] duration-300 ease-out"
-          style={{ width: `${Math.round((active / CHECKS.length) * 100)}%` }}
-        />
-      </div>
-      <div
-        className={cn(
-          "grid transition-[grid-template-rows,opacity] duration-500",
-          done ? "mt-3 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
-        )}
-      >
-        <div className="overflow-hidden">
-          <div className="flex items-center justify-between gap-4 rounded-xl bg-ink px-4 py-3 text-ink-foreground">
-            <p className="text-[13px]">7 بنود مطابقة، وبند واحد يحتاج مراجعة</p>
-            <p className="shrink-0 text-end">
-              <span className="num block text-xl font-semibold text-primary">1,907.85</span>
-              <span className="text-[11px] text-ink-muted">ر.س لصالحك · مثال</span>
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const cardState = (index: number, active: number): CheckState =>
-    index < active ? "checked" : index === active ? "scanning" : "idle";
-
-  return (
-    <section id="checks" aria-label="ما الذي نراجعه">
-      <div ref={trackRef} className="relative hidden lg:block" style={{ height: `${CHECKS.length * 45 + 70}vh` }}>
-        <div className="sticky top-0 flex h-screen items-center">
-          <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center gap-12 px-6 pt-20">
-            <div>
-              <div className="[&_h2]:text-[2.2rem] [&_h2]:leading-[1.35]">{intro("h2")}</div>
-              <div className="mt-6">{status(desktop)}</div>
-              <CheckExplainer
-                key={desktop.focus}
-                item={CHECKS[desktop.focus]!}
-                index={desktop.focus}
-                flagged={desktop.focus === CHECKS.length - 1}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {CHECKS.map((item, index) => (
-                <CheckCard
-                  key={item.title}
-                  compact
-                  item={item}
-                  flagged={index === CHECKS.length - 1}
-                  selected={!desktop.done && index === desktop.focus}
-                  state={cardState(index, desktop.active)}
-                  onSelect={() => jumpTo(trackRef.current, index)}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-2xl px-4 pt-20 sm:px-6 lg:hidden">{intro("aria")}</div>
-      <div ref={mobileTrackRef} className="relative lg:hidden" style={{ height: `${100 + CHECKS.length * 40}vh` }}>
-        <div className="sticky top-0 flex h-[100svh] flex-col px-4 pt-[88px] pb-4 sm:px-6 sm:pt-[100px]">
-          <div className="mx-auto flex min-h-0 w-full max-w-xl flex-1 flex-col">
-            {status(mobile)}
-            <div className="mt-3 grid grid-cols-4 gap-2">
-              {CHECKS.map((item, index) => (
-                <CheckTile
-                  key={item.title}
-                  item={item}
-                  flagged={index === CHECKS.length - 1}
-                  selected={!mobile.done && index === mobile.focus}
-                  state={cardState(index, mobile.active)}
-                  onSelect={() => jumpTo(mobileTrackRef.current, index)}
-                />
-              ))}
-            </div>
-            <div className="min-h-0 flex-1 overflow-hidden [mask-image:linear-gradient(to_bottom,black_88%,transparent)]">
-              <CheckExplainer
-                key={mobile.focus}
-                item={CHECKS[mobile.focus]!}
-                index={mobile.focus}
-                flagged={mobile.focus === CHECKS.length - 1}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/** Compact phone tile for one fee line: icon, short title and its check state. */
-function CheckTile({
-  item,
-  state,
-  flagged,
-  selected,
-  onSelect,
-}: {
-  item: CheckItem;
-  state: CheckState;
-  flagged: boolean;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  const dark = flagged && state === "checked";
-  const Icon = item.icon;
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-label={item.title}
-      aria-current={selected ? "step" : undefined}
-      className={cn(
-        "relative flex flex-col items-center gap-1.5 overflow-hidden rounded-xl border px-1 pt-2.5 pb-2 text-center transition-[border-color,background-color,box-shadow] duration-500",
-        dark
-          ? "border-ink bg-ink text-ink-foreground"
-          : state === "scanning" || selected
-            ? "border-primary bg-card shadow-[0_0_0_3px_oklch(0.66_0.13_70/0.18)]"
-            : "border-border bg-card",
-      )}
-    >
-      {state === "scanning" ? <span aria-hidden="true" className="lp-scanbar absolute inset-y-0 w-1/2" /> : null}
-      <span
-        className={cn(
-          "relative grid size-8 place-items-center rounded-lg",
-          dark ? "bg-ink-foreground/10 text-primary" : "bg-muted text-primary-text",
-        )}
-      >
-        <Icon className="size-4" />
-      </span>
-      <span className="relative line-clamp-2 text-[10.5px] leading-[15px] font-semibold">{item.title}</span>
-      <span
-        aria-hidden="true"
-        className={cn(
-          "absolute top-1 end-1 grid size-4 place-items-center rounded-full text-[9px] font-bold transition-[opacity,transform] duration-300",
-          state === "checked" ? "scale-100 opacity-100" : "scale-50 opacity-0",
-          flagged ? "bg-primary text-primary-foreground" : "bg-success text-white",
-        )}
-      >
-        {flagged ? "!" : <Check className="size-2.5" />}
-      </span>
-    </button>
-  );
-}
 
 const ASSISTANT_STEPS = [
   { title: "اكتب طلبك في المحادثة", body: "مثل: «دقق فاتورة هنقرستيشن لشهر سبتمبر، رسوم البنك 1.8%»." },
@@ -2427,155 +1110,35 @@ function SectionIntro({
   title,
   tone = "primary",
   heading = "h2",
+  id,
   children,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
+  /** For aria-labelledby on the section. */
+  id?: string;
   tone?: "primary" | "success";
   /** "aria" keeps heading semantics without a second <h2> when a section renders its intro twice (desktop + phone). */
   heading?: "h2" | "aria";
   children?: ReactNode;
 }) {
-  const titleClass = "mt-3 font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]";
+  const titleClass = cn(eyebrow && "mt-3", "font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]");
   return (
     <div data-reveal className="flex flex-col">
-      <p className={cn("flex items-center gap-2 text-[13px] font-semibold", tone === "success" ? "text-success" : "text-primary-text")}>
-        <span className={cn("size-1.5 rounded-full", tone === "success" ? "bg-success" : "bg-primary")} />
-        {eyebrow}
-      </p>
+      {eyebrow ? (
+        <p className={cn("flex items-center gap-2 text-[13px] font-semibold", tone === "success" ? "text-success" : "text-primary-text")}>
+          <span className={cn("size-1.5 rounded-full", tone === "success" ? "bg-success" : "bg-primary")} />
+          {eyebrow}
+        </p>
+      ) : null}
       {heading === "h2" ? (
-        <h2 className={titleClass}>{title}</h2>
+        <h2 id={id} className={titleClass}>{title}</h2>
       ) : (
         <p role="heading" aria-level={2} className={titleClass}>
           {title}
         </p>
       )}
       {children ? <div className="mt-4 flex flex-col text-base leading-8 text-muted-foreground sm:text-[17px]">{children}</div> : null}
-    </div>
-  );
-}
-
-function HeroDashboard() {
-  return (
-    <div
-      aria-hidden="true"
-      className="lp-slide flex overflow-hidden rounded-[18px] border border-border bg-card shadow-[0_30px_60px_-30px_rgb(19_35_43/0.25)] lg:-me-24 lg:rounded-e-none"
-    >
-      <div className="hidden w-14 shrink-0 flex-col items-center gap-4 bg-ink pt-5 sm:flex">
-        <LogoMark className="h-6 text-ink-foreground" />
-        {[0.5, 0.3, 0.3, 0.3].map((o, i) => (
-          <span key={i} className="h-[3px] w-[18px] rounded-sm bg-ink-foreground" style={{ opacity: o }} />
-        ))}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-4 p-5 sm:p-6">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold text-primary-text">اللوحة التنفيذية</p>
-            <p className="mt-1 flex items-center gap-2 font-display text-lg font-bold">
-              <PlatformName platform="jahez" iconClassName="size-6 rounded-md" /> · سبتمبر
-            </p>
-          </div>
-          <span className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground">مثال توضيحي</span>
-        </div>
-        <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
-          <div className="lp-pulse rounded-xl bg-ink p-3.5 text-ink-foreground">
-            <p className="text-[11px] text-ink-muted">فرق لصالحك</p>
-            <p className="num mt-1.5 text-xl font-semibold text-primary">2,638.25</p>
-            <p className="mt-1 text-[11px] text-ink-muted">جاهز للمطالبة</p>
-          </div>
-          <MiniKpi label="المبيعات" value="184,320" />
-          <MiniKpi label="خصومات المنصة" value="41,905" />
-          <MiniKpi label="استثناءات مفتوحة" value="3" bad />
-        </div>
-        <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-          <div className="flex flex-col rounded-xl border border-border p-3.5">
-            <p className="text-xs font-semibold">المستحق مقابل المحوّل · حسب الفرع</p>
-            <div className="flex h-36 items-end gap-4 px-1 pt-3">
-              {BARS.map(([due, paid], index) => (
-                <div key={index} className="flex h-full flex-1 items-end gap-1">
-                  <span
-                    className="lp-bar flex-1 rounded-t bg-chart-2"
-                    style={{ height: `${due}%`, animationDelay: `${0.6 + index * 0.15}s, ${2 + index * 0.2}s` }}
-                  />
-                  <span
-                    className="lp-bar flex-1 rounded-t bg-primary"
-                    style={{ height: `${paid}%`, animationDelay: `${0.6 + index * 0.15}s, ${2 + index * 0.2}s` }}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="flex flex-col gap-2 rounded-xl border border-border p-3.5 text-xs">
-            <p className="font-semibold">أحدث الفروقات</p>
-            {[
-              ["عمولة أعلى من العقد", "حرج", true],
-              ["تعويض على فرع خاطئ", "تحذير", false],
-              ["رسوم غير مصنفة", "تحذير", false],
-            ].map(([label, level, critical], index) => (
-              <div
-                key={String(label)}
-                className={cn("flex justify-between rounded-lg px-2.5 py-2", critical ? "lp-pulse bg-secondary" : "lp-in bg-background")}
-                style={{ animationDelay: `${1 + index * 0.2}s` }}
-              >
-                <span>{label}</span>
-                <span className={critical ? "font-semibold text-primary-text" : "text-muted-foreground"}>{level}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MiniKpi({ label, value, bad = false }: { label: string; value: string; bad?: boolean }) {
-  return (
-    <div className="rounded-xl border border-border p-3.5">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className={cn("num mt-1.5 text-xl font-semibold", bad && "text-destructive")}>{value}</p>
-    </div>
-  );
-}
-
-function InvoiceMock() {
-  return (
-    <div data-reveal aria-hidden="true" className="flex flex-col gap-4 rounded-[22px] bg-secondary p-5 sm:p-9">
-      <div className="grid gap-3.5 sm:grid-cols-2">
-        <div className="rounded-2xl bg-card p-5">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">حسب فاتورة المنصة</p>
-            <PlatformName platform="hungerstation" className="text-[11px] font-semibold" iconClassName="size-4 rounded" />
-          </div>
-          <p className="num mt-2.5 text-3xl font-semibold">16,590.00</p>
-          <p className="mt-2 text-xs text-muted-foreground">عمولة 20% محتسبة</p>
-        </div>
-        <div className="rounded-2xl bg-card p-5 shadow-[0_20px_40px_-24px_rgb(19_35_43/0.35)]">
-          <p className="text-xs text-muted-foreground">حسب عقدك</p>
-          <p className="num mt-2.5 text-3xl font-semibold text-success">14,931.00</p>
-          <p className="mt-2 text-xs text-muted-foreground">عمولة 18% متفق عليها</p>
-        </div>
-      </div>
-      <div className="flex flex-col gap-1 rounded-2xl bg-card p-3 text-[13px]">
-        {[
-          ["عمولة المبيعات", "+1,659.00", false],
-          ["ضريبة القيمة المضافة على العمولة", "+248.85", false],
-          ["رسوم الدفع الإلكتروني", "مطابق", true],
-        ].map(([label, value, ok], index) => (
-          <div key={String(label)} className="lp-scan flex justify-between rounded-md px-2 py-2.5" style={{ animationDelay: `${index * 2}s` }}>
-            <span>{label}</span>
-            <span className={ok ? "font-semibold text-success" : "num text-destructive"}>{value}</span>
-          </div>
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-2.5">
-        <span className="lp-pulse flex items-center gap-1.5 rounded-full bg-ink px-3.5 py-2 text-[13px] text-ink-foreground">
-          الفرق لصالحك <span className="num text-primary">1,907.85 ر.س</span>
-        </span>
-        <span className="flex items-center gap-1.5 rounded-full bg-card px-3.5 py-2 text-[13px]">
-          <Check className="size-3.5 text-success" />
-          مطالبة جاهزة
-        </span>
-      </div>
     </div>
   );
 }
@@ -2620,209 +1183,6 @@ const COMP_FLOW: FlowStep[] = [
   },
 ];
 
-const FLOW_TONES = {
-  success: {
-    eyebrowTone: "success" as const,
-    track: "bg-success/20",
-    fill: "bg-success",
-    on: "border-success bg-success text-white",
-    done: "border-success bg-card text-success",
-    idle: "border-success/25 bg-card text-muted-foreground",
-    who: "text-success",
-    panel: "bg-success/15",
-    blob: "bg-success/10",
-    ring: "border-success/25",
-    counter: "text-success",
-    note: "bg-card/70",
-    mobileIcon: "bg-success text-white",
-    mobileNote: "bg-success-soft",
-  },
-  primary: {
-    eyebrowTone: "primary" as const,
-    track: "bg-primary/20",
-    fill: "bg-primary",
-    on: "border-primary bg-primary text-primary-foreground",
-    done: "border-primary bg-card text-primary-text",
-    idle: "border-border bg-card text-muted-foreground",
-    who: "text-primary-text",
-    panel: "bg-secondary",
-    blob: "bg-primary/10",
-    ring: "border-primary/25",
-    counter: "text-primary-text",
-    note: "bg-card",
-    mobileIcon: "bg-ink text-primary",
-    mobileNote: "bg-muted",
-  },
-};
-
-/** Scroll-pinned workflow: a vertical stepper explains each stage while the visual changes beside it. */
-function ScrollFlow({
-  id,
-  eyebrow,
-  title,
-  tone,
-  className,
-  steps,
-  renderVisual,
-}: {
-  id: string;
-  eyebrow: string;
-  title: string;
-  tone: keyof typeof FLOW_TONES;
-  className?: string;
-  steps: FlowStep[];
-  renderVisual: (index: number, active: boolean) => ReactNode;
-}) {
-  const t = FLOW_TONES[tone];
-  const [trackRef, progress] = useTrackProgress<HTMLDivElement>();
-  const count = steps.length;
-  const active = Math.min(count - 1, Math.floor(Math.min(0.999, progress / 0.92) * count));
-
-  function jumpTo(index: number) {
-    const track = trackRef.current;
-    if (!track) return;
-    const top = track.getBoundingClientRect().top + window.scrollY;
-    const scrollable = track.offsetHeight - window.innerHeight;
-    window.scrollTo({ top: top + scrollable * 0.92 * ((index + 0.3) / count), behavior: "smooth" });
-  }
-
-  const intro = (heading: "h2" | "aria") => <SectionIntro eyebrow={eyebrow} title={title} tone={t.eyebrowTone} heading={heading} />;
-  const counter = (i: number) => `${String(i + 1).padStart(2, "0")} / ${String(count).padStart(2, "0")}`;
-
-  return (
-    <section id={id} aria-label={eyebrow} className={className}>
-      <div ref={trackRef} className="relative hidden lg:block" style={{ height: `${count * 60 + 60}vh` }}>
-        <div className="sticky top-0 flex h-screen items-center">
-          <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] items-center gap-12 px-6 pt-20">
-            <div>
-              <div className="[&_h2]:text-[2.2rem] [&_h2]:leading-[1.35]">{intro("h2")}</div>
-              <ol className="relative mt-6">
-                <span aria-hidden="true" className={cn("absolute inset-y-4 start-[19px] w-0.5 rounded-full", t.track)}>
-                  <span
-                    className={cn("block w-full rounded-full transition-[height] duration-500 ease-out", t.fill)}
-                    style={{ height: `${(active / Math.max(1, count - 1)) * 100}%` }}
-                  />
-                </span>
-                {steps.map((step, index) => {
-                  const on = index === active;
-                  const done = index < active;
-                  return (
-                    <li key={step.title} className="relative">
-                      <button
-                        type="button"
-                        onClick={() => jumpTo(index)}
-                        aria-current={on ? "step" : undefined}
-                        className="flex w-full items-start gap-4 py-2 text-start"
-                      >
-                        <span
-                          className={cn(
-                            "relative z-10 grid size-10 shrink-0 place-items-center rounded-full border-2 transition-colors duration-500",
-                            on ? t.on : done ? t.done : t.idle,
-                          )}
-                        >
-                          {done ? <Check className="size-5" /> : <step.icon className="size-[18px]" />}
-                        </span>
-                        <span className="min-w-0 flex-1 pt-1.5">
-                          <span className={cn("block font-bold transition-colors", on ? "text-foreground" : "text-foreground/60")}>
-                            {step.title}
-                          </span>
-                          <span
-                            className={cn(
-                              "grid transition-[grid-template-rows,opacity] duration-500",
-                              on ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
-                            )}
-                          >
-                            <span className="overflow-hidden">
-                              <span className={cn("mt-1 block text-[11px] font-semibold", t.who)}>{step.who}</span>
-                              <span className="mt-1.5 block text-sm leading-7 text-foreground/80">{step.body}</span>
-                              <span className={cn("mt-2 block rounded-lg px-3 py-2 text-[13px] text-muted-foreground", t.note)}>{step.detail}</span>
-                            </span>
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-            <div className={cn("relative h-[560px] overflow-hidden rounded-[28px]", t.panel)}>
-              <span aria-hidden="true" className={cn("absolute -top-24 -start-24 size-72 rounded-full", t.blob)} />
-              <span aria-hidden="true" className={cn("absolute -bottom-40 -end-24 size-[26rem] rounded-full border", t.ring)} />
-              <span className={cn("num absolute top-5 end-6 text-sm", t.counter)} dir="ltr">
-                {counter(active)}
-              </span>
-              {steps.map((step, index) => (
-                <div
-                  key={step.title}
-                  aria-hidden={index !== active}
-                  className={cn(
-                    "absolute inset-0 grid place-items-center p-10 transition-[opacity,transform] duration-700 ease-out",
-                    index === active
-                      ? "translate-y-0 scale-100 opacity-100"
-                      : index < active
-                        ? "pointer-events-none -translate-y-10 scale-95 opacity-0"
-                        : "pointer-events-none translate-y-10 scale-95 opacity-0",
-                  )}
-                >
-                  {renderVisual(index, index === active)}
-                </div>
-              ))}
-              <span className="absolute bottom-4 start-5 rounded-full bg-card/80 px-2.5 py-1 text-[11px] text-muted-foreground">
-                مثال توضيحي
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-2xl px-4 pt-20 sm:px-6 lg:hidden">{intro("aria")}</div>
-      <MobilePinned
-        labels={steps.map((step) => step.title)}
-        panelClass={t.panel}
-        fillClass={t.fill}
-        renderVisual={renderVisual}
-        renderText={(index) => {
-          const step = steps[index]!;
-          return (
-            <>
-              <div className="flex items-center gap-3">
-                <span className={cn("grid size-10 shrink-0 place-items-center rounded-full", t.mobileIcon)}>
-                  <step.icon className="size-[18px]" />
-                </span>
-                <div className="min-w-0">
-                  <p className="flex items-center gap-2 text-[11px]">
-                    <span className="num text-muted-foreground" dir="ltr">
-                      {counter(index)}
-                    </span>
-                    <span className={cn("font-semibold", t.who)}>{step.who}</span>
-                  </p>
-                  <h3 className="text-lg font-bold">{step.title}</h3>
-                </div>
-              </div>
-              <p className="mt-2 text-[13px] leading-6 text-foreground/80">{step.body}</p>
-              <p className={cn("mt-2 rounded-lg px-3 py-2 text-xs leading-5 text-muted-foreground", t.mobileNote)}>{step.detail}</p>
-            </>
-          );
-        }}
-      />
-    </section>
-  );
-}
-
-function CompensationFlow() {
-  return (
-    <ScrollFlow
-      id="compensation"
-      eyebrow="استرداد · مركز التعويضات"
-      title="تعويض لم تتسبب فيه؟ اعترض عليه بالدليل."
-      tone="success"
-      className="bg-success-soft"
-      steps={COMP_FLOW}
-      renderVisual={(index, active) => <CompensationStepVisual step={index} active={active} />}
-    />
-  );
-}
-
 const HOW_FLOW: FlowStep[] = [
   {
     title: "ارفع الملفات",
@@ -2853,321 +1213,6 @@ const HOW_FLOW: FlowStep[] = [
     icon: HandCoins,
   },
 ];
-
-function HowItWorks() {
-  return (
-    <ScrollFlow
-      id="how"
-      eyebrow="كيف يعمل"
-      title="أربع خطوات. بدون جداول يدوية."
-      tone="primary"
-      className="bg-muted"
-      steps={HOW_FLOW}
-      renderVisual={(index, active) => <HowStepVisual step={index} active={active} />}
-    />
-  );
-}
-
-function HowStepVisual({ step, active }: { step: number; active: boolean }) {
-  const shadow = "shadow-[0_24px_48px_-28px_rgb(19_35_43/0.45)]";
-  const rise = (delay: number, extra = "") => ({
-    className: cn(extra, "transition-[opacity,transform] duration-500", active ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"),
-    style: { transitionDelay: `${delay}s` },
-  });
-  if (step === 0) {
-    const files: Array<[string, string, string]> = [
-      ["orders_aug.xlsx", "ملف الطلبات · 12,806 طلب", "XLSX"],
-      ["invoice_aug.pdf", "فاتورة المنصة · 14 صفحة", "PDF"],
-    ];
-    return (
-      <div className={cn("w-full max-w-md rounded-2xl bg-card p-5", shadow)}>
-        <div className="grid place-items-center rounded-xl border-2 border-dashed border-primary/40 bg-secondary/50 px-4 py-6 text-center">
-          <Upload className="size-6 text-primary-text" />
-          <p className="mt-2 text-sm font-semibold">اسحب الملفات هنا</p>
-          <p className="text-[11px] text-muted-foreground">Excel · CSV · PDF</p>
-        </div>
-        <div className="mt-3 space-y-2">
-          {files.map(([name, meta, ext], i) => (
-            <div key={name} {...rise(0.15 + i * 0.15, "flex items-center gap-3 rounded-xl border border-border p-2.5")}>
-              <span className="num grid size-9 place-items-center rounded-lg bg-muted text-[10px] font-semibold">{ext}</span>
-              <div className="min-w-0 flex-1">
-                <p className="num truncate text-[13px] font-semibold" dir="ltr">{name}</p>
-                <p className="text-[11px] text-muted-foreground">{meta}</p>
-              </div>
-              <Check className="size-4 text-success" />
-            </div>
-          ))}
-        </div>
-        <div {...rise(0.5, "mt-3 flex flex-wrap gap-2 text-[11px]")}>
-          <span className="inline-flex items-center gap-1 rounded-full bg-ink py-1 ps-1 pe-2.5 text-ink-foreground">
-            <PlatformIcon platform="hungerstation" className="size-4 rounded-full" />
-            المنصة: هنقرستيشن
-          </span>
-          <span className="rounded-full bg-muted px-2.5 py-1">الفترة: أغسطس</span>
-          <span className="rounded-full bg-muted px-2.5 py-1">12 فرعاً</span>
-        </div>
-      </div>
-    );
-  }
-  if (step === 1) {
-    const lines: Array<[string, string, string]> = [
-      ["عمولة المبيعات", "82,950.00 × 18%", "14,931.00"],
-      ["رسوم الدفع", "61,200.00 × 1%", "612.00"],
-      ["حملات التوصيل", "702 طلب × 6.00", "4,212.00"],
-      ["ضريبة الرسوم", "19,755.00 × 15%", "2,963.25"],
-    ];
-    return (
-      <div className={cn("w-full max-w-md rounded-2xl bg-card p-5", shadow)}>
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold">إعادة الاحتساب</p>
-          <span className="num rounded-full bg-muted px-2.5 py-1 text-[11px]" dir="ltr">engine v1.1 · عقد 2026</span>
-        </div>
-        <div className="mt-4 space-y-2">
-          {lines.map(([label, formula, value], i) => (
-            <div key={label} {...rise(0.1 + i * 0.14, "flex items-center justify-between gap-3 rounded-xl bg-background px-3.5 py-2.5 text-[13px]")}>
-              <span className="font-semibold">{label}</span>
-              <span className="num text-[11px] text-muted-foreground" dir="ltr">{formula}</span>
-              <span className="num font-semibold">{value}</span>
-            </div>
-          ))}
-        </div>
-        <p {...rise(0.75, "mt-3 flex items-center gap-2 text-[12px] text-success")}>
-          <Check className="size-4" /> كل بند مُعاد احتسابه من الطلبات نفسها
-        </p>
-      </div>
-    );
-  }
-  if (step === 2) {
-    const statuses = ["جديد", "قيد المراجعة", "تم التواصل", "تم الاعتراض"];
-    return (
-      <div className={cn("w-full max-w-md rounded-2xl bg-card p-5", shadow)}>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold">فرق عمولة الفرع</p>
-            <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-              فرع النرجس · <PlatformName platform="hungerstation" iconClassName="size-4 rounded" /> · أغسطس
-            </p>
-          </div>
-          <span className="rounded-full bg-destructive/12 px-2.5 py-1 text-[11px] font-semibold text-destructive">حرج</span>
-        </div>
-        <div {...rise(0.1, "mt-4 grid grid-cols-3 gap-2 text-center text-[11px]")}>
-          <div className="rounded-xl bg-background p-2.5">
-            <p className="text-muted-foreground">الفاتورة</p>
-            <p className="num mt-1 text-sm font-semibold">16,590.00</p>
-          </div>
-          <div className="rounded-xl bg-background p-2.5">
-            <p className="text-muted-foreground">المحتسب</p>
-            <p className="num mt-1 text-sm font-semibold text-success">14,931.00</p>
-          </div>
-          <div className="rounded-xl bg-ink p-2.5 text-ink-foreground">
-            <p className="text-ink-muted">الفرق</p>
-            <p className="num mt-1 text-sm font-semibold text-primary">1,659.00</p>
-          </div>
-        </div>
-        <p {...rise(0.3, "mt-3 rounded-xl bg-muted px-3 py-2 text-[12px]")}>
-          المصدر: السطر 14 في الفاتورة · المعادلة: المبيعات × 18%
-        </p>
-        <div {...rise(0.5, "mt-3 flex flex-wrap items-center gap-1.5 text-[11px]")}>
-          {statuses.map((label, i) => (
-            <span
-              key={label}
-              className={cn(
-                "rounded-full px-2.5 py-1",
-                i === 1 ? "bg-primary font-semibold text-primary-foreground" : i < 1 ? "bg-success/15 text-success" : "bg-muted text-muted-foreground",
-              )}
-            >
-              {label}
-            </span>
-          ))}
-          <span className="ms-auto flex items-center gap-1.5 text-muted-foreground">
-            <span className="grid size-6 place-items-center rounded-full bg-chart-2 text-[10px] font-bold text-white">س</span>
-            سارة
-          </span>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="flex w-full max-w-md flex-col gap-3">
-      <div className={cn("rounded-2xl bg-ink p-5 text-ink-foreground", shadow)}>
-        <p className="text-[11px] text-ink-muted">مطالبة الاسترداد · أغسطس</p>
-        <p className="num mt-1 text-3xl font-semibold text-primary">2,638.25</p>
-        <div {...rise(0.2, "mt-3 flex flex-wrap gap-2 text-[11px]")}>
-          <span className="rounded-full bg-ink-foreground/10 px-2.5 py-1">3 استثناءات</span>
-          <span className="rounded-full bg-ink-foreground/10 px-2.5 py-1">أدلة مرفقة</span>
-          <span className="rounded-full bg-primary px-2.5 py-1 font-semibold text-primary-foreground">جاهزة للإرسال</span>
-        </div>
-      </div>
-      <div {...rise(0.45, cn("rounded-2xl bg-card p-4", shadow))}>
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold">الفترات السابقة</p>
-          <span className="rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-semibold text-success">أغسطس · مغلقة</span>
-        </div>
-        <div className="mt-3 space-y-1.5 text-[12px] text-muted-foreground">
-          <div className="flex justify-between"><span className="flex items-center gap-1">يوليو · <PlatformName platform="hungerstation" iconClassName="size-4 rounded" /></span><span>مغلقة</span></div>
-          <div className="flex justify-between"><span className="flex items-center gap-1">يونيو · <PlatformName platform="jahez" iconClassName="size-4 rounded" /></span><span>مغلقة</span></div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CompensationStepVisual({ step, active }: { step: number; active: boolean }) {
-  const shadow = "shadow-[0_24px_48px_-28px_rgb(19_35_43/0.45)]";
-  const rise = (delay: number, extra = "") => ({
-    className: cn(extra, "transition-[opacity,transform] duration-500", active ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"),
-    style: { transitionDelay: `${delay}s` },
-  });
-  if (step === 0) {
-    return (
-      <div className={cn("w-full max-w-xs rounded-[26px] bg-card p-4", shadow)}>
-        <div className="flex items-center gap-2.5 border-b border-border pb-3">
-          <span className="grid size-9 place-items-center rounded-full bg-chart-2 text-sm font-bold text-white">م</span>
-          <div>
-            <p className="text-sm font-semibold">قروب فرع الملقا</p>
-            <p className="text-[11px] text-muted-foreground">3 أعضاء · بوت تدقيق</p>
-          </div>
-        </div>
-        <div className="mt-3 flex flex-col items-start gap-2">
-          <div {...rise(0.1)}>
-            <div className="lp-rec relative grid h-36 w-52 place-items-center rounded-2xl bg-ink/90 text-ink-foreground">
-              <Video className="size-7" />
-              <span className="num absolute bottom-2 end-2.5 rounded bg-black/40 px-1.5 text-[10px]">0:42</span>
-            </div>
-          </div>
-          <p {...rise(0.3)}>
-            <span className="block rounded-2xl rounded-ss-sm bg-muted px-3 py-2 text-[13px]">طلب الملقا قبل التسليم</span>
-          </p>
-          <span className="text-[10px] text-muted-foreground">خالد · 21:14</span>
-        </div>
-      </div>
-    );
-  }
-  if (step === 1) {
-    return (
-      <div className="flex w-full max-w-md flex-col items-stretch gap-4 sm:flex-row sm:items-center">
-        <div className={cn("shrink-0 rounded-2xl bg-card p-3 sm:w-40", shadow)}>
-          <div className="space-y-1.5 rounded-xl bg-muted p-3">
-            <span className="block h-1.5 w-3/4 rounded bg-foreground/20" />
-            <span className="block h-1.5 w-1/2 rounded bg-foreground/20" />
-            <span className={cn("block rounded px-1 py-0.5 text-center font-mono text-[10px] transition-colors duration-700", active ? "bg-primary/25 text-foreground" : "bg-transparent")}>
-              HS-88214073
-            </span>
-            <span className="block h-1.5 w-2/3 rounded bg-foreground/20" />
-          </div>
-          <p className="mt-2 text-center text-[11px] text-muted-foreground">صورة الإيصال</p>
-        </div>
-        <div className="flex-1 space-y-2.5">
-          <div {...rise(0.2)}>
-            <div className="flex items-center justify-between rounded-xl bg-card px-3.5 py-2.5 text-[13px]">
-              <span className="text-muted-foreground">رقم الطلب</span>
-              <span className="num font-semibold">HS-88214073</span>
-            </div>
-          </div>
-          <div {...rise(0.35)}>
-            <div className="flex items-center justify-between rounded-xl bg-card px-3.5 py-2.5 text-[13px]">
-              <span className="text-muted-foreground">الفرع</span>
-              <span className="font-semibold">فرع الملقا</span>
-            </div>
-          </div>
-          <div {...rise(0.5)}>
-            <div className="flex items-center justify-between rounded-xl bg-card px-3.5 py-2.5 text-[13px]">
-              <span className="text-muted-foreground">وقت الإرسال</span>
-              <span className="num font-semibold">21:14</span>
-            </div>
-          </div>
-          <div {...rise(0.7)}>
-            <p className="flex items-center gap-2 rounded-xl bg-success px-3.5 py-2.5 text-[13px] font-semibold text-white">
-              <Check className="size-4" /> تم ربط الدليل بالطلب
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  if (step === 2) {
-    const rows: Array<[string, string, string, string]> = [
-      ["HS-88214073", "142.50", "يوجد دليل", "bg-success/15 text-success"],
-      ["HS-88213551", "64.00", "مكرر", "bg-warning/15 text-warning"],
-      ["HS-88210917", "38.25", "لا يوجد دليل", "bg-muted text-muted-foreground"],
-    ];
-    return (
-      <div className={cn("w-full max-w-md rounded-2xl bg-card p-5", shadow)}>
-        <p className="flex items-center gap-1.5 text-sm font-semibold">
-          تعويضات فاتورة <PlatformName platform="hungerstation" /> · سبتمبر
-        </p>
-        <div className="mt-4 space-y-2">
-          {rows.map(([order, amount, status, tone], i) => (
-            <div key={order} {...rise(0.1 + i * 0.12)}>
-              <div className={cn("flex items-center gap-3 rounded-xl border p-3", i === 0 ? "border-success/40 bg-success-soft" : "border-border")}>
-                <span className="num text-[13px] font-semibold">{order}</span>
-                <span className="num ms-auto text-[13px]">{amount}</span>
-                <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-semibold", tone)}>{status}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-  if (step === 3) {
-    return (
-      <div className={cn("w-full max-w-md rounded-2xl bg-card p-5", shadow)}>
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold">رسالة الاعتراض</p>
-          <span className="flex rounded-full bg-muted p-0.5 text-[11px]">
-            <span className="rounded-full bg-card px-2.5 py-1 font-semibold shadow-sm">عربي</span>
-            <span className="px-2.5 py-1 text-muted-foreground">English</span>
-          </span>
-        </div>
-        <div className="mt-3 rounded-xl bg-muted p-3.5 text-[13px] leading-7">
-          <p {...rise(0.1)}>نطلب مراجعة التعويض على الطلب HS-88214073 بمبلغ 142.50 ر.س لفرع الملقا.</p>
-          <p {...rise(0.35)}>الفيديو المرفق يُظهر تغليف الطلب كاملاً وتسليمه للمندوب الساعة 21:14.</p>
-        </div>
-        <div {...rise(0.6, "mt-3 flex gap-2")}>
-          <span className="rounded-full bg-ink px-3.5 py-2 text-[13px] text-ink-foreground">نسخ الرسالة</span>
-          <span className="rounded-full border border-border px-3.5 py-2 text-[13px]">رابط الفيديو</span>
-        </div>
-      </div>
-    );
-  }
-  const stages: Array<[string, boolean]> = [
-    ["مرسلة", true],
-    ["مقبولة", true],
-    ["مسترَدة", true],
-  ];
-  return (
-    <div className="flex w-full max-w-md flex-col gap-3">
-      <div className={cn("rounded-2xl bg-card p-5", shadow)}>
-        <div className="flex items-center justify-between">
-          <p className="num text-sm font-semibold">HS-88214073</p>
-          <span className="rounded-full bg-success/15 px-2.5 py-1 text-[11px] font-semibold text-success">مسترَدة</span>
-        </div>
-        <ol className="mt-4 flex items-center gap-2">
-          {stages.map(([label], i) => (
-            <li key={label} {...rise(0.1 + i * 0.2, "flex flex-1 items-center gap-2")}>
-              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-success text-white">
-                <Check className="size-4" />
-              </span>
-              <span className="text-[13px]">{label}</span>
-              {i < stages.length - 1 ? <span className="h-0.5 flex-1 rounded bg-success/40" /> : null}
-            </li>
-          ))}
-        </ol>
-      </div>
-      <div {...rise(0.7, "grid grid-cols-2 gap-3")}>
-        <div className="rounded-2xl bg-ink p-4 text-ink-foreground">
-          <p className="text-[11px] text-ink-muted">مسترَد هذا الشهر</p>
-          <p className="num mt-1 text-xl font-semibold text-primary">4,820.00</p>
-        </div>
-        <div className="rounded-2xl bg-card p-4">
-          <p className="text-[11px] text-muted-foreground">نسبة الاسترداد</p>
-          <p className="num mt-1 text-xl font-semibold text-success">68%</p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /** What every order-based plan includes. */
 const ORDER_PRESETS = [5000, 12000, 30000, 60000];
@@ -3545,6 +1590,355 @@ function LegacyPricing({ plans }: { plans: PublicPlan[] }) {
           </article>
         ))}
       </div>
+    </section>
+  );
+}
+
+/** A real screen from the app (demo data for a fictional restaurant group), in a quiet window frame. */
+function AppShot({ src, alt, width, height, priority = false, className }: { src: string; alt: string; width: number; height: number; priority?: boolean; className?: string }) {
+  return (
+    <figure className={cn("overflow-hidden rounded-[18px] border border-border bg-card shadow-[0_30px_70px_-40px_rgb(19_35_43/0.45)]", className)}>
+      <div aria-hidden="true" className="flex items-center gap-1.5 border-b border-border bg-muted/60 px-4 py-2.5">
+        <span className="size-2.5 rounded-full bg-border" />
+        <span className="size-2.5 rounded-full bg-border" />
+        <span className="size-2.5 rounded-full bg-border" />
+      </div>
+      <img
+        src={src}
+        alt={alt}
+        width={width}
+        height={height}
+        loading={priority ? "eager" : "lazy"}
+        decoding="async"
+        {...(priority ? { fetchPriority: "high" as const } : {})}
+        className="block h-auto w-full"
+      />
+    </figure>
+  );
+}
+
+const DEMO_NOTE = "بيانات توضيحية لمجموعة مطاعم افتراضية";
+
+/** The four steps of a period, side by side. */
+function HowSteps() {
+  return (
+    <section id="how" aria-labelledby="how-title" className="bg-muted">
+      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-24">
+        <div data-reveal className="max-w-2xl">
+          <h2 id="how-title" className="font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]">أربع خطوات. بدون جداول يدوية.</h2>
+          <p className="mt-3 text-base leading-8 text-muted-foreground sm:text-[17px]">من رفع الملفين إلى إغلاق الفترة، كل خطوة تبني على السابقة.</p>
+        </div>
+        <ol data-reveal className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {HOW_FLOW.map((step) => (
+            <li key={step.title} className="relative flex flex-col rounded-[18px] border border-border bg-card p-6">
+              <span className="grid size-11 place-items-center rounded-xl bg-ink text-primary">
+                <step.icon className="size-5" />
+              </span>
+              <h3 className="mt-5 text-lg font-bold">{step.title}</h3>
+              <p className="mt-1 text-xs font-semibold text-primary-text">{step.who}</p>
+              <p className="mt-3 text-[14px] leading-7 text-foreground/80">{step.body}</p>
+              <p className="mt-auto pt-4 text-[12.5px] leading-6 text-muted-foreground">{step.detail}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+type DayMoment = { when: string; product?: ProductKey; tag?: string; title: string; body: string; image: string; alt: string };
+
+const DAY: DayMoment[] = [
+  {
+    when: "كل صباح",
+    product: "nabd",
+    title: "مبيعات أمس وتكلفة كل منصة، قبل أن تصل الفاتورة.",
+    body: SHOWCASE.find((s) => s.key === "daily")!.body,
+    image: "/home/app-nabd.webp",
+    alt: "شاشة «نبض»: إجمالي المبيعات وتكلفة المنصات وصافي التحويل والفروع الأعلى تكلفة",
+  },
+  {
+    when: "عند وصول الفاتورة",
+    product: "mutabiq",
+    title: "ما خصمته المنصة. ما يقوله عقدك. والفرق بينهما.",
+    body: "ارفع الفاتورة ويعيد تدقيق بناءها بنداً بنداً من ملف الطلبات. عند الاختلاف ترى البند والنسبة المحتسبة والنسبة المتفق عليها.",
+    image: "/home/app-mutabiq.webp",
+    alt: "شاشة «مُطابِق»: إجمالي الفاتورة وفرق المطالبة وحالة بنود الفاتورة",
+  },
+  {
+    when: "في نفس الجلسة",
+    product: "kashif",
+    title: SHOWCASE.find((s) => s.key === "charges")!.tagline,
+    body: SHOWCASE.find((s) => s.key === "charges")!.body,
+    image: "/home/app-kashif.webp",
+    alt: "شاشة «كاشِف»: الرسوم حسب التصنيف وتغطية التصنيف والبنود غير المصنفة",
+  },
+  {
+    when: "خلال الأسبوع",
+    product: "istirdad",
+    title: "تعويض خُصم على طلب سليم؟ دليله جاهز من قروب الفرع.",
+    body: SHOWCASE.find((s) => s.key === "compensation")!.body,
+    image: "/home/app-istirdad.webp",
+    alt: "شاشة «استرداد»: المبلغ المسترد ونسبة الاسترداد والحالات الجاهزة للإرسال",
+  },
+  {
+    when: "نهاية الشهر",
+    tag: "الاتجاهات والمقارنة",
+    title: "الشهر كله، شهراً بشهر ومنصة بمنصة.",
+    body: "المبيعات ونسبة تكلفة المنصة والعمولة لكل شهر ومنصة، مع التغير عن الشهر السابق وتقارير تُرسل نفسها بالبريد.",
+    image: "/home/app-reports.webp",
+    alt: "شاشة الاتجاهات والمقارنة: مبيعات الشهر وتكلفة المنصة ونسبة العمولة شهراً بشهر",
+  },
+];
+
+/** One working day (and month) with Tadqeeq: a moment, what happens, and the real screen for it. */
+function DayWithTadqeeq() {
+  return (
+    <section id="day" aria-labelledby="day-title" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
+      <SectionIntro eyebrow="يوم مع تدقيق" title="من أول طلب في الصباح إلى إغلاق الشهر." id="day-title">
+        كل أداة تعمل من نفس الفروع والعقود، فالرقم الذي تراجعه في مكان صحيح في كل مكان.
+      </SectionIntro>
+      <ol className="relative mt-14 space-y-16 border-s border-border ps-6 sm:ps-10 lg:space-y-24">
+        {DAY.map((moment) => {
+          const product = moment.product ? PRODUCTS[moment.product] : undefined;
+          const page = moment.product ? productPageFor(moment.product) : undefined;
+          return (
+            <li key={moment.image} data-reveal className="relative grid items-center gap-8 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:gap-14">
+              <span aria-hidden="true" className="absolute -start-[31px] top-1.5 size-3.5 rounded-full border-2 border-primary bg-background sm:-start-[47px]" />
+              <div>
+                <p className="text-[13px] font-semibold text-primary-text">
+                  {moment.when} · {product ? `«${product.name}» ${product.descriptor}` : moment.tag}
+                </p>
+                <h3 className="mt-3 font-display text-2xl font-bold leading-[1.45] sm:text-[1.75rem]">{moment.title}</h3>
+                <p className="mt-3 text-[15px] leading-8 text-muted-foreground">{moment.body}</p>
+                {page && product ? (
+                  <a href={page.path} className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-ink hover:text-primary-text">
+                    اعرف المزيد عن {product.name}
+                    <ArrowLeft className="size-4" />
+                  </a>
+                ) : null}
+              </div>
+              <AppShot src={moment.image} alt={moment.alt} width={1400} height={moment.product === "istirdad" ? 651 : 787} />
+            </li>
+          );
+        })}
+      </ol>
+      <p className="mt-10 text-center text-xs text-muted-foreground">الشاشات من تدقيق نفسه، {DEMO_NOTE}.</p>
+    </section>
+  );
+}
+
+const MIZAN_TOOLS = ["invoice", "charges", "exceptions", "promotions", "watch", "daily", "journal", "columns", "ai"];
+
+/** The two platforms and what is inside each. */
+function TwoPlatforms() {
+  const tools = MIZAN_TOOLS.map((key) => SHOWCASE.find((item) => item.key === key)!);
+  const istirdad = SHOWCASE.find((item) => item.key === "compensation")!;
+  return (
+    <section id="products" aria-labelledby="products-title" className="bg-[oklch(0.975_0.018_85)]">
+      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
+        <div data-reveal className="max-w-2xl">
+          <h2 id="products-title" className="font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]">منصتان في حساب واحد.</h2>
+          <p className="mt-3 text-base leading-8 text-muted-foreground sm:text-[17px]">
+            «{SUITES.mizan.name}» لتدقيق الفواتير والأداء، و«{SUITES.istirdad.name}» لاسترداد التعويضات. تتنقل بينهما من أعلى الشاشة.
+          </p>
+        </div>
+
+        <div className="mt-12 grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <article data-reveal className="rounded-[24px] bg-ink p-6 text-ink-foreground sm:p-8">
+            <header className="flex items-center gap-4">
+              <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-ink-2">
+                <MizanMark className="size-10 text-ink-foreground" />
+              </span>
+              <div>
+                <h3 className="font-display text-[26px] font-bold leading-tight">{SUITES.mizan.name}</h3>
+                <p className="mt-1 text-sm text-primary">{SUITES.mizan.descriptor}</p>
+              </div>
+            </header>
+            <ul className="mt-8 grid gap-x-8 gap-y-6 sm:grid-cols-2">
+              {tools.map((item) => {
+                const page = item.product ? productPageFor(item.product) : undefined;
+                return (
+                  <li key={item.key} className="flex gap-3">
+                    <item.icon className="mt-1 size-5 shrink-0 text-primary" />
+                    <div className="min-w-0">
+                      <p className="font-semibold">
+                        {page ? (
+                          <a href={page.path} className="hover:text-primary">{item.name}</a>
+                        ) : (
+                          item.name
+                        )}
+                        {item.descriptor ? <span className="ms-1.5 text-[13px] font-normal text-ink-muted">{item.descriptor}</span> : null}
+                      </p>
+                      <p className="mt-1 text-[13.5px] leading-6 text-ink-muted">{item.tagline}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </article>
+
+          <article data-reveal className="flex flex-col rounded-[24px] bg-success-soft p-6 sm:p-8">
+            <header className="flex items-center gap-4">
+              <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-success text-white">
+                <HandCoins className="size-7" strokeWidth={1.75} />
+              </span>
+              <div>
+                <h3 className="font-display text-[26px] font-bold leading-tight">{SUITES.istirdad.name}</h3>
+                <p className="mt-1 text-sm font-semibold text-success">{SUITES.istirdad.descriptor}</p>
+              </div>
+            </header>
+            <p className="mt-8 text-lg font-semibold leading-8">{istirdad.tagline}</p>
+            <p className="mt-2 text-[14.5px] leading-7 text-foreground/80">{istirdad.body}</p>
+            <ul className="mt-6 space-y-2.5 text-[14px]">
+              {SUITES.istirdad.highlights.map((line) => (
+                <li key={line} className="flex items-start gap-2">
+                  <Check className="mt-0.5 size-4 shrink-0 text-success" />
+                  {line}
+                </li>
+              ))}
+            </ul>
+            <a href="#compensation" className="mt-auto inline-flex items-center gap-1.5 pt-8 text-sm font-semibold text-success">
+              كيف يعمل «{SUITES.istirdad.name}»
+              <ArrowLeft className="size-4" />
+            </a>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** «استرداد» step by step, from the branch to the refund. */
+function CompensationSteps() {
+  return (
+    <section id="compensation" aria-labelledby="compensation-title" className="bg-success-soft">
+      <div className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:py-28">
+        <SectionIntro eyebrow={`${PRODUCTS.istirdad.name} · ${PRODUCTS.istirdad.descriptor}`} title="تعويض لم تتسبب فيه؟ اعترض عليه بالدليل." tone="success" id="compensation-title">
+          من صورة في قروب الفرع إلى مبلغ مسترد، دون تطبيق إضافي للموظفين.
+          <a href={productPageFor("istirdad")?.path ?? "/products"} className="mt-6 inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-success">
+            اعرف المزيد عن {PRODUCTS.istirdad.name}
+            <ArrowLeft className="size-4" />
+          </a>
+        </SectionIntro>
+        <ol data-reveal className="space-y-3">
+          {COMP_FLOW.map((step) => (
+            <li key={step.title} className="flex gap-4 rounded-[18px] bg-card p-5">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-success text-white">
+                <step.icon className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <h3 className="font-bold">
+                  {step.title}
+                  <span className="ms-2 text-xs font-semibold text-success">{step.who}</span>
+                </h3>
+                <p className="mt-1.5 text-[14px] leading-7 text-foreground/80">{step.body}</p>
+                <p className="mt-1 text-[12.5px] leading-6 text-muted-foreground">{step.detail}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+/** Every fee line the audit checks, how, and a worked example. */
+function ChecksList() {
+  return (
+    <section id="checks" aria-labelledby="checks-title" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
+      <div data-reveal className="max-w-3xl">
+        <h2 id="checks-title" className="font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]">كل بند في الفاتورة، لا الإجمالي فقط.</h2>
+        <p className="mt-3 text-base leading-8 text-muted-foreground sm:text-[17px]">
+          أي خصم لا يطابق خريطة الرسوم يظهر كبند غير مصنف بدلاً من أن يمر دون أن يلاحظه أحد.
+        </p>
+      </div>
+      <ul data-reveal className="mt-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {CHECKS.map((item, index) => {
+          const flagged = index === CHECKS.length - 1;
+          return (
+            <li key={item.title} className={cn("flex flex-col rounded-[18px] border p-5", flagged ? "border-primary/40 bg-secondary/50" : "border-border bg-card")}>
+              <span className={cn("grid size-10 place-items-center rounded-xl", flagged ? "bg-primary text-primary-foreground" : "bg-muted text-ink")}>
+                <item.icon className="size-5" />
+              </span>
+              <h3 className="mt-4 font-bold">{item.title}</h3>
+              <p className="mt-1 text-[13px] text-muted-foreground">{item.body}</p>
+              <p className="mt-3 text-[13.5px] leading-7 text-foreground/80">{item.how}</p>
+              <p className="mt-auto pt-4">
+                <span className="block rounded-lg bg-muted px-3 py-2 text-[12.5px] leading-6 text-foreground/80">مثال: {item.example}</span>
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/** Who Tadqeeq is for, and what each role gets. */
+function Audiences() {
+  return (
+    <section id="who" aria-labelledby="who-title" className="bg-muted">
+      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
+        <SectionIntro title="لمن يملك الأرقام ويُسأل عنها." id="who-title" />
+        <ul data-reveal className="mt-12 grid gap-4 md:grid-cols-2">
+          {AUDIENCES.map((item) => (
+            <li key={item.key} className="flex flex-col gap-4 rounded-[20px] bg-card p-6 sm:flex-row sm:gap-6 sm:p-7">
+              <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-ink text-primary">
+                <item.icon className="size-6" />
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-lg font-bold">{item.name}</h3>
+                <p className="mt-1 font-semibold text-primary-text">{item.tagline}</p>
+                <p className="mt-2 text-[14.5px] leading-7 text-foreground/80">{item.body}</p>
+                {item.points ? (
+                  <ul className="mt-4 space-y-2 text-[13.5px] text-muted-foreground">
+                    {item.points.map((point) => (
+                      <li key={point} className="flex items-start gap-2">
+                        <Check className="mt-0.5 size-4 shrink-0 text-success" />
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+/** What the account gives every team, beyond the audit tools themselves. */
+function Capabilities() {
+  return (
+    <section id="platform" aria-labelledby="platform-title" className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:py-28">
+      <div data-reveal>
+        <h2 id="platform-title" className="font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.4rem]">كل شركاتك وفريقك وتقاريرك في حساب واحد.</h2>
+        <Link
+          to="/auth"
+          search={{ mode: "signup" }}
+          className="mt-8 inline-flex h-11 w-fit items-center gap-2 rounded-full bg-ink px-5 text-sm font-semibold text-ink-foreground transition-transform hover:-translate-y-0.5"
+        >
+          ابدأ مجاناً
+          <ArrowLeft className="size-4" />
+        </Link>
+      </div>
+      <dl data-reveal className="divide-y divide-border border-y border-border">
+        {CAPABILITIES.map((item) => (
+          <div key={item.key} className="grid gap-2 py-6 sm:grid-cols-[220px_minmax(0,1fr)] sm:gap-8">
+            <dt className="flex items-start gap-3 font-bold">
+              <item.icon className="mt-0.5 size-5 shrink-0 text-primary-text" />
+              {item.name}
+            </dt>
+            <dd>
+              <p className="font-semibold">{item.tagline}</p>
+              <p className="mt-1 text-[14.5px] leading-7 text-muted-foreground">{item.body}</p>
+            </dd>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }
