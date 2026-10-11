@@ -8,8 +8,8 @@
  */
 import { safeNextPath } from "./redirects";
 
-/** Sends tadqeeq.app/auth to login.tadqeeq.app. Turn on once login.tadqeeq.app is connected to the project. */
-export const LOGIN_SUBDOMAIN_LIVE = false;
+/** Sends tadqeeq.app/auth to login.tadqeeq.app. Turned on when login.tadqeeq.app was connected (Oct 2026). */
+export const LOGIN_SUBDOMAIN_LIVE = true;
 
 /** The production hosts whose /auth moves to the login subdomain. Previews and local dev keep /auth in place. */
 const MAIN_HOSTS = ["tadqeeq.app", "www.tadqeeq.app"];
