@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronLeft, ListTodo, Loader2 } from "lucide-react";
+import { ChevronLeft, ListTodo } from "lucide-react";
 import type { ReactNode } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -11,6 +11,7 @@ import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 import { NumberTiles } from "@/components/workspace/PageKit";
 import { count } from "@/lib/format";
 import type { RevenueMonth } from "@/lib/ops-revenue";
+import { Spinner } from "@/components/ui/spinner";
 
 export const Route = createFileRoute("/ops/")({ component: Overview });
 
@@ -20,7 +21,7 @@ function Overview() {
   const revenue = useQuery({ queryKey: ["ops-revenue"], queryFn: () => getOpsRevenue({ data: {} }), enabled: opsCan(role, "overview") });
   const tasks = useQuery({ queryKey: ["ops-tasks"], queryFn: () => getOpsTasks({ data: {} }), enabled: opsCan(role, "clients"), staleTime: 60_000 });
   if (!opsCan(role, "overview")) return <OpsDenied />;
-  if (q.isLoading) return <Loader2 className="size-5 animate-spin" />;
+  if (q.isLoading) return <Spinner className="size-5" />;
   if (q.error || !q.data) return <p className="text-sm text-destructive">{(q.error as Error)?.message}</p>;
   const d = q.data;
   return (

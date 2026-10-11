@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
 import { ClientAvatar, ClientStatusBadge, DeleteClientConfirm, EditClientForm } from "@/components/OpsClientForms";
 import { OpsConfirm, OpsDenied, useOpsRole } from "@/components/OpsShared";
@@ -100,7 +101,7 @@ function ClientProfilePage() {
   });
 
   if (!allowed) return <OpsDenied />;
-  if (q.isLoading) return <Loader2 className="size-5 animate-spin" />;
+  if (q.isLoading) return <Spinner className="size-5" />;
   if (q.error || !q.data)
     return (
       <div className="panel mx-auto mt-10 max-w-md p-8 text-center text-sm">

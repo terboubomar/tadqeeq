@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Check, Loader2, Mail, Phone, RotateCcw } from "lucide-react";
+import { Check, Mail, Phone, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { contactTopicLabel } from "@/lib/contact";
 import { opsCan } from "@/lib/ops";
 import { listContactMessages, setContactMessageHandled } from "@/lib/ops.functions";
@@ -55,7 +56,7 @@ function Messages() {
           <option value="all">الكل</option>
         </select>
       </OpsHeader>
-      {q.isLoading ? <Loader2 className="m-4 size-5 animate-spin" /> : null}
+      {q.isLoading ? <Spinner className="m-4 size-5" /> : null}
       {!q.isLoading && !rows.length ? (
         <section className="panel p-8 text-center text-sm text-muted-foreground">{filter === "new" ? "لا توجد رسائل جديدة." : "لا توجد رسائل."}</section>
       ) : null}

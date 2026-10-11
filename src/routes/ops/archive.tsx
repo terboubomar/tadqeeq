@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { opsCan } from "@/lib/ops";
 import { listDeletedOpsClients, listOpsClients } from "@/lib/ops.functions";
 import { ClientListRow } from "@/components/OpsClientForms";
@@ -64,7 +64,7 @@ function ArchivePage() {
       </div>
 
       {active.isLoading ? (
-        <Loader2 className="size-5 animate-spin" />
+        <Spinner className="size-5" />
       ) : active.error ? (
         <p className="text-sm text-destructive">{(active.error as Error).message}</p>
       ) : tab === "archived" ? (

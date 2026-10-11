@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlarmClock, Loader2, Plus } from "lucide-react";
+import { AlarmClock, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -16,6 +16,7 @@ import {
 import { count, money, percent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { PlatformName } from "@/components/brand/PlatformLogo";
+import { Spinner } from "@/components/ui/spinner";
 
 export const Route = createFileRoute("/compensation/")({ component: CompensationOverviewPage });
 
@@ -36,7 +37,7 @@ function CompensationOverviewPage() {
     [cases.data, connections.data, range, platform],
   );
 
-  if (cases.isLoading) return <Loader2 className="size-5 animate-spin text-muted-foreground" />;
+  if (cases.isLoading) return <Spinner className="size-5 text-muted-foreground" />;
   if (cases.error || !overview) {
     return <p className="text-sm text-destructive">{(cases.error as Error | null)?.message ?? "تعذّر التحميل"}</p>;
   }

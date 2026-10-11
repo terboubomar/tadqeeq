@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/workspace/PageKit";
 import { count } from "@/lib/format";
 import { operationPlatformLabel } from "@/lib/operations/catalog";
@@ -143,7 +144,7 @@ function DayWorkspace({ platform, date }: { platform: OperationPlatform; date: s
       {monthQuery.isError ? <ErrorNotice error={monthQuery.error} retry={() => void monthQuery.refetch()} /> : null}
       {monthQuery.isLoading ? (
         <div className="grid min-h-48 place-items-center">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          <Spinner className="size-5 text-muted-foreground" />
         </div>
       ) : null}
 

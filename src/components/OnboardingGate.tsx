@@ -7,6 +7,7 @@ import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Spinner } from "@/components/ui/spinner";
 import {
   isValidCr,
   isValidNationalId,
@@ -34,7 +35,7 @@ export function OnboardingScreen() {
   if (query.isLoading || !query.data) {
     return (
       <div className="grid min-h-[50vh] place-items-center">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        <Spinner className="size-5 text-muted-foreground" />
       </div>
     );
   }

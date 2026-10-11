@@ -10,6 +10,7 @@ import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import {
   configureTelegramWebhook,
   createBranchWithTelegramConnection,
@@ -262,7 +263,7 @@ function BranchesPage() {
         <h2 className="px-5 pt-5 font-bold">الفروع</h2>
         {connectionsQuery.isLoading ? (
           <div className="p-6">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <Spinner className="size-5 text-muted-foreground" />
           </div>
         ) : connections.length === 0 ? (
           <p className="p-8 text-center text-sm text-muted-foreground">لم يُربط أي فرع بعد.</p>

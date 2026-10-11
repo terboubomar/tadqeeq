@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
 
 import { opsActionLabel, opsCan } from "@/lib/ops";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { getOpsLogs } from "@/lib/ops.functions";
 import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
 
@@ -44,7 +44,7 @@ function Logs() {
         </div>
       </OpsHeader>
       <section className="space-y-2 md:hidden">
-        {q.isLoading ? <Loader2 className="m-4 size-5 animate-spin" /> : null}
+        {q.isLoading ? <Spinner className="m-4 size-5" /> : null}
         {rows.map((r) => (
           <article key={r.source + r.id} className="panel p-4 text-sm">
             <div className="flex items-start justify-between gap-3">
@@ -65,7 +65,7 @@ function Logs() {
         {!q.isLoading && !rows.length ? <p className="panel p-6 text-center text-sm text-muted-foreground">لا توجد أحداث.</p> : null}
       </section>
       <section className="panel hidden overflow-x-auto md:block">
-        {q.isLoading ? <Loader2 className="m-4 size-5 animate-spin" /> : (
+        {q.isLoading ? <Spinner className="m-4 size-5" /> : (
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{["الوقت", "المصدر", "الإجراء", "المنفّذ", "العميل", "التفاصيل"].map((h) => <th key={h} className="p-3 text-start font-medium">{h}</th>)}</tr></thead>
             <tbody>

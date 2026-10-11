@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { deleteCompensationCase, saveCompensationCase } from "@/lib/compensation-evidence.functions";
 import type { CompensationCaseRecord } from "@/lib/compensation-evidence.server";
 import {
@@ -264,7 +265,7 @@ function CasesPage() {
       <section className="mt-3 overflow-hidden rounded-2xl border border-border bg-card">
         {cases.isLoading ? (
           <div className="p-8">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <Spinner className="size-5 text-muted-foreground" />
           </div>
         ) : cases.error ? (
           <p className="p-6 text-sm text-destructive">{(cases.error as Error).message}</p>

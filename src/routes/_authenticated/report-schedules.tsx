@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/workspace/PageKit";
 import {
   describeTiming,
@@ -135,7 +136,7 @@ function ReportSchedulesPage() {
       {form ? <ScheduleForm state={form} saving={save.isPending} onChange={setForm} onCancel={() => setForm(null)} onSave={() => save.mutate(form)} /> : null}
 
       {query.isLoading ? (
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        <Spinner className="size-5 text-muted-foreground" />
       ) : query.error ? (
         <p className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5 text-sm text-destructive">{(query.error as Error).message}</p>
       ) : schedules.length === 0 && !form ? (

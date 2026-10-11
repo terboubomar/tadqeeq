@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import { supabase } from "@/integrations/supabase/client";
 import { OPS_ROLE_LABELS, opsAllowedHost, opsCan, type OpsSection } from "@/lib/ops";
 import { getOpsMe, getOpsTasks } from "@/lib/ops.functions";
@@ -89,7 +90,7 @@ function OpsLayout() {
     refetchInterval: 5 * 60_000,
   });
 
-  if (me.isLoading) return <div className="grid min-h-screen place-items-center"><Loader2 className="size-6 animate-spin" /></div>;
+  if (me.isLoading) return <div className="grid min-h-screen place-items-center"><Spinner className="size-6" /></div>;
   if (!me.data || !role) return <OpsSignIn onDone={() => qc.invalidateQueries({ queryKey: ["ops-me"] })} />;
 
   async function signOut() {

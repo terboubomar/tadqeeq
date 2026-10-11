@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Loader2, RefreshCw, Upload } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, RefreshCw, Upload } from "lucide-react";
 import { useState } from "react";
 
 import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
 import { MonthPicker } from "@/components/operations/OperationsKit";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { ProductName } from "@/components/ProductName";
 import { PageHeader } from "@/components/workspace/PageKit";
 import { count, percent, sar } from "@/lib/format";
@@ -132,7 +133,7 @@ function OperationsPage() {
             </p>
           </div>
           {query.isFetching ? (
-            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+            <Spinner className="size-4 text-muted-foreground" />
           ) : null}
         </div>
 
