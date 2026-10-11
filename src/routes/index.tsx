@@ -69,7 +69,7 @@ import { PRODUCTS, productTitle, type ProductKey } from "@/lib/products";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { OG_IMAGE, SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
 import { CONTENT_UPDATED, EXPLAINER_VIDEO, FAQS, FEATURES, formatArabicDate } from "@/lib/site-content";
-import { PlatformIcon, PlatformName, PlatformWordmark } from "@/components/brand/PlatformLogo";
+import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
 import { PLATFORM_KEYS } from "@/lib/platforms";
 
 export const Route = createFileRoute("/")({
@@ -527,24 +527,16 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         </section>
 
         <section className="border-y border-border">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-8 gap-y-4 px-4 py-8 text-sm text-muted-foreground sm:gap-x-10 sm:px-6">
-            <span>يدعم فواتير وملفات:</span>
-            <ul className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-              {PLATFORM_KEYS.map((key) => (
-                <li key={key}>
-                  <PlatformWordmark platform={key} className="h-10 sm:h-12" />
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="border-t border-border">
+          <div>
             <div className="mx-auto max-w-7xl px-4 py-10 text-center sm:px-6">
               <h2 className="text-sm font-semibold text-muted-foreground">مطاعم تراجع فواتيرها مع تدقيق</h2>
-              {/* Black and white and moving; under the pointer a logo shows its colours and the strip pauses. */}
-              <div className="lp-marquee-wrap relative mt-6 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
+              {/* Black and white and moving; under the pointer a logo shows its colours and the strip pauses. Laid out
+                  left to right so the track starts at the left edge, and each half is wider than any screen so the
+                  loop never shows a gap. */}
+              <div dir="ltr" className="lp-marquee-wrap relative mt-6 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
                 <ul dir="ltr" className="lp-marquee flex w-max items-start">
                   {[0, 1].flatMap((copy) =>
-                    Array.from({ length: 3 }, () => CLIENTS).flat().map((client, index) => (
+                    Array.from({ length: 6 }, () => CLIENTS).flat().map((client, index) => (
                       <li key={`${copy}-${index}`} aria-hidden={copy === 1 || index >= CLIENTS.length ? true : undefined} className="px-5 sm:px-7">
                         <figure className="group flex flex-col items-center gap-2">
                           <img

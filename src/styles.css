@@ -316,7 +316,7 @@
   .lp-in { animation: lp-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .lp-float { animation: lp-float 6s ease-in-out infinite; }
   .lp-float-slow { animation: lp-float 8s ease-in-out infinite; }
-  .lp-marquee { animation: lp-marquee 32s linear infinite; }
+  .lp-marquee { animation: lp-marquee 64s linear infinite; }
   .lp-marquee-wrap:hover .lp-marquee { animation-play-state: paused; }
   .lp-pulse { animation: lp-pulse 2.4s ease-out infinite; }
   .lp-scan { animation: lp-scan 6s ease-in-out infinite; }
