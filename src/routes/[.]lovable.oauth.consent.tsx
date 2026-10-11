@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, type ErrorComponentProps } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -37,8 +37,8 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
     return data;
   },
   component: Consent,
-  errorComponent: ({ error }) => (
-    <main dir="rtl" className="grid min-h-screen place-items-center p-6 text-sm">تعذّر تحميل طلب الربط: {error.message}</main>
+  errorComponent: ({ error }: ErrorComponentProps) => (
+    <main dir="rtl" className="grid min-h-screen place-items-center p-6 text-sm">تعذّر تحميل طلب الربط: {String(error instanceof Error ? error.message : error)}</main>
   ),
 });
 
