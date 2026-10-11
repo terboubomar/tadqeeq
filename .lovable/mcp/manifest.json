@@ -166,7 +166,7 @@
       {
         "name": "get_branch_performance",
         "title": "Branch performance",
-        "description": "Every branch in one period: orders, sales, commission and platform cost, largest platform cost first.",
+        "description": "Every branch in one period: orders, sales, commission, platform cost and the invoice-only charges its invoice section lists, largest platform cost first. Charges the invoice prints only in its consolidated summary are listed once as unallocated_charges.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
