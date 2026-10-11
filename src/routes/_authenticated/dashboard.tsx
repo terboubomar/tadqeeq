@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -33,6 +33,7 @@ import {
   YAxis,
 } from "recharts";
 import { EmptyState } from "@/components/AppShell";
+import { CombinedDashboard, ScopeBar, type ScopeValue } from "@/components/dash/CombinedDashboard";
 import { ActivityFeed, ChartCard, MetricCard, TrendCard, type FeedItem, type StatTile } from "@/components/dash/DashKit";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { AI_UI_ENABLED } from "@/lib/ai/config";
@@ -40,7 +41,9 @@ import { buildPeriodExceptions, summarizeExceptions } from "@/lib/exceptions";
 import { Button } from "@/components/ui/button";
 import { arabicDate, count, money, percent, sar, short } from "@/lib/format";
 import { reanalyzeAuditPeriod } from "@/lib/reanalyze-period.functions";
-import { setSelectedPeriodId, useSelectedPeriod } from "@/lib/use-period";
+import { latestPeriod, setSelectedPeriodId, useSelectedPeriod } from "@/lib/use-period";
+import { COMBINED_PLATFORMS, type PlatformScope } from "@/lib/combined-dashboard";
+import { listMyWorkspaces } from "@/lib/workspace-management.functions";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 import { SmartWatchCard } from "@/components/smart-watch/SmartWatchCard";
 import { ActionBar, PageHeader } from "@/components/workspace/PageKit";
@@ -49,7 +52,15 @@ import { cn } from "@/lib/utils";
 import { keetaCostSplit, keetaOutsideInvoice } from "@/lib/keeta-cost";
 import { PLATFORM_COST_FORMULA_AR, platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
 
+type DashboardSearch = { company?: string; platform?: PlatformScope; month?: string };
+
 export const Route = createFileRoute("/_authenticated/dashboard")({
+  // company / platform / month open the combined view; without them the dashboard shows the selected period.
+  validateSearch: (search: Record<string, unknown>): DashboardSearch => ({
+    company: typeof search["company"] === "string" && /^(all|[0-9a-f-]{36})$/.test(search["company"]) ? search["company"] : undefined,
+    platform: search["platform"] === "all" || COMBINED_PLATFORMS.includes(search["platform"] as never) ? (search["platform"] as PlatformScope) : undefined,
+    month: typeof search["month"] === "string" && /^\d{4}-\d{2}$/.test(search["month"]) ? search["month"] : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "اللوحة التنفيذية · تدقيق" },
@@ -76,9 +87,43 @@ type Metric = { label: string; value: string; hint?: string; icon: typeof Bankno
 
 function Dashboard() {
   const queryClient = useQueryClient();
-  const { can } = useWorkspaceAccess();
+  const { can, context } = useWorkspaceAccess();
   const { selected, periods, isLoading } = useSelectedPeriod();
   const [reanalyzing, setReanalyzing] = useState(false);
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const workspaces = useQuery({ queryKey: ["account-workspaces"], queryFn: () => listMyWorkspaces({ data: {} }), staleTime: 60_000 });
+  const companyOptions = (workspaces.data ?? []).map((w) => ({ id: w.id, name: w.name }));
+
+  const combined = search.company !== undefined || search.platform !== undefined;
+  const scope: ScopeValue = {
+    company: search.company ?? context.workspaceId,
+    platform: search.platform ?? (combined ? "all" : (selected?.platform ?? "all")),
+  };
+
+  /** One platform of the current company shows its latest period; anything wider opens the combined view. */
+  function changeScope(next: ScopeValue) {
+    if (next.company === context.workspaceId && next.platform !== "all") {
+      const latest = latestPeriod(periods.filter((p) => p.platform === next.platform && !p.superseded_by));
+      if (latest) {
+        setSelectedPeriodId(latest.id);
+        void navigate({ search: {} });
+        return;
+      }
+    }
+    void navigate({ search: { company: next.company, platform: next.platform } });
+  }
+
+  if (combined) {
+    return (
+      <CombinedDashboard
+        scope={scope}
+        month={search.month}
+        onScope={changeScope}
+        onMonth={(month) => void navigate({ search: (prev) => ({ ...prev, month }) })}
+      />
+    );
+  }
 
   if (isLoading) {
     return <p className="py-20 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>;
@@ -86,10 +131,13 @@ function Dashboard() {
 
   if (!selected) {
     return (
-      <EmptyState
-        title="لا توجد فترات محفوظة"
-        body="ارفع ملف الطلبات وفاتورة المنصة لبدء أول تدقيق."
-      />
+      <div className="space-y-5">
+        {companyOptions.length > 1 ? <ScopeBar companies={companyOptions} value={scope} onChange={changeScope} /> : null}
+        <EmptyState
+          title="لا توجد فترات محفوظة"
+          body="ارفع ملف الطلبات وفاتورة المنصة لبدء أول تدقيق."
+        />
+      </div>
     );
   }
 
@@ -364,6 +412,8 @@ function Dashboard() {
           </span>
         }
       />
+
+      <ScopeBar companies={companyOptions} value={scope} onChange={changeScope} />
 
       <ActionBar>
         <Button type="button" size="sm" variant="ghost" className="gap-1.5" disabled={reanalyzing} onClick={() => void reanalyzeCurrentPeriod()}>

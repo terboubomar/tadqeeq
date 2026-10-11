@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 import { requireServerUserAnyStatus } from "./server-auth.server";
 import type { WorkspaceRole } from "./workspace-access";
+import { collectWorkspaceFiles, countWorkspaceContracts, deleteWorkspaceRows, removeWorkspaceFiles, WORKSPACE_FILES } from "./workspace-deletion.server";
 
 export interface AccountWorkspace {
   id: string;
@@ -95,4 +96,64 @@ export async function renameAccountWorkspaceOnServer(workspaceId: string, name: 
     metadata: { from: workspace.name, to: value },
   });
   if (auditError) console.error("Failed to write workspace audit event", auditError.message);
+}
+
+/** Tables that belong to the owner's account rather than one company: they move to a remaining company. */
+const ACCOUNT_TABLES = ["subscriptions", "payments", "client_notes"];
+
+/**
+ * Permanently deletes a company the signed-in user owns: its periods, files, settings and memberships. The account's subscription and payments move to the owner's oldest remaining company.
+ * Refused for the owner's only company and for a company with saved platform contracts (their history
+ * is protected in the database), before anything is deleted.
+ */
+export async function deleteAccountWorkspaceOnServer(
+  workspaceId: string,
+  confirmName: string,
+): Promise<{ switchedTo: string | null }> {
+  const auth = await requireServerUserAnyStatus();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabaseAdmin as any;
+  const { data: workspace, error } = await db.from("workspaces").select("id,name,owner_user_id").eq("id", workspaceId).maybeSingle();
+  if (error) throw new Error("تعذّر حذف الشركة.");
+  if (!workspace || workspace.owner_user_id !== auth.actorUserId) throw new Error("مالك الشركة فقط يمكنه حذفها.");
+  if (confirmName.trim() !== String(workspace.name).trim()) throw new Error("الاسم المكتوب لا يطابق اسم الشركة — لم يتم الحذف.");
+
+  const { data: owned, error: ownedError } = await db
+    .from("workspaces")
+    .select("id")
+    .eq("owner_user_id", auth.actorUserId)
+    .neq("id", workspaceId)
+    .order("created_at", { ascending: true });
+  if (ownedError) throw new Error("تعذّر حذف الشركة.");
+  const target = ((owned ?? []) as Array<{ id: string }>)[0]?.id ?? null;
+  if (!target) throw new Error("لا يمكن حذف شركتك الوحيدة. أضف شركة أخرى أولاً أو تواصل معنا لإغلاق الحساب.");
+
+  const contracts = await countWorkspaceContracts(workspaceId);
+  if (contracts) {
+    throw new Error(`لا يمكن حذف «${workspace.name}» لأن لديها عقود منصات محفوظة (${contracts})، وسجل العقود محمي. تواصل معنا لحذفها.`);
+  }
+
+  for (const table of ACCOUNT_TABLES) {
+    const { error: moveError } = await db.from(table).update({ workspace_id: target }).eq("workspace_id", workspaceId);
+    if (moveError) throw new Error("تعذّر نقل اشتراك الحساب قبل الحذف — لم يُحذف شيء.");
+  }
+
+  const files = await collectWorkspaceFiles(workspaceId, WORKSPACE_FILES.filter(([table]) => !ACCOUNT_TABLES.includes(table)));
+  await deleteWorkspaceRows(workspaceId);
+  const filesRemoved = await removeWorkspaceFiles(files);
+
+  const wasActive = auth.workspaceId === workspaceId;
+  if (wasActive) {
+    await db.from("profiles").update({ active_workspace_id: target }).eq("id", auth.actorUserId);
+  }
+  const { error: auditError } = await db.from("workspace_audit_events").insert({
+    workspace_id: target,
+    actor_user_id: auth.actorUserId,
+    event_type: "workspace.deleted",
+    entity_type: "workspace",
+    entity_id: workspaceId,
+    metadata: { name: workspace.name, filesRemoved },
+  });
+  if (auditError) console.error("Failed to write workspace audit event", auditError.message);
+  return { switchedTo: wasActive ? target : null };
 }
