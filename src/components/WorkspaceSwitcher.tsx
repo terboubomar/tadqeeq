@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Check, ChevronDown, Loader2, Pencil, Plus } from "lucide-react";
+import { Building2, Check, ChevronDown, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -9,9 +9,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { WORKSPACE_ROLE_LABELS } from "@/lib/workspace-access";
+import { cn } from "@/lib/utils";
 import { companiesLabel } from "@/lib/workspace-labels";
 import {
   createAccountWorkspace,
+  deleteAccountWorkspace,
   listMyWorkspaces,
   renameAccountWorkspace,
   switchMyWorkspace,
@@ -95,7 +97,7 @@ function useWorkspaceTabSync(currentWorkspaceId: string) {
 
 export function WorkspaceSwitcher() {
   const { context } = useWorkspaceAccess();
-  const [dialog, setDialog] = useState<null | "create" | "rename">(null);
+  const [dialog, setDialog] = useState<null | "create" | "rename" | "delete">(null);
   const [name, setName] = useState("");
   const queryClient = useQueryClient();
   useWorkspaceTabSync(context.workspaceId);
@@ -129,7 +131,18 @@ export function WorkspaceSwitcher() {
     onError: (error) => toast.error(error instanceof Error ? error.message : "تعذّر تغيير اسم الشركة."),
   });
 
+  const deleteWorkspace = useMutation({
+    mutationFn: (confirmName: string) => deleteAccountWorkspace({ data: { workspaceId: context.workspaceId, confirmName } }),
+    onSuccess: ({ switchedTo }) => {
+      setDialog(null);
+      if (switchedTo) announceSwitch(switchedTo);
+      reloadInto(`تم حذف «${context.workspaceName}» نهائياً.`);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "تعذّر حذف الشركة."),
+  });
+
   const list = workspaces.data ?? [];
+  const ownedCount = list.filter((workspace) => workspace.owned).length;
   const isOwner = context.role === "owner";
   const canCreate = isOwner && !context.trial && context.planId !== null &&
     (context.workspaceLimit === null || context.workspaceCount < context.workspaceLimit);
@@ -139,7 +152,7 @@ export function WorkspaceSwitcher() {
       ? `${companiesLabel(context.workspaceCount)} · بلا حدود في باقتك`
       : `${context.workspaceCount} من ${context.workspaceLimit} في باقتك`;
 
-  function openDialog(kind: "create" | "rename") {
+  function openDialog(kind: "create" | "rename" | "delete") {
     setName(kind === "rename" ? context.workspaceName : "");
     setDialog(kind);
   }
@@ -149,12 +162,14 @@ export function WorkspaceSwitcher() {
     if (!value) return;
     if (dialog === "create" && !createWorkspace.isPending) createWorkspace.mutate(value);
     if (dialog === "rename" && !renameWorkspace.isPending) renameWorkspace.mutate(value);
+    if (dialog === "delete" && value === context.workspaceName.trim() && !deleteWorkspace.isPending) deleteWorkspace.mutate(value);
   }
 
   // The trial is account-level: no switcher, unless the person also belongs to another company.
   if (context.trial && list.length <= 1) return null;
 
-  const pending = createWorkspace.isPending || renameWorkspace.isPending;
+  const pending = createWorkspace.isPending || renameWorkspace.isPending || deleteWorkspace.isPending;
+  const isDelete = dialog === "delete";
 
   return (
     <>
@@ -194,6 +209,16 @@ export function WorkspaceSwitcher() {
               <DropdownMenuItem onSelect={() => openDialog("rename")} className="py-2">
                 <Pencil className="size-4" /> تغيير اسم «{context.workspaceName}»
               </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={ownedCount <= 1}
+                onSelect={() => openDialog("delete")}
+                className="py-2 text-destructive focus:text-destructive"
+              >
+                <Trash2 className="size-4" /> حذف «{context.workspaceName}»
+              </DropdownMenuItem>
+              {ownedCount <= 1 && !workspaces.isLoading ? (
+                <p className="px-2 pb-1 text-[11px] leading-5 text-muted-foreground">لا يمكن حذف شركتك الوحيدة.</p>
+              ) : null}
               <DropdownMenuItem disabled={!canCreate} onSelect={() => openDialog("create")} className="py-2 text-primary-text">
                 <Plus className="size-4" /> إضافة شركة
               </DropdownMenuItem>
@@ -208,26 +233,46 @@ export function WorkspaceSwitcher() {
       <Dialog open={dialog !== null} onOpenChange={(open) => { if (!open) setDialog(null); }}>
         <DialogContent dir="rtl" className="max-w-md">
           <DialogHeader className="text-start sm:text-start">
-            <DialogTitle>{dialog === "rename" ? "تغيير اسم الشركة" : "إضافة شركة"}</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className={cn(isDelete && "text-destructive")}>
+              {dialog === "rename" ? "تغيير اسم الشركة" : isDelete ? `حذف «${context.workspaceName}» نهائياً` : "إضافة شركة"}
+            </DialogTitle>
+            <DialogDescription className="leading-6">
               {dialog === "rename"
                 ? "يظهر الاسم الجديد لكل أعضاء الشركة. البيانات والتقارير لا تتغير."
-                : "ستكون بيانات الشركة وملفاتها وتقاريرها منفصلة بالكامل عن الشركات الأخرى، وتشترك في باقة حسابك."}
+                : isDelete
+                  ? "تُحذف كل فترات الشركة وملفاتها وتقاريرها وإعداداتها، ويفقد أعضاؤها الوصول إليها. لا يمكن التراجع عن الحذف. اشتراك حسابك يبقى كما هو وينتقل إلى شركاتك الأخرى."
+                  : "ستكون بيانات الشركة وملفاتها وتقاريرها منفصلة بالكامل عن الشركات الأخرى، وتشترك في باقة حسابك."}
             </DialogDescription>
           </DialogHeader>
+          {isDelete ? (
+            <label htmlFor="workspace-delete-confirm" className="text-sm">
+              للتأكيد اكتب اسم الشركة: <span className="font-semibold">{context.workspaceName}</span>
+            </label>
+          ) : null}
           <Input
+            id={isDelete ? "workspace-delete-confirm" : undefined}
             autoFocus
             value={name}
             maxLength={160}
-            placeholder="اسم الشركة أو العلامة التجارية"
+            placeholder={isDelete ? context.workspaceName : "اسم الشركة أو العلامة التجارية"}
+            autoComplete="off"
             onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => { if (event.key === "Enter") submit(); }}
           />
           <DialogFooter className="gap-2 sm:space-x-0">
             <Button variant="ghost" onClick={() => setDialog(null)}>إلغاء</Button>
-            <Button disabled={!name.trim() || pending || (dialog === "rename" && name.trim() === context.workspaceName)} onClick={submit}>
+            <Button
+              variant={isDelete ? "destructive" : "default"}
+              disabled={
+                !name.trim() ||
+                pending ||
+                (dialog === "rename" && name.trim() === context.workspaceName) ||
+                (isDelete && name.trim() !== context.workspaceName.trim())
+              }
+              onClick={submit}
+            >
               {pending ? <Loader2 className="size-4 animate-spin" /> : null}
-              {dialog === "rename" ? "حفظ الاسم" : "إنشاء الشركة"}
+              {dialog === "rename" ? "حفظ الاسم" : isDelete ? "حذف الشركة نهائياً" : "إنشاء الشركة"}
             </Button>
           </DialogFooter>
         </DialogContent>

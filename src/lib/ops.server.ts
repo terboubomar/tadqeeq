@@ -20,6 +20,7 @@ import {
   type SubscriptionStatus,
 } from "./ops";
 import { loadSuspension } from "./onboarding.server";
+import { collectWorkspaceFiles, countWorkspaceContracts, deleteWorkspaceRows, removeWorkspaceFiles } from "./workspace-deletion.server";
 import { REACTIVATION_REQUEST_EVENT, type OnboardingStatus, type SuspensionInfo, type SuspensionReason } from "./onboarding";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -469,63 +470,6 @@ export async function setOpsClientArchivedOnServer(input: { workspaceId: string;
 }
 
 /**
- * Workspace-owned tables, children first; their foreign keys to workspaces are ON DELETE RESTRICT.
- * compensation_cases references telegram_order_evidence, which references telegram_branch_chats.
- */
-const OWNED_TABLES_DELETE_ORDER = [
-  "operation_adjustments",
-  "operation_orders",
-  "operation_imports",
-  "recovery_case_events",
-  "recovery_case_documents",
-  "recovery_case_details",
-  "compensation_appeal_marks",
-  "compensation_cases",
-  "telegram_order_evidence",
-  "telegram_branch_chats",
-  "exception_events",
-  "format_change_alerts",
-  "format_column_aliases",
-  "platform_column_snapshots",
-  "audit_source_files",
-  "promotion_audits",
-  "ads_roi_analyses",
-  "ads_roi_brand_settings",
-  "smart_watch_acceptances",
-  "ai_usage",
-  "hungerstation_branch_mappings",
-  "contract_rule_events",
-  "contract_fee_rules",
-  "contract_documents",
-  "contract_versions",
-  "platform_contracts",
-  "periods",
-  "branch_registry",
-];
-
-/** Files stored for a workspace: [table, path column, bucket]. */
-const WORKSPACE_FILES: Array<[string, string, string]> = [
-  ["audit_source_files", "storage_path", "source-files"],
-  ["format_change_alerts", "storage_path", "source-files"],
-  ["contract_documents", "storage_path", "contract-files"],
-  ["recovery_case_documents", "storage_path", "recovery-case-files"],
-  ["telegram_order_evidence", "thumbnail_storage_path", "telegram-evidence-thumbnails"],
-  ["payments", "receipt_path", RECEIPTS],
-  ["workspace_onboarding", "logo_path", LOGOS],
-];
-
-async function collectWorkspaceFiles(workspaceId: string): Promise<Map<string, string[]>> {
-  const byBucket = new Map<string, string[]>();
-  for (const [table, column, bucket] of WORKSPACE_FILES) {
-    const { data, error } = await db().from(table).select(column).eq("workspace_id", workspaceId);
-    if (error) throw new Error(`${table}: ${error.message}`);
-    const paths = ((data ?? []) as Row[]).map((r) => r[column]).filter((p): p is string => typeof p === "string" && p.length > 0);
-    if (paths.length) byBucket.set(bucket, [...(byBucket.get(bucket) ?? []), ...paths]);
-  }
-  return byBucket;
-}
-
-/**
  * Permanently deletes an archived client: its data, files, the workspace, and user accounts that
  * belong to no other workspace (ops staff and platform admins are always kept).
  */
@@ -541,11 +485,7 @@ export async function deleteOpsClientOnServer(input: { workspaceId: string; conf
   // Contract tables have database guards (approved versions are immutable, and every change writes an
   // audit event scoped to the signed-in user's workspace) that a server-side delete cannot pass. Stop
   // before deleting anything so the client is never left half-deleted.
-  const { count: contracts, error: contractsError } = await db()
-    .from("platform_contracts")
-    .select("id", { count: "exact", head: true })
-    .eq("workspace_id", input.workspaceId);
-  if (contractsError) throw new Error(contractsError.message);
+  const contracts = await countWorkspaceContracts(input.workspaceId);
   if (contracts) {
     throw new Error(
       `لا يمكن حذف ${ws.name} نهائياً لأن لديه عقود منصات محفوظة (${contracts})، وسجل العقود محمي في قاعدة البيانات. أبقِه مؤرشفاً — الأرشفة توقف وصوله بالكامل.`,
@@ -561,24 +501,8 @@ export async function deleteOpsClientOnServer(input: { workspaceId: string; conf
   const { data: memberRows } = await db().from("workspace_members").select("user_id").eq("workspace_id", input.workspaceId);
   const memberIds = [...new Set(((memberRows ?? []) as Row[]).map((r) => String(r["user_id"])))];
 
-  for (const table of OWNED_TABLES_DELETE_ORDER) {
-    const { error } = await db().from(table).delete().eq("workspace_id", input.workspaceId);
-    // A table whose migration has not been applied yet holds no rows to delete.
-    if (error && (error.code === "42P01" || error.code === "PGRST205")) continue;
-    if (error) throw new Error(`تعذّر حذف بيانات ${table}: ${error.message}`);
-  }
-  const { error: deleteError } = await db().from("workspaces").delete().eq("id", input.workspaceId);
-  if (deleteError) throw new Error(`تعذّر حذف مساحة العمل: ${deleteError.message}`);
-
-  let filesRemoved = 0;
-  for (const [bucket, paths] of files) {
-    for (let i = 0; i < paths.length; i += 100) {
-      const chunk = paths.slice(i, i + 100);
-      const { error } = await supabaseAdmin.storage.from(bucket).remove(chunk);
-      if (error) console.error(`Failed to remove files from ${bucket}`, error.message);
-      else filesRemoved += chunk.length;
-    }
-  }
+  await deleteWorkspaceRows(input.workspaceId);
+  const filesRemoved = await removeWorkspaceFiles(files);
 
   const [{ data: staff }, { data: admins }, { data: otherMemberships }] = await Promise.all([
     db().from("ops_staff").select("user_id").in("user_id", memberIds.length ? memberIds : ["00000000-0000-0000-0000-000000000000"]),

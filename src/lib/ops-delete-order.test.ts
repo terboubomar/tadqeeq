@@ -31,8 +31,8 @@ async function workspaceTables() {
 }
 
 async function deleteOrder() {
-  const source = await readFile(path.join(root, "src/lib/ops.server.ts"), "utf8");
-  const list = source.match(/const OWNED_TABLES_DELETE_ORDER = \[([\s\S]*?)\];/);
+  const source = await readFile(path.join(root, "src/lib/workspace-deletion.server.ts"), "utf8");
+  const list = source.match(/export const OWNED_TABLES_DELETE_ORDER = \[([\s\S]*?)\];/);
   if (!list) throw new Error("OWNED_TABLES_DELETE_ORDER not found");
   return [...list[1].matchAll(/"(\w+)"/g)].map((m) => m[1]);
 }
