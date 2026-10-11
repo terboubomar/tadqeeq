@@ -40,7 +40,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import { isLoginHost } from "@/lib/login-host";
 import { isOpsHost } from "@/lib/ops";
@@ -3199,8 +3199,17 @@ function CompensationStepVisual({ step, active }: { step: number; active: boolea
   );
 }
 
-/** What every order-based plan includes. */
-const ORDER_PRESETS = [5000, 12000, 30000, 60000];
+/** Stops on the orders slider; each plan's own limit is added, so every plan can be landed on exactly. */
+const ORDER_STEPS = [1000, 2000, 3000, 5000, 8000, 12000, 16000, 20000, 25000, 30000, 40000, 50000, 60000, 80000, 100000, 150000];
+
+/** Slider stops up to the largest plan limit, then one stop past it for "more than". */
+function orderSteps(plans: PublicPlan[]): number[] {
+  const limits = plans.map((plan) => plan.orderLimit).filter((limit): limit is number => limit !== null);
+  const largest = Math.max(0, ...limits);
+  if (!largest) return ORDER_STEPS;
+  const steps = [...new Set([...ORDER_STEPS.filter((step) => step < largest), ...limits])].sort((a, b) => a - b);
+  return [...steps, largest + 1];
+}
 
 function Pricing({ plans }: { plans: PublicPlan[] }) {
   const ordered = orderBasedPlans(plans);
@@ -3214,6 +3223,15 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
   const recommended = orders !== null ? recommendPlan(plans, orders) : null;
   const yearly = cycle === "yearly";
   const largestLimit = Math.max(0, ...plans.map((plan) => plan.orderLimit ?? 0));
+  const steps = orderSteps(plans);
+  // Before the visitor moves the slider it rests on the most chosen plan's limit; cards only change once they do.
+  const restingOrders = plans.find((plan) => plan.highlighted)?.orderLimit ?? steps[Math.floor(steps.length / 2)] ?? 0;
+  const sliderOrders = orders ?? restingOrders;
+  const sliderIndex = Math.max(0, steps.findIndex((step) => step >= sliderOrders));
+  const sliderPlan = recommendPlan(plans, sliderOrders);
+  const beyond = largestLimit > 0 && sliderOrders > largestLimit;
+  const fill = steps.length > 1 ? (sliderIndex / (steps.length - 1)) * 100 : 0;
+  const sliderPrice = sliderPlan && !sliderPlan.customPrice ? (yearly && sliderPlan.priceYearly !== null ? sliderPlan.priceYearly : sliderPlan.price) : null;
   const bundled = (plan: PublicPlan) => PLAN_ADDONS.some((addon) => planIncludesAddon(plan.features, addon.key));
   const addonFor = plans.filter((plan) => !bundled(plan) && !plan.customPrice).map((plan) => plan.name);
   const addonIn = plans.filter(bundled).map((plan) => plan.name);
@@ -3242,32 +3260,72 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
         </div>
       </div>
 
-      <div data-reveal className="mt-10 flex flex-col gap-4 rounded-[22px] border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
-        <label htmlFor="pricing-orders" className="text-[15px] font-semibold">
-          كم طلب يصلك شهرياً من كل تطبيقات التوصيل؟
-        </label>
-        <div className="flex flex-wrap items-center gap-2">
+      {/* Orders calculator after the Loops pricing slider (21st.dev «PricingSlider Loops»): drag to your monthly
+          orders, the plan that fits and its price update beside it. */}
+      <div data-reveal className="mt-10 grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+        <div className="flex flex-col rounded-[22px] border border-border bg-card p-6 sm:p-8">
+          <label htmlFor="pricing-orders" className="text-[15px] font-semibold">
+            كم طلب يصلك شهرياً من كل تطبيقات التوصيل؟
+          </label>
+          <p className="mt-4 font-display text-[28px] font-extrabold leading-tight sm:text-[34px]" aria-live="polite">
+            {beyond ? "أكثر من " : "حتى "}
+            <span className="num">{(beyond ? largestLimit : sliderOrders).toLocaleString("en-US")}</span> طلب
+          </p>
           <input
             id="pricing-orders"
-            type="number"
-            inputMode="numeric"
+            type="range"
+            dir="rtl"
             min={0}
-            dir="ltr"
-            placeholder="مثلاً 8000"
-            value={orders ?? ""}
-            onChange={(event) => setOrders(event.target.value === "" ? null : Math.max(0, Number(event.target.value)))}
-            className="num h-11 w-36 rounded-full border border-border bg-background px-4 text-center"
+            max={steps.length - 1}
+            step={1}
+            value={sliderIndex}
+            aria-valuetext={`${beyond ? "أكثر من" : "حتى"} ${(beyond ? largestLimit : sliderOrders).toLocaleString("en-US")} طلب شهرياً`}
+            onChange={(event) => setOrders(steps[Number(event.target.value)] ?? null)}
+            style={{ "--fill": `${fill}%` } as CSSProperties}
+            className="lp-range mt-8 w-full"
           />
-          {ORDER_PRESETS.map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setOrders(value)}
-              className={cn("num rounded-full border px-3 py-2 text-sm", orders === value ? "border-primary bg-secondary" : "border-border")}
-            >
-              {value.toLocaleString("en-US")}
-            </button>
-          ))}
+          <div className="mt-3 flex justify-between text-xs text-muted-foreground">
+            <span className="num">{(steps[0] ?? 0).toLocaleString("en-US")}</span>
+            <span>
+              {largestLimit ? (
+                <>
+                  <span className="num">{largestLimit.toLocaleString("en-US")}</span>+
+                </>
+              ) : null}
+            </span>
+          </div>
+          <p className="mt-auto pt-8 text-sm text-muted-foreground">
+            فروع ومنصات ومستخدمون بلا حدود في كل الباقات، فلا يتغيّر السعر إلا بعدد الطلبات.
+          </p>
+        </div>
+
+        <div className="flex flex-col rounded-[22px] bg-ink p-6 text-ink-foreground sm:p-8">
+          <p className="text-[15px] font-semibold text-ink-muted">الباقة المناسبة لك</p>
+          {sliderPlan ? (
+            <>
+              <h3 className="mt-4 font-display text-[28px] font-extrabold leading-tight sm:text-[34px]">{sliderPlan.name}</h3>
+              {sliderPrice !== null ? (
+                <p className="mt-3 flex flex-wrap items-baseline gap-x-2">
+                  <span className="num text-[2.2rem] font-semibold leading-none">{sliderPrice.toLocaleString("en-US")}</span>
+                  <span className="text-sm text-ink-muted">
+                    ر.س / {yearly && sliderPlan.priceYearly !== null ? "سنوياً" : "شهرياً"}
+                  </span>
+                </p>
+              ) : (
+                <p className="mt-3 font-display text-2xl font-extrabold">بالاتفاق</p>
+              )}
+              <div className="mt-auto pt-8">
+                <Link
+                  to="/auth"
+                  search={{ mode: "signup" }}
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground"
+                >
+                  {sliderPlan.customPrice ? "تواصل معنا" : "ابدأ تجربتك المجانية"}
+                  <ArrowLeft className="size-4" />
+                </Link>
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
 
