@@ -177,7 +177,7 @@ function BranchesPage() {
       <PageHeader
         crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التقارير" }, { label: "تقرير الفروع" }]}
         title="تقرير الفروع"
-        subtitle="اضغط على اسم أي فرع لعرض قيده المحاسبي، أو «قيود كل الفروع» لقيد مستقل لكل فرع، أو على عنوان عمود للترتيب."
+        subtitle="اضغط على فرع لعرض قيده."
         aside={
           <Button type="button" variant="outline" size="sm" className="gap-1.5 rounded-full" onClick={openAllBranches}>
             <BookOpenCheck className="size-4" />

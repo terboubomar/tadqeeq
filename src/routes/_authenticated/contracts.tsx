@@ -193,7 +193,7 @@ function ContractsPage() {
       <PageHeader
         crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "الإعداد" }, { label: "العقود وشروط المنصات" }]}
         title="العقود وشروط المنصات"
-        subtitle="المصدر التجاري المعتمد للعمولات والرسوم. النسخة المعتمدة تُقفل للحفاظ على التاريخ، وأي تغيير لاحق يبدأ من نسخة جديدة."
+        subtitle="العمولات والرسوم المعتمدة. النسخة المعتمدة تُقفل."
         aside={
           <span className="flex items-center gap-2 rounded-full border border-success/20 bg-success-soft px-3 py-1.5 text-xs font-semibold text-success">
             <ShieldCheck className="size-4" />

@@ -57,7 +57,7 @@ function HistoryPage() {
       <PageHeader
         crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التقارير" }, { label: "الفترات السابقة" }]}
         title="الفترات السابقة"
-        subtitle="اضغط على أي فترة لعرضها في باقي التقارير."
+        subtitle="اختر فترة لعرضها."
         aside={
           <Button
             type="button"

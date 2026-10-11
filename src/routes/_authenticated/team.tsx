@@ -102,7 +102,6 @@ function TeamPage() {
       <PageHeader
         crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "الإعداد" }, { label: "المستخدمون والصلاحيات" }]}
         title="المستخدمون والصلاحيات"
-        subtitle="لكل موظف تسجيل دخول مستقل، ودور واضح، ونطاق فروع عند الحاجة."
         aside={
           <Button className="rounded-full" onClick={() => setInviteOpen((value) => !value)}>
             <Plus className="size-4" />
@@ -115,7 +114,7 @@ function TeamPage() {
         <section className="rounded-xl border border-border bg-card p-5">
           <h2 className="font-semibold">إضافة مستخدم</h2>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            يُنشأ الحساب مباشرة بكلمة المرور التي تحددها. إذا كان البريد مسجلاً مسبقاً يُربط الحساب ويحتفظ بكلمة مروره.
+            يُنشأ الحساب بكلمة المرور التي تحددها؛ البريد المسجّل مسبقاً يُربط كما هو.
           </p>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <label className="space-y-1.5 text-sm">

@@ -100,7 +100,7 @@ function JournalReport({
       <PageHeader
         crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التقارير" }, { label: "القيود المحاسبية" }]}
         title="القيود المحاسبية"
-        subtitle="قيد مستقل لكل فرع من نتيجة التدقيق المحفوظة: الإيراد صافي المبيعات، ورسوم المنصة مصروفات، والضريبة مخرجات ومدخلات."
+        subtitle="قيد مستقل لكل فرع."
       />
 
       <ActionBar>
@@ -169,7 +169,7 @@ function JournalReport({
           </header>
           {current ? null : (
             <p className="rounded-xl bg-surface-raised px-3 py-2 text-[12px] leading-6 text-muted-foreground">
-              هذا مجموع قيود الفروع سطراً بسطر، للمراجعة. التصدير هنا يعطي ملفاً فيه قيد مستقل لكل فرع؛ اختر فرعاً لتصدير قيده وحده.
+              مجموع قيود الفروع للمراجعة. اختر فرعاً لتصدير قيده وحده.
             </p>
           )}
           <EntryTable entry={shown} />
