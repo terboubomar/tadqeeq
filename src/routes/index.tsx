@@ -146,6 +146,14 @@ const FOOTER_GROUPS = [
   },
 ] as const;
 
+/** Restaurants using Tadqeeq, shown with their permission. */
+const CLIENTS = [
+  { name: "باست", logo: "/clients/past.webp" },
+  { name: "مورغي", logo: "/clients/morgy.webp" },
+  { name: "تكا نون", logo: "/clients/tikka-noon.webp" },
+  { name: "ايل كوت", logo: "/clients/el-cote.webp" },
+];
+
 const BEFORE = [
   "الفاتورة تُدفع كما وصلت",
   "نسبة العمولة لا يراجعها أحد",
@@ -528,6 +536,29 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
                 </li>
               ))}
             </ul>
+          </div>
+          <div className="border-t border-border">
+            <div className="mx-auto max-w-7xl px-4 py-10 text-center sm:px-6">
+              <h2 className="text-sm font-semibold text-muted-foreground">مطاعم تراجع فواتيرها مع تدقيق</h2>
+              <ul className="mt-6 flex flex-wrap items-start justify-center gap-x-8 gap-y-6 sm:gap-x-12">
+                {CLIENTS.map((client) => (
+                  <li key={client.logo}>
+                    <figure className="flex flex-col items-center gap-2">
+                      <img
+                        src={client.logo}
+                        alt={`شعار ${client.name}`}
+                        width={80}
+                        height={80}
+                        loading="lazy"
+                        decoding="async"
+                        className="size-16 rounded-2xl shadow-[0_8px_20px_-12px_rgb(19_35_43/0.45)] ring-1 ring-black/5 sm:size-20"
+                      />
+                      <figcaption className="text-xs font-semibold text-foreground/80">{client.name}</figcaption>
+                    </figure>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </section>
 
