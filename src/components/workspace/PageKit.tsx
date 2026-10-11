@@ -1,7 +1,8 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { ChevronDown, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import { NAV_ICONS } from "@/lib/nav-icons";
 import { cn } from "@/lib/utils";
 
 /**
@@ -27,6 +28,9 @@ export function PageHeader({
   subtitle?: ReactNode;
   aside?: ReactNode;
 }) {
+  // The same icon as this page's sidebar entry, so the page you land on matches what you clicked.
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const Icon = NAV_ICONS[pathname];
   return (
     <header className="space-y-2">
       {crumbs?.length ? (
@@ -46,9 +50,16 @@ export function PageHeader({
         </nav>
       ) : null}
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-display text-[1.6rem] font-extrabold leading-[1.5]">{title}</h1>
-          {subtitle ? <div className="mt-0.5 text-[13px] text-muted-foreground">{subtitle}</div> : null}
+        <div className="flex min-w-0 items-start gap-3">
+          {Icon ? (
+            <span aria-hidden="true" className="mt-1 grid size-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary-text">
+              <Icon strokeWidth={1.75} className="size-5" />
+            </span>
+          ) : null}
+          <div className="min-w-0">
+            <h1 className="font-display text-[1.6rem] font-extrabold leading-[1.5]">{title}</h1>
+            {subtitle ? <div className="mt-0.5 text-[13px] text-muted-foreground">{subtitle}</div> : null}
+          </div>
         </div>
         {aside}
       </div>
