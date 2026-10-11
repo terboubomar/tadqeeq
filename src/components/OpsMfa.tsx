@@ -118,7 +118,7 @@ export function OpsMfa({ email, onDone, onSignOut }: { email: string | null; onD
                 required
               />
             </div>
-            <Button className="w-full" disabled={busy || code.length !== 6}>
+            <Button className="w-full" disabled={busy || code.length !== 6} aria-busy={busy}>
               {busy ? <Loader2 className="size-4 animate-spin" /> : null}
               تحقق
             </Button>

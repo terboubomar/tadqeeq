@@ -131,7 +131,7 @@ function EvidencePage() {
             dir="ltr"
           />
         </div>
-        <Button type="submit" className="h-12 px-6" disabled={orderNumber.trim().length < 3 || searchMutation.isPending}>
+        <Button type="submit" className="h-12 px-6" disabled={orderNumber.trim().length < 3 || searchMutation.isPending} aria-busy={searchMutation.isPending}>
           {searchMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
           بحث
         </Button>
@@ -322,7 +322,7 @@ function EvidencePage() {
             <Button type="button" variant="outline" disabled={!canSave} onClick={() => saveMutation.mutate("draft")}>
               حفظ كمسودة
             </Button>
-            <Button type="button" disabled={!canSave} onClick={() => saveMutation.mutate("ready")}>
+            <Button type="button" disabled={!canSave} onClick={() => saveMutation.mutate("ready")} aria-busy={saveMutation.isPending}>
               {saveMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
               إنشاء رسالة الاعتراض
             </Button>

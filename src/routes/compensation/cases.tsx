@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { deleteCompensationCase, saveCompensationCase } from "@/lib/compensation-evidence.functions";
 import type { CompensationCaseRecord } from "@/lib/compensation-evidence.server";
 import {
@@ -264,7 +265,7 @@ function CasesPage() {
       <section className="mt-3 overflow-hidden rounded-2xl border border-border bg-card">
         {cases.isLoading ? (
           <div className="p-8">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <Spinner className="size-5 text-muted-foreground" />
           </div>
         ) : cases.error ? (
           <p className="p-6 text-sm text-destructive">{(cases.error as Error).message}</p>
@@ -450,6 +451,7 @@ function CasesPage() {
                 event.preventDefault();
                 if (toDelete) removeCase.mutate(toDelete.id);
               }}
+              aria-busy={removeCase.isPending}
             >
               {removeCase.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
               حذف
@@ -609,33 +611,40 @@ function CaseView({
             </label>
           ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
-            {actions.map((action) => (
-              <Button
-                key={action.status}
-                type="button"
-                size="sm"
-                variant={action.tone === "primary" ? "default" : "outline"}
-                className={cn(
-                  action.tone === "good" && "border-success/40 text-success hover:bg-success/10",
-                  action.tone === "bad" && "border-destructive/40 text-destructive hover:bg-destructive/10",
-                )}
-                disabled={update.isPending}
-                aria-pressed={pending === action.status}
-                onClick={() => {
-                  if (NEEDS_DETAILS.has(action.status)) {
-                    setPending(action.status);
-                    return;
-                  }
-                  update.mutate({
-                    item,
-                    patch: { status: action.status, aggregatorCaseReference: reference.trim() || null },
-                  });
-                }}
-              >
-                {update.isPending && !pending ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                {action.label}
-              </Button>
-            ))}
+            {actions.map((action) => {
+              // Spin only the action actually clicked; when an action needs extra
+              // details the confirm button in the panel below owns the spinner.
+              const running =
+                update.isPending && !pending && update.variables?.patch.status === action.status;
+              return (
+                <Button
+                  key={action.status}
+                  type="button"
+                  size="sm"
+                  variant={action.tone === "primary" ? "default" : "outline"}
+                  className={cn(
+                    action.tone === "good" && "border-success/40 text-success hover:bg-success/10",
+                    action.tone === "bad" && "border-destructive/40 text-destructive hover:bg-destructive/10",
+                  )}
+                  disabled={update.isPending}
+                  aria-pressed={pending === action.status}
+                  onClick={() => {
+                    if (NEEDS_DETAILS.has(action.status)) {
+                      setPending(action.status);
+                      return;
+                    }
+                    update.mutate({
+                      item,
+                      patch: { status: action.status, aggregatorCaseReference: reference.trim() || null },
+                    });
+                  }}
+                  aria-busy={running}
+                >
+                  {running ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                  {action.label}
+                </Button>
+              );
+            })}
           </div>
           {pending ? (
             <div className="mt-3 space-y-2 rounded-md border border-border bg-card p-3">
@@ -668,7 +677,7 @@ function CaseView({
                 </label>
               )}
               <div className="flex gap-2">
-                <Button type="button" size="sm" disabled={update.isPending} onClick={confirmPending}>
+                <Button type="button" size="sm" disabled={update.isPending} onClick={confirmPending} aria-busy={update.isPending}>
                   {update.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
                   {pending === "recovered" ? "تأكيد الاسترداد" : "تأكيد الرفض"}
                 </Button>
@@ -852,7 +861,7 @@ function CaseEdit({ item, onDone }: { item: CompensationCaseRecord; onDone: () =
         <Button type="button" variant="outline" onClick={onDone} disabled={update.isPending}>
           إلغاء
         </Button>
-        <Button type="submit" disabled={update.isPending || !reason.trim() || !explanation.trim()}>
+        <Button type="submit" disabled={update.isPending || !reason.trim() || !explanation.trim()} aria-busy={update.isPending}>
           {update.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
           حفظ التعديلات
         </Button>

@@ -7,6 +7,7 @@ import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Spinner } from "@/components/ui/spinner";
 import {
   isValidCr,
   isValidNationalId,
@@ -34,7 +35,7 @@ export function OnboardingScreen() {
   if (query.isLoading || !query.data) {
     return (
       <div className="grid min-h-[50vh] place-items-center">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        <Spinner className="size-5 text-muted-foreground" />
       </div>
     );
   }
@@ -162,7 +163,7 @@ function SuspendedScreen({ record }: { record: OnboardingRecord }) {
                 : "أرسل طلباً وسيتواصل معك فريق تدقيق."}
             </p>
             <Textarea className="mt-4" placeholder="ملاحظة للفريق (اختياري) — مثلاً: تم التحويل اليوم، أو أفضل وقت للتواصل" value={note} onChange={(e) => setNote(e.target.value)} />
-            <Button className="mt-3" disabled={request.isPending} onClick={() => request.mutate()}>
+            <Button className="mt-3" disabled={request.isPending} onClick={() => request.mutate()} aria-busy={request.isPending}>
               {request.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
               طلب إعادة التفعيل
             </Button>
@@ -413,7 +414,7 @@ function OnboardingForm({ record }: { record: OnboardingRecord }) {
           <Textarea placeholder="ملاحظات (اختياري)" value={form.meetingNote} onChange={set("meetingNote")} />
         </section>
 
-        <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={submit.isPending}>
+        <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={submit.isPending} aria-busy={submit.isPending}>
           {submit.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
           إرسال البيانات وحجز الاجتماع
         </Button>

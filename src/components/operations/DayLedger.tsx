@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { count, percent, sar } from "@/lib/format";
 import { operationPlatformLabel as platformLabel, operationSourceLabels } from "@/lib/operations/catalog";
 import { operationCostRatio } from "@/lib/operations/details";
@@ -199,7 +200,7 @@ export function OrderLedger({
       ) : null}
       {query.isLoading ? (
         <div className="grid min-h-48 place-items-center">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          <Spinner className="size-5 text-muted-foreground" />
         </div>
       ) : null}
       {detail && detail.totalRows > PAGE_SIZE ? (

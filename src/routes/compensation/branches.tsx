@@ -10,6 +10,7 @@ import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import {
   configureTelegramWebhook,
   createBranchWithTelegramConnection,
@@ -193,7 +194,7 @@ function BranchesPage() {
                   maxLength={160}
                 />
               </label>
-              <Button type="submit" disabled={!newBranchName.trim() || createBranchMutation.isPending}>
+              <Button type="submit" disabled={!newBranchName.trim() || createBranchMutation.isPending} aria-busy={createBranchMutation.isPending}>
                 {createBranchMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
                 إضافة الفرع وإنشاء رمز
               </Button>
@@ -219,6 +220,7 @@ function BranchesPage() {
                 type="button"
                 disabled={!branchId || connectMutation.isPending}
                 onClick={() => connectMutation.mutate(branchId)}
+                aria-busy={connectMutation.isPending}
               >
                 {connectMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
                 إنشاء رمز
@@ -262,7 +264,7 @@ function BranchesPage() {
         <h2 className="px-5 pt-5 font-bold">الفروع</h2>
         {connectionsQuery.isLoading ? (
           <div className="p-6">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <Spinner className="size-5 text-muted-foreground" />
           </div>
         ) : connections.length === 0 ? (
           <p className="p-8 text-center text-sm text-muted-foreground">لم يُربط أي فرع بعد.</p>

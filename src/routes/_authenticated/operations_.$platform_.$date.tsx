@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/workspace/PageKit";
 import { count } from "@/lib/format";
 import { operationPlatformLabel } from "@/lib/operations/catalog";
@@ -143,7 +144,7 @@ function DayWorkspace({ platform, date }: { platform: OperationPlatform; date: s
       {monthQuery.isError ? <ErrorNotice error={monthQuery.error} retry={() => void monthQuery.refetch()} /> : null}
       {monthQuery.isLoading ? (
         <div className="grid min-h-48 place-items-center">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          <Spinner className="size-5 text-muted-foreground" />
         </div>
       ) : null}
 
@@ -227,6 +228,7 @@ function DayWorkspace({ platform, date }: { platform: OperationPlatform; date: s
                 if (deleteTarget) removeImport.mutate(deleteTarget.id);
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              aria-busy={removeImport.isPending}
             >
               {removeImport.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} حذف الملف
             </AlertDialogAction>

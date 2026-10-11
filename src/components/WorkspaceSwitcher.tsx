@@ -270,6 +270,7 @@ export function WorkspaceSwitcher() {
                 (isDelete && name.trim() !== context.workspaceName.trim())
               }
               onClick={submit}
+              aria-busy={pending}
             >
               {pending ? <Loader2 className="size-4 animate-spin" /> : null}
               {dialog === "rename" ? "حفظ الاسم" : isDelete ? "حذف الشركة نهائياً" : "إنشاء الشركة"}

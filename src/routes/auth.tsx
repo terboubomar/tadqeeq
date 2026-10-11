@@ -270,6 +270,7 @@ function AuthPage() {
                 className="h-12 w-full"
                 disabled={busy || resendWait > 0}
                 onClick={() => void resendConfirmation(signupSentTo)}
+                aria-busy={busy}
               >
                 {busy ? <Loader2 className="size-4 animate-spin" /> : null}
                 {resendWait > 0
@@ -318,7 +319,7 @@ function AuthPage() {
                     required
                   />
                 </div>
-                <Button type="submit" className="h-12 w-full" disabled={busy}>
+                <Button type="submit" className="h-12 w-full" disabled={busy} aria-busy={busy}>
                   {busy ? <Loader2 className="size-4 animate-spin" /> : null}
                   أرسل رابط إعادة التعيين
                 </Button>
@@ -382,7 +383,7 @@ function AuthPage() {
                     <p className="text-xs text-muted-foreground">8 أحرف على الأقل.</p>
                   ) : null}
                 </div>
-                <Button type="submit" className="h-12 w-full" disabled={busy}>
+                <Button type="submit" className="h-12 w-full" disabled={busy} aria-busy={busy}>
                   {busy ? <Loader2 className="size-4 animate-spin" /> : null}
                   {mode === "signin" ? "دخول" : "إنشاء الحساب"}
                 </Button>

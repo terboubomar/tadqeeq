@@ -2,6 +2,7 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import {
   Activity,
   ArrowLeft,
+  ArrowRight,
   ArrowUp,
   BookOpen,
   Building2,
@@ -1921,7 +1922,7 @@ function ShowcaseVisual({ kind, active }: { kind: string; active: boolean }) {
         <p className="text-sm font-semibold">المنصة غيّرت ملفها</p>
         <div dir="ltr" className="flex flex-wrap items-center gap-2.5 font-mono text-[13px]">
           <span className="rounded-lg border border-border px-2.5 py-1.5 text-muted-foreground line-through">Commission</span>
-          <ArrowLeft className="size-4 rotate-180 text-primary-text" />
+          <ArrowRight className="size-4 text-primary-text" />
           <span className={cn("rounded-lg border border-primary px-2.5 py-1.5 transition-opacity duration-700", active ? "opacity-100" : "opacity-0")} style={{ transitionDelay: "0.3s" }}>
             Commission Amount
           </span>

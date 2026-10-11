@@ -192,11 +192,11 @@ export function EvidenceActions({ id }: { id: string }) {
   return (
     <div className="mt-2" onClick={(event) => event.stopPropagation()}>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" variant="secondary" disabled={busy !== null} onClick={() => void run("preview")}>
+        <Button type="button" size="sm" variant="secondary" disabled={busy !== null} onClick={() => void run("preview")} aria-busy={busy === "preview"}>
           {busy === "preview" ? <Loader2 className="size-3.5 animate-spin" /> : <Eye className="size-3.5" />}
           {preview ? "إخفاء المعاينة" : "معاينة"}
         </Button>
-        <Button type="button" size="sm" variant="outline" disabled={busy !== null} onClick={() => void run("download")}>
+        <Button type="button" size="sm" variant="outline" disabled={busy !== null} onClick={() => void run("download")} aria-busy={busy === "download"}>
           {busy === "download" ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
           تنزيل
         </Button>

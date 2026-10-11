@@ -182,7 +182,7 @@ export function ContactPage() {
               <label htmlFor="contact-website">Website</label>
               <input id="contact-website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
             </div>
-            <Button type="submit" className="w-full" disabled={busy}>
+            <Button type="submit" className="w-full" disabled={busy} aria-busy={busy}>
               {busy ? <Loader2 className="size-4 animate-spin" /> : null}
               إرسال
             </Button>

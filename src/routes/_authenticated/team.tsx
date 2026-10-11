@@ -174,6 +174,7 @@ function TeamPage() {
             <Button
               disabled={invite.isPending || !fullName.trim() || !email.trim() || password.length < 8 || (restricted && branchIds.length === 0)}
               onClick={() => invite.mutate()}
+              aria-busy={invite.isPending}
             >
               {invite.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
               إضافة المستخدم

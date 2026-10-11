@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, Loader2 } from "lucide-react";
+import { Download } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import { downloadCsv } from "@/lib/csv-download";
 import { CYCLE_LABELS, opsCan, sarFmt, SUBSCRIPTION_STATUS_LABELS, type Cycle, type SubscriptionStatus } from "@/lib/ops";
 import { listOpsClients, listPlanRequests, listPlans, listSubscriptions, saveSubscription, workspaceOrderUsage } from "@/lib/ops.functions";
@@ -211,7 +212,7 @@ function Subscriptions() {
       ) : null}
 
       <section className="space-y-2 md:hidden">
-        {subs.isLoading ? <Loader2 className="m-4 size-5 animate-spin" /> : null}
+        {subs.isLoading ? <Spinner className="m-4 size-5" /> : null}
         {(subs.data ?? []).map((s) => {
           const late = s.status === "active" && s.endsOn && s.endsOn < new Date().toISOString().slice(0, 10);
           return (
@@ -252,7 +253,7 @@ function Subscriptions() {
         {!subs.isLoading && !subs.data?.length ? <p className="panel p-6 text-center text-sm text-muted-foreground">لا توجد اشتراكات بعد.</p> : null}
       </section>
       <section className="panel hidden overflow-x-auto md:block">
-        {subs.isLoading ? <Loader2 className="m-4 size-5 animate-spin" /> : (
+        {subs.isLoading ? <Spinner className="m-4 size-5" /> : (
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs text-muted-foreground"><tr>{["العميل", "الباقة", "السعر", "الدورة", "الطلبات (آخر شهر · قبله)", "الحالة", "البداية", "النهاية", ""].map((h) => <th key={h} className="p-3 text-start font-medium">{h}</th>)}</tr></thead>
             <tbody>

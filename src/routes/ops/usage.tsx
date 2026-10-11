@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
 
 import { opsCan } from "@/lib/ops";
 import { getOpsUsage } from "@/lib/ops.functions";
 import { OpsDenied, OpsHeader, useOpsRole } from "@/components/OpsShared";
+import { Spinner } from "@/components/ui/spinner";
 
 export const Route = createFileRoute("/ops/usage")({ component: Usage });
 
@@ -20,7 +20,7 @@ function Usage() {
   return (
     <div>
       <OpsHeader title="الاستخدام والنشاط" sub="نشاط كل عميل داخل المنصة" />
-      {q.isLoading ? <Loader2 className="m-4 size-5 animate-spin" /> : q.error ? <p className="panel p-4 text-sm text-destructive">{(q.error as Error).message}</p> : (
+      {q.isLoading ? <Spinner className="m-4 size-5" /> : q.error ? <p className="panel p-4 text-sm text-destructive">{(q.error as Error).message}</p> : (
       <>
       <section className="space-y-2 md:hidden">
         {rows.map((r) => (

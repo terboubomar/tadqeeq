@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
 import { ClientAvatar, ClientStatusBadge, DeleteClientConfirm, EditClientForm } from "@/components/OpsClientForms";
 import { OpsConfirm, OpsDenied, useOpsRole } from "@/components/OpsShared";
@@ -100,7 +101,7 @@ function ClientProfilePage() {
   });
 
   if (!allowed) return <OpsDenied />;
-  if (q.isLoading) return <Loader2 className="size-5 animate-spin" />;
+  if (q.isLoading) return <Spinner className="size-5" />;
   if (q.error || !q.data)
     return (
       <div className="panel mx-auto mt-10 max-w-md p-8 text-center text-sm">
@@ -353,7 +354,7 @@ function SuspendPanel({ busy, onCancel, onConfirm }: { busy: boolean; onCancel: 
         <p className="mt-0.5 leading-5 text-muted-foreground">{SUSPENSION_REASONS[reason].body}</p>
       </div>
       <div className="flex gap-2">
-        <Button size="sm" variant="destructive" disabled={busy} onClick={() => onConfirm(reason, message.trim() || undefined)}>
+        <Button size="sm" variant="destructive" disabled={busy} onClick={() => onConfirm(reason, message.trim() || undefined)} aria-busy={busy}>
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : <PauseCircle className="size-3.5" />}
           إيقاف الحساب
         </Button>

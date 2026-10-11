@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/workspace/PageKit";
 import {
   describeTiming,
@@ -135,7 +136,7 @@ function ReportSchedulesPage() {
       {form ? <ScheduleForm state={form} saving={save.isPending} onChange={setForm} onCancel={() => setForm(null)} onSave={() => save.mutate(form)} /> : null}
 
       {query.isLoading ? (
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        <Spinner className="size-5 text-muted-foreground" />
       ) : query.error ? (
         <p className="rounded-2xl border border-destructive/25 bg-destructive/5 p-5 text-sm text-destructive">{(query.error as Error).message}</p>
       ) : schedules.length === 0 && !form ? (
@@ -180,7 +181,7 @@ function ReportSchedulesPage() {
                 </div>
                 {canManage ? (
                   <div className="flex flex-wrap gap-1.5">
-                    <Button type="button" size="sm" variant="outline" disabled={sendNow.isPending} onClick={() => sendNow.mutate(s.id)}>
+                    <Button type="button" size="sm" variant="outline" disabled={sendNow.isPending} onClick={() => sendNow.mutate(s.id)} aria-busy={sendNow.isPending && sendNow.variables === s.id}>
                       {sendNow.isPending && sendNow.variables === s.id ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
                       إرسال الآن
                     </Button>
@@ -263,6 +264,7 @@ function ReportSchedulesPage() {
                 event.preventDefault();
                 if (deleting) remove.mutate(deleting.id);
               }}
+              aria-busy={remove.isPending}
             >
               {remove.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
               حذف
@@ -380,7 +382,7 @@ function ScheduleForm({
         <Button type="button" variant="outline" disabled={saving} onClick={onCancel}>
           إلغاء
         </Button>
-        <Button type="submit" disabled={saving || !state.name.trim() || !valid.length || invalid.length > 0 || tooMany}>
+        <Button type="submit" disabled={saving || !state.name.trim() || !valid.length || invalid.length > 0 || tooMany} aria-busy={saving}>
           {saving ? <Loader2 className="size-4 animate-spin" /> : null}
           {state.id ? "حفظ التعديلات" : "إضافة الجدولة"}
         </Button>

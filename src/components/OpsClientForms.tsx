@@ -157,7 +157,7 @@ export function EditClientForm({ c, onDone }: { c: OpsClient; onDone: () => void
         <Input value={form.adminNote} onChange={(e) => setForm((f) => ({ ...f, adminNote: e.target.value }))} className="mt-1 bg-background text-sm text-foreground" />
       </label>
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={save.isPending || !form.name.trim()}>
+        <Button type="submit" size="sm" disabled={save.isPending || !form.name.trim()} aria-busy={save.isPending}>
           {save.isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}
           حفظ
         </Button>
@@ -192,7 +192,7 @@ export function DeleteClientConfirm({ c, onCancel, onDeleted }: { c: OpsClient; 
         <Input value={typed} onChange={(e) => setTyped(e.target.value)} className="mt-1 bg-background" />
       </label>
       <div className="flex gap-2">
-        <Button size="sm" variant="destructive" disabled={typed.trim() !== c.name.trim() || remove.isPending} onClick={() => remove.mutate()}>
+        <Button size="sm" variant="destructive" disabled={typed.trim() !== c.name.trim() || remove.isPending} onClick={() => remove.mutate()} aria-busy={remove.isPending}>
           {remove.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
           حذف نهائي
         </Button>

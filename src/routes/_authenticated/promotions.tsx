@@ -827,7 +827,7 @@ function PromotionAuditCard({
           </div>
         </div>
         <div className="flex gap-1">
-          <Button type="button" variant="ghost" size="icon" onClick={onEdit}>
+          <Button type="button" variant="ghost" size="icon" onClick={onEdit} aria-label="تعديل تحليل الحملة">
             <Pencil className="size-3.5" />
           </Button>
           <Button
@@ -836,6 +836,7 @@ function PromotionAuditCard({
             size="icon"
             className="text-destructive"
             onClick={onDelete}
+            aria-label="حذف تحليل الحملة"
           >
             <Trash2 className="size-3.5" />
           </Button>
