@@ -238,7 +238,7 @@ export function CompensationFileScanner({
     return items && items.length > 0 ? (
       <div className="space-y-2">{items.map((item) => <div key={item.id}>{renderEvidence(item)}</div>)}</div>
     ) : (
-      <Button size="sm" variant="outline" disabled={loadingKey === order.key} onClick={() => lookup.mutate(order)}>
+      <Button size="sm" variant="outline" disabled={loadingKey === order.key} onClick={() => lookup.mutate(order)} aria-busy={loadingKey === order.key}>
         {loadingKey === order.key ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
         {items ? "لا يوجد — إعادة" : "جلب الدليل"}
       </Button>

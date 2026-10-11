@@ -77,6 +77,7 @@ export function AiPeriodSummaryPanel({ periodId }: { periodId: string }) {
           onClick={summarize}
           disabled={loading}
           className="shrink-0"
+          aria-busy={loading}
         >
           {loading ? (
             <Loader2 className="size-3.5 animate-spin" />

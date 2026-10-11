@@ -584,6 +584,7 @@ function ImportPage() {
                     ),
                   })
                 }
+                aria-busy={busy}
               >
                 {busy ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -598,6 +599,7 @@ function ImportPage() {
               type="button"
               onClick={() => void run()}
               disabled={busy || !dataFile}
+              aria-busy={busy}
             >
               {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
               {busy ? "جارٍ التحليل…" : "بدء التحليل وحفظ الفترة"}

@@ -194,7 +194,7 @@ function BranchesPage() {
                   maxLength={160}
                 />
               </label>
-              <Button type="submit" disabled={!newBranchName.trim() || createBranchMutation.isPending}>
+              <Button type="submit" disabled={!newBranchName.trim() || createBranchMutation.isPending} aria-busy={createBranchMutation.isPending}>
                 {createBranchMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
                 إضافة الفرع وإنشاء رمز
               </Button>
@@ -220,6 +220,7 @@ function BranchesPage() {
                 type="button"
                 disabled={!branchId || connectMutation.isPending}
                 onClick={() => connectMutation.mutate(branchId)}
+                aria-busy={connectMutation.isPending}
               >
                 {connectMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
                 إنشاء رمز

@@ -64,7 +64,7 @@ export function MfaCodeStep({ onDone, onCancel }: { onDone: () => void; onCancel
         حسابك محمي بالتحقق بخطوتين. افتح تطبيق المصادقة وأدخل الرمز الظاهر لـ Tadqeeq.
       </p>
       <CodeInput value={code} onChange={setCode} />
-      <Button type="submit" className="w-full" disabled={busy || !factorId || code.length !== 6}>
+      <Button type="submit" className="w-full" disabled={busy || !factorId || code.length !== 6} aria-busy={busy}>
         {busy ? <Loader2 className="size-4 animate-spin" /> : null}
         تحقق ودخول
       </Button>
@@ -173,7 +173,7 @@ export function TwoFactorSettings() {
       ) : null}
 
       {state.kind === "off" ? (
-        <Button onClick={() => void start()} disabled={busy}>
+        <Button onClick={() => void start()} disabled={busy} aria-busy={busy}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : null}
           تفعيل التحقق بخطوتين
         </Button>
@@ -192,7 +192,7 @@ export function TwoFactorSettings() {
           </p>
           <CodeInput value={code} onChange={setCode} />
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={busy || code.length !== 6}>
+            <Button type="submit" disabled={busy || code.length !== 6} aria-busy={busy}>
               {busy ? <Loader2 className="size-4 animate-spin" /> : null}
               تأكيد وتفعيل
             </Button>
@@ -208,7 +208,7 @@ export function TwoFactorSettings() {
           <p className="rounded-md bg-secondary p-3 text-sm">
             مفعّل منذ <span dir="ltr">{state.since.slice(0, 10)}</span>. إذا فقدت جوالك تواصل مع فريق Tadqeeq لإعادة تعيينه.
           </p>
-          <Button variant="outline" onClick={() => void turnOff()} disabled={busy}>
+          <Button variant="outline" onClick={() => void turnOff()} disabled={busy} aria-busy={busy}>
             {busy ? <Loader2 className="size-4 animate-spin" /> : null}
             إيقاف التحقق بخطوتين
           </Button>
@@ -277,7 +277,7 @@ export function EmailCodeStep({ onDone, onCancel }: { onDone: () => void; onCanc
         </span>
       </p>
       <CodeInput value={code} onChange={setCode} />
-      <Button type="submit" className="w-full" disabled={busy || code.length !== 6}>
+      <Button type="submit" className="w-full" disabled={busy || code.length !== 6} aria-busy={busy}>
         {busy ? <Loader2 className="size-4 animate-spin" /> : null}
         تحقق ودخول
       </Button>

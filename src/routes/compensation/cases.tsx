@@ -451,6 +451,7 @@ function CasesPage() {
                 event.preventDefault();
                 if (toDelete) removeCase.mutate(toDelete.id);
               }}
+              aria-busy={removeCase.isPending}
             >
               {removeCase.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
               حذف
@@ -632,6 +633,7 @@ function CaseView({
                     patch: { status: action.status, aggregatorCaseReference: reference.trim() || null },
                   });
                 }}
+                aria-busy={update.isPending && !pending}
               >
                 {update.isPending && !pending ? <Loader2 className="size-3.5 animate-spin" /> : null}
                 {action.label}
@@ -669,7 +671,7 @@ function CaseView({
                 </label>
               )}
               <div className="flex gap-2">
-                <Button type="button" size="sm" disabled={update.isPending} onClick={confirmPending}>
+                <Button type="button" size="sm" disabled={update.isPending} onClick={confirmPending} aria-busy={update.isPending}>
                   {update.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
                   {pending === "recovered" ? "تأكيد الاسترداد" : "تأكيد الرفض"}
                 </Button>
@@ -853,7 +855,7 @@ function CaseEdit({ item, onDone }: { item: CompensationCaseRecord; onDone: () =
         <Button type="button" variant="outline" onClick={onDone} disabled={update.isPending}>
           إلغاء
         </Button>
-        <Button type="submit" disabled={update.isPending || !reason.trim() || !explanation.trim()}>
+        <Button type="submit" disabled={update.isPending || !reason.trim() || !explanation.trim()} aria-busy={update.isPending}>
           {update.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
           حفظ التعديلات
         </Button>

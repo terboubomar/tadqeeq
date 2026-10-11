@@ -181,7 +181,7 @@ function ReportSchedulesPage() {
                 </div>
                 {canManage ? (
                   <div className="flex flex-wrap gap-1.5">
-                    <Button type="button" size="sm" variant="outline" disabled={sendNow.isPending} onClick={() => sendNow.mutate(s.id)}>
+                    <Button type="button" size="sm" variant="outline" disabled={sendNow.isPending} onClick={() => sendNow.mutate(s.id)} aria-busy={sendNow.isPending && sendNow.variables === s.id}>
                       {sendNow.isPending && sendNow.variables === s.id ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
                       إرسال الآن
                     </Button>
@@ -264,6 +264,7 @@ function ReportSchedulesPage() {
                 event.preventDefault();
                 if (deleting) remove.mutate(deleting.id);
               }}
+              aria-busy={remove.isPending}
             >
               {remove.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
               حذف
@@ -381,7 +382,7 @@ function ScheduleForm({
         <Button type="button" variant="outline" disabled={saving} onClick={onCancel}>
           إلغاء
         </Button>
-        <Button type="submit" disabled={saving || !state.name.trim() || !valid.length || invalid.length > 0 || tooMany}>
+        <Button type="submit" disabled={saving || !state.name.trim() || !valid.length || invalid.length > 0 || tooMany} aria-busy={saving}>
           {saving ? <Loader2 className="size-4 animate-spin" /> : null}
           {state.id ? "حفظ التعديلات" : "إضافة الجدولة"}
         </Button>

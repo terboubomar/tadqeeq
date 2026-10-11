@@ -105,7 +105,7 @@ function AcceptInvitePage() {
                 required
               />
             </div>
-            <Button className="w-full" type="submit" disabled={busy}>
+            <Button className="w-full" type="submit" disabled={busy} aria-busy={busy}>
               {busy ? <Loader2 className="size-4 animate-spin" /> : null}
               تفعيل الحساب
             </Button>

@@ -228,6 +228,7 @@ function DayWorkspace({ platform, date }: { platform: OperationPlatform; date: s
                 if (deleteTarget) removeImport.mutate(deleteTarget.id);
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              aria-busy={removeImport.isPending}
             >
               {removeImport.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} حذف الملف
             </AlertDialogAction>

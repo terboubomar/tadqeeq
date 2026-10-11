@@ -843,6 +843,7 @@ function AiExplanationPanel({ item }: { item: AuditException }) {
           onClick={explain}
           disabled={loading}
           className="shrink-0"
+          aria-busy={loading}
         >
           {loading ? (
             <Loader2 className="size-3.5 animate-spin" />

@@ -377,7 +377,7 @@ export function AccountsDialog({ open, onClose }: { open: boolean; onClose: () =
           ))}
         </div>
         <div className="flex gap-2">
-          <Button type="button" disabled={save.isPending} onClick={() => save.mutate()} className="gap-1.5">
+          <Button type="button" disabled={save.isPending} onClick={() => save.mutate()} className="gap-1.5" aria-busy={save.isPending}>
             {save.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
             حفظ
           </Button>
@@ -486,7 +486,7 @@ export function CostCentersDialog({
           <p className="py-6 text-center text-sm text-muted-foreground">لا توجد فروع في هذه الفترة.</p>
         )}
         <div className="flex gap-2">
-          <Button type="button" disabled={save.isPending || !branches.length} onClick={() => save.mutate()} className="gap-1.5">
+          <Button type="button" disabled={save.isPending || !branches.length} onClick={() => save.mutate()} className="gap-1.5" aria-busy={save.isPending}>
             {save.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
             حفظ
           </Button>

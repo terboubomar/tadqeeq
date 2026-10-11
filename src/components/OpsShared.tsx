@@ -64,6 +64,7 @@ export function OpsConfirm({
               event.preventDefault();
               onConfirm();
             }}
+            aria-busy={busy}
           >
             {busy ? <Loader2 className="size-4 animate-spin" /> : null}
             {confirmLabel}

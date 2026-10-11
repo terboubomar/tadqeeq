@@ -354,7 +354,7 @@ function SuspendPanel({ busy, onCancel, onConfirm }: { busy: boolean; onCancel: 
         <p className="mt-0.5 leading-5 text-muted-foreground">{SUSPENSION_REASONS[reason].body}</p>
       </div>
       <div className="flex gap-2">
-        <Button size="sm" variant="destructive" disabled={busy} onClick={() => onConfirm(reason, message.trim() || undefined)}>
+        <Button size="sm" variant="destructive" disabled={busy} onClick={() => onConfirm(reason, message.trim() || undefined)} aria-busy={busy}>
           {busy ? <Loader2 className="size-3.5 animate-spin" /> : <PauseCircle className="size-3.5" />}
           إيقاف الحساب
         </Button>

@@ -165,6 +165,7 @@ function PeriodComparisonView({
               onClick={analyzeWithAi}
               disabled={aiLoading}
               className="shrink-0"
+              aria-busy={aiLoading}
             >
               {aiLoading ? (
                 <Loader2 className="size-3.5 animate-spin" />
