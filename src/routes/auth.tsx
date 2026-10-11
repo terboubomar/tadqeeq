@@ -98,10 +98,10 @@ function AuthPage() {
   const onLoginHost = () => isLoginHost(window.location.host);
   const go = () =>
     onLoginHost()
-      ? void handOffToApp(next, search.state)
+      ? void handOffToApp(next ?? "/start", search.state)
       : next
         ? window.location.assign(next)
-        : navigate({ to: "/dashboard", replace: true });
+        : navigate({ to: "/start", replace: true });
   // Email links always open the app itself, also when sent from the login subdomain.
   const appOrigin = () => (onLoginHost() ? appOriginFor(window.location.host, window.location.protocol) : window.location.origin);
   const returnUrl = () => appOrigin() + (next ?? "");
