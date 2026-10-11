@@ -88,6 +88,7 @@ export const PRIVATE_PAGES = [
   "/report-schedules",
   "/reset-password",
   "/security",
+  "/start",
   "/subscribe",
   "/team",
   "/trends",

@@ -50,7 +50,7 @@ function AuthHandoffPage() {
       setStep({ kind: "invalid", message: "انتهت صلاحية رابط الدخول. سجّل الدخول من جديد." });
       return;
     }
-    window.location.replace(handoff.next ?? "/dashboard");
+    window.location.replace(handoff.next ?? "/start");
   }
 
   useEffect(() => {

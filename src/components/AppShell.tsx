@@ -8,6 +8,7 @@ import { AskTadqeeqWidget } from "@/components/AskTadqeeqWidget";
 import { OnboardingGate } from "@/components/OnboardingGate";
 import { LockedFeatureCard, TrialBanner, UpgradeCard } from "@/components/PlanUpgrade";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
+import { SuiteSwitch } from "@/components/SuiteSwitch";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { Button } from "@/components/ui/button";
 import {
@@ -385,6 +386,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               {sidebarHidden ? <PanelRightOpen className="size-4" /> : <PanelRightClose className="size-4" />}
             </button>
+            <SuiteSwitch current="mizan" />
             <WorkspaceSwitcher />
             {can("periods.read") && !locked ? (
               <>
