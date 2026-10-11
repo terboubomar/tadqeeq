@@ -1115,6 +1115,54 @@ export type Database = {
           },
         ]
       }
+      journal_cost_centers: {
+        Row: {
+          branch_key: string
+          branch_name: string
+          cost_center: string
+          platform: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          branch_key: string
+          branch_name?: string
+          cost_center?: string
+          platform: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+          workspace_id?: string
+        }
+        Update: {
+          branch_key?: string
+          branch_name?: string
+          cost_center?: string
+          platform?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_cost_centers_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_cost_centers_workspace_owner_fkey"
+            columns: ["workspace_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_user_id"]
+          },
+        ]
+      }
       mcp_audit_requests: {
         Row: {
           bank_fee_pct: number | null
@@ -1257,6 +1305,7 @@ export type Database = {
           sha256: string
           source_kind: string
           summary: Json
+          superseded_at: string | null
           user_id: string
           workspace_id: string
         }
@@ -1271,6 +1320,7 @@ export type Database = {
           sha256: string
           source_kind: string
           summary: Json
+          superseded_at?: string | null
           user_id: string
           workspace_id?: string
         }
@@ -1285,6 +1335,7 @@ export type Database = {
           sha256?: string
           source_kind?: string
           summary?: Json
+          superseded_at?: string | null
           user_id?: string
           workspace_id?: string
         }
@@ -2050,6 +2101,65 @@ export type Database = {
           },
         ]
       }
+      report_schedules: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          day_of_month: number | null
+          frequency: string
+          id: string
+          last_error: string | null
+          last_period_id: string | null
+          last_sent_at: string | null
+          name: string
+          recipients: string[]
+          updated_at: string
+          weekday: number | null
+          workspace_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          day_of_month?: number | null
+          frequency: string
+          id?: string
+          last_error?: string | null
+          last_period_id?: string | null
+          last_sent_at?: string | null
+          name: string
+          recipients: string[]
+          updated_at?: string
+          weekday?: number | null
+          workspace_id?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          day_of_month?: number | null
+          frequency?: string
+          id?: string
+          last_error?: string | null
+          last_period_id?: string | null
+          last_sent_at?: string | null
+          name?: string
+          recipients?: string[]
+          updated_at?: string
+          weekday?: number | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_schedules_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       smart_watch_acceptances: {
         Row: {
           accepted_rate: number
@@ -2641,6 +2751,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_account_workspace: { Args: { p_name: string }; Returns: string }
       create_period_reanalysis: {
         Args: {
           p_branches: Json
@@ -2653,6 +2764,7 @@ export type Database = {
         }
         Returns: string
       }
+      delete_operation_import: { Args: { p_import_id: string }; Returns: Json }
       ensure_my_workspace: { Args: never; Returns: string }
       import_operation_snapshot: {
         Args: {
@@ -2678,8 +2790,6 @@ export type Database = {
         Returns: string
       }
       my_workspace_plan: { Args: { p_workspace_id: string }; Returns: Json }
-      create_account_workspace: { Args: { p_name: string }; Returns: string }
-      switch_my_workspace: { Args: { p_workspace_id: string }; Returns: string }
       ops_role: { Args: never; Returns: string }
       reserve_ai_call: {
         Args: {
@@ -2700,6 +2810,7 @@ export type Database = {
         Args: { p_exception_id: string; p_patch: Json; p_period_id: string }
         Returns: Json
       }
+      switch_my_workspace: { Args: { p_workspace_id: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
