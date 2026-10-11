@@ -11,6 +11,9 @@ type Row = Record<string, unknown>;
  * Used by the ops client delete and by an owner deleting one of their companies.
  */
 export const OWNED_TABLES_DELETE_ORDER = [
+  // No foreign keys to the workspace: deleted explicitly (journal_cost_centers, report_schedules).
+  "journal_cost_centers",
+  "report_schedules",
   "operation_adjustments",
   "operation_orders",
   "operation_imports",
