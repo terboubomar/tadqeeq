@@ -540,24 +540,31 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
           <div className="border-t border-border">
             <div className="mx-auto max-w-7xl px-4 py-10 text-center sm:px-6">
               <h2 className="text-sm font-semibold text-muted-foreground">مطاعم تراجع فواتيرها مع تدقيق</h2>
-              <ul className="mt-6 flex flex-wrap items-start justify-center gap-x-8 gap-y-6 sm:gap-x-12">
-                {CLIENTS.map((client) => (
-                  <li key={client.logo}>
-                    <figure className="flex flex-col items-center gap-2">
-                      <img
-                        src={client.logo}
-                        alt={`شعار ${client.name}`}
-                        width={80}
-                        height={80}
-                        loading="lazy"
-                        decoding="async"
-                        className="size-16 rounded-2xl shadow-[0_8px_20px_-12px_rgb(19_35_43/0.45)] ring-1 ring-black/5 sm:size-20"
-                      />
-                      <figcaption className="text-xs font-semibold text-foreground/80">{client.name}</figcaption>
-                    </figure>
-                  </li>
-                ))}
-              </ul>
+              {/* Black and white and moving; under the pointer a logo shows its colours and the strip pauses. */}
+              <div className="lp-marquee-wrap relative mt-6 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
+                <ul dir="ltr" className="lp-marquee flex w-max items-start">
+                  {[0, 1].flatMap((copy) =>
+                    Array.from({ length: 3 }, () => CLIENTS).flat().map((client, index) => (
+                      <li key={`${copy}-${index}`} aria-hidden={copy === 1 || index >= CLIENTS.length ? true : undefined} className="px-5 sm:px-7">
+                        <figure className="group flex flex-col items-center gap-2">
+                          <img
+                            src={client.logo}
+                            alt={copy === 0 && index < CLIENTS.length ? `شعار ${client.name}` : ""}
+                            width={80}
+                            height={80}
+                            loading="lazy"
+                            decoding="async"
+                            className="size-16 rounded-2xl opacity-75 ring-1 ring-black/5 grayscale transition-[filter,opacity,transform] duration-300 group-hover:-translate-y-0.5 group-hover:opacity-100 group-hover:grayscale-0 sm:size-20"
+                          />
+                          <figcaption dir="rtl" className="text-xs font-semibold text-muted-foreground transition-colors group-hover:text-foreground">
+                            {client.name}
+                          </figcaption>
+                        </figure>
+                      </li>
+                    )),
+                  )}
+                </ul>
+              </div>
             </div>
           </div>
         </section>
