@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { OnboardingScreen } from "@/components/OnboardingGate";
+import { SubscribedPlan } from "@/components/subscription/SubscribedPlan";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
 import { count, money } from "@/lib/format";
@@ -46,6 +47,27 @@ const INCLUDED = ["فروع ومنصات ومستخدمون بلا حدود", "�
 function SubscribePage() {
   const { context } = useWorkspaceAccess();
   const plans = useQuery({ queryKey: ["public-plans"], queryFn: () => listPublicPlans() });
+  const [showAll, setShowAll] = useState(false);
+  // A subscribed client sees their own plan, use and upgrades; the full catalogue stays one click away.
+  const subscribed = !context.trial && context.planId !== null;
+
+  if (subscribed && !showAll) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-6">
+        <PageHeader
+          crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "الاشتراك" }]}
+          title="باقتك"
+          subtitle="اشتراكك واستخدامك هذا الشهر، والباقات التي يمكنك الترقية إليها."
+        />
+        {plans.isLoading ? (
+          <p className="py-16 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>
+        ) : (
+          <SubscribedPlan plans={plans.data ?? []} onShowAll={() => setShowAll(true)} />
+        )}
+      </div>
+    );
+  }
+
   const lockedLabels = [
     ...new Set(
       context.planLockedPermissions.filter((p) => featureForPermission(p) || p === "users.manage").map((p) => lockedFeatureLabel(p)),
@@ -56,9 +78,14 @@ function SubscribePage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "الاشتراك" }]}
-        title={context.trial ? "اشترك في تدقيق" : "باقتك وترقيتها"}
+        title={context.trial ? "اشترك في تدقيق" : subscribed ? "كل الباقات" : "باقتك وترقيتها"}
         subtitle="تدفع حسب عدد طلباتك فقط. الفروع والمنصات والمستخدمون بلا حدود في كل الباقات."
       />
+      {subscribed ? (
+        <button type="button" onClick={() => setShowAll(false)} className="text-sm font-semibold text-primary-text hover:underline">
+          → العودة إلى باقتك
+        </button>
+      ) : null}
 
       <section className="grid gap-4 md:grid-cols-2">
         <UsagePanel />

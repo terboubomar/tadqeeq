@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   getMyOnboardingOnServer,
   getMyPlanRequestOnServer,
+  getMySubscriptionOnServer,
   requestPlanOnServer,
   listTenantsOnServer,
   requestReactivationOnServer,
@@ -41,6 +42,10 @@ export const requestReactivation = createServerFn({ method: "POST" })
 export const getMyPlanRequest = createServerFn({ method: "POST" })
   .validator(z.object({}))
   .handler(async () => getMyPlanRequestOnServer());
+
+export const getMySubscription = createServerFn({ method: "POST" })
+  .validator(z.object({}))
+  .handler(async () => getMySubscriptionOnServer());
 
 export const requestPlan = createServerFn({ method: "POST" })
   .validator(
