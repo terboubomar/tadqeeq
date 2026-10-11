@@ -17,7 +17,7 @@ export function SuiteSwitch({ current }: { current: SuiteKey }) {
   return (
     <DropdownMenu dir="rtl">
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 gap-1.5 bg-card px-2.5 font-semibold" aria-label="تبديل المنصة">
+        <Button variant="outline" size="sm" className="hidden h-8 gap-1.5 bg-card px-2.5 font-semibold sm:inline-flex" aria-label="تبديل المنصة">
           <SuiteIcon suite={current} />
           {SUITES[current].name}
           <ChevronDown className="size-3.5 text-muted-foreground" />

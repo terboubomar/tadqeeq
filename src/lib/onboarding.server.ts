@@ -378,3 +378,65 @@ export async function setTenantStatusOnServer(input: {
     .eq("workspace_id", input.workspaceId);
   if (error) throw new Error(error.message);
 }
+
+export interface MySubscription {
+  planId: string | null;
+  status: "trial" | "active" | "overdue" | "cancelled" | "suspended";
+  cycle: "monthly" | "yearly";
+  /** What the account pays per cycle; null for people who do not manage billing. */
+  price: number | null;
+  startsOn: string;
+  /** End of the paid term (the renewal date); null when open-ended. */
+  endsOn: string | null;
+  addons: PlanAddon[];
+  /** Latest payments, newest first; empty for people who do not manage billing. */
+  payments: Array<{ amount: number; paidOn: string; method: string; reference: string | null }>;
+}
+
+/**
+ * The account's current subscription (it belongs to the owner and covers all their companies) and its recent
+ * payments, for the subscription page. Prices and payments only for the owner and admins.
+ */
+export async function getMySubscriptionOnServer(): Promise<MySubscription | null> {
+  const ctx = await requireServerUserAnyStatus();
+  const { data: owned, error: ownedError } = await db().from("workspaces").select("id").eq("owner_user_id", ctx.userId);
+  if (ownedError) throw new Error(ownedError.message);
+  const ids = ((owned ?? []) as Row[]).map((r) => String(r["id"]));
+  if (!ids.length) return null;
+  const { data: sub, error } = await db()
+    .from("subscriptions")
+    .select("id,plan_id,price,cycle,status,starts_on,ends_on,addons")
+    .in("workspace_id", ids)
+    .in("status", ["active", "overdue", "trial"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!sub) return null;
+  const billing = ctx.role === "owner" || ctx.role === "admin";
+  let payments: MySubscription["payments"] = [];
+  if (billing) {
+    const { data: rows } = await db()
+      .from("payments")
+      .select("amount,paid_on,method,reference")
+      .in("workspace_id", ids)
+      .order("paid_on", { ascending: false })
+      .limit(12);
+    payments = ((rows ?? []) as Row[]).map((r) => ({
+      amount: Number(r["amount"] ?? 0),
+      paidOn: String(r["paid_on"]),
+      method: String(r["method"] ?? "bank_transfer"),
+      reference: typeof r["reference"] === "string" && r["reference"] ? r["reference"] : null,
+    }));
+  }
+  return {
+    planId: typeof sub.plan_id === "string" ? sub.plan_id : null,
+    status: sub.status,
+    cycle: sub.cycle === "yearly" ? "yearly" : "monthly",
+    price: billing ? Number(sub.price ?? 0) : null,
+    startsOn: String(sub.starts_on),
+    endsOn: typeof sub.ends_on === "string" ? sub.ends_on : null,
+    addons: (Array.isArray(sub.addons) ? sub.addons : []).filter(isPlanAddon),
+    payments,
+  };
+}
