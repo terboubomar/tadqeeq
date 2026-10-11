@@ -1,32 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import {
-  Activity,
-  AlertTriangle,
-  BookText,
-  CalendarClock,
-  CalendarDays,
-  ChartLine,
-  ChevronDown,
-  FileCheck2,
-  FileSignature,
-  HandCoins,
-  History,
-  LayoutDashboard,
-  ListTree,
-  Lock,
-  LogOut,
-  Megaphone,
-  PanelRightClose,
-  PanelRightOpen,
-  Radar,
-  ReceiptText,
-  Sparkles,
-  Store,
-  Upload,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+import { AlertTriangle, CalendarClock, ChevronDown, Lock, LogOut, PanelRightClose, PanelRightOpen, Sparkles, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -57,6 +31,7 @@ import { WORKSPACE_ROLE_LABELS, type WorkspacePermission } from "@/lib/workspace
 import { LogoWordmark } from "@/components/brand/Logo";
 import { PlatformIcon } from "@/components/brand/PlatformLogo";
 import { NotificationBell, UserMenu, type AppNotice } from "@/components/dash/TopBarMenus";
+import { NavIcon } from "@/components/NavIcons";
 
 type NavItem = { to: string; label: string; hint?: string; permission: WorkspacePermission; adminOnly?: boolean };
 
@@ -117,39 +92,6 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
 
 const NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items);
 
-/** The icon beside each page in the sidebar and the phone menu (Lucide, one stroke and size throughout). */
-const NAV_ICONS: Record<string, LucideIcon> = {
-  "/dashboard": LayoutDashboard,
-  "/ai": Sparkles,
-  [PRODUCTS.nabd.path]: Activity,
-  [PRODUCTS.mutabiq.path]: FileCheck2,
-  [PRODUCTS.kashif.path]: ReceiptText,
-  [PRODUCTS.aaid.path]: Megaphone,
-  [PRODUCTS.radar.path]: Radar,
-  [PRODUCTS.istirdad.path]: HandCoins,
-  "/trends": ChartLine,
-  "/branches": Store,
-  "/journal": BookText,
-  "/daily": CalendarDays,
-  "/breakdown": ListTree,
-  "/history": History,
-  "/report-schedules": CalendarClock,
-  "/import": Upload,
-  "/contracts": FileSignature,
-  "/team": Users,
-};
-
-/** A page's nav icon; pages without one get a small dot so labels stay aligned. */
-function NavIcon({ to, className }: { to: string; className?: string }) {
-  const Icon = NAV_ICONS[to];
-  return Icon ? (
-    <Icon aria-hidden="true" strokeWidth={1.75} className={cn("shrink-0", className)} />
-  ) : (
-    <span aria-hidden="true" className={cn("grid shrink-0 place-items-center", className)}>
-      <span className="size-1 rounded-full bg-current" />
-    </span>
-  );
-}
 
 
 const ROUTE_PERMISSIONS: Record<string, WorkspacePermission> = {
