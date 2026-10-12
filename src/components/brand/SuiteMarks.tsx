@@ -32,7 +32,7 @@ export function MizanMark({ className, title }: MarkProps) {
         <path d="M12 25 6 39M12 25l6 14M52 25l-6 14M52 25l6 14" />
       </g>
       <path
-        className="stroke-primary"
+        className="stroke-brand-mark"
         fill="none"
         strokeWidth="4.5"
         strokeLinecap="round"

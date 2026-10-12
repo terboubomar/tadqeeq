@@ -39,7 +39,7 @@ export function GuideShell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">{children}</main>
-      <footer className="border-t border-border bg-[oklch(0.975_0.018_85)]">
+      <footer className="border-t border-border bg-[oklch(0.957_0.006_154)]">
         <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-10 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>تدقيق · مراجعة فواتير هنقرستيشن وكيتا وجاهز للمطاعم في السعودية</p>
           <nav aria-label="روابط" className="flex flex-wrap gap-4">

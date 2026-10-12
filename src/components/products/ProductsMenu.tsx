@@ -92,7 +92,7 @@ export function ProductsMenu({ triggerClassName }: { triggerClassName?: string }
         hidden={!open}
         className="absolute inset-x-0 top-full z-50 px-0 pt-3"
       >
-        <div className="mx-auto grid max-w-[60rem] overflow-hidden rounded-[28px] border border-border bg-card text-start shadow-[0_32px_64px_-28px_rgb(19_35_43/0.45)] lg:grid-cols-[minmax(0,1fr)_17rem]">
+        <div className="mx-auto grid max-w-[60rem] overflow-hidden rounded-[28px] border border-border bg-card text-start shadow-[0_32px_64px_-28px_rgb(15_42_34/0.45)] lg:grid-cols-[minmax(0,1fr)_17rem]">
           <ul className="grid gap-1 p-3 sm:grid-cols-2">
             {PRODUCT_PAGES.map((page) => {
               const product = PRODUCTS[page.product];

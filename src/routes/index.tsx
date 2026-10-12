@@ -286,7 +286,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
       </div>
 
       <div className="sticky top-0 z-40 px-3 pt-3 sm:px-6 sm:pt-4">
-        <header className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 rounded-full border border-border bg-card/95 ps-4 pe-2 shadow-[0_12px_32px_-18px_rgb(19_35_43/0.28)] backdrop-blur sm:h-[68px] sm:ps-5">
+        <header className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 rounded-full border border-border bg-card/95 ps-4 pe-2 shadow-[0_12px_32px_-18px_rgb(15_42_34/0.28)] backdrop-blur sm:h-[68px] sm:ps-5">
           <Link to="/" aria-label="تدقيق — الرئيسية" className="flex items-center gap-2.5">
             <LogoWordmark className="h-8 text-ink sm:h-9" />
             <span className="hidden border-s border-border ps-2.5 text-[11px] leading-tight text-muted-foreground sm:block">
@@ -351,7 +351,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         <section className="overflow-hidden">
           <div className="mx-auto max-w-7xl px-4 pb-16 pt-12 sm:px-6 lg:pb-24 lg:pt-16">
             <div className="lp-stagger mx-auto flex max-w-4xl flex-col items-center gap-6 text-center">
-              <p className="inline-flex items-center gap-2.5 rounded-full border border-border bg-card px-3.5 py-1.5 text-[13px] font-semibold text-primary-text shadow-[0_6px_18px_-12px_rgb(19_35_43/0.35)]">
+              <p className="inline-flex items-center gap-2.5 rounded-full border border-border bg-card px-3.5 py-1.5 text-[13px] font-semibold text-primary-text shadow-[0_6px_18px_-12px_rgb(15_42_34/0.35)]">
                 <span aria-hidden="true" className="flex">
                   {PLATFORM_KEYS.map((key, i) => (
                     <PlatformIcon key={key} platform={key} className={cn("size-6 rounded-full ring-2 ring-card", i > 0 && "-ms-2")} />
@@ -390,7 +390,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
             </div>
             <div className="relative mx-auto mt-12 max-w-5xl lg:mt-16">
               <span aria-hidden="true" className="pointer-events-none absolute inset-x-10 -top-6 h-40 rounded-full bg-primary/15 blur-3xl" />
-              <div className="relative rounded-[24px] border border-border bg-card/60 p-2 shadow-[0_40px_80px_-40px_rgb(19_35_43/0.35)] sm:p-3">
+              <div className="relative rounded-[24px] border border-border bg-card/60 p-2 shadow-[0_40px_80px_-40px_rgb(15_42_34/0.35)] sm:p-3">
                 <HeroDashboard />
               </div>
             </div>
@@ -487,7 +487,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         </section>
       </main>
 
-      <footer className="mt-4 border-t border-border bg-[oklch(0.975_0.018_85)]">
+      <footer className="mt-4 border-t border-border bg-[oklch(0.957_0.006_154)]">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,2fr)] lg:gap-16">
           <div className="flex flex-col items-start gap-4">
             <Link to="/" aria-label="تدقيق — الرئيسية">
@@ -640,7 +640,7 @@ function ExplainerVideoLauncher() {
             type="button"
             onClick={() => setMin(false)}
             aria-label="إظهار فيديو: شاهد كيف يعمل"
-            className="relative grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_18px_40px_-12px_rgb(19_35_43/0.6)] ring-4 ring-ink transition-transform hover:scale-105"
+            className="relative grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_18px_40px_-12px_rgb(15_42_34/0.6)] ring-4 ring-ink transition-transform hover:scale-105"
           >
             <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full bg-primary/40 [animation-duration:2.4s]" />
             <Play className="relative size-5 fill-current" />
@@ -651,7 +651,7 @@ function ExplainerVideoLauncher() {
               type="button"
               onClick={() => setOpen(true)}
               aria-label="شاهد كيف يعمل تدقيق (فيديو بالصوت، دقيقة و44 ثانية)"
-              className="relative block aspect-[9/16] w-full overflow-hidden rounded-[20px] bg-ink shadow-[0_24px_50px_-16px_rgb(19_35_43/0.65)] ring-[3px] ring-primary transition-transform hover:-translate-y-1"
+              className="relative block aspect-[9/16] w-full overflow-hidden rounded-[20px] bg-ink shadow-[0_24px_50px_-16px_rgb(15_42_34/0.65)] ring-[3px] ring-primary transition-transform hover:-translate-y-1"
             >
               {animate ? (
                 <video
@@ -911,7 +911,7 @@ const FEATURE_CARDS: Array<{ key: ProductKey; icon: LucideIcon }> = [
 
 function FeatureGrid() {
   return (
-    <section id="features" className="bg-[oklch(0.975_0.018_85)]">
+    <section id="features" className="bg-[oklch(0.957_0.006_154)]">
       <div id="products" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-semibold text-primary-text">لماذا تدقيق؟</p>
@@ -926,7 +926,7 @@ function FeatureGrid() {
                 key={key}
                 href={page?.path ?? "#pricing"}
                 data-reveal
-                className="group flex flex-col gap-4 rounded-[22px] border border-border bg-card p-6 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-[0_22px_44px_-26px_rgb(19_35_43/0.4)]"
+                className="group flex flex-col gap-4 rounded-[22px] border border-border bg-card p-6 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-[0_22px_44px_-26px_rgb(15_42_34/0.4)]"
               >
                 <span className="grid size-11 place-items-center rounded-xl bg-secondary text-primary-text">
                   <Icon strokeWidth={1.75} className="size-5" />
@@ -1121,7 +1121,7 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
               key={plan.id}
               className={cn(
                 "relative flex flex-col gap-4 rounded-[22px] p-6 transition-colors",
-                dark ? "bg-ink text-ink-foreground shadow-[0_30px_60px_-30px_rgb(19_35_43/0.5)]" : "border border-border bg-card",
+                dark ? "bg-ink text-ink-foreground shadow-[0_30px_60px_-30px_rgb(15_42_34/0.5)]" : "border border-border bg-card",
               )}
             >
               {fit || (recommended === null && plan.highlighted) ? (
@@ -1350,7 +1350,7 @@ function LegacyPricing({ plans }: { plans: PublicPlan[] }) {
             className={cn(
               "relative flex flex-col gap-5 rounded-[22px] p-7",
               plan.highlighted
-                ? "bg-ink text-ink-foreground shadow-[0_30px_60px_-30px_rgb(19_35_43/0.5)]"
+                ? "bg-ink text-ink-foreground shadow-[0_30px_60px_-30px_rgb(15_42_34/0.5)]"
                 : "border border-border bg-card",
             )}
           >

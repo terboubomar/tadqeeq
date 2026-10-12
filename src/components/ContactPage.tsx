@@ -204,7 +204,7 @@ export function ContactPage() {
         </ul>
       </main>
 
-      <footer className="border-t border-border bg-[oklch(0.975_0.018_85)]">
+      <footer className="border-t border-border bg-[oklch(0.957_0.006_154)]">
         <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-10 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>
             <span className="num">© {new Date().getFullYear()}</span> تدقيق · صُنع في السعودية

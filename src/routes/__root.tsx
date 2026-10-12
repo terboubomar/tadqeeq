@@ -86,7 +86,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "أعد احتساب عمولات هنقرستيشن وجاهز وكيتا من بيانات الطلبات الخام، وقارنها بالفاتورة لاكتشاف الفروقات.",
       },
-      { name: "theme-color", content: "#13232B" },
+      { name: "theme-color", content: "#0F2A22" },
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: SITE_NAME },
       { property: "og:locale", content: "ar_SA" },

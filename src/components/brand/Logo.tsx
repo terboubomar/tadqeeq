@@ -38,7 +38,7 @@ function LogoSvg({ art, className, title }: LogoProps & { art: typeof MARK }) {
       focusable="false"
     >
       <path fill="currentColor" fillRule="evenodd" d={art.ink} />
-      <path className="fill-primary" d={art.accent} />
+      <path className="fill-brand-mark" d={art.accent} />
     </svg>
   );
 }

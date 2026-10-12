@@ -99,7 +99,7 @@ export function NabdWorkflow() {
 }
 
 function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("rounded-2xl bg-card p-4 shadow-[0_24px_48px_-28px_rgb(19_35_43/0.45)] sm:p-5", className)}>{children}</div>;
+  return <div className={cn("rounded-2xl bg-card p-4 shadow-[0_24px_48px_-28px_rgb(15_42_34/0.45)] sm:p-5", className)}>{children}</div>;
 }
 
 function StepVisual({ step, shown }: { step: number; shown: boolean }) {

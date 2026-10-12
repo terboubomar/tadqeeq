@@ -21,17 +21,17 @@ export function renderMcpLandingPage(origin: string): string {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&family=Noto+Kufi+Arabic:wght@700&family=IBM+Plex+Mono&display=swap">
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:"IBM Plex Sans Arabic",sans-serif;background:#f6f4ef;color:#13232b;line-height:1.7}
-header{background:#13232b;color:#f6f4ef;padding:48px 20px 40px;text-align:center}
+*{box-sizing:border-box}body{margin:0;font-family:"IBM Plex Sans Arabic",sans-serif;background:#f4f6f3;color:#0f2a22;line-height:1.7}
+header{background:#0f2a22;color:#f4f6f3;padding:48px 20px 40px;text-align:center}
 h1{font-family:"Noto Kufi Arabic",sans-serif;font-size:28px;margin:12px 0 8px}
 header p{margin:0 auto;max-width:560px;color:#c9d3d6}
-.badge{display:inline-block;background:#c8922e;color:#13232b;border-radius:999px;padding:4px 14px;font-size:13px;font-weight:600}
+.badge{display:inline-block;background:#22b573;color:#0f2a22;border-radius:999px;padding:4px 14px;font-size:13px;font-weight:600}
 main{max-width:760px;margin:-24px auto 40px;padding:0 16px}
 .card{background:#fff;border:1px solid #e5e1d6;border-radius:12px;padding:24px;margin-bottom:16px}
 h2{font-family:"Noto Kufi Arabic",sans-serif;font-size:18px;margin:0 0 12px}
-.url{display:flex;gap:8px;align-items:center;background:#f6f4ef;border-radius:9px;padding:10px 12px;direction:ltr}
+.url{display:flex;gap:8px;align-items:center;background:#f4f6f3;border-radius:9px;padding:10px 12px;direction:ltr}
 .url code{flex:1;font-family:"IBM Plex Mono",monospace;font-size:14px;overflow-wrap:anywhere}
-button{font:inherit;background:#13232b;color:#f6f4ef;border:0;border-radius:9px;padding:6px 14px;cursor:pointer}
+button{font:inherit;background:#0f2a22;color:#f4f6f3;border:0;border-radius:9px;padding:6px 14px;cursor:pointer}
 ol{margin:0;padding-inline-start:20px}li{margin-bottom:6px}
 .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
 .grid .card{margin:0}

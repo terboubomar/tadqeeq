@@ -41,7 +41,7 @@ export const template = {
 
 const main = { backgroundColor: '#ffffff', fontFamily: "'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif" }
 const container = { padding: '20px 25px', textAlign: 'right' as const }
-const h1 = { fontSize: '20px', fontWeight: 'bold' as const, color: '#1f3a44', margin: '0 0 20px' }
-const row = { fontSize: '14px', color: '#1f3a44', margin: '0 0 8px' }
-const msg = { fontSize: '14px', color: '#333', lineHeight: '1.8', whiteSpace: 'pre-wrap' as const, background: '#f6f4ef', padding: '14px', borderRadius: '8px', margin: '16px 0' }
+const h1 = { fontSize: '20px', fontWeight: 'bold' as const, color: '#0f2a22', margin: '0 0 20px' }
+const row = { fontSize: '14px', color: '#0f2a22', margin: '0 0 8px' }
+const msg = { fontSize: '14px', color: '#333', lineHeight: '1.8', whiteSpace: 'pre-wrap' as const, background: '#f4f6f3', padding: '14px', borderRadius: '8px', margin: '16px 0' }
 const footer = { fontSize: '12px', color: '#999999', margin: '20px 0 0' }

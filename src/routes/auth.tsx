@@ -213,7 +213,7 @@ function AuthPage() {
               </Link>
             </h1>
           </header>
-          <div className="mt-8 rounded-2xl border border-border bg-card px-5 py-7 shadow-[0_1px_3px_rgb(19_35_43/0.06),0_18px_40px_-24px_rgb(19_35_43/0.28)] sm:px-8 sm:py-9">
+          <div className="mt-8 rounded-2xl border border-border bg-card px-5 py-7 shadow-[0_1px_3px_rgb(15_42_34/0.06),0_18px_40px_-24px_rgb(15_42_34/0.28)] sm:px-8 sm:py-9">
           <header className="text-center">
             <h2 className="font-display text-2xl font-semibold leading-relaxed text-ink sm:text-[1.6rem]">
               {mfaStep

@@ -100,8 +100,8 @@ function StartPage() {
                   key={key}
                   to={suite.path}
                   className={cn(
-                    "group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_3px_rgb(19_35_43/0.06)] transition-[transform,box-shadow,border-color] duration-200",
-                    "hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-[0_22px_44px_-26px_rgb(19_35_43/0.4)] active:translate-y-0",
+                    "group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_3px_rgb(15_42_34/0.06)] transition-[transform,box-shadow,border-color] duration-200",
+                    "hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-[0_22px_44px_-26px_rgb(15_42_34/0.4)] active:translate-y-0",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   )}
                 >
