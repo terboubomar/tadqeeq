@@ -9,7 +9,7 @@ import { GUIDES, type Guide, type GuideSection } from "@/lib/guides";
 import { formatArabicDate } from "@/lib/site-content";
 
 /** Header, main column and footer shared by the guides, the product pages and their indexes. */
-export function GuideShell({ children }: { children: ReactNode }) {
+export function GuideShell({ children, wide = false }: { children: ReactNode; /** Product pages use a wider column. */ wide?: boolean }) {
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur">
@@ -38,7 +38,7 @@ export function GuideShell({ children }: { children: ReactNode }) {
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">{children}</main>
+      <main className={wide ? "mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14" : "mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14"}>{children}</main>
       <footer className="border-t border-border bg-[oklch(0.957_0.006_154)]">
         <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-10 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>تدقيق · مراجعة فواتير هنقرستيشن وكيتا وجاهز للمطاعم في السعودية</p>
