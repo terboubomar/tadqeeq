@@ -29,4 +29,3 @@ Tadqeeq is a production-critical product. It is not an MVP. Preserve existing be
 - The 21st.dev MCP (`.mcp.json`, key in the `API_KEY_21ST` env var, never in the repo) is for finding component ideas; rewrite what it returns in Tadqeeq's tokens, fonts and RTL, and ask before adding any package it suggests.
 - Both are guidance inside these rules: keep Tadqeeq's own fonts, colour tokens and Arabic RTL layout, change only what the user asked for, and add no new UI or font libraries unless the user asks.
 
-- Card subscriptions sync into the existing workspace `subscriptions` table (provider_* columns, environment) via /api/public/payments/webhook, reusing syncAccessWithSubscription; why: ops, access locking and revenue keep one source of truth.
