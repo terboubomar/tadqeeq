@@ -3,7 +3,6 @@ import {
   Activity,
   ArrowLeft,
   ArrowRight,
-  ArrowUp,
   BookOpen,
   Building2,
   Calculator,
@@ -17,7 +16,6 @@ import {
   LayoutDashboard,
   Link2,
   LineChart,
-  Menu,
   Percent,
   Receipt,
   RotateCcw,
@@ -62,11 +60,12 @@ import {
 } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 import { listPublicPlans } from "@/lib/plans.functions";
-import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
-import { LEGAL_COMPANY, LEGAL_DOCS } from "@/lib/legal";
+import { LogoMark } from "@/components/brand/Logo";
+import { LEGAL_COMPANY } from "@/lib/legal";
 import { productPageFor } from "@/lib/product-pages";
-import { ProductsMenu, ProductsMenuList } from "@/components/products/ProductsMenu";
-import { PRODUCTS, productTitle, type ProductKey } from "@/lib/products";
+import { SiteFooter } from "@/components/site/SiteFooter";
+import { SiteHeader } from "@/components/site/SiteHeader";
+import { PRODUCTS, type ProductKey } from "@/lib/products";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { OG_IMAGE, SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
 import { CONTENT_UPDATED, EXPLAINER_VIDEO, FAQS, FEATURES, formatArabicDate } from "@/lib/site-content";
@@ -106,46 +105,6 @@ const HOME_TITLE = "تدقيق فواتير هنقرستيشن وجاهز وكي
 const HOME_DESCRIPTION =
   "تدقيق يعيد احتساب كل بند في فواتير هنقرستيشن وجاهز وكيتا من ملف طلباتك وعقدك، ويكشف فروقات العمولة والرسوم لكل فرع، ويجهّز مطالبات التعويض بالأدلة.";
 
-/** Header links after the «المنتجات» menu. */
-const NAV = [
-  ["#how", "كيف يعمل"],
-  ["#pricing", "الخطط والأسعار"],
-  ["#faq", "الأسئلة"],
-  ["/contact", "تواصل معنا"],
-] as const;
-
-const FOOTER_GROUPS = [
-  {
-    title: "المنتج",
-    links: [
-      ["/products/invoice-reconciliation", productTitle("mutabiq")],
-      ["/products/compensation-claims", productTitle("istirdad")],
-      ["/products/promotions-roi", productTitle("aaid")],
-      ["/products", "كل المنتجات"],
-      ["#checks", "ما الذي نراجعه"],
-    ],
-  },
-  {
-    title: "أدلة",
-    links: [
-      ["/guides/keeta-invoice", "مراجعة فاتورة كيتا"],
-      ["/guides/hungerstation-compensation", "تعويضات هنقرستيشن"],
-      ["/guides/jahez-commission", "عمولة جاهز"],
-      ["/guides", "كل الأدلة"],
-    ],
-  },
-  {
-    title: "تعرّف على تدقيق",
-    links: [
-      ["#video", "فيديو تعريفي"],
-      ["#how", "كيف يعمل"],
-      ["#who", "لمن تدقيق"],
-      ["#pricing", "الخطط والأسعار"],
-      ["#faq", "الأسئلة الشائعة"],
-      ["/contact", "تواصل معنا"],
-    ],
-  },
-] as const;
 
 /** Restaurants using Tadqeeq, shown with their permission. */
 const CLIENTS = [
@@ -408,9 +367,6 @@ function useScrollReveal() {
 
 function Landing({ plans }: { plans: PublicPlan[] }) {
   const rootRef = useScrollReveal();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const hasSection = (href: string) => href !== "#pricing" || plans.length > 0;
-  const navItems = NAV.filter(([href]) => hasSection(href));
 
   return (
     <div ref={rootRef} id="top" className="lp-root min-h-screen bg-background" dir="rtl">
@@ -422,65 +378,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         <a href="#products" className="shrink-0 font-semibold text-primary">اكتشف الجديد ←</a>
       </div>
 
-      <div className="sticky top-0 z-40 px-3 pt-3 sm:px-6 sm:pt-4">
-        <header className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 rounded-full border border-border bg-card/95 ps-4 pe-2 shadow-[0_12px_32px_-18px_rgb(19_35_43/0.28)] backdrop-blur sm:h-[68px] sm:ps-5">
-          <Link to="/" aria-label="تدقيق — الرئيسية" className="flex items-center gap-2.5">
-            <LogoWordmark className="h-8 text-ink sm:h-9" />
-            <span className="hidden border-s border-border ps-2.5 text-[11px] leading-tight text-muted-foreground sm:block">
-              مراجعة فواتير
-              <br />
-              التوصيل
-            </span>
-          </Link>
-          <nav aria-label="الرئيسية" className="hidden items-center gap-1 rounded-full bg-background p-1 text-sm xl:flex">
-            <ProductsMenu triggerClassName="rounded-full px-4 py-2 text-foreground/75 transition-colors hover:bg-card hover:text-foreground hover:shadow-sm" />
-            {navItems.map(([href, label]) => (
-              <a
-                key={href}
-                href={href}
-                className="whitespace-nowrap rounded-full px-4 py-2 text-foreground/75 transition-colors hover:bg-card hover:text-foreground hover:shadow-sm"
-              >
-                {label}
-              </a>
-            ))}
-          </nav>
-          <div className="flex items-center gap-1.5">
-            <Link to="/auth" className="hidden px-3 py-2 text-sm font-semibold sm:block">
-              تسجيل الدخول
-            </Link>
-            <Link
-              to="/auth"
-              search={{ mode: "signup" }}
-              className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground transition-transform hover:-translate-y-0.5 sm:h-[46px] sm:px-5"
-            >
-              ابدأ مجاناً
-              <ArrowLeft className="size-4" />
-            </Link>
-            <button
-              type="button"
-              aria-label={menuOpen ? "إغلاق القائمة" : "فتح القائمة"}
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((v) => !v)}
-              className="grid size-11 place-items-center rounded-full hover:bg-muted xl:hidden"
-            >
-              {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
-            </button>
-          </div>
-        </header>
-        {menuOpen ? (
-          <nav aria-label="القائمة" className="mx-auto mt-2 flex max-w-7xl flex-col rounded-2xl border border-border bg-card p-2 shadow-lg xl:hidden">
-            <ProductsMenuList onNavigate={() => setMenuOpen(false)} />
-            {navItems.map(([href, label]) => (
-              <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-muted">
-                {label}
-              </a>
-            ))}
-            <Link to="/auth" className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-muted sm:hidden">
-              تسجيل الدخول
-            </Link>
-          </nav>
-        ) : null}
-      </div>
+      <SiteHeader showPricing={plans.length > 0} />
 
       <main>
         <section className="overflow-hidden">
@@ -676,91 +574,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         </section>
       </main>
 
-      <footer className="mt-4 border-t border-border bg-[oklch(0.975_0.018_85)]">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,2fr)] lg:gap-16">
-          <div className="flex flex-col items-start gap-4">
-            <Link to="/" aria-label="تدقيق — الرئيسية">
-              <LogoWordmark className="h-9 text-ink" />
-            </Link>
-            <p className="max-w-sm text-sm leading-7 text-muted-foreground">
-              نعيد احتساب كل بند في فواتير تطبيقات التوصيل من طلباتك وعقدك، ونجهّز مطالبات التعويض بالأدلة لكل فرع.
-            </p>
-            <ul aria-label="المنصات المدعومة" className="flex flex-wrap gap-2 text-xs font-semibold">
-              {PLATFORM_KEYS.map((key) => (
-                <li key={key} className="rounded-full border border-border bg-card py-1 ps-1 pe-3">
-                  <PlatformName platform={key} iconClassName="size-5 rounded-full" />
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <nav aria-label="روابط التذييل" className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 xl:grid-cols-5">
-            {FOOTER_GROUPS.map((group) => (
-              <div key={group.title}>
-                <h2 className="text-sm font-bold">{group.title}</h2>
-                <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-                  {group.links
-                    .filter(([href]) => hasSection(href))
-                    .map(([href, label]) => (
-                      <li key={href}>
-                        <a href={href} className="transition-colors hover:text-foreground">
-                          {label}
-                        </a>
-                      </li>
-                    ))}
-                </ul>
-              </div>
-            ))}
-            <div>
-              <h2 className="text-sm font-bold">الحساب</h2>
-              <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-                <li>
-                  <Link to="/auth" search={{ mode: "signup" }} className="transition-colors hover:text-foreground">
-                    إنشاء حساب
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/auth" className="transition-colors hover:text-foreground">
-                    تسجيل الدخول
-                  </Link>
-                </li>
-              </ul>
-              <Link
-                to="/auth"
-                search={{ mode: "signup" }}
-                className="mt-5 inline-flex h-10 items-center gap-2 rounded-full bg-ink px-4 text-[13px] font-semibold text-ink-foreground transition-transform hover:-translate-y-0.5"
-              >
-                ابدأ مجاناً
-                <ArrowLeft className="size-3.5" />
-              </Link>
-            </div>
-            <div>
-              <h2 className="text-sm font-bold">قانوني</h2>
-              <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-                {LEGAL_DOCS.map((doc) => (
-                  <li key={doc.key}>
-                    <Link to={doc.path} className="transition-colors hover:text-foreground">
-                      {doc.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </nav>
-        </div>
-
-        <div className="border-t border-border">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-5 text-xs text-muted-foreground sm:px-6">
-            <p>
-              <span className="num">© {new Date().getFullYear()}</span> تدقيق · مراجعة فواتير التوصيل للمطاعم · صُنع في السعودية
-            </p>
-            <a href="#top" className="inline-flex items-center gap-1.5 font-semibold transition-colors hover:text-foreground">
-              العودة للأعلى
-              <ArrowUp className="size-3.5" />
-            </a>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter showPricing={plans.length > 0} />
     </div>
   );
 }

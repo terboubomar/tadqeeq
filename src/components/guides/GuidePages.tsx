@@ -2,68 +2,19 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Check } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { LogoWordmark } from "@/components/brand/Logo";
+import { SiteFooter } from "@/components/site/SiteFooter";
+import { SiteHeader } from "@/components/site/SiteHeader";
 import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
-import { ProductsMenu } from "@/components/products/ProductsMenu";
 import { GUIDES, type Guide, type GuideSection } from "@/lib/guides";
 import { formatArabicDate } from "@/lib/site-content";
 
 /** Header, main column and footer shared by the guides, the product pages and their indexes. */
 export function GuideShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-background" dir="rtl">
-      <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur">
-        <div className="relative mx-auto flex h-16 max-w-5xl items-center justify-between gap-3 px-4 sm:px-6">
-          <Link to="/" aria-label="تدقيق — الرئيسية">
-            <LogoWordmark className="h-8 text-ink" />
-          </Link>
-          <nav aria-label="روابط رئيسية" className="flex items-center gap-1 text-sm">
-            <div className="hidden sm:block">
-              <ProductsMenu triggerClassName="rounded-full px-3 py-2 font-semibold text-foreground/75 hover:bg-muted" />
-            </div>
-            <Link to="/guides" className="hidden rounded-full px-3 py-2 font-semibold text-foreground/75 hover:bg-muted sm:block">
-              الأدلة
-            </Link>
-            <Link to="/contact" className="hidden rounded-full px-3 py-2 font-semibold text-foreground/75 hover:bg-muted sm:block">
-              تواصل معنا
-            </Link>
-            <Link
-              to="/auth"
-              search={{ mode: "signup" }}
-              className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground"
-            >
-              ابدأ مجاناً
-              <ArrowLeft className="size-4" />
-            </Link>
-          </nav>
-        </div>
-      </header>
+    <div id="top" className="min-h-screen bg-background" dir="rtl">
+      <SiteHeader />
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">{children}</main>
-      <footer className="border-t border-border bg-[oklch(0.975_0.018_85)]">
-        <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-10 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>تدقيق · مراجعة فواتير هنقرستيشن وكيتا وجاهز للمطاعم في السعودية</p>
-          <nav aria-label="روابط" className="flex flex-wrap gap-4">
-            <Link to="/" className="hover:text-foreground">
-              الرئيسية
-            </Link>
-            <Link to="/products" className="hover:text-foreground">
-              المنتجات
-            </Link>
-            <Link to="/guides" className="hover:text-foreground">
-              كل الأدلة
-            </Link>
-            <a href="/#faq" className="hover:text-foreground">
-              الأسئلة الشائعة
-            </a>
-            <Link to="/privacy" className="hover:text-foreground">
-              سياسة الخصوصية
-            </Link>
-            <Link to="/terms" className="hover:text-foreground">
-              الشروط والأحكام
-            </Link>
-          </nav>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

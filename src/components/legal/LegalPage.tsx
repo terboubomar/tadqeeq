@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
 
-import { LogoWordmark } from "@/components/brand/Logo";
+import { SiteFooter } from "@/components/site/SiteFooter";
+import { SiteHeader } from "@/components/site/SiteHeader";
 import { companyIdentity, LEGAL_COMPANY, LEGAL_DOCS, type LegalDoc } from "@/lib/legal";
 import { formatArabicDate } from "@/lib/site-content";
 
@@ -20,22 +20,8 @@ export function LegalLinks({ className }: { className?: string }) {
 
 export function LegalPage({ doc }: { doc: LegalDoc }) {
   return (
-    <div className="min-h-screen bg-background" dir="rtl">
-      <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-3 px-4 sm:px-6">
-          <Link to="/" aria-label="تدقيق — الرئيسية">
-            <LogoWordmark className="h-8 text-ink" />
-          </Link>
-          <Link
-            to="/auth"
-            search={{ mode: "signup" }}
-            className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground"
-          >
-            ابدأ مجاناً
-            <ArrowLeft className="size-4" />
-          </Link>
-        </div>
-      </header>
+    <div id="top" className="min-h-screen bg-background" dir="rtl">
+      <SiteHeader />
 
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         <nav aria-label="الصفحات القانونية" className="flex flex-wrap gap-2 text-sm">
@@ -97,14 +83,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
         </article>
       </main>
 
-      <footer className="border-t border-border bg-[oklch(0.975_0.018_85)]">
-        <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-10 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>
-            <span className="num">© {new Date().getFullYear()}</span> تدقيق · صُنع في السعودية
-          </p>
-          <LegalLinks className="flex flex-wrap gap-4" />
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
