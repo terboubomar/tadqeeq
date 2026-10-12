@@ -4,6 +4,7 @@ import { ArrowLeft, Building2, Check, HandCoins, LogOut } from "lucide-react";
 import { useEffect } from "react";
 
 import { LogoWordmark } from "@/components/brand/Logo";
+import { CompanyProfileGate } from "@/components/CompanyProfileGate";
 import { MizanMark } from "@/components/brand/SuiteMarks";
 import { useWorkspaceAccess, WorkspaceAccessProvider } from "@/components/WorkspaceAccessProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +25,9 @@ export const Route = createFileRoute("/start")({
   head: () => ({ meta: [NOINDEX, { title: "اختر المنصة · تدقيق" }] }),
   component: () => (
     <WorkspaceAccessProvider>
-      <StartPage />
+      <CompanyProfileGate>
+        <StartPage />
+      </CompanyProfileGate>
     </WorkspaceAccessProvider>
   ),
 });

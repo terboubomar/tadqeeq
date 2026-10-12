@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 import { AppShell } from "@/components/AppShell";
+import { CompanyProfileGate } from "@/components/CompanyProfileGate";
 import { WorkspaceAccessProvider } from "@/components/WorkspaceAccessProvider";
 import { loadSupabase } from "@/integrations/supabase/lazy-client";
 import { getEmailCodeStatus } from "@/lib/email-signin.functions";
@@ -31,9 +32,11 @@ export const Route = createFileRoute("/_authenticated")({
   },
   component: () => (
     <WorkspaceAccessProvider>
-      <AppShell>
-        <Outlet />
-      </AppShell>
+      <CompanyProfileGate>
+        <AppShell>
+          <Outlet />
+        </AppShell>
+      </CompanyProfileGate>
     </WorkspaceAccessProvider>
   ),
 });
