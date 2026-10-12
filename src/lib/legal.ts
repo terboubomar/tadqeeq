@@ -22,7 +22,7 @@ export const LEGAL_COMPANY: LegalCompany = {
   brandEn: "Tadqeeq",
   email: "hello@tadqeeq.app",
   website: "https://tadqeeq.app",
-  legalName: "Tadqeeq for Information Solution",
+  legalName: null,
   crNumber: null,
   vatNumber: null,
   address: null,
