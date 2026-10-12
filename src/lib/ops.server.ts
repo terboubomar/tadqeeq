@@ -72,7 +72,7 @@ async function requireOps(section: OpsSection): Promise<OpsActor> {
   return me;
 }
 
-export async function log(actor: OpsActor, action: string, entityType: string, entityId: string | null, workspaceId: string | null, metadata: Row = {}) {
+async function log(actor: OpsActor, action: string, entityType: string, entityId: string | null, workspaceId: string | null, metadata: Row = {}) {
   await db().from("ops_audit_log").insert({
     actor_user_id: actor.userId,
     actor_email: actor.email,
@@ -760,7 +760,7 @@ export async function saveSubscriptionOnServer(input: {
 }
 
 /** Keeps the client's account in step with the subscription just saved (rules in subscriptionAccessChange). */
-export async function syncAccessWithSubscription(actor: OpsActor, workspaceId: string, subscriptionId: string, status: SubscriptionStatus) {
+async function syncAccessWithSubscription(actor: OpsActor, workspaceId: string, subscriptionId: string, status: SubscriptionStatus) {
   const [{ data: o }, { count: otherLive }, archives] = await Promise.all([
     db().from("workspace_onboarding").select("status,paid_at,activated_at").eq("workspace_id", workspaceId).maybeSingle(),
     db().from("subscriptions").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).in("status", LIVE_SUBSCRIPTION_STATUSES).neq("id", subscriptionId),
