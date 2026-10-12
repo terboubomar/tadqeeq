@@ -86,6 +86,7 @@ import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/publi
 import { Route as OpsClientsWorkspaceIdRouteImport } from './routes/ops/clients_.$workspaceId'
 import { Route as AuthenticatedOperationsPlatformDateRouteImport } from './routes/_authenticated/operations_.$platform_.$date'
 import { Route as ApiPublicCronReportSchedulesRouteImport } from './routes/api/public/cron/report-schedules'
+import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -486,6 +487,12 @@ const ApiPublicCronReportSchedulesRoute =
     path: '/api/public/cron/report-schedules',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicPaymentsWebhookRoute =
+  ApiPublicPaymentsWebhookRouteImport.update({
+    id: '/api/public/payments/webhook',
+    path: '/api/public/payments/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
   id: '/lovable/email/auth/preview',
   path: '/lovable/email/auth/preview',
@@ -586,6 +593,7 @@ export interface FileRoutesByFullPath {
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/operations/$platform/$date': typeof AuthenticatedOperationsPlatformDateRoute
   '/api/public/cron/report-schedules': typeof ApiPublicCronReportSchedulesRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -666,6 +674,7 @@ export interface FileRoutesByTo {
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/operations/$platform/$date': typeof AuthenticatedOperationsPlatformDateRoute
   '/api/public/cron/report-schedules': typeof ApiPublicCronReportSchedulesRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -750,6 +759,7 @@ export interface FileRoutesById {
   '/ops/clients_/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/_authenticated/operations_/$platform_/$date': typeof AuthenticatedOperationsPlatformDateRoute
   '/api/public/cron/report-schedules': typeof ApiPublicCronReportSchedulesRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -834,6 +844,7 @@ export interface FileRouteTypes {
     | '/ops/clients/$workspaceId'
     | '/operations/$platform/$date'
     | '/api/public/cron/report-schedules'
+    | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -914,6 +925,7 @@ export interface FileRouteTypes {
     | '/ops/clients/$workspaceId'
     | '/operations/$platform/$date'
     | '/api/public/cron/report-schedules'
+    | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -997,6 +1009,7 @@ export interface FileRouteTypes {
     | '/ops/clients_/$workspaceId'
     | '/_authenticated/operations_/$platform_/$date'
     | '/api/public/cron/report-schedules'
+    | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -1042,6 +1055,7 @@ export interface RootRouteChildren {
   ApiPublicCspReportRoute: typeof ApiPublicCspReportRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
   ApiPublicCronReportSchedulesRoute: typeof ApiPublicCronReportSchedulesRoute
+  ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
@@ -1589,6 +1603,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronReportSchedulesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/payments/webhook': {
+      id: '/api/public/payments/webhook'
+      path: '/api/public/payments/webhook'
+      fullPath: '/api/public/payments/webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/auth/preview': {
       id: '/lovable/email/auth/preview'
       path: '/lovable/email/auth/preview'
@@ -1766,6 +1787,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCspReportRoute: ApiPublicCspReportRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
   ApiPublicCronReportSchedulesRoute: ApiPublicCronReportSchedulesRoute,
+  ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,

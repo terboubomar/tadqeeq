@@ -12,7 +12,7 @@ type Row = Record<string, unknown>;
 const SYSTEM_ACTOR = { userId: null, email: "card-payments", role: "owner", mfa: "ok" } as unknown as OpsActor;
 
 async function planByCode(code: string) {
-  const { data } = await db().from("subscription_plans").select("id,price,price_yearly,addons:features").eq("code", code).maybeSingle();
+  const { data } = await db().from("subscription_plans").select("id,price,price_yearly").eq("code", code).maybeSingle();
   return data as Row | null;
 }
 
