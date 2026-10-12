@@ -9,6 +9,8 @@ import { guideBySlug, type GuideSection } from "@/lib/guides";
 import { PRODUCT_PAGES, PRODUCTS_INDEX, type ProductPage } from "@/lib/product-pages";
 import { PRODUCTS } from "@/lib/products";
 import { formatArabicDate } from "@/lib/site-content";
+import { useScrollReveal } from "@/hooks/use-scroll-reveal";
+import type { CSSProperties } from "react";
 
 /**
  * A product page read as a journey: where the money leaks, how the product works, what it checks, what you get,
@@ -19,8 +21,10 @@ export function ProductLandingPage({ page }: { page: ProductPage }) {
   const product = PRODUCTS[page.product];
   const guides = page.relatedGuides.map(guideBySlug);
   const others = PRODUCT_PAGES.filter((other) => other.slug !== page.slug);
+  const rootRef = useScrollReveal();
   return (
     <GuideShell wide>
+      <div ref={rootRef} className="lp-root">
       <nav aria-label="مسار الصفحة" className="text-sm text-muted-foreground">
         <Link to="/" className="hover:text-foreground">
           الرئيسية
@@ -32,7 +36,7 @@ export function ProductLandingPage({ page }: { page: ProductPage }) {
       </nav>
 
       <article>
-        <header className="mx-auto mt-8 flex max-w-3xl flex-col items-center text-center">
+        <header data-reveal className="mx-auto mt-8 flex max-w-3xl flex-col items-center text-center">
           <ProductIcon product={page.product} className="size-16 rounded-2xl" />
           <p className="mt-5 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-primary-text">
             {product.name} · {product.descriptor}
@@ -71,11 +75,11 @@ export function ProductLandingPage({ page }: { page: ProductPage }) {
 
         <ol className="relative mx-auto mt-16 max-w-4xl">
           {/* The path: a line down the start edge linking every stop to the finish. */}
-          <span aria-hidden="true" className="absolute inset-y-6 start-5 w-px bg-gradient-to-b from-primary via-border to-primary sm:start-6" />
+          <span aria-hidden="true" className="lp-path absolute inset-y-6 start-5 w-px bg-gradient-to-b from-primary via-border to-primary sm:start-6" />
           {page.sections.map((section, index) => (
             <JourneyStop key={section.heading} section={section} index={index} />
           ))}
-          <li className="relative ps-14 sm:ps-20">
+          <li data-reveal className="relative ps-14 sm:ps-20">
             <span aria-hidden="true" className="absolute start-0 top-6 grid size-10 place-items-center rounded-full bg-primary text-primary-foreground ring-8 ring-background sm:size-12">
               <Flag className="size-5" />
             </span>
@@ -92,7 +96,7 @@ export function ProductLandingPage({ page }: { page: ProductPage }) {
           </li>
         </ol>
 
-        <section className="mx-auto mt-20 max-w-3xl">
+        <section data-reveal className="mx-auto mt-20 max-w-3xl">
           <h2 className="text-center font-display text-2xl font-extrabold leading-[1.5] sm:text-3xl">أسئلة شائعة</h2>
           <div className="mt-8 border-b border-border">
             {page.faqs.map(([question, answer], index) => (
@@ -110,7 +114,7 @@ export function ProductLandingPage({ page }: { page: ProductPage }) {
       </article>
 
       {guides.length ? (
-        <nav aria-label="أدلة مرتبطة" className="mx-auto mt-16 max-w-4xl">
+        <nav data-reveal aria-label="أدلة مرتبطة" className="mx-auto mt-16 max-w-4xl">
           <h2 className="text-sm font-bold text-muted-foreground">أدلة مرتبطة</h2>
           <ul className="mt-3 grid gap-3 sm:grid-cols-2">
             {guides.map((guide) => (
@@ -124,7 +128,7 @@ export function ProductLandingPage({ page }: { page: ProductPage }) {
           </ul>
         </nav>
       ) : null}
-      <nav aria-label="منتجات أخرى" className="mx-auto mt-10 max-w-4xl">
+      <nav data-reveal aria-label="منتجات أخرى" className="mx-auto mt-10 max-w-4xl">
         <h2 className="text-sm font-bold text-muted-foreground">منتجات أخرى من تدقيق</h2>
         <ul className="mt-3 grid gap-px overflow-hidden rounded-[20px] border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
           {others.map((other) => (
@@ -140,9 +144,13 @@ export function ProductLandingPage({ page }: { page: ProductPage }) {
           ))}
         </ul>
       </nav>
+      </div>
     </GuideShell>
   );
 }
+
+/** Stagger for the items of a stop: each arrives a beat after the one before. */
+const delay = (step: number) => ({ "--reveal-delay": `${step * 0.08}s` }) as CSSProperties;
 
 /** One stop on the journey: a numbered node on the path and the section drawn by what it holds. */
 function JourneyStop({ section, index }: { section: GuideSection; index: number }) {
@@ -150,21 +158,22 @@ function JourneyStop({ section, index }: { section: GuideSection; index: number 
     <li className="relative pb-14 ps-14 sm:ps-20">
       <span
         aria-hidden="true"
+        data-reveal
         className="absolute start-0 top-0 grid size-10 place-items-center rounded-full border border-border bg-card text-sm font-semibold text-primary-text ring-8 ring-background sm:size-12"
       >
         <span className="num">{index + 1}</span>
       </span>
       <section>
-        <h2 className="pt-1.5 font-display text-2xl font-extrabold leading-[1.5] sm:pt-2.5 sm:text-[1.75rem]">{section.heading}</h2>
+        <h2 data-reveal className="pt-1.5 font-display text-2xl font-extrabold leading-[1.5] sm:pt-2.5 sm:text-[1.75rem]">{section.heading}</h2>
         {section.paragraphs?.map((paragraph) => (
-          <p key={paragraph} className="mt-4 max-w-3xl text-[16px] leading-8 text-foreground/85">
+          <p key={paragraph} data-reveal style={delay(1)} className="mt-4 max-w-3xl text-[16px] leading-8 text-foreground/85">
             {paragraph}
           </p>
         ))}
         {section.steps ? (
           <ol className="mt-6 grid gap-3 sm:grid-cols-2">
             {section.steps.map((step, stepIndex) => (
-              <li key={step} className="flex flex-col gap-3 rounded-[20px] border border-border bg-card p-5 sm:[&:last-child:nth-child(odd)]:col-span-2">
+              <li key={step} data-reveal style={delay(stepIndex + 1)} className="flex flex-col gap-3 rounded-[20px] border border-border bg-card p-5 sm:[&:last-child:nth-child(odd)]:col-span-2">
                 <span className="flex items-center gap-2">
                   <span className="num grid size-8 place-items-center rounded-lg bg-ink text-sm font-semibold text-ink-foreground">{stepIndex + 1}</span>
                   {stepIndex < section.steps!.length - 1 ? <span aria-hidden="true" className="h-px flex-1 bg-border" /> : null}
@@ -175,7 +184,7 @@ function JourneyStop({ section, index }: { section: GuideSection; index: number 
           </ol>
         ) : null}
         {section.bullets ? (
-          <ul className="mt-6 grid gap-px overflow-hidden rounded-[20px] border border-border bg-border sm:grid-cols-2">
+          <ul data-reveal style={delay(1)} className="mt-6 grid gap-px overflow-hidden rounded-[20px] border border-border bg-border sm:grid-cols-2">
             {section.bullets.map((bullet) => (
               <li key={bullet} className="flex gap-3 bg-card p-5 text-[15px] leading-7">
                 <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-secondary text-primary-text">
@@ -187,7 +196,7 @@ function JourneyStop({ section, index }: { section: GuideSection; index: number 
           </ul>
         ) : null}
         {section.table ? (
-          <div className="mt-6 overflow-x-auto rounded-[20px] border border-border bg-card">
+          <div data-reveal style={delay(1)} className="mt-6 overflow-x-auto rounded-[20px] border border-border bg-card">
             <table className="w-full min-w-[34rem] text-sm">
               <thead className="bg-muted text-start">
                 <tr>
@@ -213,7 +222,7 @@ function JourneyStop({ section, index }: { section: GuideSection; index: number 
           </div>
         ) : null}
         {section.quote ? (
-          <blockquote className="mt-6 whitespace-pre-line rounded-[20px] border-s-4 border-primary bg-card p-5 text-[15px] leading-8">{section.quote}</blockquote>
+          <blockquote data-reveal style={delay(1)} className="mt-6 whitespace-pre-line rounded-[20px] border-s-4 border-primary bg-card p-5 text-[15px] leading-8">{section.quote}</blockquote>
         ) : null}
       </section>
     </li>

@@ -41,6 +41,7 @@ import {
   type PublicPlan,
 } from "@/lib/plans";
 import { cn } from "@/lib/utils";
+import { useScrollReveal } from "@/hooks/use-scroll-reveal";
 import { listPublicPlans } from "@/lib/plans.functions";
 import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
 import { LEGAL_COMPANY, LEGAL_DOCS } from "@/lib/legal";
@@ -242,33 +243,6 @@ function LandingRoute() {
   return <Landing plans={plans} />;
 }
 
-/** Reveals `[data-reveal]` elements as they scroll into view. Content stays visible without JS. */
-function useScrollReveal() {
-  const rootRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root || typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            entry.target.setAttribute("data-shown", "");
-            observer.unobserve(entry.target);
-          }
-        }
-      },
-      { rootMargin: "0px 0px -10% 0px", threshold: 0.1 },
-    );
-    root.querySelectorAll("[data-reveal]").forEach((el) => {
-      const rect = el.getBoundingClientRect();
-      if (rect.top < window.innerHeight) el.setAttribute("data-shown", "");
-      else observer.observe(el);
-    });
-    root.classList.add("lp-ready");
-    return () => observer.disconnect();
-  }, []);
-  return rootRef;
-}
 
 function Landing({ plans }: { plans: PublicPlan[] }) {
   const rootRef = useScrollReveal();
@@ -951,7 +925,7 @@ function Steps() {
       <SectionIntro title="أربع خطوات. بدون جداول يدوية.">من الملف إلى الاسترداد، في نفس المكان.</SectionIntro>
       <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {HOW_FLOW.map((step, index) => (
-          <li key={step.title} data-reveal className="flex flex-col gap-3 rounded-[22px] border border-border bg-card p-6">
+          <li key={step.title} data-reveal style={{ "--reveal-delay": `${index * 0.1}s` } as CSSProperties} className="flex flex-col gap-3 rounded-[22px] border border-border bg-card p-6">
             <div className="flex items-center justify-between">
               <span className="grid size-10 place-items-center rounded-xl bg-ink text-ink-foreground">
                 <step.icon strokeWidth={1.75} className="size-5" />
