@@ -530,11 +530,11 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
               <p className="mt-4 text-base leading-8 text-muted-foreground">افتح أي منتج لتعرف ماذا يفعل بالتفصيل.</p>
             </div>
             <ul className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {PRODUCT_PAGES.map((page) => {
+              {PRODUCT_PAGES.map((page, index) => {
                 const product = PRODUCTS[page.product];
                 const Icon = PRODUCT_ICONS[page.product];
                 return (
-                  <li key={page.slug} data-reveal>
+                  <li key={page.slug} data-reveal className={cn((index === 0 || index === PRODUCT_PAGES.length - 1) && PRODUCT_PAGES.length === 7 && "lg:col-span-2")}>
                     <a
                       href={page.path}
                       className="group flex h-full flex-col rounded-3xl border border-border bg-card p-6 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 hover:border-primary/50"
@@ -2395,7 +2395,7 @@ function HeroDashboard() {
   return (
     <div
       aria-hidden="true"
-      className="lp-slide flex overflow-hidden rounded-[18px] border border-border bg-card shadow-[0_30px_60px_-30px_rgb(19_35_43/0.25)] lg:-me-24 lg:rounded-e-none"
+      className="lp-slide flex overflow-hidden rounded-[18px] border border-border bg-card"
     >
       <div className="hidden w-14 shrink-0 flex-col items-center gap-4 bg-ink pt-5 sm:flex">
         <LogoMark className="h-6 text-ink-foreground" />
