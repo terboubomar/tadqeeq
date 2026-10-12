@@ -157,3 +157,49 @@ export function isValidMeetingSlot(iso: string): boolean {
 }
 
 export const MEETING_HOURS = [10, 11, 12, 13, 14, 15, 16];
+
+/** The company details a new account fills in on its first sign-in (/onboarding). */
+export interface CompanyProfileInput {
+  legalName: string;
+  crNumber: string;
+  /** Optional: small restaurants may not be VAT-registered. */
+  vatNumber: string;
+  brandName: string;
+  contactName: string;
+  contactEmail: string;
+  contactMobile: string;
+}
+
+export type CompanyProfileField = keyof CompanyProfileInput | "logo";
+
+/** Field errors for the company details, in Arabic; an empty object means valid. */
+export function companyProfileErrors(input: CompanyProfileInput, hasLogo: boolean): Partial<Record<CompanyProfileField, string>> {
+  const errors: Partial<Record<CompanyProfileField, string>> = {};
+  if (!input.legalName.trim()) errors.legalName = "اسم الشركة مطلوب";
+  if (!isValidCr(input.crNumber)) errors.crNumber = "رقم السجل التجاري 10 أرقام";
+  if (input.vatNumber.trim() && !isValidVat(input.vatNumber)) errors.vatNumber = "الرقم الضريبي 15 رقماً يبدأ وينتهي بـ 3";
+  if (!input.brandName.trim()) errors.brandName = "العلامة التجارية مطلوبة";
+  if (!hasLogo) errors.logo = "أرفق شعار العلامة";
+  if (!input.contactName.trim()) errors.contactName = "اسم المسؤول مطلوب";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.contactEmail.trim())) errors.contactEmail = "بريد إلكتروني غير صحيح";
+  if (!normalizeSaudiMobile(input.contactMobile)) errors.contactMobile = "جوال سعودي 05XXXXXXXX";
+  return errors;
+}
+
+/**
+ * Whether this person must fill in the company details before using the app: the owner or an admin of a new
+ * (trial) workspace whose company name or CR is still empty. Invited members, active customers and platform
+ * admins never are.
+ */
+export function needsCompanyProfile(input: {
+  status: string;
+  role: string;
+  isPlatformAdmin: boolean;
+  legalName: string | null;
+  crNumber: string | null;
+}): boolean {
+  if (input.isPlatformAdmin) return false;
+  if (input.status !== "pending_details") return false;
+  if (input.role !== "owner" && input.role !== "admin") return false;
+  return !input.legalName?.trim() || !input.crNumber?.trim();
+}

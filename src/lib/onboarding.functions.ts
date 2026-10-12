@@ -8,6 +8,7 @@ import {
   requestPlanOnServer,
   listTenantsOnServer,
   requestReactivationOnServer,
+  saveCompanyProfileOnServer,
   setTenantStatusOnServer,
   submitOnboardingOnServer,
 } from "./onboarding.server";
@@ -34,6 +35,21 @@ export const submitOnboarding = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => submitOnboardingOnServer(data));
+
+export const saveCompanyProfile = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      legalName: z.string().max(200),
+      crNumber: z.string().max(20),
+      vatNumber: z.string().max(20),
+      brandName: z.string().max(160),
+      contactName: z.string().max(160),
+      contactEmail: z.string().max(320),
+      contactMobile: z.string().max(20),
+      logoDataUrl: z.string().max(3_000_000).optional(),
+    }),
+  )
+  .handler(async ({ data }) => saveCompanyProfileOnServer(data));
 
 export const requestReactivation = createServerFn({ method: "POST" })
   .validator(z.object({ note: z.string().max(1000).optional() }))

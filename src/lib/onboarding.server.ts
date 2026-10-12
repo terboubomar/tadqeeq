@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 import {
+  companyProfileErrors,
   isValidCr,
   isValidMeetingSlot,
   isValidNationalId,
@@ -11,6 +12,7 @@ import {
   REACTIVATION_REQUEST_EVENT,
   REACTIVATION_REQUEST_REPEAT_MS,
   requestedWithin,
+  type CompanyProfileInput,
   type OnboardingRecord,
   type OnboardingStatus,
   type SuspensionInfo,
@@ -292,18 +294,7 @@ export async function submitOnboardingOnServer(input: SubmitOnboardingInput): Pr
   if (!isValidMeetingSlot(input.meetingAt)) throw new Error("اختر موعداً من الأحد إلى الخميس بين 10 صباحاً و5 مساءً.");
 
   let logoPath: string | null = (current?.logo_path as string | null) ?? null;
-  if (input.logoDataUrl) {
-    // The type comes from the file's own bytes, never from the browser; SVG is refused because it can carry scripts.
-    const bytes = dataUrlBytes(input.logoDataUrl);
-    const sniffed = bytes ? sniffFile(bytes) : null;
-    if (!bytes || !sniffed || sniffed.mime === "application/pdf") throw new Error("صيغة الشعار غير مدعومة (PNG / JPG / WEBP).");
-    if (bytes.byteLength > 2 * 1024 * 1024) throw new Error("حجم الشعار يجب ألا يتجاوز 2MB.");
-    logoPath = `${ctx.workspaceId}/logo-${Date.now()}.${sniffed.ext}`;
-    const { error: upErr } = await supabaseAdmin.storage
-      .from(LOGO_BUCKET)
-      .upload(logoPath, bytes, { contentType: sniffed.mime, upsert: true });
-    if (upErr) throw new Error("تعذّر رفع الشعار.");
-  }
+  if (input.logoDataUrl) logoPath = await storeLogo(ctx.workspaceId, input.logoDataUrl);
 
   const now = new Date().toISOString();
   const { error } = await db()
@@ -325,6 +316,71 @@ export async function submitOnboardingOnServer(input: SubmitOnboardingInput): Pr
         meeting_at: new Date(input.meetingAt).toISOString(),
         meeting_note: input.meetingNote?.trim() || null,
         submitted_at: now,
+        updated_at: now,
+      },
+      { onConflict: "workspace_id" },
+    );
+  if (error) throw new Error(error.message);
+
+  await db()
+    .from("workspaces")
+    .update({ name: input.brandName.trim().slice(0, 160), updated_at: now })
+    .eq("id", ctx.workspaceId);
+}
+
+/** Stores a workspace logo and returns its path; the type comes from the file's own bytes. */
+async function storeLogo(workspaceId: string, dataUrl: string): Promise<string> {
+  // Never trust the browser's type; SVG is refused because it can carry scripts.
+  const bytes = dataUrlBytes(dataUrl);
+  const sniffed = bytes ? sniffFile(bytes) : null;
+  if (!bytes || !sniffed || sniffed.mime === "application/pdf") throw new Error("صيغة الشعار غير مدعومة (PNG / JPG / WEBP).");
+  if (bytes.byteLength > 2 * 1024 * 1024) throw new Error("حجم الشعار يجب ألا يتجاوز 2MB.");
+  const logoPath = `${workspaceId}/logo-${Date.now()}.${sniffed.ext}`;
+  const { error } = await supabaseAdmin.storage
+    .from(LOGO_BUCKET)
+    .upload(logoPath, bytes, { contentType: sniffed.mime, upsert: true });
+  if (error) throw new Error("تعذّر رفع الشعار.");
+  return logoPath;
+}
+
+/**
+ * The company details from the first-sign-in page. Saved while the workspace is still new (pending details) without
+ * changing its status, so the trial and the later subscription steps work as before.
+ */
+export async function saveCompanyProfileOnServer(input: CompanyProfileInput & { logoDataUrl?: string }): Promise<void> {
+  const ctx = await requireServerUserAnyStatus();
+  if (ctx.role !== "owner" && ctx.role !== "admin") {
+    throw new Error("مالك الحساب فقط يستطيع إكمال بيانات الشركة.");
+  }
+  const { data: current } = await db()
+    .from("workspace_onboarding")
+    .select("status,logo_path")
+    .eq("workspace_id", ctx.workspaceId)
+    .maybeSingle();
+  if ((current?.status ?? "pending_details") !== "pending_details") {
+    throw new Error("تم استلام بياناتك — تواصل معنا لأي تعديل.");
+  }
+  const hasLogo = Boolean(input.logoDataUrl) || Boolean(current?.logo_path);
+  const firstError = Object.values(companyProfileErrors(input, hasLogo))[0];
+  if (firstError) throw new Error(firstError);
+
+  let logoPath: string | null = (current?.logo_path as string | null) ?? null;
+  if (input.logoDataUrl) logoPath = await storeLogo(ctx.workspaceId, input.logoDataUrl);
+
+  const now = new Date().toISOString();
+  const { error } = await db()
+    .from("workspace_onboarding")
+    .upsert(
+      {
+        workspace_id: ctx.workspaceId,
+        legal_name: input.legalName.trim(),
+        cr_number: normalizeDigits(input.crNumber),
+        vat_number: input.vatNumber.trim() ? normalizeDigits(input.vatNumber) : null,
+        brand_name: input.brandName.trim(),
+        contact_name: input.contactName.trim(),
+        contact_email: input.contactEmail.trim().toLowerCase(),
+        contact_mobile: normalizeSaudiMobile(input.contactMobile),
+        logo_path: logoPath,
         updated_at: now,
       },
       { onConflict: "workspace_id" },
