@@ -64,7 +64,7 @@ import { cn } from "@/lib/utils";
 import { listPublicPlans } from "@/lib/plans.functions";
 import { LogoMark, LogoWordmark } from "@/components/brand/Logo";
 import { LEGAL_COMPANY, LEGAL_DOCS } from "@/lib/legal";
-import { productPageFor } from "@/lib/product-pages";
+import { PRODUCT_PAGES, productPageFor } from "@/lib/product-pages";
 import { ProductsMenu, ProductsMenuList } from "@/components/products/ProductsMenu";
 import { PRODUCTS, productTitle, type ProductKey } from "@/lib/products";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -138,7 +138,8 @@ const FOOTER_GROUPS = [
     title: "تعرّف على تدقيق",
     links: [
       ["#video", "فيديو تعريفي"],
-      ["#how", "كيف يعمل"],
+      ["#products", "المنتجات"],
+  ["#how", "كيف يعمل"],
       ["#who", "لمن تدقيق"],
       ["#pricing", "الخطط والأسعار"],
       ["#faq", "الأسئلة الشائعة"],
@@ -406,6 +407,23 @@ function useScrollReveal() {
   return rootRef;
 }
 
+const PRODUCT_ICONS: Record<ProductKey, LucideIcon> = {
+  mutabiq: SearchCheck,
+  kashif: Receipt,
+  radar: AlertTriangle,
+  istirdad: HandCoins,
+  aaid: Megaphone,
+  nabd: Activity,
+  raqeeb: Eye,
+  ai: Sparkles,
+};
+
+const MIN_STEPS = [
+  ["ارفع ملفاتك", "ملف الطلبات من بوابة التاجر وفاتورة المنصة لنفس الفترة."],
+  ["نعيد الاحتساب", "كل بند يُحسب من طلباتك ونسب عقدك لكل فرع وقناة."],
+  ["راجع الفروقات", "كل فرق باسم الفرع ومبلغه ودليله، جاهز للاعتراض."],
+] as const;
+
 function Landing({ plans }: { plans: PublicPlan[] }) {
   const rootRef = useScrollReveal();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -413,395 +431,244 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
   const navItems = NAV.filter(([href]) => hasSection(href));
 
   return (
-    <div ref={rootRef} id="top" className="lp-root min-h-screen bg-ink p-1.5 sm:p-3 lg:p-4" dir="rtl">
-     <div className="min-h-screen overflow-clip rounded-[1.25rem] bg-background sm:rounded-[1.75rem]">
-      <ExplainerVideoLauncher />
-      <div className="flex items-center justify-center gap-3 border-b border-border px-4 py-2.5 text-center text-xs text-foreground/80 sm:text-[13px]">
-        <span className="lp-pulse shrink-0 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-primary-foreground">جديد</span>
-        <span className="hidden sm:inline">«{PRODUCTS.nabd.name}» لمتابعة تكلفة كل منصة يومياً، وقيود محاسبية جاهزة لنظامك</span>
-        <span className="sm:hidden">«{PRODUCTS.nabd.name}» لمتابعة تكلفة المنصات يومياً</span>
-        <a href="#products" className="shrink-0 font-semibold text-primary-text">اكتشف الجديد ←</a>
-      </div>
-
-      <div className="sticky top-0 z-40 px-3 pt-3 sm:px-5 sm:pt-4">
-        <header className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 rounded-2xl bg-background/85 ps-3 pe-2 backdrop-blur sm:h-[68px] sm:ps-4">
-          <Link to="/" aria-label="تدقيق — الرئيسية" className="flex items-center gap-2.5 rounded-xl bg-muted/70 px-3 py-2">
-            <LogoWordmark className="h-8 text-ink sm:h-9" />
-            <span className="hidden border-s border-border ps-2.5 text-[11px] leading-tight text-muted-foreground sm:block">
-              مراجعة فواتير
-              <br />
-              التوصيل
-            </span>
+    <div ref={rootRef} id="top" className="lp-root min-h-screen bg-background" dir="rtl">
+      <div className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
+        <header className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+          <Link to="/" aria-label="تدقيق — الرئيسية" className="shrink-0">
+            <LogoWordmark className="h-8 text-ink" />
           </Link>
-          <nav aria-label="الرئيسية" className="hidden items-center gap-1 rounded-xl bg-muted/70 p-1 text-sm xl:flex">
-            <ProductsMenu triggerClassName="rounded-full px-4 py-2 text-foreground/75 transition-colors hover:bg-card hover:text-foreground hover:shadow-sm" />
+          <nav aria-label="الرئيسية" className="hidden items-center gap-1 text-sm lg:flex">
+            <ProductsMenu triggerClassName="rounded-full px-3.5 py-2 text-muted-foreground transition-colors hover:text-foreground" />
             {navItems.map(([href, label]) => (
-              <a
-                key={href}
-                href={href}
-                className="whitespace-nowrap rounded-full px-4 py-2 text-foreground/75 transition-colors hover:bg-card hover:text-foreground hover:shadow-sm"
-              >
+              <a key={href} href={href} className="whitespace-nowrap rounded-full px-3.5 py-2 text-muted-foreground transition-colors hover:text-foreground">
                 {label}
               </a>
             ))}
           </nav>
-          <div className="flex items-center gap-1.5">
-            <Link to="/auth" className="hidden px-3 py-2 text-sm font-semibold sm:block">
+          <div className="flex items-center gap-1">
+            <Link to="/auth" className="hidden px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:block">
               تسجيل الدخول
             </Link>
             <Link
               to="/auth"
               search={{ mode: "signup" }}
-              className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground transition-transform hover:-translate-y-0.5 sm:h-[46px] sm:px-5"
+              className="inline-flex h-10 items-center rounded-full bg-ink px-5 text-sm font-semibold text-ink-foreground transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
             >
-              ابدأ مجاناً
-              <ArrowLeft className="size-4" />
+              سجّل منشأتك
             </Link>
             <button
               type="button"
               aria-label={menuOpen ? "إغلاق القائمة" : "فتح القائمة"}
               aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((v) => !v)}
-              className="grid size-11 place-items-center rounded-full hover:bg-muted xl:hidden"
+              onClick={() => setMenuOpen((open) => !open)}
+              className="grid size-10 place-items-center rounded-full text-foreground lg:hidden"
             >
               {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
             </button>
           </div>
         </header>
         {menuOpen ? (
-          <nav aria-label="القائمة" className="mx-auto mt-2 flex max-w-7xl flex-col rounded-2xl border border-border bg-card p-2 shadow-lg xl:hidden">
+          <div className="border-t border-border/60 px-4 pb-6 pt-3 lg:hidden">
             <ProductsMenuList onNavigate={() => setMenuOpen(false)} />
-            {navItems.map(([href, label]) => (
-              <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-muted">
-                {label}
-              </a>
-            ))}
-            <Link to="/auth" className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-muted sm:hidden">
-              تسجيل الدخول
-            </Link>
-          </nav>
+            <div className="mt-3 grid gap-1 border-t border-border/60 pt-3">
+              {navItems.map(([href, label]) => (
+                <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-3 py-2.5 text-[15px]">
+                  {label}
+                </a>
+              ))}
+              <Link to="/auth" className="rounded-xl px-3 py-2.5 text-[15px]">
+                تسجيل الدخول
+              </Link>
+            </div>
+          </div>
         ) : null}
       </div>
 
       <main>
-        <section className="relative overflow-hidden">
-          {/* Quiet frame rails at the edges, as in the 21st.dev "Fintech SaaS" template. */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-24 hidden lg:block">
-            <span className="absolute start-0 top-0 h-px w-10 bg-border" />
-            <span className="absolute start-10 -top-8 grid h-16 w-28 place-items-center rounded-2xl border border-border">
-              <span className="size-1.5 rounded-full border border-muted-foreground/50" />
-            </span>
-            <span className="absolute end-0 top-0 h-px w-10 bg-border" />
-            <span className="absolute end-10 -top-8 grid h-16 w-28 place-items-center rounded-2xl border border-border">
-              <span className="size-1.5 rounded-full border border-muted-foreground/50" />
-            </span>
-          </div>
-          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[34rem] hidden h-[40rem] lg:block">
-            <span className="absolute -start-px top-0 h-full w-44 rounded-se-[2.5rem] border-e border-t border-border" />
-            <span className="absolute -end-px top-0 h-full w-44 rounded-ss-[2.5rem] border-s border-t border-border" />
-          </div>
-
-          <div className="relative mx-auto flex max-w-5xl flex-col items-center px-4 pb-10 pt-16 text-center sm:px-6 sm:pt-24 lg:pt-28">
-            <div className="lp-stagger flex flex-col items-center gap-7">
-              <p className="flex items-center gap-2.5 text-sm text-foreground/80 sm:text-[15px]">
-                <span aria-hidden="true" className="flex">
-                  {PLATFORM_KEYS.map((key, i) => (
-                    <PlatformIcon key={key} platform={key} className={cn("size-6 rounded-full ring-2 ring-background", i > 0 && "-ms-2")} />
-                  ))}
-                </span>
-                تدقيق فواتير
-                <span aria-hidden="true" className="grid size-5 place-items-center rounded-[6px] bg-primary text-primary-foreground">
-                  <Check className="size-3.5" />
-                </span>
-                <span className="font-semibold text-foreground">هنقرستيشن وكيتا وجاهز</span>
-              </p>
-              <h1 className="max-w-4xl text-balance font-display text-4xl font-extrabold leading-[1.35] sm:text-5xl lg:text-[3.6rem]">
-                لا تدفع فاتورة هنقرستيشن أو جاهز أو كيتا{" "}
-                <span className="text-muted-foreground/70">قبل ما تتأكد منها.</span>
-              </h1>
-              <p className="max-w-xl text-pretty text-base leading-8 text-muted-foreground sm:text-lg">
-                تدقيق يعيد احتساب كل بند في فاتورة تطبيق التوصيل من ملف طلباتك ومعادلات عقدك، يكشف الفرق لكل فرع، ويجهّز مطالبة التعويض بأدلتها.
-              </p>
-              <div className="flex flex-wrap justify-center gap-3">
-                <Link
-                  to="/auth"
-                  search={{ mode: "signup" }}
-                  className="inline-flex h-[54px] items-center gap-2 rounded-xl bg-ink px-7 text-[15px] font-semibold text-ink-foreground shadow-[0_14px_30px_-16px_rgb(19_35_43/0.55)] transition-transform duration-300 hover:-translate-y-0.5 active:scale-[0.98]"
-                >
-                  ابدأ التدقيق
-                  <ArrowLeft className="size-4" />
-                </Link>
-                <a
-                  href="#video"
-                  className="inline-flex h-[54px] items-center gap-2 rounded-xl bg-card px-7 text-[15px] font-semibold shadow-[0_10px_24px_-18px_rgb(19_35_43/0.4)] ring-1 ring-border transition-transform duration-300 hover:-translate-y-0.5 active:scale-[0.98]"
-                >
-                  <Play className="size-4 fill-current" />
-                  شاهد كيف يعمل
-                </a>
-              </div>
-              <ul className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-[13px] text-muted-foreground">
-                {["Excel وCSV وPDF", "بيانات كل شركة منفصلة", "الذكاء الاصطناعي لا يغيّر الأرقام"].map((item) => (
-                  <li key={item} className="flex items-center gap-1.5">
-                    <Check className="size-4 text-success" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          <div className="relative mx-auto max-w-5xl px-4 pb-20 sm:px-6 lg:pb-28">
-            <span
-              aria-hidden="true"
-              className="absolute -top-3 start-6 z-10 inline-flex -rotate-3 items-center gap-2 rounded-full bg-card px-4 py-2 text-[13px] font-semibold shadow-[0_12px_28px_-16px_rgb(19_35_43/0.45)] ring-1 ring-border sm:start-12"
+        <section className="mx-auto max-w-4xl px-4 pb-16 pt-20 text-center sm:px-6 sm:pt-28">
+          <p data-reveal className="mx-auto inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground">
+            <span className="size-1.5 rounded-full bg-primary" />
+            هنقرستيشن · جاهز · كيتا
+          </p>
+          <h1 data-reveal className="mt-7 font-display text-4xl font-extrabold leading-[1.35] tracking-tight text-foreground sm:text-6xl sm:leading-[1.3]">
+            لا تدفع فاتورة التوصيل
+            <span className="block text-muted-foreground">قبل أن تراجعها.</span>
+          </h1>
+          <p data-reveal className="mx-auto mt-6 max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
+            تدقيق يعيد احتساب كل بند في فاتورتك من طلباتك وعقدك، ويُظهر الفرق لكل فرع ومصدره قبل السداد.
+          </p>
+          <div data-reveal className="mt-9 flex flex-wrap justify-center gap-3">
+            <Link
+              to="/auth"
+              search={{ mode: "signup" }}
+              className="group inline-flex h-12 items-center gap-3 rounded-full bg-ink ps-6 pe-1.5 text-[15px] font-semibold text-ink-foreground transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
             >
-              <span className="size-2 rounded-full bg-success" />
-              مطابقة تلقائية · مباشرة
-            </span>
-            <div className="rounded-[2rem] bg-ink/[0.04] p-2 ring-1 ring-border">
+              ابدأ التدقيق
+              <span className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-x-1">
+                <ArrowLeft className="size-4" />
+              </span>
+            </Link>
+            <a href="/products" className="inline-flex h-12 items-center rounded-full border border-border px-6 text-[15px] font-medium text-foreground transition-colors hover:bg-muted">
+              تعرّف على المنتجات
+            </a>
+          </div>
+        </section>
+
+        <section aria-label="معاينة لوحة التدقيق" className="mx-auto max-w-5xl px-4 pb-24 sm:px-6">
+          <div data-reveal className="rounded-[2rem] border border-border bg-muted/40 p-2">
+            <div className="overflow-hidden rounded-[calc(2rem-0.5rem)] bg-card">
               <HeroDashboard />
             </div>
           </div>
         </section>
 
-        <section className="border-y border-border">
-          <div>
-            <div className="mx-auto max-w-7xl px-4 py-10 text-center sm:px-6">
-              <h2 className="text-sm font-semibold text-muted-foreground">مطاعم تراجع فواتيرها مع تدقيق</h2>
-              {/* Black and white and moving; under the pointer a logo shows its colours and the strip pauses. Laid out
-                  left to right so the track starts at the left edge, and each half is wider than any screen so the
-                  loop never shows a gap. */}
-              <div dir="ltr" className="lp-marquee-wrap relative mt-6 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
-                <ul dir="ltr" className="lp-marquee flex w-max items-start">
-                  {[0, 1].flatMap((copy) =>
-                    Array.from({ length: 6 }, () => CLIENTS).flat().map((client, index) => (
-                      <li key={`${copy}-${index}`} aria-hidden={copy === 1 || index >= CLIENTS.length ? true : undefined} className="px-5 sm:px-7">
-                        <figure className="group flex flex-col items-center gap-2">
-                          <img
-                            src={client.logo}
-                            alt={copy === 0 && index < CLIENTS.length ? `شعار ${client.name}` : ""}
-                            width={80}
-                            height={80}
-                            loading="lazy"
-                            decoding="async"
-                            className="size-16 rounded-2xl opacity-75 ring-1 ring-black/5 grayscale transition-[filter,opacity,transform] duration-300 group-hover:-translate-y-0.5 group-hover:opacity-100 group-hover:grayscale-0 sm:size-20"
-                          />
-                          <figcaption dir="rtl" className="text-xs font-semibold text-muted-foreground transition-colors group-hover:text-foreground">
-                            {client.name}
-                          </figcaption>
-                        </figure>
-                      </li>
-                    )),
-                  )}
-                </ul>
-              </div>
+        <section id="products" className="border-t border-border/60">
+          <div className="mx-auto max-w-6xl px-4 py-24 sm:px-6">
+            <div data-reveal className="max-w-xl">
+              <p className="text-xs font-medium tracking-wide text-primary-text">المنتجات</p>
+              <h2 className="mt-3 font-display text-3xl font-bold leading-[1.4] sm:text-4xl">أدوات منفصلة، تعمل معاً.</h2>
+              <p className="mt-4 text-base leading-8 text-muted-foreground">افتح أي منتج لتعرف ماذا يفعل بالتفصيل.</p>
             </div>
-          </div>
-        </section>
-
-        <section className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:py-28">
-          <SectionIntro eyebrow="المشكلة" title="ثلاث منصات، ثلاث صيغ، وفاتورة لا تُراجع.">
-            كل منصة تكتب خصوماتها بطريقتها. ومن دون إعادة احتساب، تُدفع الفاتورة كما وصلت — بعمولتها ورسومها وتعويضاتها.
-          </SectionIntro>
-          <div data-reveal className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[18px] border border-border bg-card p-6">
-              <p className="text-xs font-semibold text-destructive">من دون تدقيق</p>
-              <ul className="mt-4 space-y-3 text-[15px] text-foreground/80">
-                {BEFORE.map((item) => (
-                  <li key={item} className="flex items-center gap-2.5">
-                    <span className="grid size-5 place-items-center rounded-full bg-destructive/12 text-destructive">
-                      <X className="size-3" />
-                    </span>
-                    {item}
+            <ul className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {PRODUCT_PAGES.map((page, index) => {
+                const product = PRODUCTS[page.product];
+                const Icon = PRODUCT_ICONS[page.product];
+                return (
+                  <li key={page.slug} data-reveal className={cn((index === 0 || index === PRODUCT_PAGES.length - 1) && PRODUCT_PAGES.length === 7 && "lg:col-span-2")}>
+                    <a
+                      href={page.path}
+                      className="group flex h-full flex-col rounded-3xl border border-border bg-card p-6 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 hover:border-primary/50"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="grid size-10 place-items-center rounded-2xl bg-muted text-foreground">
+                          <Icon className="size-[18px]" strokeWidth={1.5} />
+                        </span>
+                        <ArrowLeft className="size-4 text-muted-foreground transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-x-1 group-hover:text-foreground" />
+                      </div>
+                      <h3 className="mt-6 text-lg font-bold">
+                        {product.name} <span className="font-normal text-muted-foreground">· {product.descriptor}</span>
+                      </h3>
+                      <p className="mt-2 text-sm leading-7 text-muted-foreground">{page.summary}</p>
+                    </a>
                   </li>
-                ))}
-              </ul>
-            </div>
-            <div className="lp-float rounded-[18px] bg-ink p-6 text-ink-foreground shadow-[0_30px_60px_-30px_rgb(19_35_43/0.45)]">
-              <p className="text-xs font-semibold text-primary">مع تدقيق</p>
-              <ul className="mt-4 space-y-3 text-[15px]">
-                {AFTER.map((item, index) => (
-                  <li key={item} className="lp-in flex items-center gap-2.5" style={{ animationDelay: `${0.4 + index * 0.15}s` }}>
-                    <span className="grid size-5 place-items-center rounded-full bg-primary text-primary-foreground">
-                      <Check className="size-3" />
-                    </span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
+                );
+              })}
+            </ul>
+            <a href="/products" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+              كل المنتجات <ArrowLeft className="size-4" />
+            </a>
           </div>
         </section>
 
-        <HowItWorks />
-
-        <section id="features" className="bg-[oklch(0.975_0.018_85)]">
-          <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:py-28">
-            <SectionIntro eyebrow="مُطابِق · مطابقة الفاتورة" title="ما خصمته المنصة. ما يقوله عقدك. والفرق بينهما.">
-              ارفع الفاتورة ويعيد تدقيق بناءها بنداً بنداً من ملف الطلبات. عند الاختلاف ترى البند والنسبة المحتسبة والنسبة المتفق عليها.
-              <Link
-                to="/auth"
-                search={{ mode: "signup" }}
-                className="mt-6 inline-flex h-11 w-fit items-center gap-2 rounded-full bg-ink px-5 text-sm font-semibold text-ink-foreground"
-              >
-                جرّب مُطابِق
-                <ArrowLeft className="size-4" />
-              </Link>
-            </SectionIntro>
-            <InvoiceMock />
+        <section id="how" className="border-t border-border/60">
+          <div className="mx-auto max-w-6xl px-4 py-24 sm:px-6">
+            <div data-reveal className="max-w-xl">
+              <p className="text-xs font-medium tracking-wide text-primary-text">كيف يعمل</p>
+              <h2 className="mt-3 font-display text-3xl font-bold leading-[1.4] sm:text-4xl">ثلاث خطوات، لا أكثر.</h2>
+            </div>
+            <ol className="mt-12 grid gap-10 sm:grid-cols-3">
+              {MIN_STEPS.map(([title, text], index) => (
+                <li key={title} data-reveal className="border-t border-border pt-6">
+                  <span className="num text-sm text-muted-foreground">0{index + 1}</span>
+                  <h3 className="mt-3 text-lg font-bold">{title}</h3>
+                  <p className="mt-2 text-sm leading-7 text-muted-foreground">{text}</p>
+                </li>
+              ))}
+            </ol>
           </div>
         </section>
-
-        <CompensationFlow />
-
-        <ProductShowcase />
-
-        <ChecksGrid />
-
-        <AssistantSection />
-
-        <Audiences />
-
-        <Capabilities />
 
         {plans.length ? <Pricing plans={plans} /> : null}
 
-        <section id="faq" className="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.6fr)_minmax(0,1.4fr)] lg:py-24">
-          <SectionIntro eyebrow="أسئلة" title="قبل أن تبدأ">
-            ما يسأله أصحاب المطاعم عادة.
-            <span className="mt-4 block text-xs text-muted-foreground">
-              آخر تحديث: <time dateTime={CONTENT_UPDATED}>{formatArabicDate(CONTENT_UPDATED)}</time>
-            </span>
-          </SectionIntro>
-          <div data-reveal className="border-b border-border">
-            {FAQS.map(([q, a], index) => (
-              <details key={q} open={index === 0} className="group border-t border-border">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-lg font-semibold">
-                  <span>{q}</span>
-                  <ChevronDown className="size-5 shrink-0 text-primary-text transition-transform group-open:rotate-180" />
-                </summary>
-                <p className="max-w-2xl pb-5 text-[15px] leading-8 text-muted-foreground">{a}</p>
-              </details>
-            ))}
+        <section id="faq" className="border-t border-border/60">
+          <div className="mx-auto grid max-w-6xl gap-10 px-4 py-24 sm:px-6 lg:grid-cols-[minmax(0,0.6fr)_minmax(0,1.4fr)]">
+            <div data-reveal>
+              <p className="text-xs font-medium tracking-wide text-primary-text">أسئلة</p>
+              <h2 className="mt-3 font-display text-3xl font-bold leading-[1.4]">قبل أن تبدأ</h2>
+              <p className="mt-4 text-xs text-muted-foreground">
+                آخر تحديث: <time dateTime={CONTENT_UPDATED}>{formatArabicDate(CONTENT_UPDATED)}</time>
+              </p>
+            </div>
+            <div data-reveal className="border-b border-border">
+              {FAQS.map(([q, a]) => (
+                <details key={q} className="group border-t border-border">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-base font-semibold">
+                    <span>{q}</span>
+                    <Plus className="size-4 shrink-0 text-muted-foreground transition-transform duration-500 group-open:rotate-45" />
+                  </summary>
+                  <p className="max-w-2xl pb-5 text-[15px] leading-8 text-muted-foreground">{a}</p>
+                </details>
+              ))}
+            </div>
           </div>
         </section>
 
-        <section id="final-cta" className="px-4 pb-16 sm:px-6">
-          <div
-            data-reveal
-            className="mx-auto flex max-w-7xl flex-col items-center gap-5 rounded-[28px] bg-ink px-6 py-16 text-center text-ink-foreground sm:py-20"
-          >
-            <h2 className="font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.75rem]">اعرف ما تقوله فاتورتك الأخيرة فعلاً.</h2>
-            <p className="max-w-xl text-base leading-8 text-ink-muted sm:text-lg">
-              ارفع ملف الطلبات والفاتورة لفترة واحدة، وشاهد الفروقات لكل فرع قبل أن تدفع.
-            </p>
-            <div className="mt-2 flex flex-wrap justify-center gap-3">
-              <Link
-                to="/auth"
-                search={{ mode: "signup" }}
-                className="inline-flex h-[52px] items-center rounded-full bg-primary px-7 text-[15px] font-bold text-primary-foreground"
-              >
-                ابدأ التدقيق
-              </Link>
-              {plans.length ? (
-                <a href="#pricing" className="inline-flex h-[52px] items-center rounded-full border border-ink-foreground/35 px-7 text-[15px] font-semibold">
-                  شاهد الخطط
-                </a>
-              ) : null}
-            </div>
+        <section id="final-cta" className="border-t border-border/60">
+          <div data-reveal className="mx-auto flex max-w-3xl flex-col items-center gap-5 px-4 py-28 text-center sm:px-6">
+            <h2 className="font-display text-3xl font-bold leading-[1.4] sm:text-4xl">اعرف ما تقوله فاتورتك الأخيرة فعلاً.</h2>
+            <p className="max-w-lg text-base leading-8 text-muted-foreground">ارفع ملف الطلبات والفاتورة لفترة واحدة، وشاهد الفروقات قبل أن تدفع.</p>
+            <Link
+              to="/auth"
+              search={{ mode: "signup" }}
+              className="mt-2 inline-flex h-12 items-center rounded-full bg-ink px-7 text-[15px] font-semibold text-ink-foreground transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+            >
+              ابدأ التدقيق
+            </Link>
           </div>
         </section>
       </main>
 
-      <footer className="mt-4 border-t border-border bg-[oklch(0.975_0.018_85)]">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,2fr)] lg:gap-16">
+      <footer className="border-t border-border/60">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
           <div className="flex flex-col items-start gap-4">
-            <Link to="/" aria-label="تدقيق — الرئيسية">
-              <LogoWordmark className="h-9 text-ink" />
-            </Link>
-            <p className="max-w-sm text-sm leading-7 text-muted-foreground">
-              نعيد احتساب كل بند في فواتير تطبيقات التوصيل من طلباتك وعقدك، ونجهّز مطالبات التعويض بالأدلة لكل فرع.
-            </p>
-            <ul aria-label="المنصات المدعومة" className="flex flex-wrap gap-2 text-xs font-semibold">
+            <LogoWordmark className="h-8 text-ink" />
+            <p className="max-w-xs text-sm leading-7 text-muted-foreground">مراجعة فواتير تطبيقات التوصيل للمطاعم في الخليج.</p>
+            <ul aria-label="المنصات المدعومة" className="flex flex-wrap gap-2 text-xs">
               {PLATFORM_KEYS.map((key) => (
-                <li key={key} className="rounded-full border border-border bg-card py-1 ps-1 pe-3">
+                <li key={key} className="rounded-full border border-border py-1 ps-1 pe-3">
                   <PlatformName platform={key} iconClassName="size-5 rounded-full" />
                 </li>
               ))}
             </ul>
           </div>
-
-          <nav aria-label="روابط التذييل" className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 xl:grid-cols-5">
+          <nav aria-label="روابط التذييل" className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4">
             {FOOTER_GROUPS.map((group) => (
               <div key={group.title}>
-                <h2 className="text-sm font-bold">{group.title}</h2>
+                <h2 className="text-sm font-semibold">{group.title}</h2>
                 <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
                   {group.links
-                    .filter(([href]) => hasSection(href))
+                    .filter(([href]) => hasSection(href) && !["#video", "#who", "#checks"].includes(href))
                     .map(([href, label]) => (
                       <li key={href}>
-                        <a href={href} className="transition-colors hover:text-foreground">
-                          {label}
-                        </a>
+                        <a href={href} className="transition-colors hover:text-foreground">{label}</a>
                       </li>
                     ))}
                 </ul>
               </div>
             ))}
             <div>
-              <h2 className="text-sm font-bold">الحساب</h2>
-              <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-                <li>
-                  <Link to="/auth" search={{ mode: "signup" }} className="transition-colors hover:text-foreground">
-                    إنشاء حساب
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/auth" className="transition-colors hover:text-foreground">
-                    تسجيل الدخول
-                  </Link>
-                </li>
-              </ul>
-              <Link
-                to="/auth"
-                search={{ mode: "signup" }}
-                className="mt-5 inline-flex h-10 items-center gap-2 rounded-full bg-ink px-4 text-[13px] font-semibold text-ink-foreground transition-transform hover:-translate-y-0.5"
-              >
-                ابدأ مجاناً
-                <ArrowLeft className="size-3.5" />
-              </Link>
-            </div>
-            <div>
-              <h2 className="text-sm font-bold">قانوني</h2>
+              <h2 className="text-sm font-semibold">قانوني</h2>
               <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
                 {LEGAL_DOCS.map((doc) => (
                   <li key={doc.key}>
-                    <Link to={doc.path} className="transition-colors hover:text-foreground">
-                      {doc.label}
-                    </Link>
+                    <Link to={doc.path} className="transition-colors hover:text-foreground">{doc.label}</Link>
                   </li>
                 ))}
               </ul>
             </div>
           </nav>
         </div>
-
-        <div className="border-t border-border">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-5 text-xs text-muted-foreground sm:px-6">
-            <p>
-              <span className="num">© {new Date().getFullYear()}</span> تدقيق · مراجعة فواتير التوصيل للمطاعم · صُنع في السعودية
-            </p>
-            <a href="#top" className="inline-flex items-center gap-1.5 font-semibold transition-colors hover:text-foreground">
-              العودة للأعلى
-              <ArrowUp className="size-3.5" />
-            </a>
+        <div className="border-t border-border/60">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-5 text-xs text-muted-foreground sm:px-6">
+            <p><span className="num">© {new Date().getFullYear()}</span> تدقيق · صُنع في السعودية</p>
+            <a href="#top" className="inline-flex items-center gap-1.5 hover:text-foreground">العودة للأعلى <ArrowUp className="size-3.5" /></a>
           </div>
         </div>
       </footer>
-     </div>
     </div>
   );
 }
+
 
 const VIDEO_WIDGET_KEY = "tadqeeq:video-widget-minimized";
 
@@ -2528,7 +2395,7 @@ function HeroDashboard() {
   return (
     <div
       aria-hidden="true"
-      className="lp-slide flex overflow-hidden rounded-[18px] border border-border bg-card shadow-[0_30px_60px_-30px_rgb(19_35_43/0.25)] lg:-me-24 lg:rounded-e-none"
+      className="lp-slide flex overflow-hidden rounded-[18px] border border-border bg-card"
     >
       <div className="hidden w-14 shrink-0 flex-col items-center gap-4 bg-ink pt-5 sm:flex">
         <LogoMark className="h-6 text-ink-foreground" />
