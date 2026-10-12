@@ -11,6 +11,7 @@ import {
   SearchCheck,
   Megaphone,
   Play,
+  MessageCircleQuestion,
   Plus,
   Upload,
   Video,
@@ -440,21 +441,22 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
 
         {plans.length ? <Pricing plans={plans} /> : null}
 
-        <section id="faq" className="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.6fr)_minmax(0,1.4fr)] lg:py-24">
-          <SectionIntro eyebrow="أسئلة" title="قبل أن تبدأ">
+        <section id="faq" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-24">
+          <SectionIntro title="الأسئلة الشائعة">
             ما يسأله أصحاب المطاعم عادة.
-            <span className="mt-4 block text-xs text-muted-foreground">
+            <span className="mt-2 block text-xs text-muted-foreground">
               آخر تحديث: <time dateTime={CONTENT_UPDATED}>{formatArabicDate(CONTENT_UPDATED)}</time>
             </span>
           </SectionIntro>
-          <div data-reveal className="border-b border-border">
+          <div data-reveal className="mx-auto mt-12 max-w-3xl border-b border-border">
             {FAQS.map(([q, a], index) => (
               <details key={q} open={index === 0} className="group border-t border-border">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-lg font-semibold">
-                  <span>{q}</span>
-                  <ChevronDown className="size-5 shrink-0 text-primary-text transition-transform group-open:rotate-180" />
+                <summary className="flex cursor-pointer list-none items-center gap-3 py-4 text-[15px] font-semibold sm:text-base">
+                  <MessageCircleQuestion strokeWidth={1.75} className="size-[18px] shrink-0 text-primary-text" />
+                  <span className="flex-1">{q}</span>
+                  <Plus className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-45" />
                 </summary>
-                <p className="max-w-2xl pb-5 text-[15px] leading-8 text-muted-foreground">{a}</p>
+                <p className="pb-5 ps-[30px] text-[15px] leading-8 text-muted-foreground">{a}</p>
               </details>
             ))}
           </div>
@@ -725,24 +727,22 @@ function ExplainerVideoLauncher() {
 function SectionIntro({
   eyebrow,
   title,
-  tone = "primary",
   heading = "h2",
   children,
 }: {
-  eyebrow: string;
+  /** Small pill above the title (ChatDeck's «Pricing Plans»); use on few sections only. */
+  eyebrow?: string;
   title: string;
-  tone?: "primary" | "success";
   /** "aria" keeps heading semantics without a second <h2> when a section renders its intro twice (desktop + phone). */
   heading?: "h2" | "aria";
   children?: ReactNode;
 }) {
-  const titleClass = "mt-3 font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]";
+  const titleClass = "font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]";
   return (
-    <div data-reveal className="flex flex-col">
-      <p className={cn("flex items-center gap-2 text-[13px] font-semibold", tone === "success" ? "text-success" : "text-primary-text")}>
-        <span className={cn("size-1.5 rounded-full", tone === "success" ? "bg-success" : "bg-primary")} />
-        {eyebrow}
-      </p>
+    <div data-reveal className="mx-auto flex max-w-3xl flex-col items-center text-center">
+      {eyebrow ? (
+        <p className="mb-4 rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-primary-text">{eyebrow}</p>
+      ) : null}
       {heading === "h2" ? (
         <h2 className={titleClass}>{title}</h2>
       ) : (
@@ -913,24 +913,18 @@ function FeatureGrid() {
   return (
     <section id="features" className="bg-[oklch(0.957_0.006_154)]">
       <div id="products" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
-        <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-semibold text-primary-text">لماذا تدقيق؟</p>
-          <h2 className="mt-3 font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]">كل خصم في فاتورتك، مُراجَع ومفسَّر.</h2>
-          <p className="mt-4 text-base leading-8 text-muted-foreground">منصة واحدة تراجع الفاتورة، وتتابع الفروقات، وتسترد حقك.</p>
-        </div>
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <SectionIntro title="كل خصم في فاتورتك، مُراجَع ومفسَّر.">منصة واحدة تراجع الفاتورة، وتتابع الفروقات، وتسترد حقك.</SectionIntro>
+        {/* One block split by hairlines, after ChatDeck's feature grid: the gaps show the border colour. */}
+        <div data-reveal className="mt-12 grid gap-px overflow-hidden rounded-[24px] border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
           {FEATURE_CARDS.map(({ key, icon: Icon }) => {
             const page = productPageFor(key);
             return (
               <a
                 key={key}
                 href={page?.path ?? "#pricing"}
-                data-reveal
-                className="group flex flex-col gap-4 rounded-[22px] border border-border bg-card p-6 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-[0_22px_44px_-26px_rgb(15_42_34/0.4)]"
+                className="group flex flex-col gap-3 bg-card p-7 transition-colors duration-200 hover:bg-secondary/40"
               >
-                <span className="grid size-11 place-items-center rounded-xl bg-secondary text-primary-text">
-                  <Icon strokeWidth={1.75} className="size-5" />
-                </span>
+                <Icon strokeWidth={1.75} className="size-6 text-primary-text" />
                 <div>
                   <h3 className="font-display text-lg font-extrabold">
                     {PRODUCTS[key].name} <span className="text-sm font-semibold text-muted-foreground">· {PRODUCTS[key].descriptor}</span>
@@ -954,10 +948,7 @@ function FeatureGrid() {
 function Steps() {
   return (
     <section id="how" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
-      <div className="mx-auto max-w-2xl text-center">
-        <p className="text-sm font-semibold text-primary-text">كيف يعمل</p>
-        <h2 className="mt-3 font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.6rem]">أربع خطوات. بدون جداول يدوية.</h2>
-      </div>
+      <SectionIntro title="أربع خطوات. بدون جداول يدوية.">من الملف إلى الاسترداد، في نفس المكان.</SectionIntro>
       <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {HOW_FLOW.map((step, index) => (
           <li key={step.title} data-reveal className="flex flex-col gap-3 rounded-[22px] border border-border bg-card p-6">
@@ -1018,7 +1009,9 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
 
   return (
     <section id="pricing" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
-      <div className="flex flex-wrap items-end justify-between gap-6">
+      {/* The whole pricing block sits in one soft panel with a centred header, after ChatDeck's pricing. */}
+      <div className="rounded-[32px] border border-border bg-[oklch(0.957_0.006_154)] px-4 py-14 sm:px-8 lg:px-12 lg:py-20">
+      <div className="flex flex-col items-center gap-6">
         <SectionIntro eyebrow="الخطط والأسعار" title="ادفع حسب طلباتك، لا حسب فروعك.">
           فروع ومنصات ومستخدمون بلا حدود في كل الباقات. ابدأ بتجربة مجانية بدون بطاقة، ثم اختر الباقة على قدّ طلباتك الشهرية.
         </SectionIntro>
@@ -1189,11 +1182,12 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
         ))}
       </div>
 
-      <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted-foreground">
+      <ul className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
         {PRICING_TERMS.map((term) => (
           <li key={term}>· {term}</li>
         ))}
       </ul>
+      </div>
     </section>
   );
 }
@@ -1318,7 +1312,9 @@ function LegacyPricing({ plans }: { plans: PublicPlan[] }) {
 
   return (
     <section id="pricing" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
-      <div className="flex flex-wrap items-end justify-between gap-6">
+      {/* The whole pricing block sits in one soft panel with a centred header, after ChatDeck's pricing. */}
+      <div className="rounded-[32px] border border-border bg-[oklch(0.957_0.006_154)] px-4 py-14 sm:px-8 lg:px-12 lg:py-20">
+      <div className="flex flex-col items-center gap-6">
         <SectionIntro eyebrow="الخطط والأسعار" title="خطة تناسب حجم مطعمك.">
           كل الخطط تشمل اللوحة التنفيذية ورفع ملفات المنصات الثلاث والصلاحيات.
         </SectionIntro>
@@ -1409,6 +1405,7 @@ function LegacyPricing({ plans }: { plans: PublicPlan[] }) {
             </div>
           </article>
         ))}
+      </div>
       </div>
     </section>
   );
