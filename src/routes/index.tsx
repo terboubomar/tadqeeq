@@ -413,17 +413,18 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
   const navItems = NAV.filter(([href]) => hasSection(href));
 
   return (
-    <div ref={rootRef} id="top" className="lp-root min-h-screen bg-background" dir="rtl">
+    <div ref={rootRef} id="top" className="lp-root min-h-screen bg-ink p-1.5 sm:p-3 lg:p-4" dir="rtl">
+     <div className="min-h-screen overflow-clip rounded-[1.25rem] bg-background sm:rounded-[1.75rem]">
       <ExplainerVideoLauncher />
-      <div className="flex items-center justify-center gap-3 bg-ink px-4 py-2.5 text-center text-xs text-ink-foreground sm:text-[13px]">
+      <div className="flex items-center justify-center gap-3 border-b border-border px-4 py-2.5 text-center text-xs text-foreground/80 sm:text-[13px]">
         <span className="lp-pulse shrink-0 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-primary-foreground">جديد</span>
         <span className="hidden sm:inline">«{PRODUCTS.nabd.name}» لمتابعة تكلفة كل منصة يومياً، وقيود محاسبية جاهزة لنظامك</span>
         <span className="sm:hidden">«{PRODUCTS.nabd.name}» لمتابعة تكلفة المنصات يومياً</span>
-        <a href="#products" className="shrink-0 font-semibold text-primary">اكتشف الجديد ←</a>
+        <a href="#products" className="shrink-0 font-semibold text-primary-text">اكتشف الجديد ←</a>
       </div>
 
-      <div className="sticky top-0 z-40 px-3 pt-3 sm:px-6 sm:pt-4">
-        <header className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 rounded-full border border-border bg-card/95 ps-4 pe-2 shadow-[0_12px_32px_-18px_rgb(19_35_43/0.28)] backdrop-blur sm:h-[68px] sm:ps-5">
+      <div className="sticky top-0 z-40 px-3 pt-3 sm:px-5 sm:pt-4">
+        <header className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 rounded-2xl bg-background/85 ps-3 pe-2 backdrop-blur sm:h-[68px] sm:ps-4">
           <Link to="/" aria-label="تدقيق — الرئيسية" className="flex items-center gap-2.5">
             <LogoWordmark className="h-8 text-ink sm:h-9" />
             <span className="hidden border-s border-border ps-2.5 text-[11px] leading-tight text-muted-foreground sm:block">
