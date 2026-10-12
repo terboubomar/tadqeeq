@@ -2288,13 +2288,21 @@ export type Database = {
         Row: {
           addons: Json
           branch_count: number
+          cancel_at_period_end: boolean
           created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
           cycle: string
           ends_on: string | null
+          environment: string | null
           id: string
           notes: string | null
+          pending_price_id: string | null
           plan_id: string | null
           price: number
+          provider_customer_id: string | null
+          provider_price_id: string | null
+          provider_subscription_id: string | null
           starts_on: string
           status: string
           updated_at: string
@@ -2303,13 +2311,21 @@ export type Database = {
         Insert: {
           addons?: Json
           branch_count?: number
+          cancel_at_period_end?: boolean
           created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
           cycle?: string
           ends_on?: string | null
+          environment?: string | null
           id?: string
           notes?: string | null
+          pending_price_id?: string | null
           plan_id?: string | null
           price?: number
+          provider_customer_id?: string | null
+          provider_price_id?: string | null
+          provider_subscription_id?: string | null
           starts_on?: string
           status?: string
           updated_at?: string
@@ -2318,13 +2334,21 @@ export type Database = {
         Update: {
           addons?: Json
           branch_count?: number
+          cancel_at_period_end?: boolean
           created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
           cycle?: string
           ends_on?: string | null
+          environment?: string | null
           id?: string
           notes?: string | null
+          pending_price_id?: string | null
           plan_id?: string | null
           price?: number
+          provider_customer_id?: string | null
+          provider_price_id?: string | null
+          provider_subscription_id?: string | null
           starts_on?: string
           status?: string
           updated_at?: string
