@@ -2,6 +2,7 @@ const clientToken = import.meta.env["VITE_PAYMENTS_CLIENT_TOKEN"] as string | un
 
 declare global {
   interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the payment script has no types
     Paddle: any;
   }
 }

@@ -5,6 +5,7 @@ import { log, syncAccessWithSubscription, type OpsActor } from "./ops.server";
 import { getPaddleClient, resolvePriceId, type PaddleEnv } from "./paddle.server";
 import { requireServerUserAnyStatus } from "./server-auth.server";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped admin client, same as the other server modules
 const db = () => supabaseAdmin as any;
 type Row = Record<string, unknown>;
 
