@@ -1,5 +1,5 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
-import { Check, CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { LogoWordmark } from "@/components/brand/Logo";
+import { PlatformName } from "@/components/brand/PlatformLogo";
 import { EmailCodeStep, MfaCodeStep } from "@/components/TwoFactor";
 import { getEmailCodeStatus } from "@/lib/email-signin.functions";
 import { needsMfaCode } from "@/lib/mfa";
+import { PLATFORM_KEYS } from "@/lib/platforms";
 import {
   appOriginFor,
   HANDOFF_STATE_KEY,
@@ -191,31 +193,20 @@ function AuthPage() {
 
   return (
     <div dir="rtl" className="min-h-[100dvh] bg-background">
-      <main className="grid min-h-[100dvh] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-        <div className="relative flex justify-center overflow-hidden px-4 py-10 sm:px-8 sm:py-14 lg:items-center lg:py-12">
-          <span aria-hidden="true" className="pointer-events-none absolute -top-32 -start-32 size-80 rounded-full bg-primary/10" />
-          <div className="relative w-full max-w-[440px]">
-          <header className="text-center">
-            <h1 className="flex justify-center">
-              <span className="sr-only">تدقيق</span>
-              <Link
-                to="/"
-                aria-label="العودة إلى الصفحة الرئيسية"
-                onClick={(event) => {
-                  // On the login subdomain the home page is the main site.
-                  if (!onLoginHost()) return;
-                  event.preventDefault();
-                  window.location.assign(appOrigin());
-                }}
-                className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4"
-              >
-                <LogoWordmark aria-hidden="true" className="h-11 text-ink sm:h-12" />
-              </Link>
-            </h1>
-          </header>
-          <div className="mt-8 rounded-2xl border border-border bg-card px-5 py-7 shadow-[0_1px_3px_rgb(19_35_43/0.06),0_18px_40px_-24px_rgb(19_35_43/0.28)] sm:px-8 sm:py-9">
-          <header className="text-center">
-            <h2 className="font-display text-2xl font-semibold leading-relaxed text-ink sm:text-[1.6rem]">
+      <main className="flex min-h-[100dvh] flex-col items-center justify-center px-4 py-8 sm:px-6 sm:py-12">
+        <div className="w-full max-w-[1040px] motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-3 motion-safe:duration-500">
+          <div className="mb-6 flex justify-center lg:hidden">
+            <HomeLink>
+              <LogoWordmark aria-hidden="true" className="h-10 text-ink" />
+            </HomeLink>
+          </div>
+          {/* One framed card: the brand panel at the start, the form beside it (21st.dev «Sign In Split Screen»). */}
+          <div className="grid overflow-hidden rounded-[20px] border border-border bg-card shadow-[0_2px_6px_rgb(19_35_43/0.04),0_24px_48px_-24px_rgb(19_35_43/0.22)] lg:min-h-[620px] lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1fr)]">
+          <AuthAside signup={mode === "signup"} />
+          <section className="flex flex-col justify-center px-5 py-8 sm:px-10 sm:py-12 lg:px-14">
+          <div className="mx-auto w-full max-w-[420px]">
+          <header className="text-start">
+            <h1 className="font-display text-2xl font-semibold leading-relaxed text-ink sm:text-[1.65rem]">
               {mfaStep
                 ? "التحقق بخطوتين"
                 : emailStep
@@ -227,9 +218,9 @@ function AuthPage() {
                       : mode === "signup"
                         ? "إنشاء حساب جديد"
                         : "إعادة تعيين كلمة المرور"}
-            </h2>
+            </h1>
             {!mfaStep && !emailStep && !signupSentTo ? (
-              <p className="mt-2 text-sm leading-7 text-muted-foreground">
+              <p className="mt-1.5 text-[15px] leading-7 text-muted-foreground">
                 {mode === "signin"
                   ? "أدخل بريدك الإلكتروني وكلمة المرور للمتابعة."
                   : mode === "signup"
@@ -315,7 +306,7 @@ function AuthPage() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="you@company.com"
-                    className="h-12 bg-background"
+                    className="h-12 bg-card"
                     required
                   />
                 </div>
@@ -336,7 +327,7 @@ function AuthPage() {
                       value={name}
                       onChange={(event) => setName(event.target.value)}
                       placeholder="اسمك الكامل"
-                      className="h-12 bg-background"
+                      className="h-12 bg-card"
                       required
                     />
                   </div>
@@ -350,7 +341,7 @@ function AuthPage() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="you@company.com"
-                    className="h-12 bg-background"
+                    className="h-12 bg-card"
                     required
                   />
                 </div>
@@ -361,7 +352,7 @@ function AuthPage() {
                       <button
                         type="button"
                         onClick={() => setMode("reset")}
-                        className="text-xs text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+                        className="text-[13px] text-muted-foreground underline-offset-4 hover:text-primary-text hover:underline"
                       >
                         نسيت كلمة المرور؟
                       </button>
@@ -374,7 +365,7 @@ function AuthPage() {
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     placeholder="كلمة المرور"
-                    className="h-12 bg-background"
+                    className="h-12 bg-card"
                     minLength={mode === "signup" ? 8 : undefined}
                     autoComplete={mode === "signup" ? "new-password" : "current-password"}
                     required
@@ -436,60 +427,56 @@ function AuthPage() {
             </button>
           ) : null}
           </div>
+          </section>
           </div>
         </div>
-        <AuthAside signup={mode === "signup"} />
       </main>
     </div>
   );
 }
 
+/** The logo's way home; on the login subdomain the home page is the main site. */
+function HomeLink({ children }: { children: React.ReactNode }) {
+  return (
+    <Link
+      to="/"
+      aria-label="تدقيق: العودة إلى الصفحة الرئيسية"
+      onClick={(event) => {
+        if (!isLoginHost(window.location.host)) return;
+        event.preventDefault();
+        window.location.assign(appOriginFor(window.location.host, window.location.protocol));
+      }}
+      className="inline-flex rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-transparent"
+    >
+      {children}
+    </Link>
+  );
+}
+
 /**
- * Wide screens: what Tadqeeq does, beside the form, with a small example of a difference it finds.
- * Hidden on phones so the form stays first.
+ * Wide screens: the brand panel at the card's start, with the logo, one line on what Tadqeeq does and the
+ * platforms it reads. Hidden on phones so the form stays first; the logo then sits above the card.
  */
 function AuthAside({ signup }: { signup: boolean }) {
-  const points = signup
-    ? ["ارفع ملف الطلبات وفاتورة المنصة واعرف الفرق.", "هنقرستيشن وكيتا وجاهز في مساحة واحدة.", "بيانات كل شركة منفصلة، وكل دخول محمي برمز."]
-    : ["إعادة احتساب كل بند من طلباتك وعقدك.", "كل فرق باسم الفرع ومبلغه ومصدره.", "قيود محاسبية جاهزة لنظامك."];
   return (
-    <aside aria-hidden="true" className="relative hidden overflow-hidden p-4 lg:block">
-      <div className="relative flex h-full flex-col justify-center overflow-hidden rounded-[28px] bg-ink px-12 py-14 text-ink-foreground">
-        <span className="pointer-events-none absolute -top-24 -end-24 size-72 rounded-full bg-primary/15" />
-        <span className="pointer-events-none absolute -bottom-40 -start-24 size-[26rem] rounded-full border border-primary/25" />
-        <div className="relative max-w-md">
-          <p className="font-display text-[1.9rem] font-extrabold leading-[1.45]">
-            {signup ? "ابدأ بتدقيق فترة واحدة مجاناً." : "راجع فاتورتك القادمة قبل أن تدفعها."}
-          </p>
-          <ul className="mt-6 space-y-3 text-[15px] text-ink-foreground/90">
-            {points.map((point) => (
-              <li key={point} className="flex items-center gap-2.5">
-                <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
-                  <Check className="size-3" />
-                </span>
-                {point}
-              </li>
-            ))}
-          </ul>
-          <div className="mt-10 rounded-2xl bg-card p-5 text-foreground shadow-[0_30px_60px_-30px_rgb(0_0_0/0.5)]">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-muted/60 p-3.5">
-                <p className="text-xs text-muted-foreground">حسب فاتورة المنصة</p>
-                <p className="num mt-1.5 text-xl font-semibold">16,590.00</p>
-              </div>
-              <div className="rounded-xl bg-muted/60 p-3.5">
-                <p className="text-xs text-muted-foreground">حسب عقدك</p>
-                <p className="num mt-1.5 text-xl font-semibold text-success">14,931.00</p>
-              </div>
-            </div>
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <span className="rounded-full bg-ink px-3.5 py-1.5 text-sm text-ink-foreground">
-                الفرق <span className="num text-primary">1,659.00</span>
-              </span>
-              <span className="text-[11px] text-muted-foreground">مثال توضيحي</span>
-            </div>
-          </div>
-        </div>
+    <aside className="relative hidden flex-col justify-between overflow-hidden bg-[linear-gradient(160deg,var(--ink)_0%,oklch(0.27_0.03_214)_100%)] p-10 text-ink-foreground lg:flex xl:p-12">
+      <HomeLink>
+        <LogoWordmark aria-hidden="true" className="h-9 text-ink-foreground" />
+      </HomeLink>
+      <div className="relative">
+        <p className="font-display text-[1.75rem] font-bold leading-[1.55] text-balance">
+          {signup ? "ابدأ بتدقيق فترة واحدة مجاناً." : "راجع فاتورتك القادمة قبل أن تدفعها."}
+        </p>
+        <p className="mt-3 max-w-sm text-[15px] leading-7 text-ink-foreground/75">
+          {signup ? "ارفع ملف الطلبات وفاتورة المنصة واعرف الفرق." : "إعادة احتساب كل بند من طلباتك وعقدك."}
+        </p>
+        <ul aria-label="المنصات المدعومة" className="mt-8 flex flex-wrap gap-2 text-sm font-semibold">
+          {PLATFORM_KEYS.map((key) => (
+            <li key={key} className="rounded-full bg-ink-foreground/10 py-1 ps-1 pe-3 ring-1 ring-inset ring-ink-foreground/15">
+              <PlatformName platform={key} iconClassName="size-6 rounded-full" />
+            </li>
+          ))}
+        </ul>
       </div>
     </aside>
   );
