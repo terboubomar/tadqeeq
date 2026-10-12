@@ -55,6 +55,11 @@
   --color-chart-5: var(--chart-5);
 
   --color-ink: var(--ink);
+  --color-tint-sand: var(--tint-sand);
+  --color-tint-mint: var(--tint-mint);
+  --color-tint-rose: var(--tint-rose);
+  --color-tint-sky: var(--tint-sky);
+  --color-tint-aqua: var(--tint-aqua);
   --color-ink-2: var(--ink-2);
   --color-ink-foreground: var(--ink-foreground);
   --color-ink-muted: var(--ink-muted);
@@ -67,6 +72,11 @@
 }
 
 :root {
+  --tint-sand: oklch(0.95 0.03 82);
+  --tint-mint: oklch(0.94 0.03 165);
+  --tint-rose: oklch(0.94 0.03 40);
+  --tint-sky: oklch(0.94 0.025 240);
+  --tint-aqua: oklch(0.94 0.03 200);
   --radius: 0.625rem;
 
   --background: oklch(0.965 0.013 87);

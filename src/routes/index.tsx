@@ -424,6 +424,25 @@ const MIN_STEPS = [
   ["راجع الفروقات", "كل فرق باسم الفرع ومبلغه ودليله، جاهز للاعتراض."],
 ] as const;
 
+const TINTS = ["bg-tint-mint", "bg-tint-rose", "bg-tint-sand", "bg-tint-sky", "bg-tint-aqua"];
+
+const DAY_STEPS: Array<{ time: string; product: ProductKey; title: string; text: string; tint: string }> = [
+  { time: "8:00", product: "nabd", title: "مبيعات أمس، قبل قهوتك الأولى.", text: "يحوّل ملفات الطلبات من كل تطبيق إلى يوم واحد واضح: المبيعات والطلبات وتكلفة كل منصة.", tint: "bg-tint-sand" },
+  { time: "11:00", product: "mutabiq", title: "وصلت الفاتورة. كل بند يُراجع.", text: "يُعاد احتساب كل طلب من عقدك، وحين يختلف رقم المنصة عن رقمك ترى الرسم والنسبة والمبلغ.", tint: "bg-tint-mint" },
+  { time: "14:00", product: "istirdad", title: "تعويض لم تتسبب فيه، ومعه دليله.", text: "اعتراض على التعويضات المخصومة بأدلة من قروب الفرع، جاهز قبل أن يسأل أحد.", tint: "bg-tint-rose" },
+  { time: "17:00", product: "radar", title: "كل فرق له حالة ومسؤول.", text: "الفروقات تنتقل إلى مركز الاستثناءات وتبقى مفتوحة حتى تُغلق.", tint: "bg-tint-sky" },
+  { time: "نهاية الشهر", product: "ai", title: "الشهر كله، بكلمات بسيطة.", text: "اسأل المساعد الذكي عن أرقامك، فيشرح ما تغيّر ولماذا.", tint: "bg-tint-aqua" },
+];
+
+function Eyebrow({ children }: { children: ReactNode }) {
+  return (
+    <p className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
+      <span className="size-1.5 rounded-full bg-primary" />
+      {children}
+    </p>
+  );
+}
+
 function Landing({ plans }: { plans: PublicPlan[] }) {
   const rootRef = useScrollReveal();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -485,116 +504,151 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
       </div>
 
       <main>
-        <section className="mx-auto max-w-4xl px-4 pb-16 pt-20 text-center sm:px-6 sm:pt-28">
-          <p data-reveal className="mx-auto inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground">
-            <span className="size-1.5 rounded-full bg-primary" />
-            هنقرستيشن · جاهز · كيتا
-          </p>
-          <h1 data-reveal className="mt-7 font-display text-4xl font-extrabold leading-[1.35] tracking-tight text-foreground sm:text-6xl sm:leading-[1.3]">
-            لا تدفع فاتورة التوصيل
-            <span className="block text-muted-foreground">قبل أن تراجعها.</span>
+        <section className="mx-auto max-w-6xl px-4 pb-14 pt-16 sm:px-6 sm:pt-24">
+          <h1 data-reveal className="max-w-3xl font-display text-4xl font-extrabold leading-[1.3] tracking-tight text-foreground sm:text-6xl sm:leading-[1.25]">
+            استرجع <span className="text-primary-text">كل ريال</span> تخصمه تطبيقات التوصيل بغير حق.
           </h1>
-          <p data-reveal className="mx-auto mt-6 max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
-            تدقيق يعيد احتساب كل بند في فاتورتك من طلباتك وعقدك، ويُظهر الفرق لكل فرع ومصدره قبل السداد.
+          <p data-reveal className="mt-6 max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
+            تدقيق يعيد احتساب كل بند في فاتورتك من طلباتك وعقدك، ويكشف الفروقات لكل فرع، ويجهّز مطالبة التعويض بأدلتها.
           </p>
-          <div data-reveal className="mt-9 flex flex-wrap justify-center gap-3">
+          <div data-reveal className="mt-8 flex flex-wrap items-center gap-3">
             <Link
               to="/auth"
               search={{ mode: "signup" }}
-              className="group inline-flex h-12 items-center gap-3 rounded-full bg-ink ps-6 pe-1.5 text-[15px] font-semibold text-ink-foreground transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+              className="inline-flex h-12 items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-semibold text-ink-foreground transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
             >
-              ابدأ التدقيق
-              <span className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-x-1">
-                <ArrowLeft className="size-4" />
-              </span>
+              سجّل منشأتك <ArrowLeft className="size-4" />
             </Link>
-            <a href="/products" className="inline-flex h-12 items-center rounded-full border border-border px-6 text-[15px] font-medium text-foreground transition-colors hover:bg-muted">
-              تعرّف على المنتجات
-            </a>
+            <Link to="/contact" className="inline-flex h-12 items-center px-4 text-[15px] font-medium text-muted-foreground hover:text-foreground">
+              تواصل معنا
+            </Link>
           </div>
+          <ul data-reveal aria-label="المنصات المدعومة" className="mt-8 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <li>يعمل مع</li>
+            {PLATFORM_KEYS.map((key) => (
+              <li key={key} className="rounded-full border border-border py-1 ps-1 pe-3">
+                <PlatformName platform={key} iconClassName="size-5 rounded-full" />
+              </li>
+            ))}
+          </ul>
         </section>
 
-        <section aria-label="معاينة لوحة التدقيق" className="mx-auto max-w-5xl px-4 pb-24 sm:px-6">
-          <div data-reveal className="rounded-[2rem] border border-border bg-muted/40 p-2">
-            <div className="overflow-hidden rounded-[calc(2rem-0.5rem)] bg-card">
+        <section aria-label="معاينة لوحة التدقيق" className="mx-auto max-w-6xl px-4 pb-24 sm:px-6">
+          <div data-reveal className="rounded-[2rem] bg-ink p-3 pt-10 sm:p-6 sm:pt-14">
+            <div className="overflow-hidden rounded-[1.25rem] bg-card">
               <HeroDashboard />
             </div>
           </div>
         </section>
 
-        <section id="products" className="border-t border-border/60">
-          <div className="mx-auto max-w-6xl px-4 py-24 sm:px-6">
-            <div data-reveal className="max-w-xl">
-              <p className="text-xs font-medium tracking-wide text-primary-text">المنتجات</p>
-              <h2 className="mt-3 font-display text-3xl font-bold leading-[1.4] sm:text-4xl">أدوات منفصلة، تعمل معاً.</h2>
-              <p className="mt-4 text-base leading-8 text-muted-foreground">افتح أي منتج لتعرف ماذا يفعل بالتفصيل.</p>
-            </div>
-            <ul className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {PRODUCT_PAGES.map((page, index) => {
-                const product = PRODUCTS[page.product];
-                const Icon = PRODUCT_ICONS[page.product];
-                return (
-                  <li key={page.slug} data-reveal className={cn((index === 0 || index === PRODUCT_PAGES.length - 1) && PRODUCT_PAGES.length === 7 && "lg:col-span-2")}>
-                    <a
-                      href={page.path}
-                      className="group flex h-full flex-col rounded-3xl border border-border bg-card p-6 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 hover:border-primary/50"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="grid size-10 place-items-center rounded-2xl bg-muted text-foreground">
-                          <Icon className="size-[18px]" strokeWidth={1.5} />
-                        </span>
-                        <ArrowLeft className="size-4 text-muted-foreground transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-x-1 group-hover:text-foreground" />
-                      </div>
-                      <h3 className="mt-6 text-lg font-bold">
-                        {product.name} <span className="font-normal text-muted-foreground">· {product.descriptor}</span>
-                      </h3>
-                      <p className="mt-2 text-sm leading-7 text-muted-foreground">{page.summary}</p>
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
-            <a href="/products" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-foreground">
-              كل المنتجات <ArrowLeft className="size-4" />
-            </a>
-          </div>
+        <section id="how" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+          <h2 data-reveal className="max-w-3xl font-display text-2xl font-bold leading-[1.5] sm:text-4xl sm:leading-[1.45]">
+            تدقيق يراجع كل فاتورة.{" "}
+            <span className="text-muted-foreground">بنداً بنداً مقابل عقدك، فتعرف دائماً ما المستحق لك.</span>
+          </h2>
+          <ol className="mt-14 grid gap-10 sm:grid-cols-3">
+            {MIN_STEPS.map(([title, text], index) => (
+              <li key={title} data-reveal className="border-t border-border pt-6">
+                <span className="num text-xs text-primary-text">0{index + 1}</span>
+                <h3 className="mt-3 text-lg font-bold">{title}</h3>
+                <p className="mt-2 text-sm leading-7 text-muted-foreground">{text}</p>
+              </li>
+            ))}
+          </ol>
         </section>
 
-        <section id="how" className="border-t border-border/60">
-          <div className="mx-auto max-w-6xl px-4 py-24 sm:px-6">
-            <div data-reveal className="max-w-xl">
-              <p className="text-xs font-medium tracking-wide text-primary-text">كيف يعمل</p>
-              <h2 className="mt-3 font-display text-3xl font-bold leading-[1.4] sm:text-4xl">ثلاث خطوات، لا أكثر.</h2>
+        <section id="day" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+          <div data-reveal className="grid gap-6 lg:grid-cols-2 lg:items-end">
+            <div>
+              <Eyebrow>يومك مع تدقيق</Eyebrow>
+              <h2 className="mt-4 font-display text-3xl font-bold leading-[1.4] sm:text-[2.6rem]">من أول طلب إلى آخر مطالبة.</h2>
             </div>
-            <ol className="mt-12 grid gap-10 sm:grid-cols-3">
-              {MIN_STEPS.map(([title, text], index) => (
-                <li key={title} data-reveal className="border-t border-border pt-6">
-                  <span className="num text-sm text-muted-foreground">0{index + 1}</span>
-                  <h3 className="mt-3 text-lg font-bold">{title}</h3>
-                  <p className="mt-2 text-sm leading-7 text-muted-foreground">{text}</p>
+            <p className="max-w-md text-base leading-8 text-muted-foreground lg:justify-self-end">
+              كل المنتجات تعمل من نفس الفروع والعقود، فكل خطوة في يومك تبني على التي قبلها.
+            </p>
+          </div>
+          <ol className="relative mt-16 space-y-16 border-s border-border ps-8 sm:ps-12">
+            {DAY_STEPS.map((step) => {
+              const product = PRODUCTS[step.product];
+              const page = productPageFor(step.product);
+              const Icon = PRODUCT_ICONS[step.product];
+              return (
+                <li key={step.time} data-reveal className="relative grid items-center gap-8 lg:grid-cols-2">
+                  <span className="absolute -start-[calc(2rem+7px)] top-1/2 size-3.5 -translate-y-1/2 rounded-full border border-border bg-background sm:-start-[calc(3rem+7px)]" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      <span className="num">{step.time}</span> · {product.name}
+                    </p>
+                    <h3 className="mt-3 text-xl font-bold leading-9">{step.title}</h3>
+                    <p className="mt-3 max-w-md text-[15px] leading-8 text-muted-foreground">{step.text}</p>
+                    {page ? (
+                      <a href={page.path} className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-primary-text">
+                        اكتشف {product.name} <ArrowLeft className="size-3.5" />
+                      </a>
+                    ) : null}
+                  </div>
+                  <div className={cn("grid aspect-[16/10] place-items-center rounded-[1.75rem]", step.tint)}>
+                    <span className="grid size-24 place-items-center rounded-[1.75rem] border border-foreground/10 bg-card">
+                      <Icon className="size-10 text-foreground" strokeWidth={1.25} />
+                    </span>
+                  </div>
                 </li>
-              ))}
-            </ol>
-          </div>
+              );
+            })}
+          </ol>
         </section>
 
-        {plans.length ? <Pricing plans={plans} /> : null}
+        <section id="products" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+          <div data-reveal className="mx-auto max-w-2xl text-center">
+            <Eyebrow>المنصة</Eyebrow>
+            <h2 className="mt-4 font-display text-3xl font-bold leading-[1.4] sm:text-[2.6rem]">منصة واحدة لكل أعمالك المالية.</h2>
+            <p className="mt-4 text-base leading-8 text-muted-foreground">جهّز فروعك وعقودك مرة واحدة، وكل منتج يعمل منها، فالرقم الذي تراجعه في مكان يبقى صحيحاً في كل مكان.</p>
+          </div>
+          <ul className="mt-12 grid gap-4 md:grid-cols-2">
+            {PRODUCT_PAGES.map((page, index) => {
+              const product = PRODUCTS[page.product];
+              const Icon = PRODUCT_ICONS[page.product];
+              return (
+                <li key={page.slug} data-reveal className={cn(index === PRODUCT_PAGES.length - 1 && PRODUCT_PAGES.length % 2 === 1 && "md:col-span-2")}>
+                  <div className={cn("flex h-full flex-col items-center rounded-[1.75rem] px-6 pb-10 pt-10 text-center", TINTS[index % TINTS.length])}>
+                    <h3 className="text-2xl font-bold">{product.name}</h3>
+                    <p className="mt-1 text-sm font-medium text-muted-foreground">{product.descriptor}</p>
+                    <p className="mt-3 max-w-sm text-sm leading-7 text-muted-foreground">{page.summary}</p>
+                    <div className="mt-5 flex flex-wrap justify-center gap-2">
+                      <a href={page.path} className="inline-flex h-9 items-center rounded-full bg-ink px-4 text-[13px] font-semibold text-ink-foreground">
+                        اعرف أكثر
+                      </a>
+                      <Link to="/auth" search={{ mode: "signup" }} className="inline-flex h-9 items-center gap-1.5 rounded-full border border-foreground/15 px-4 text-[13px] font-medium">
+                        ابدأ الآن <ArrowLeft className="size-3.5" />
+                      </Link>
+                    </div>
+                    <span className="mt-10 grid size-28 place-items-center rounded-[2rem] border border-foreground/10 bg-card">
+                      <Icon className="size-12 text-foreground" strokeWidth={1.1} />
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+
+        {plans.length ? <div className="border-t border-border/60"><Pricing plans={plans} /></div> : null}
 
         <section id="faq" className="border-t border-border/60">
-          <div className="mx-auto grid max-w-6xl gap-10 px-4 py-24 sm:px-6 lg:grid-cols-[minmax(0,0.6fr)_minmax(0,1.4fr)]">
+          <div className="mx-auto grid max-w-6xl gap-10 px-4 py-24 sm:px-6 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
             <div data-reveal>
-              <p className="text-xs font-medium tracking-wide text-primary-text">أسئلة</p>
-              <h2 className="mt-3 font-display text-3xl font-bold leading-[1.4]">قبل أن تبدأ</h2>
-              <p className="mt-4 text-xs text-muted-foreground">
-                آخر تحديث: <time dateTime={CONTENT_UPDATED}>{formatArabicDate(CONTENT_UPDATED)}</time>
-              </p>
+              <Eyebrow>أسئلة</Eyebrow>
+              <h2 className="mt-4 font-display text-3xl font-bold leading-[1.4] sm:text-[2.6rem]">أسئلة وأجوبتها</h2>
+              <p className="mt-4 text-base text-muted-foreground">ما يسأله أصحاب المطاعم قبل أن يبدؤوا.</p>
             </div>
             <div data-reveal className="border-b border-border">
               {FAQS.map(([q, a]) => (
                 <details key={q} className="group border-t border-border">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-base font-semibold">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-base font-medium">
                     <span>{q}</span>
-                    <Plus className="size-4 shrink-0 text-muted-foreground transition-transform duration-500 group-open:rotate-45" />
+                    <span className="grid size-8 shrink-0 place-items-center rounded-full border border-border">
+                      <Plus className="size-4 transition-transform duration-500 group-open:rotate-45" />
+                    </span>
                   </summary>
                   <p className="max-w-2xl pb-5 text-[15px] leading-8 text-muted-foreground">{a}</p>
                 </details>
@@ -603,16 +657,15 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
           </div>
         </section>
 
-        <section id="final-cta" className="border-t border-border/60">
-          <div data-reveal className="mx-auto flex max-w-3xl flex-col items-center gap-5 px-4 py-28 text-center sm:px-6">
-            <h2 className="font-display text-3xl font-bold leading-[1.4] sm:text-4xl">اعرف ما تقوله فاتورتك الأخيرة فعلاً.</h2>
-            <p className="max-w-lg text-base leading-8 text-muted-foreground">ارفع ملف الطلبات والفاتورة لفترة واحدة، وشاهد الفروقات قبل أن تدفع.</p>
+        <section id="final-cta" className="mx-auto max-w-6xl px-4 pb-24 sm:px-6">
+          <div data-reveal className="flex flex-col items-center gap-6 rounded-[2rem] bg-tint-mint px-6 py-20 text-center sm:py-28">
+            <h2 className="max-w-2xl font-display text-4xl font-extrabold leading-[1.3] sm:text-6xl sm:leading-[1.25]">اعرف ما تقوله فاتورتك الأخيرة فعلاً.</h2>
             <Link
               to="/auth"
               search={{ mode: "signup" }}
-              className="mt-2 inline-flex h-12 items-center rounded-full bg-ink px-7 text-[15px] font-semibold text-ink-foreground transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+              className="inline-flex h-12 items-center gap-2 rounded-full bg-ink px-7 text-[15px] font-semibold text-ink-foreground transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
             >
-              ابدأ التدقيق
+              ابدأ التدقيق <ArrowLeft className="size-4" />
             </Link>
           </div>
         </section>
