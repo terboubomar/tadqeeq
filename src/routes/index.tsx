@@ -483,38 +483,62 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
       </div>
 
       <main>
-        <section className="overflow-hidden">
-          <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:py-20">
-            <div className="lp-stagger flex flex-col gap-6">
-              <p className="flex items-center gap-2.5 text-[13px] font-semibold text-primary-text">
+        <section className="relative overflow-hidden">
+          {/* Quiet frame rails at the edges, as in the 21st.dev "Fintech SaaS" template. */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-24 hidden lg:block">
+            <span className="absolute start-0 top-0 h-px w-10 bg-border" />
+            <span className="absolute start-10 -top-8 grid h-16 w-28 place-items-center rounded-2xl border border-border">
+              <span className="size-1.5 rounded-full border border-muted-foreground/50" />
+            </span>
+            <span className="absolute end-0 top-0 h-px w-10 bg-border" />
+            <span className="absolute end-10 -top-8 grid h-16 w-28 place-items-center rounded-2xl border border-border">
+              <span className="size-1.5 rounded-full border border-muted-foreground/50" />
+            </span>
+          </div>
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[34rem] hidden h-[40rem] lg:block">
+            <span className="absolute -start-px top-0 h-full w-44 rounded-se-[2.5rem] border-e border-t border-border" />
+            <span className="absolute -end-px top-0 h-full w-44 rounded-ss-[2.5rem] border-s border-t border-border" />
+          </div>
+
+          <div className="relative mx-auto flex max-w-5xl flex-col items-center px-4 pb-10 pt-16 text-center sm:px-6 sm:pt-24 lg:pt-28">
+            <div className="lp-stagger flex flex-col items-center gap-7">
+              <p className="flex items-center gap-2.5 text-sm text-foreground/80 sm:text-[15px]">
                 <span aria-hidden="true" className="flex">
                   {PLATFORM_KEYS.map((key, i) => (
                     <PlatformIcon key={key} platform={key} className={cn("size-6 rounded-full ring-2 ring-background", i > 0 && "-ms-2")} />
                   ))}
                 </span>
-                تدقيق فواتير هنقرستيشن وكيتا وجاهز
+                تدقيق فواتير
+                <span aria-hidden="true" className="grid size-5 place-items-center rounded-[6px] bg-primary text-primary-foreground">
+                  <Check className="size-3.5" />
+                </span>
+                <span className="font-semibold text-foreground">هنقرستيشن وكيتا وجاهز</span>
               </p>
-              <h1 className="font-display text-4xl font-extrabold leading-[1.3] sm:text-5xl lg:text-[3.15rem]">
-                لا تدفع فاتورة هنقرستيشن أو جاهز أو كيتا قبل ما تتأكد منها.
+              <h1 className="max-w-4xl text-balance font-display text-4xl font-extrabold leading-[1.35] sm:text-5xl lg:text-[3.6rem]">
+                لا تدفع فاتورة هنقرستيشن أو جاهز أو كيتا{" "}
+                <span className="text-muted-foreground/70">قبل ما تتأكد منها.</span>
               </h1>
-              <p className="max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
+              <p className="max-w-xl text-pretty text-base leading-8 text-muted-foreground sm:text-lg">
                 تدقيق يعيد احتساب كل بند في فاتورة تطبيق التوصيل من ملف طلباتك ومعادلات عقدك، يكشف الفرق لكل فرع، ويجهّز مطالبة التعويض بأدلتها.
               </p>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap justify-center gap-3">
                 <Link
                   to="/auth"
                   search={{ mode: "signup" }}
-                  className="inline-flex h-[52px] items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-semibold text-ink-foreground transition-transform hover:-translate-y-0.5"
+                  className="inline-flex h-[54px] items-center gap-2 rounded-xl bg-ink px-7 text-[15px] font-semibold text-ink-foreground shadow-[0_14px_30px_-16px_rgb(19_35_43/0.55)] transition-transform duration-300 hover:-translate-y-0.5 active:scale-[0.98]"
                 >
                   ابدأ التدقيق
                   <ArrowLeft className="size-4" />
                 </Link>
-                <a href="#video" className="inline-flex h-[52px] items-center gap-2 rounded-full border border-border bg-card px-6 text-[15px] font-semibold">
+                <a
+                  href="#video"
+                  className="inline-flex h-[54px] items-center gap-2 rounded-xl bg-card px-7 text-[15px] font-semibold shadow-[0_10px_24px_-18px_rgb(19_35_43/0.4)] ring-1 ring-border transition-transform duration-300 hover:-translate-y-0.5 active:scale-[0.98]"
+                >
                   <Play className="size-4 fill-current" />
                   شاهد كيف يعمل
                 </a>
               </div>
-              <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-muted-foreground">
+              <ul className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-[13px] text-muted-foreground">
                 {["Excel وCSV وPDF", "بيانات كل شركة منفصلة", "الذكاء الاصطناعي لا يغيّر الأرقام"].map((item) => (
                   <li key={item} className="flex items-center gap-1.5">
                     <Check className="size-4 text-success" />
@@ -523,7 +547,19 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
                 ))}
               </ul>
             </div>
-            <HeroDashboard />
+          </div>
+
+          <div className="relative mx-auto max-w-5xl px-4 pb-20 sm:px-6 lg:pb-28">
+            <span
+              aria-hidden="true"
+              className="absolute -top-3 start-6 z-10 inline-flex -rotate-3 items-center gap-2 rounded-full bg-card px-4 py-2 text-[13px] font-semibold shadow-[0_12px_28px_-16px_rgb(19_35_43/0.45)] ring-1 ring-border sm:start-12"
+            >
+              <span className="size-2 rounded-full bg-success" />
+              مطابقة تلقائية · مباشرة
+            </span>
+            <div className="rounded-[2rem] bg-ink/[0.04] p-2 ring-1 ring-border">
+              <HeroDashboard />
+            </div>
           </div>
         </section>
 
