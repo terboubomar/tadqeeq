@@ -483,28 +483,30 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
       </div>
 
       <main>
+        {/* Hero after the 21st.dev «ChatDeck» and «LeadFlow AI» templates: centred badge, headline with an accent
+            line, actions and proof points, then the product shown wide underneath. */}
         <section className="overflow-hidden">
-          <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:py-20">
-            <div className="lp-stagger flex flex-col gap-6">
-              <p className="flex items-center gap-2.5 text-[13px] font-semibold text-primary-text">
+          <div className="mx-auto max-w-7xl px-4 pb-16 pt-12 sm:px-6 lg:pb-24 lg:pt-16">
+            <div className="lp-stagger mx-auto flex max-w-4xl flex-col items-center gap-6 text-center">
+              <p className="inline-flex items-center gap-2.5 rounded-full border border-border bg-card px-3.5 py-1.5 text-[13px] font-semibold text-primary-text shadow-[0_6px_18px_-12px_rgb(19_35_43/0.35)]">
                 <span aria-hidden="true" className="flex">
                   {PLATFORM_KEYS.map((key, i) => (
-                    <PlatformIcon key={key} platform={key} className={cn("size-6 rounded-full ring-2 ring-background", i > 0 && "-ms-2")} />
+                    <PlatformIcon key={key} platform={key} className={cn("size-6 rounded-full ring-2 ring-card", i > 0 && "-ms-2")} />
                   ))}
                 </span>
                 تدقيق فواتير هنقرستيشن وكيتا وجاهز
               </p>
-              <h1 className="font-display text-4xl font-extrabold leading-[1.3] sm:text-5xl lg:text-[3.15rem]">
-                لا تدفع فاتورة هنقرستيشن أو جاهز أو كيتا قبل ما تتأكد منها.
+              <h1 className="font-display text-4xl font-extrabold leading-[1.3] sm:text-5xl lg:text-[3.4rem]">
+                لا تدفع فاتورة هنقرستيشن أو جاهز أو كيتا <span className="text-primary-text">قبل ما تتأكد منها.</span>
               </h1>
-              <p className="max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
+              <p className="max-w-2xl text-base leading-8 text-muted-foreground sm:text-lg">
                 تدقيق يعيد احتساب كل بند في فاتورة تطبيق التوصيل من ملف طلباتك ومعادلات عقدك، يكشف الفرق لكل فرع، ويجهّز مطالبة التعويض بأدلتها.
               </p>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap justify-center gap-3">
                 <Link
                   to="/auth"
                   search={{ mode: "signup" }}
-                  className="inline-flex h-[52px] items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-semibold text-ink-foreground transition-transform hover:-translate-y-0.5"
+                  className="inline-flex h-[52px] items-center gap-2 rounded-full bg-ink px-7 text-[15px] font-semibold text-ink-foreground transition-transform hover:-translate-y-0.5"
                 >
                   ابدأ التدقيق
                   <ArrowLeft className="size-4" />
@@ -514,7 +516,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
                   شاهد كيف يعمل
                 </a>
               </div>
-              <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-muted-foreground">
+              <ul className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-[13px] text-muted-foreground">
                 {["Excel وCSV وPDF", "بيانات كل شركة منفصلة", "الذكاء الاصطناعي لا يغيّر الأرقام"].map((item) => (
                   <li key={item} className="flex items-center gap-1.5">
                     <Check className="size-4 text-success" />
@@ -523,7 +525,12 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
                 ))}
               </ul>
             </div>
-            <HeroDashboard />
+            <div className="relative mx-auto mt-12 max-w-5xl lg:mt-16">
+              <span aria-hidden="true" className="pointer-events-none absolute inset-x-10 -top-6 h-40 rounded-full bg-primary/15 blur-3xl" />
+              <div className="relative rounded-[24px] border border-border bg-card/60 p-2 shadow-[0_40px_80px_-40px_rgb(19_35_43/0.35)] sm:p-3">
+                <HeroDashboard />
+              </div>
+            </div>
           </div>
         </section>
 
@@ -2488,10 +2495,7 @@ function SectionIntro({
 
 function HeroDashboard() {
   return (
-    <div
-      aria-hidden="true"
-      className="lp-slide flex overflow-hidden rounded-[18px] border border-border bg-card shadow-[0_30px_60px_-30px_rgb(19_35_43/0.25)] lg:-me-24 lg:rounded-e-none"
-    >
+    <div aria-hidden="true" className="lp-slide flex overflow-hidden rounded-[18px] border border-border bg-card">
       <div className="hidden w-14 shrink-0 flex-col items-center gap-4 bg-ink pt-5 sm:flex">
         <LogoMark className="h-6 text-ink-foreground" />
         {[0.5, 0.3, 0.3, 0.3].map((o, i) => (
