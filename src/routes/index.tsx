@@ -108,7 +108,6 @@ const HOME_DESCRIPTION =
 
 /** Header links after the «المنتجات» menu. */
 const NAV = [
-  ["#products", "المنتجات"],
   ["#how", "كيف يعمل"],
   ["#pricing", "الخطط والأسعار"],
   ["#faq", "الأسئلة"],
