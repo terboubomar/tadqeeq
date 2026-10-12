@@ -6,7 +6,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { OnboardingScreen } from "@/components/OnboardingGate";
+import { CardPayButton, CardSubscriptionPanel, PaymentTestModeBanner } from "@/components/subscription/CardPayment";
 import { SubscribedPlan } from "@/components/subscription/SubscribedPlan";
+import { cardPrice } from "@/lib/card-plans";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
 import { count, money } from "@/lib/format";
@@ -54,11 +56,14 @@ function SubscribePage() {
   if (subscribed && !showAll) {
     return (
       <div className="mx-auto max-w-6xl space-y-6">
+        <PaymentTestModeBanner />
         <PageHeader
           crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "الاشتراك" }]}
           title="باقتك"
           subtitle="اشتراكك واستخدامك هذا الشهر."
         />
+        <CardSubscriptionPanel />
+
         {plans.isLoading ? (
           <p className="py-16 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>
         ) : (
@@ -76,6 +81,7 @@ function SubscribePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
+      <PaymentTestModeBanner />
       <PageHeader
         crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "الاشتراك" }]}
         title={context.trial ? "اشترك في تدقيق" : subscribed ? "كل الباقات" : "باقتك وترقيتها"}
@@ -337,9 +343,12 @@ function PlanPicker({ plans: allPlans }: { plans: PublicPlan[] }) {
               طلبت باقة {pending.name} ({request.data?.cycle === "yearly" ? "سنوي" : "شهري"}). سنرسل الفاتورة ونفعّلها بعد التحويل.
             </p>
           ) : null}
+          {canRequest && selected && !chosenAddons.length ? (
+            <CardPayButton planCode={selected.code} planName={selected.name} cycle={cycle} />
+          ) : null}
           {canRequest ? (
-            <Button disabled={!selected || send.isPending} onClick={() => send.mutate()}>
-              {selected?.customPrice ? "اطلب عرض سعر" : "اطلب هذه الباقة"}
+            <Button variant={cardPrice(selected?.code ?? null, cycle) && !chosenAddons.length ? "outline" : "default"} disabled={!selected || send.isPending} onClick={() => send.mutate()}>
+              {selected?.customPrice ? "اطلب عرض سعر" : cardPrice(selected?.code ?? null, cycle) ? "أو ادفع بتحويل بنكي" : "اطلب هذه الباقة"}
             </Button>
           ) : (
             <p className="text-xs text-muted-foreground">مالك الحساب أو المدير يستطيع طلب الباقة.</p>
