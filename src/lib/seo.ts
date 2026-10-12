@@ -43,7 +43,7 @@ export type PublicPage = {
 
 /** Every page that should be indexed. Adding a public page here adds it to sitemap.xml and llms.txt. */
 export const PUBLIC_PAGES: PublicPage[] = [
-  { path: "/", title: "Home", lastmod: "2026-10-11", changefreq: "weekly", priority: 1 },
+  { path: "/", title: "Home", lastmod: "2026-10-12", changefreq: "weekly", priority: 1 },
   { path: "/guides", title: "أدلة مراجعة فواتير تطبيقات التوصيل", lastmod: "2026-10-05", changefreq: "monthly", priority: 0.7 },
   { path: "/guides/keeta-invoice", title: "كيف تراجع فاتورة كيتا؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
   { path: "/guides/hungerstation-compensation", title: "كيف تعترض على تعويضات هنقرستيشن؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
