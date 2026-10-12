@@ -602,7 +602,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
           <div data-reveal className="mx-auto max-w-2xl text-center">
             <Eyebrow>المنصة</Eyebrow>
             <h2 className="mt-4 font-display text-3xl font-bold leading-[1.4] sm:text-[2.6rem]">منصة واحدة لكل أعمالك المالية.</h2>
-            <p className="mt-4 text-base leading-8 text-muted-foreground">جهّز فروعك وعقودك مرة واحدة، وكل منتج يعمل منها، فالرقم الصحيح في مكان صحيح في كل مكان.</p>
+            <p className="mt-4 text-base leading-8 text-muted-foreground">جهّز فروعك وعقودك مرة واحدة، وكل منتج يعمل منها، فالرقم الذي تراجعه في مكان يبقى صحيحاً في كل مكان.</p>
           </div>
           <ul className="mt-12 grid gap-4 md:grid-cols-2">
             {PRODUCT_PAGES.map((page, index) => {
