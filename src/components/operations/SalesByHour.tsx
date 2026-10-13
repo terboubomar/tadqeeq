@@ -94,6 +94,7 @@ export function SalesByHour({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">كل الفروع</SelectItem>
                 {[...branches]
                   .sort((a, b) => b.grossSales - a.grossSales)
                   .map((item) => (
@@ -101,7 +102,6 @@ export function SalesByHour({
                       {branchLabel(item)}
                     </SelectItem>
                   ))}
-                <SelectItem value="all">كل الفروع (أبطأ)</SelectItem>
               </SelectContent>
             </Select>
           ) : null}
