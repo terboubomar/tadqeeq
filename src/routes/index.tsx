@@ -744,34 +744,91 @@ const HOW_STEPS: Array<{ title: string; body: string; icon: LucideIcon }> = [
   { title: "استرد وأغلق", body: "جهّز مطالبة الاسترداد بأدلتها، ثم أغلق الفترة بسجل كامل قابل للمراجعة.", icon: HandCoins },
 ];
 
-/** An open four-stage process, with the original content and reading order. */
-function HowItWorks() {
+/** LeadFlow-style pill badge shown above section headings. */
+function SectionBadge({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
   return (
-    <section id="how" aria-labelledby="how-title" className="scroll-mt-20 bg-card">
-      <div className="mx-auto max-w-7xl px-6 py-20 sm:px-10 lg:px-16 lg:py-28">
-        <div className="max-w-3xl">
-          <h2 id="how-title" className="text-balance font-display text-3xl font-semibold leading-[1.6] text-foreground sm:text-4xl">أربع خطوات. بدون جداول يدوية.</h2>
-          <p className="mt-5 text-base leading-8 text-muted-foreground sm:text-lg">ارفع ملفين في نهاية الفترة، وتدقيق يتولى الباقي.</p>
-        </div>
-        <ol className="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:mt-20 lg:grid-cols-4 lg:gap-x-12">
-          {HOW_STEPS.map((step, index) => (
-            <li key={step.title} className="relative">
-              <div className="flex items-center gap-5" aria-hidden="true">
-                <span className="num text-sm text-primary-text">0{index + 1}</span>
-                <span className="h-px flex-1 bg-border" />
-                <step.icon strokeWidth={1.5} className="size-5 shrink-0 text-muted-foreground" />
-              </div>
-              <h3 className="mt-7 text-balance font-display text-lg font-semibold leading-8">{step.title}</h3>
-              <p className="mt-3 max-w-sm text-pretty text-sm leading-7 text-muted-foreground">{step.body}</p>
-            </li>
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary-soft px-3 py-1 text-xs font-semibold text-primary-text">
+      <Icon className="size-3.5" strokeWidth={2} />
+      {children}
+    </span>
+  );
+}
+
+/** Factual figures about the product, divided by hairline columns. */
+const RECORDS: Array<[value: string, label: string]> = [
+  ["3", "منصات توصيل مدعومة"],
+  ["7", "منتجات تغطي بنود الفاتورة"],
+  ["4", "خطوات من الرفع إلى الاسترداد"],
+  ["3", "صيغ ملفات: Excel وCSV وPDF"],
+];
+
+function RecordsRibbon() {
+  return (
+    <section aria-labelledby="records-title" className="border-b border-border py-12">
+      <h2 id="records-title" className="text-center font-display text-2xl font-semibold sm:text-3xl">تدقيق بالأرقام</h2>
+      <dl className="mt-10 grid grid-cols-2 lg:grid-cols-4">
+        {RECORDS.map(([value, label], i) => (
+          <div key={label} className={cn("flex flex-col items-center gap-2 px-4 py-6 text-center", i > 0 && "lg:border-s lg:border-border", i % 2 === 1 && "border-s border-border lg:border-s")}>
+            <dd className="num text-5xl font-semibold text-foreground sm:text-6xl">{value}</dd>
+            <dt className="text-sm text-muted-foreground">{label}</dt>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+/** LeadFlow-style process tabs: numbered tabs with an active underline, explanation beside a visual panel. */
+function HowItWorks() {
+  const [active, setActive] = useState(0);
+  const step = HOW_STEPS[active]!;
+  return (
+    <section id="how" aria-labelledby="how-title" className="scroll-mt-20 border-b border-border px-6 py-16 sm:px-12">
+      <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
+        <SectionBadge icon={Workflow}>آلية العمل</SectionBadge>
+        <h2 id="how-title" className="mt-4 text-balance font-display text-3xl font-semibold leading-[1.5] text-foreground sm:text-4xl">أربع خطوات. بدون جداول يدوية.</h2>
+        <p className="mt-4 text-base leading-8 text-muted-foreground">ارفع ملفين في نهاية الفترة، وتدقيق يتولى الباقي.</p>
+        <Link to="/auth" search={{ mode: "signup" }} className="mt-6 inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+          ابدأ مجاناً
+        </Link>
+      </div>
+      <div className="mt-14 overflow-hidden rounded-2xl border border-border">
+        <div role="tablist" aria-label="خطوات العمل" className="grid grid-cols-2 border-b border-border lg:grid-cols-4">
+          {HOW_STEPS.map((s, i) => (
+            <button
+              key={s.title}
+              type="button"
+              role="tab"
+              aria-selected={active === i}
+              onClick={() => setActive(i)}
+              className={cn(
+                "relative px-4 py-4 text-sm font-medium transition-colors",
+                i > 0 && "border-s border-border",
+                i >= 2 && "border-t border-border lg:border-t-0",
+                active === i ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span className="num">0{i + 1}.</span> {s.title}
+              <span aria-hidden="true" className={cn("absolute inset-x-6 bottom-0 h-[3px] rounded-full bg-primary transition-opacity", active === i ? "opacity-100" : "opacity-0")} />
+            </button>
           ))}
-        </ol>
+        </div>
+        <div role="tabpanel" className="grid items-center gap-10 p-8 sm:p-12 lg:grid-cols-2">
+          <p className="text-lg leading-9 text-muted-foreground">{step.body}</p>
+          <div className="flex aspect-[16/10] flex-col items-center justify-center gap-4 rounded-xl border border-border bg-muted">
+            <span className="grid size-16 place-items-center rounded-xl bg-primary text-primary-foreground">
+              <step.icon className="size-8" strokeWidth={1.75} />
+            </span>
+            <span className="font-display text-xl font-semibold">{step.title}</span>
+            <span className="num text-sm text-muted-foreground">الخطوة 0{active + 1} من 04</span>
+          </div>
+        </div>
       </div>
     </section>
   );
 }
 
-/** Product cards laid out on a three-column grid; «مُطابِق» and «رقيب» take two columns. Each opens its own page. */
+/** Product cards laid out on a three-column grid. Each opens its own page. */
 const PRODUCT_CARDS: Array<{ key: ProductKey; wide?: boolean; dark?: boolean }> = [
   { key: "mutabiq", wide: true, dark: true },
   { key: "kashif" },
@@ -782,46 +839,35 @@ const PRODUCT_CARDS: Array<{ key: ProductKey; wide?: boolean; dark?: boolean }> 
   { key: "raqeeb", wide: true },
 ];
 
-/** Moves the card's spotlight to the cursor via CSS variables (transform-free, no re-render). */
-function trackSpotlight(event: ReactPointerEvent<HTMLElement>) {
-  const el = event.currentTarget;
-  const rect = el.getBoundingClientRect();
-  el.style.setProperty("--spot-x", `${event.clientX - rect.left}px`);
-  el.style.setProperty("--spot-y", `${event.clientY - rect.top}px`);
-}
-
-/** Reference-led light card grid; each product retains its own page and original summary. */
+/** LeadFlow-style feature grid; each product retains its own page and original summary. */
 function ProductsGrid() {
   return (
-    <section id="products" aria-labelledby="products-title" className="scroll-mt-20 bg-card">
-      <div className="mx-auto max-w-7xl px-6 py-20 sm:px-10 lg:px-16 lg:py-28">
-        <div className="mx-auto max-w-3xl text-center">
-            <h2 id="products-title" className="text-balance font-display text-3xl font-semibold leading-[1.6] text-foreground sm:text-4xl">أداة لكل بند في فاتورتك.</h2>
-            <p className="mt-4 text-pretty text-base leading-8 text-muted-foreground sm:text-lg">كل منتج يعالج جزءاً من الفاتورة. افتح أي منتج لتعرف كيف يعمل بالتفصيل.</p>
-        </div>
-        <ul className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2 lg:mt-16 lg:grid-cols-3">
+    <section id="products" aria-labelledby="products-title" className="scroll-mt-20 border-b border-border px-6 py-16 sm:px-12">
+      <div className="max-w-2xl">
+        <SectionBadge icon={Sparkles}>المنتجات</SectionBadge>
+        <h2 id="products-title" className="mt-4 text-balance font-display text-3xl font-semibold leading-[1.5] text-foreground sm:text-4xl">أداة لكل بند في فاتورتك.</h2>
+        <p className="mt-4 text-pretty text-base leading-8 text-muted-foreground">كل منتج يعالج جزءاً من الفاتورة. افتح أي منتج لتعرف كيف يعمل بالتفصيل.</p>
+      </div>
+      <ul className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {PRODUCT_CARDS.map(({ key }) => {
           const page = productPageFor(key);
           if (!page) return null;
           return (
             <li key={key} className="min-w-0">
-              <a href={page.path} aria-labelledby={`journey-${key}`} className="group flex h-full flex-col items-start rounded-lg border border-border/60 bg-card p-6 text-start transition-colors duration-200 hover:border-primary/50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring sm:p-7">
-                <ProductIcon product={key} className="size-10 rounded-full bg-muted/50 text-foreground" />
-                <div className="mt-6">
-                  <h3 id={`journey-${key}`} className="font-display text-lg font-semibold leading-8 transition-colors group-hover:text-primary-text">{PRODUCTS[key].name}</h3>
-                  <p className="mt-1 text-sm leading-7 text-foreground">{PRODUCTS[key].descriptor}</p>
-                </div>
+              <a href={page.path} aria-labelledby={`journey-${key}`} className="group flex h-full flex-col items-start rounded-2xl border border-border bg-card p-8 text-start transition-[border-color,box-shadow] duration-200 hover:border-primary/40 hover:shadow-[0_8px_24px_-12px_color-mix(in_oklab,var(--primary)_35%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
+                <ProductIcon product={key} className="size-14 rounded-xl bg-primary text-primary-foreground [&_svg]:size-7" />
+                <h3 id={`journey-${key}`} className="mt-10 font-display text-xl font-semibold leading-8">{PRODUCTS[key].name}</h3>
+                <p className="mt-1 text-sm leading-7 text-foreground">{PRODUCTS[key].descriptor}</p>
                 <p className="mt-3 text-pretty text-sm leading-7 text-muted-foreground">{page.summary}</p>
               </a>
             </li>
           );
         })}
-        </ul>
-        <div className="mt-10 flex justify-center">
-          <Button asChild variant="ghost" className="group h-12 gap-4 rounded-md text-foreground hover:bg-muted/50 hover:text-primary-text">
-            <Link to="/products">كل المنتجات <ArrowLeft className="transition-transform duration-200 group-hover:-translate-x-1" /></Link>
-          </Button>
-        </div>
+      </ul>
+      <div className="mt-10 flex justify-center">
+        <Button asChild className="h-11 gap-2 rounded-md bg-primary px-5 text-primary-foreground hover:bg-primary/90">
+          <Link to="/products">كل المنتجات <ArrowLeft className="size-4" /></Link>
+        </Button>
       </div>
     </section>
   );
