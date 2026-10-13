@@ -790,45 +790,38 @@ function trackSpotlight(event: ReactPointerEvent<HTMLElement>) {
   el.style.setProperty("--spot-y", `${event.clientY - rect.top}px`);
 }
 
-/** A whitespace-led journey; each product retains its own page and original summary. */
+/** Reference-led light card grid; each product retains its own page and original summary. */
 function ProductsGrid() {
   return (
-    <section id="products" aria-labelledby="products-title" className="scroll-mt-20 bg-background">
+    <section id="products" aria-labelledby="products-title" className="scroll-mt-20 bg-card">
       <div className="mx-auto max-w-7xl px-6 py-20 sm:px-10 lg:px-16 lg:py-28">
-        <div className="flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-end lg:gap-16">
-          <div className="max-w-2xl">
+        <div className="mx-auto max-w-3xl text-center">
             <h2 id="products-title" className="text-balance font-display text-3xl font-semibold leading-[1.6] text-foreground sm:text-4xl">أداة لكل بند في فاتورتك.</h2>
-            <p className="mt-5 max-w-xl text-pretty text-base leading-8 text-muted-foreground sm:text-lg">كل منتج يعالج جزءاً من الفاتورة. افتح أي منتج لتعرف كيف يعمل بالتفصيل.</p>
-          </div>
-          <Button asChild variant="ghost" className="group h-12 shrink-0 gap-4 rounded-md px-0 text-foreground hover:bg-transparent hover:text-primary-text">
-            <Link to="/products">كل المنتجات <ArrowLeft className="transition-transform duration-200 group-hover:-translate-x-1" /></Link>
-          </Button>
+            <p className="mt-4 text-pretty text-base leading-8 text-muted-foreground sm:text-lg">كل منتج يعالج جزءاً من الفاتورة. افتح أي منتج لتعرف كيف يعمل بالتفصيل.</p>
         </div>
-        <ol className="relative mt-14 lg:mt-20">
-        {PRODUCT_CARDS.map(({ key }, index) => {
+        <ul className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2 lg:mt-16 lg:grid-cols-3">
+        {PRODUCT_CARDS.map(({ key }) => {
           const page = productPageFor(key);
           if (!page) return null;
           return (
-            <li key={key} className="relative">
-              <span aria-hidden="true" className={cn("pointer-events-none absolute start-3 w-px bg-border lg:start-4", index === 0 ? "top-14 bottom-0 lg:top-20" : index === PRODUCT_CARDS.length - 1 ? "top-0 h-14 lg:h-20" : "inset-y-0")} />
-              <a href={page.path} aria-labelledby={`journey-${key}`} className="group relative grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-6 py-10 focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-ring sm:gap-x-10 lg:grid-cols-[2rem_minmax(0,1fr)] lg:gap-x-14 lg:py-14">
-                <span aria-hidden="true" className="num relative mt-1 self-start bg-background py-1 text-xs text-muted-foreground transition-colors group-hover:text-primary-text lg:text-sm">{String(index + 1).padStart(2, "0")}</span>
-                <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_2.5rem] lg:items-center lg:gap-12">
-                  <div className="flex min-w-0 items-center gap-5">
-                    <ProductIcon product={key} className="size-12 shrink-0 rounded-lg lg:size-14" />
-                    <div className="min-w-0">
-                      <h3 id={`journey-${key}`} className="font-display text-2xl font-semibold leading-10 transition-colors group-hover:text-primary-text">{PRODUCTS[key].name}</h3>
-                      <p className="mt-1 text-sm leading-7 text-muted-foreground">{PRODUCTS[key].descriptor}</p>
-                    </div>
-                  </div>
-                  <p className="max-w-md text-pretty text-base leading-8 text-muted-foreground">{page.summary}</p>
-                  <span aria-hidden="true" className="flex size-10 items-center justify-center text-foreground transition-transform duration-200 group-hover:-translate-x-1"><ArrowLeft className="size-5" strokeWidth={1.5} /></span>
+            <li key={key} className="min-w-0">
+              <a href={page.path} aria-labelledby={`journey-${key}`} className="group flex h-full flex-col items-start rounded-lg border border-border/60 bg-card p-6 text-start transition-colors duration-200 hover:border-primary/50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring sm:p-7">
+                <ProductIcon product={key} className="size-10 rounded-full bg-muted/50 text-foreground" />
+                <div className="mt-6">
+                  <h3 id={`journey-${key}`} className="font-display text-lg font-semibold leading-8 transition-colors group-hover:text-primary-text">{PRODUCTS[key].name}</h3>
+                  <p className="mt-1 text-sm leading-7 text-foreground">{PRODUCTS[key].descriptor}</p>
                 </div>
+                <p className="mt-3 text-pretty text-sm leading-7 text-muted-foreground">{page.summary}</p>
               </a>
             </li>
           );
         })}
-        </ol>
+        </ul>
+        <div className="mt-10 flex justify-center">
+          <Button asChild variant="ghost" className="group h-12 gap-4 rounded-md text-foreground hover:bg-muted/50 hover:text-primary-text">
+            <Link to="/products">كل المنتجات <ArrowLeft className="transition-transform duration-200 group-hover:-translate-x-1" /></Link>
+          </Button>
+        </div>
       </div>
     </section>
   );
