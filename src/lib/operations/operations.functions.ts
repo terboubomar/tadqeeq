@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   deleteOperationImportOnServer,
+  getOperationHourlyOnServer,
   getOperationImportDetailOnServer,
   getOperationMonthOnServer,
   importOperationFileOnServer,
@@ -37,3 +38,7 @@ export const getOperationImportDetail = createServerFn({ method: "POST" })
     }),
   )
   .handler(({ data }) => getOperationImportDetailOnServer(data));
+
+export const getOperationHourly = createServerFn({ method: "POST" })
+  .validator(z.object({ platform: z.enum(["hungerstation", "keeta", "jahez"]), month: z.string().regex(/^\d{4}-\d{2}$/) }))
+  .handler(({ data }) => getOperationHourlyOnServer(data));

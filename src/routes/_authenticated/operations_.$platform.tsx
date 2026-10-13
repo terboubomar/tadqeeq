@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
 import { ErrorNotice } from "@/components/operations/DayLedger";
+import { SalesByHour } from "@/components/operations/SalesByHour";
 import { BranchBreakdown, CoverageCalendar, DailyTrend, MonthPicker } from "@/components/operations/OperationsKit";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { PageHeader } from "@/components/workspace/PageKit";
@@ -286,6 +287,8 @@ function PlatformWorkspace({
           <DailyTrend days={row.days} />
         </section>
       ) : null}
+
+      {row?.days.length ? <SalesByHour platform={platform} month={month} /> : null}
 
       {row?.branches.length ? (
         <section className="overflow-hidden rounded-2xl border border-border bg-card">

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { count, money, short } from "@/lib/format";
+import { HEAT_RAMP as RAMP, WEEKDAYS, WEEKDAYS_SHORT } from "@/lib/chart-palette";
 import { cn } from "@/lib/utils";
 
 export interface HeatmapDay {
@@ -9,12 +10,6 @@ export interface HeatmapDay {
   sales: number;
   orders: number;
 }
-
-const WEEKDAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
-const WEEKDAYS_SHORT = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
-
-/** One amber hue, light to dark: more is darker. Only the darkest step takes light text. */
-const RAMP = ["oklch(0.95 0.035 78)", "oklch(0.88 0.065 74)", "oklch(0.8 0.095 70)", "oklch(0.7 0.12 65)", "oklch(0.58 0.13 60)"];
 
 type Measure = "sales" | "orders";
 
