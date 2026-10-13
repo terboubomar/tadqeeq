@@ -32,6 +32,8 @@ function hourOf(value: RawValue): number | null {
   }
   if (typeof value !== "string") return null;
   const text = value.trim();
+  // A spreadsheet serial read back as text.
+  if (/^\d+(\.\d+)?$/.test(text)) return hourOf(Number(text));
   // ISO text written from a spreadsheet date keeps the file's wall-clock time.
   const iso = text.match(/^\d{4}-\d{2}-\d{2}T(\d{2}):\d{2}/);
   if (iso) return Number(iso[1]);

@@ -1,11 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { Download, Loader2 } from "lucide-react";
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { HEAT_RAMP, WEEKDAYS, WEEKDAYS_SHORT } from "@/lib/chart-palette";
+import { exportXlsx, type ExportColumn } from "@/lib/export";
 import { count, money, short } from "@/lib/format";
+import { operationPlatformLabel } from "@/lib/operations/catalog";
+import type { HourlyGrid } from "@/lib/operations/hourly";
 import { getOperationHourly } from "@/lib/operations/operations.functions";
-import type { OperationPlatform } from "@/lib/operations/types";
+import type { OperationBranchSummary, OperationPlatform } from "@/lib/operations/types";
 import { cn } from "@/lib/utils";
 
 type Measure = "sales" | "orders";
@@ -20,14 +26,33 @@ const dayCount = (n: number) => (n === 1 ? "يوم واحد" : n === 2 ? "يوم
  * «المبيعات حسب الساعة»: the month's orders as a grid of hour (rows) by weekday (columns), each cell the total for
  * that hour across the month's uploaded days of that weekday, shaded on one amber scale (darker is more).
  */
-export function SalesByHour({ platform, month }: { platform: OperationPlatform; month: string }) {
+export function SalesByHour({
+  platform,
+  month,
+  branches = [],
+}: {
+  platform: OperationPlatform;
+  month: string;
+  branches?: OperationBranchSummary[];
+}) {
   const [measure, setMeasure] = useState<Measure>("sales");
+  const [branchKey, setBranchKey] = useState("all");
+  const branch = branches.find((item) => item.key === branchKey);
   const query = useQuery({
-    queryKey: ["operation-hourly", platform, month],
-    queryFn: () => getOperationHourly({ data: { platform, month } }),
+    queryKey: ["operation-hourly", platform, month, branchKey],
+    queryFn: () =>
+      getOperationHourly({
+        data: {
+          platform,
+          month,
+          ...(branch?.branchId ? { branchId: branch.branchId } : branch?.branchName ? { branchName: branch.branchName } : {}),
+        },
+      }),
     // A month of orders takes a while to read; one retry is enough before showing the error.
     retry: 1,
     staleTime: 5 * 60_000,
+    // Switching the branch keeps the last grid on screen until the new one arrives.
+    placeholderData: keepPreviousData,
   });
 
   const grid = query.data;
@@ -48,8 +73,23 @@ export function SalesByHour({ platform, month }: { platform: OperationPlatform; 
           <h2 className="font-display text-[15px] font-bold">المبيعات حسب الساعة</h2>
           <p className="mt-0.5 text-[12px] text-muted-foreground">مجموع كل ساعة في أيام الشهر المرفوعة، لكل يوم من أيام الأسبوع. الأغمق هو الأعلى.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {query.isFetching ? <Loader2 className="size-4 animate-spin text-ink-muted" /> : null}
+          {branches.length > 1 ? (
+            <Select value={branchKey} onValueChange={setBranchKey}>
+              <SelectTrigger aria-label="الفرع" className="h-8 w-auto min-w-[150px] max-w-[220px] bg-card text-[12.5px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الفروع</SelectItem>
+                {branches.map((item) => (
+                  <SelectItem key={item.key} value={item.key}>
+                    {item.branchName || item.branchId || "فرع بدون اسم"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
           <div role="group" aria-label="المؤشر" className="flex rounded-lg bg-muted p-0.5">
             {(["sales", "orders"] as const).map((key) => (
               <button
@@ -63,6 +103,17 @@ export function SalesByHour({ platform, month }: { platform: OperationPlatform; 
               </button>
             ))}
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5"
+            disabled={!grid || !hasTimes}
+            onClick={() => grid && exportHourly(grid, `sales-by-hour-${platform}-${month}${branch ? `-${branch.branchName ?? branch.branchId ?? "branch"}` : ""}`, operationPlatformLabel(platform), branch?.branchName ?? null)}
+          >
+            <Download className="size-3.5" />
+            تصدير Excel
+          </Button>
         </div>
       </div>
 
@@ -144,5 +195,31 @@ export function SalesByHour({ platform, month }: { platform: OperationPlatform; 
         </>
       )}
     </section>
+  );
+}
+
+type HourlyExportRow = { hour: string } & Record<`d${number}`, number>;
+
+/** Two sheets, sales and orders: one row per hour, one column per weekday, plus the uploaded days per weekday. */
+function exportHourly(grid: HourlyGrid, filename: string, platformLabel: string, branchName: string | null) {
+  const columns: ExportColumn<HourlyExportRow>[] = [
+    { key: "hour", header: "الساعة", type: "text" },
+    ...WEEKDAYS.map((name, weekday) => ({ key: `d${weekday}` as const, header: `${name} (${grid.weekdayDays[weekday] ?? 0} يوم)`, type: "number" as const })),
+  ];
+  const sheet = (pick: (cell: { sales: number; orders: number }) => number): HourlyExportRow[] =>
+    HOURS.map((hour) => {
+      const row = { hour: hourLabel(hour) } as HourlyExportRow;
+      WEEKDAYS.forEach((_, weekday) => {
+        row[`d${weekday}`] = pick(grid.cells[weekday]![hour]!);
+      });
+      return row;
+    });
+  const scope = branchName ? `${platformLabel} · ${branchName}` : platformLabel;
+  exportXlsx(
+    [
+      { name: `المبيعات · ${scope}`, rows: sheet((cell) => cell.sales), columns: columns.map((c) => (c.key === "hour" ? c : { ...c, type: "money" as const })) },
+      { name: `الطلبات · ${scope}`, rows: sheet((cell) => cell.orders), columns },
+    ],
+    filename.replace(/[\\/:*?"<>|\s]+/g, "-"),
   );
 }
