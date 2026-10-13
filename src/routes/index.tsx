@@ -358,7 +358,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         ) : null}
       </header>
 
-      <main className="mx-auto max-w-7xl overflow-x-hidden border-x border-border">
+      <main className="mx-auto max-w-7xl overflow-x-clip border-x border-border">
         <Hero />
 
         <section aria-labelledby="clients-title" className="border-b border-border px-4 py-12 sm:px-6">
