@@ -331,8 +331,8 @@ export interface BarListItem {
   key: string;
   label: string;
   value: string;
-  /** 0–1: the bar length relative to the largest item. */
-  size: number;
+  /** 0–1: the bar length relative to the largest item. Leave it out when the items are not on one scale (no bar is drawn). */
+  size?: number;
   share?: string;
   sub?: string;
   color?: string;
@@ -355,12 +355,14 @@ export function BarList({ items, empty = "لا توجد بيانات." }: { item
               <span className="num text-[13px] font-semibold">{item.value}</span>
             </span>
           </div>
-          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full"
-              style={{ width: `${Math.max(item.size * 100, item.size > 0 ? 1.5 : 0)}%`, background: item.color ?? "var(--color-primary)" }}
-            />
-          </div>
+          {item.size !== undefined ? (
+            <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${Math.max(item.size * 100, item.size > 0 ? 1.5 : 0)}%`, background: item.color ?? "var(--color-primary)" }}
+              />
+            </div>
+          ) : null}
           {item.sub ? <p className="mt-1 text-[11px] leading-5 text-muted-foreground">{item.sub}</p> : null}
         </li>
       ))}
