@@ -801,7 +801,7 @@ function ProductsGrid() {
           const page = productPageFor(key);
           if (!page) return null;
           return (
-            <li key={key} data-reveal className={cn(wide && "sm:col-span-2")}>
+            <li key={key} data-reveal className={cn(wide && "lg:col-span-2")}>
               <div className={cn("h-full rounded-[1.75rem] p-1.5 ring-1", dark ? "bg-ink/10 ring-ink/15" : "bg-muted/50 ring-border")}>
                 <a
                   href={page.path}
