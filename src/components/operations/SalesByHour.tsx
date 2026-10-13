@@ -25,6 +25,9 @@ export function SalesByHour({ platform, month }: { platform: OperationPlatform; 
   const query = useQuery({
     queryKey: ["operation-hourly", platform, month],
     queryFn: () => getOperationHourly({ data: { platform, month } }),
+    // A month of orders takes a while to read; one retry is enough before showing the error.
+    retry: 1,
+    staleTime: 5 * 60_000,
   });
 
   const grid = query.data;
@@ -65,7 +68,8 @@ export function SalesByHour({ platform, month }: { platform: OperationPlatform; 
 
       {query.isError ? (
         <p className="mt-4 rounded-lg border border-dashed border-border px-4 py-6 text-center text-[12.5px] text-muted-foreground">
-          تعذّر تحميل المبيعات حسب الساعة.{" "}
+          تعذّر تحميل المبيعات حسب الساعة.
+          {query.error instanceof Error && query.error.message ? <span className="mt-1 block text-[11.5px]">{query.error.message}</span> : null}{" "}
           <button type="button" className="font-semibold text-primary-text underline-offset-2 hover:underline" onClick={() => void query.refetch()}>
             إعادة المحاولة
           </button>
