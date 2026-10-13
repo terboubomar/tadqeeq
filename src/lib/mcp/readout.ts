@@ -3,6 +3,7 @@ import { buildPeriodExceptions } from "@/lib/exceptions";
 import type { StoredPeriod } from "@/lib/periods";
 import {
   displayBranchName,
+  PLATFORM_COST_DEFINITION,
   PLATFORM_COST_FORMULA,
   platformCostPct,
   totalPlatformCharges,
@@ -42,6 +43,7 @@ export function periodHeadline(period: Pick<StoredPeriod, "id" | "label" | "plat
     total_platform_charges_sar: round(s.totalCharges),
     platform_cost_pct: ratio(platformCostPct(totalPlatformCharges(period.platform, s), s.grossSales)),
     platform_cost_pct_formula: PLATFORM_COST_FORMULA,
+    platform_cost_pct_definition: PLATFORM_COST_DEFINITION,
     ...(period.platform === "keeta" ? { platform_cost_pct_of_net: ratio(s.keetaPlatformCostPct) } : {}),
     branches: round(s.branchCount),
   };

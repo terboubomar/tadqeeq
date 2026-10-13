@@ -6,6 +6,7 @@ import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, 
 import { EmptyState } from "@/components/AppShell";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 import { Callout, ChartCard } from "@/components/dash/DashKit";
+import { CostDefinitionNote } from "@/components/dash/CostDefinitionNote";
 import { ActionBar, ActionDivider, PageHeader } from "@/components/workspace/PageKit";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -276,6 +277,7 @@ function CombinedBody({
                     </div>
                   ))}
                 </dl>
+                <CostDefinitionNote className="mt-3" />
               </div>
               <figure className="min-w-0">
                 <figcaption className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">

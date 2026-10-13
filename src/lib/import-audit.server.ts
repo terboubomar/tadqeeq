@@ -26,6 +26,7 @@ import {
 } from "./hungerstation-branch-review";
 import { planRegistrySync } from "./branch-registry-sync";
 import type { RegistryBranch } from "./branch-registry";
+import { periodLabelMismatch, type LabelMismatch } from "./period-label-check";
 import { normalizePeriodLabel, type StoredPeriod } from "./periods";
 import { TRIAL_UPLOAD_EVENT } from "./plans";
 import { requireServerUser, type ServerUserClient } from "./server-auth.server";
@@ -70,6 +71,14 @@ export type ImportAuditResult =
   | {
       status: "duplicate";
       existingPeriodId: string;
+    }
+  | {
+      /** The period's name mentions a month outside the file's dates; nothing is saved until the user confirms. */
+      status: "label_review";
+      label: string;
+      periodStart: string;
+      periodEnd: string;
+      mismatch: LabelMismatch;
     }
   | {
       status: "mapping_review";
@@ -882,6 +891,18 @@ async function runImportAudit(
   if (duplicate) {
     await completeMcpRequest(client, form, duplicate);
     return { status: "duplicate", existingPeriodId: duplicate };
+  }
+
+  // Warn before saving when the name says one month and the file covers another, unless this name was confirmed.
+  const labelMismatch = periodLabelMismatch(result.label, result.summary.periodStart, result.summary.periodEnd);
+  if (labelMismatch && normalizePeriodLabel(formString(form, "confirmedLabel")) !== normalizePeriodLabel(result.label)) {
+    return {
+      status: "label_review",
+      label: result.label,
+      periodStart: result.summary.periodStart!,
+      periodEnd: result.summary.periodEnd!,
+      mismatch: labelMismatch,
+    };
   }
 
   if (

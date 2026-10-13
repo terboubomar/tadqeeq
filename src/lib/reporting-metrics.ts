@@ -9,6 +9,11 @@ import type { StoredPeriod } from "@/lib/periods";
 /** The one definition of platform cost %, the same on every platform. */
 export const PLATFORM_COST_FORMULA = "total_platform_charges / gross_sales";
 export const PLATFORM_COST_FORMULA_AR = "إجمالي رسوم المنصة بدون الضريبة ÷ إجمالي المبيعات";
+/** What the % includes, stated wherever it is shown (reports, dashboard, weekly email, AI readouts). */
+export const PLATFORM_COST_DEFINITION_AR =
+  "تكلفة المنصة = إجمالي رسوم المنصة بدون الضريبة ÷ إجمالي المبيعات، بالتعريف نفسه لكل المنصات. لا تشمل الضريبة. تشمل إعلانات كيتا لأنها تُخصم من المستحقات، ولا تشمل إعلانات هنقرستيشن (CPC) لأنها فاتورة منفصلة.";
+export const PLATFORM_COST_DEFINITION =
+  "Platform cost % = total platform charges excluding VAT ÷ gross sales, the same on every platform. Excludes VAT. Includes Keeta advertising (deducted from the payout); excludes HungerStation CPC advertising (a separate invoice).";
 
 const VAT_RATE = 0.15;
 

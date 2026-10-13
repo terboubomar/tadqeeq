@@ -33,6 +33,7 @@ import {
 import type { Platform } from "@/lib/analysis/types";
 import { isPlatformKey } from "@/lib/platforms";
 import type { HungerStationMappingReview } from "@/lib/hungerstation-branch-review";
+import { arabicDate } from "@/lib/format";
 import { importAuditPeriod } from "@/lib/import-audit.functions";
 import { acquireImportRun, finishImportRun } from "@/lib/import-run-guard";
 import { setSelectedPeriodId } from "@/lib/use-period";
@@ -223,6 +224,8 @@ function ImportPage() {
   const [columnReview, setColumnReview] = useState<ColumnReview | null>(null);
   // Column matches confirmed for the current data file, resent with every later run of it.
   const [confirmedColumns, setConfirmedColumns] = useState<ColumnAlias[]>([]);
+  // A period name the user chose to keep although its month is not in the file's dates.
+  const [confirmedLabel, setConfirmedLabel] = useState("");
   const runLock = useRef(false);
 
   let bankRateInterpretation = "";
@@ -287,6 +290,7 @@ function ImportPage() {
       approvedMappings?: Record<string, string>;
       skipMappingReview?: boolean;
       columnAliases?: ColumnAlias[];
+      confirmedLabel?: string;
     } = {},
   ) {
     if (!dataFile) {
@@ -327,11 +331,25 @@ function ImportPage() {
       if (columnAliases.length) {
         form.set("columnAliases", JSON.stringify(columnAliases));
       }
+      const keptLabel = options.confirmedLabel ?? confirmedLabel;
+      if (keptLabel) form.set("confirmedLabel", keptLabel);
 
       const response = await importAuditPeriod({ data: form });
 
       if (response.status === "column_review") {
         setColumnReview(response.review);
+        return;
+      }
+
+      if (response.status === "label_review") {
+        setNotice({
+          kind: "label",
+          label: response.label,
+          periodStart: response.periodStart,
+          periodEnd: response.periodEnd,
+          labelMonths: response.mismatch.labelMonths,
+          fileMonths: response.mismatch.fileMonths,
+        });
         return;
       }
 
@@ -521,6 +539,14 @@ function ImportPage() {
           canRetry={step === STEPS.length - 1 && !mappingReview}
           onClose={() => setNotice(null)}
           onRetry={() => void run()}
+          onKeepLabel={(kept) => {
+            setConfirmedLabel(kept);
+            void run({ confirmedLabel: kept });
+          }}
+          onEditLabel={() => {
+            setNotice(null);
+            setStep(0);
+          }}
           onOpenPeriod={(periodId) => {
             setNotice(null);
             setSelectedPeriodId(periodId);
@@ -1156,6 +1182,7 @@ type RunNotice =
   | { kind: "mapping" }
   | { kind: "duplicate"; periodId: string; fromAssistant?: boolean }
   | { kind: "assistant_done"; periodId: string }
+  | { kind: "label"; label: string; periodStart: string; periodEnd: string; labelMonths: string[]; fileMonths: string[] }
   | { kind: "error"; message: string };
 
 function RunDialog({
@@ -1165,6 +1192,8 @@ function RunDialog({
   canRetry,
   onClose,
   onRetry,
+  onKeepLabel,
+  onEditLabel,
   onOpenPeriod,
 }: {
   busy: boolean;
@@ -1173,6 +1202,8 @@ function RunDialog({
   canRetry: boolean;
   onClose: () => void;
   onRetry: () => void;
+  onKeepLabel: (label: string) => void;
+  onEditLabel: () => void;
   onOpenPeriod: (periodId: string) => void;
 }) {
   const open = busy || notice !== null;
@@ -1235,6 +1266,29 @@ function RunDialog({
               </Button>
               <Button type="button" variant="outline" onClick={onClose}>
                 إغلاق
+              </Button>
+            </DialogFooter>
+          </>
+        ) : notice?.kind === "label" ? (
+          <>
+            <div className="flex items-start gap-3 pt-2">
+              <AlertTriangle className="mt-0.5 size-6 shrink-0 text-primary-text" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <DialogTitle className="text-base">اسم الفترة لا يطابق تواريخ الملف</DialogTitle>
+                <DialogDescription className="text-sm leading-6">
+                  الاسم «{notice.label}» يذكر {notice.labelMonths.join(" و")}، لكن تواريخ الملف من{" "}
+                  {arabicDate(notice.periodStart)} إلى {arabicDate(notice.periodEnd)}{" "}
+                  ({notice.fileMonths.join(" و")}).
+                </DialogDescription>
+                <p className="text-[12.5px] text-muted-foreground">لم يُحفظ شيء بعد. صحّح الاسم، أو احفظ بهذا الاسم إن كان مقصوداً.</p>
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:justify-start">
+              <Button type="button" onClick={onEditLabel}>
+                تعديل الاسم
+              </Button>
+              <Button type="button" variant="outline" onClick={() => onKeepLabel(notice.label)}>
+                حفظ بهذا الاسم
               </Button>
             </DialogFooter>
           </>
