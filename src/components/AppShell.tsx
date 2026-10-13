@@ -1,9 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { AlertTriangle, CalendarClock, ChevronDown, Lock, LogOut, PanelRightClose, PanelRightOpen, Sparkles, Upload } from "lucide-react";
+import { AlertTriangle, CalendarClock, LogOut, Menu, PanelRightClose, PanelRightOpen, Sparkles, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
+import { AppNavBrand, AppNavList, AppNavRail, AppNavWorkspace } from "@/components/AppNav";
 import { AskTadqeeqWidget } from "@/components/AskTadqeeqWidget";
 import { OnboardingGate } from "@/components/OnboardingGate";
 import { LockedFeatureCard, TrialBanner, UpgradeCard } from "@/components/PlanUpgrade";
@@ -11,6 +12,7 @@ import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { SuiteSwitch } from "@/components/SuiteSwitch";
 import { WorkspaceSwitcher } from "@/components/WorkspaceSwitcher";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -31,7 +33,6 @@ import { WORKSPACE_ROLE_LABELS, type WorkspacePermission } from "@/lib/workspace
 import { LogoWordmark } from "@/components/brand/Logo";
 import { PlatformIcon } from "@/components/brand/PlatformLogo";
 import { NotificationBell, UserMenu, type AppNotice } from "@/components/dash/TopBarMenus";
-import { NavIcon } from "@/components/NavIcons";
 
 type NavItem = { to: string; label: string; hint?: string; permission: WorkspacePermission; adminOnly?: boolean };
 
@@ -127,6 +128,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     context.trial && context.uploadLimit !== null && context.uploadsThisMonth >= context.uploadLimit;
   const { periods, selected, select } = useSelectedPeriod(can("periods.read") && !locked);
   const [sidebarHidden, setSidebarHidden] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   // A platform picked in the top bar that has no saved period yet (otherwise the selected period decides).
   const [emptyPlatform, setEmptyPlatform] = useState<PlatformKey | null>(null);
   const activePlatform: PlatformKey = emptyPlatform ?? selected?.platform ?? "hungerstation";
@@ -172,17 +174,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const requiredPermission = ROUTE_PERMISSIONS[pathname];
   const routeDenied = requiredPermission ? !can(requiredPermission) : false;
   const firstAllowedRoute = visibleItems.find((item) => !item.locked)?.to ?? "/auth";
-
-  const [openGroups, setOpenGroups] = useState<string[]>(() =>
-    NAV_GROUPS
-      .filter((group) => group.items.some((item) => item.to === pathname))
-      .map((group) => group.title),
-  );
-
-  const toggleGroup = (title: string) =>
-    setOpenGroups((prev) =>
-      prev.includes(title) ? prev.filter((t) => t !== title) : [...prev, title],
-    );
 
   const exceptionSummary = selected
     ? summarizeExceptions(buildPeriodExceptions(selected))
@@ -243,6 +234,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           : `باقة ${context.planName}`
       : null;
 
+  const workspaceLine = planLine ?? WORKSPACE_ROLE_LABELS[context.role];
+
   async function signOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
@@ -285,97 +278,27 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div
           data-noprint
           className={cn(
-            "sticky top-0 hidden h-screen shrink-0 overflow-hidden transition-[width] duration-200 ease-out min-[881px]:block",
-            sidebarHidden ? "w-0" : "w-[246px]",
+            "sticky top-0 hidden h-screen shrink-0 overflow-hidden border-s border-ink-2 bg-ink transition-[width] duration-200 ease-out motion-reduce:transition-none min-[881px]:block",
+            sidebarHidden ? "w-[68px]" : "w-[260px]",
           )}
         >
-        <aside className="h-full w-[246px] overflow-y-auto border-s border-ink-2 bg-ink px-3.5 pb-4 pt-5 text-ink-muted">
-          <div className="flex min-h-full flex-col">
-            <Link
-              to="/dashboard"
-              className="flex items-center gap-2.5 border-b border-ink-2 px-1.5 pb-4"
-            >
-              <span>
-                <LogoWordmark title="تدقيق" className="h-7 text-ink-foreground" />
-                <span className="mt-1.5 block text-[11px] text-ink-muted">
-                  مراجعة فواتير التوصيل
-                </span>
-              </span>
-            </Link>
-
-            <nav className="pb-5">
-              {visibleGroups.map((group) => {
-                const open = openGroups.includes(group.title);
-                return (
-                <div key={group.title} className="mt-[18px]">
-                  <button
-                    type="button"
-                    onClick={() => toggleGroup(group.title)}
-                    aria-expanded={open}
-                    className="mx-1.5 mb-1.5 flex w-[calc(100%-12px)] items-center justify-between rounded-[7px] px-1 py-1 text-[10.5px] font-semibold tracking-[0.08em] text-ink-muted transition-colors hover:text-ink-foreground"
-                  >
-                    {group.title}
-                    <ChevronDown
-                      className={cn(
-                        "size-3.5 transition-transform",
-                        open ? "" : "-rotate-90",
-                      )}
-                    />
-                  </button>
-                  {open ? (
-                    <div className="flex flex-col gap-px">
-                      {group.items.map((item) => {
-                        const active = pathname === item.to;
-                        const badge = badgeFor(item.to);
-                        return (
-                          <Link
-                            key={item.to}
-                            to={item.locked ? "/subscribe" : item.to}
-                            title={item.locked ? "متاح بعد الاشتراك" : undefined}
-                            className={cn(
-                              "flex w-full items-center justify-between gap-2 rounded-[7px] border px-2.5 py-[7px] text-[13px] transition-colors",
-                              active
-                                ? "border-ink-2 bg-ink-2 font-semibold text-ink-foreground"
-                                : "border-transparent text-ink-muted hover:bg-ink-2 hover:text-ink-foreground",
-                            )}
-                          >
-                            <span className={cn("flex min-w-0 items-center gap-2.5", item.locked && "opacity-60")}>
-                              <NavIcon to={item.to} className={cn("size-4", active ? "text-primary" : "opacity-80")} />
-                              <span className="flex min-w-0 items-baseline gap-1.5">
-                                <span>{item.label}</span>
-                                {item.hint ? <span className="truncate text-[11px] font-normal opacity-60">{item.hint}</span> : null}
-                              </span>
-                            </span>
-                            {item.locked ? (
-                              <Lock aria-label="متاح بعد الاشتراك" className="size-3.5 shrink-0 text-primary" />
-                            ) : badge ? (
-                              <span className="num inline-grid min-w-[18px] place-items-center rounded-full bg-destructive px-1.5 py-0.5 text-[10.5px] font-semibold text-white">
-                                {badge}
-                              </span>
-                            ) : null}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                </div>
-                );
-              })}
-            </nav>
-
-            <div className="mt-auto border-t border-ink-2 px-2 pt-3">
-              <div className="rounded-lg bg-ink-2 px-2.5 py-2.5 text-[11px] leading-5">
-                <p className="font-semibold text-ink-foreground">{context.workspaceName}</p>
-                <p className="text-ink-muted">{planLine ?? WORKSPACE_ROLE_LABELS[context.role]}</p>
-                {context.trial ? (
-                  <Link to="/subscribe" className="mt-2 inline-block rounded-md bg-primary px-2.5 py-1 font-semibold text-primary-foreground">
-                    اشترك الآن
-                  </Link>
-                ) : null}
+          {sidebarHidden ? (
+            <aside className="h-full w-[68px] px-3.5 pb-4 pt-5">
+              <AppNavRail groups={visibleGroups} pathname={pathname} badgeFor={badgeFor} workspaceName={context.workspaceName} line={workspaceLine} trial={context.trial} />
+            </aside>
+          ) : (
+            <aside className="flex h-full w-[260px] flex-col pb-4 pt-5">
+              <div className="px-3">
+                <AppNavBrand />
               </div>
-            </div>
-          </div>
-          </aside>
+              <div className="mt-5 min-h-0 flex-1 overflow-y-auto px-3 pb-4 [mask-image:linear-gradient(to_bottom,black_calc(100%-2rem),transparent)] [scrollbar-color:var(--ink-2)_transparent] [scrollbar-width:thin]">
+                <AppNavList groups={visibleGroups} pathname={pathname} badgeFor={badgeFor} />
+              </div>
+              <div className="border-t border-ink-2 px-3 pt-3">
+                <AppNavWorkspace workspaceName={context.workspaceName} line={workspaceLine} trial={context.trial} />
+              </div>
+            </aside>
+          )}
         </div>
 
         <main className="min-w-0 flex-1">
@@ -390,6 +313,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                 className="hidden size-8 shrink-0 place-items-center rounded-[7px] border border-input bg-card text-foreground/80 transition-colors hover:bg-muted min-[881px]:grid"
             >
               {sidebarHidden ? <PanelRightOpen className="size-4" /> : <PanelRightClose className="size-4" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label="القائمة"
+              aria-expanded={menuOpen}
+              className="grid size-8 shrink-0 place-items-center rounded-[7px] border border-input bg-card text-foreground/80 transition-colors hover:bg-muted min-[881px]:hidden"
+            >
+              <Menu className="size-4" />
             </button>
             <SuiteSwitch current="mizan" />
             <WorkspaceSwitcher />
@@ -483,37 +415,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             />
           </header>
 
-          <div
-            data-noprint
-            className="flex gap-1 overflow-x-auto border-b border-border bg-ink px-3.5 py-2 min-[881px]:hidden"
-          >
-            {visibleItems.map((item) => {
-              const active = pathname === item.to;
-              const badge = badgeFor(item.to);
-              return (
-                <Link
-                  key={item.to}
-                  to={item.locked ? "/subscribe" : item.to}
-                  className={cn(
-                    "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-[12.5px]",
-                    active
-                      ? "border-primary bg-primary font-semibold text-primary-foreground"
-                      : "border-ink-2 bg-ink-2 text-ink-muted",
-                  )}
-                >
-                  <NavIcon to={item.to} className="size-3.5" />
-                  {item.label}
-                  {item.locked ? <Lock aria-label="متاح بعد الاشتراك" className="size-3 text-primary" /> : null}
-                  {badge ? (
-                    <span className="num rounded-full bg-white/90 px-1.5 text-[10px] text-destructive">
-                      {badge}
-                    </span>
-                  ) : null}
-                </Link>
-              );
-            })}
-          </div>
-
           {context.trial ? <TrialBanner uploadsUsed={context.uploadsThisMonth} uploadLimit={context.uploadLimit} /> : null}
 
           <div className="mx-auto w-full max-w-[1360px] px-4 pb-14 pt-[22px] sm:px-5">
@@ -544,6 +445,26 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </main>
       </div>
+
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+        <SheetContent
+          side="right"
+          dir="rtl"
+          className="flex w-[300px] max-w-[85vw] flex-col gap-0 border-ink-2 bg-ink p-0 text-ink-muted sm:max-w-[300px] [&>button]:left-4 [&>button]:right-auto [&>button]:top-6 [&>button]:text-ink-foreground"
+        >
+          <SheetTitle className="sr-only">القائمة</SheetTitle>
+          <SheetDescription className="sr-only">أقسام تدقيق</SheetDescription>
+          <div className="px-3 pt-5">
+            <AppNavBrand onNavigate={() => setMenuOpen(false)} />
+          </div>
+          <div className="mt-6 min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+            <AppNavList groups={visibleGroups} pathname={pathname} badgeFor={badgeFor} onNavigate={() => setMenuOpen(false)} />
+          </div>
+          <div className="border-t border-ink-2 px-3 py-3">
+            <AppNavWorkspace workspaceName={context.workspaceName} line={workspaceLine} trial={context.trial} onNavigate={() => setMenuOpen(false)} />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {can("ai.use") && !locked ? (
         <AskTadqeeqWidget
