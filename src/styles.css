@@ -59,6 +59,7 @@
   --color-ink-foreground: var(--ink-foreground);
   --color-ink-muted: var(--ink-muted);
   --color-primary-text: var(--primary-text);
+  --color-primary-soft: var(--primary-soft);
   --color-success-soft: var(--success-soft);
   --color-destructive-soft: var(--destructive-soft);
 
@@ -68,6 +69,7 @@
 
 :root {
   --radius: 0.625rem;
+  --primary-soft: oklch(0.95 0.03 80);
 
   --background: oklch(0.965 0.013 87);
   --foreground: oklch(0.22 0.027 218);
@@ -119,6 +121,29 @@
   --chart-3: oklch(0.52 0.10 155);
   --chart-4: oklch(0.55 0.14 25);
   --chart-5: oklch(0.55 0.09 300);
+}
+
+/* Homepage only: LeadFlow-style palette — white canvas, near-black text, single blue accent, hairline gray lines. */
+.lp-leadflow {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.18 0.005 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.005 260);
+  --ink: oklch(0.18 0.005 260);
+  --ink-2: oklch(0.26 0.006 260);
+  --ink-foreground: oklch(1 0 0);
+  --ink-muted: oklch(0.78 0.006 260);
+  --primary: oklch(0.55 0.23 263);
+  --primary-foreground: oklch(1 0 0);
+  --primary-text: oklch(0.52 0.22 263);
+  --primary-soft: oklch(0.93 0.04 263);
+  --muted: oklch(0.965 0.003 260);
+  --muted-foreground: oklch(0.55 0.01 260);
+  --accent: oklch(0.95 0.02 263);
+  --border: oklch(0.91 0.004 260);
+  --ring: oklch(0.55 0.23 263);
+  background: var(--background);
+  color: var(--foreground);
 }
 
 @layer base {
