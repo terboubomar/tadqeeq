@@ -56,14 +56,18 @@ export interface HourlyCell {
   orders: number;
 }
 
+/** One uploaded day: its 24 hours (index = hour of day). */
+export interface HourlyDay {
+  date: string;
+  hours: HourlyCell[];
+}
+
 export interface HourlyGrid {
-  /** [weekday 0-6, Sunday first][hour 0-23] */
-  cells: HourlyCell[][];
+  /** Each day in the range that has orders, oldest first. */
+  days: HourlyDay[];
   /** Orders with sales whose file row has no readable time (not in the grid). */
   untimedOrders: number;
   untimedSales: number;
-  /** How many of each weekday the month's uploaded days include, to read the grid as totals of that many days. */
-  weekdayDays: number[];
 }
 
 export interface HourlyOrderRow {
@@ -78,32 +82,64 @@ function countsAsOrder(platform: OperationPlatform, row: HourlyOrderRow): boolea
   return !(platform === "hungerstation" && /cancel/i.test(row.status ?? ""));
 }
 
+const emptyHours = (): HourlyCell[] => Array.from({ length: 24 }, () => ({ sales: 0, orders: 0 }));
+
 export function buildHourlyGrid(platform: OperationPlatform, rows: HourlyOrderRow[]): HourlyGrid {
-  const cells = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => ({ sales: 0, orders: 0 })));
-  const days = Array.from({ length: 7 }, () => new Set<string>());
+  const byDate = new Map<string, HourlyCell[]>();
   let untimedOrders = 0;
   let untimedSales = 0;
   for (const row of rows) {
     if (!countsAsOrder(platform, row)) continue;
     const sales = Number(row.gross_sales) || 0;
     const date = row.business_date.slice(0, 10);
-    const weekday = weekdayOf(date);
-    days[weekday]!.add(date);
+    if (!byDate.has(date)) byDate.set(date, emptyHours());
     const hour = orderHour(platform, row.raw_data);
     if (hour === null) {
       untimedOrders += 1;
       untimedSales += sales;
       continue;
     }
-    const cell = cells[weekday]![hour]!;
+    const cell = byDate.get(date)![hour]!;
     cell.sales += sales;
     cell.orders += 1;
   }
-  for (const day of cells) for (const cell of day) cell.sales = Math.round(cell.sales * 100) / 100;
-  return {
-    cells,
-    untimedOrders,
-    untimedSales: Math.round(untimedSales * 100) / 100,
-    weekdayDays: days.map((set) => set.size),
-  };
+  const days = [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, hours]) => ({ date, hours: hours.map((cell) => ({ sales: Math.round(cell.sales * 100) / 100, orders: cell.orders })) }));
+  return { days, untimedOrders, untimedSales: Math.round(untimedSales * 100) / 100 };
+}
+
+/** The grid's columns: one per date for a week or less, otherwise one per weekday (Sunday first), summed. */
+export interface HourlyColumn {
+  key: string;
+  /** The weekday (0-6) of the date, or of the summed days. */
+  weekday: number;
+  /** The date for a per-date column; null when the column sums several days. */
+  date: string | null;
+  /** How many uploaded days the column adds up. */
+  dayCount: number;
+  hours: HourlyCell[];
+}
+
+export function hourlyColumns(days: HourlyDay[]): HourlyColumn[] {
+  if (days.length <= 7) {
+    return days.map((day) => ({ key: day.date, weekday: weekdayOf(day.date), date: day.date, dayCount: 1, hours: day.hours }));
+  }
+  const columns: HourlyColumn[] = Array.from({ length: 7 }, (_, weekday) => ({
+    key: `w${weekday}`,
+    weekday,
+    date: null,
+    dayCount: 0,
+    hours: emptyHours(),
+  }));
+  for (const day of days) {
+    const column = columns[weekdayOf(day.date)]!;
+    column.dayCount += 1;
+    day.hours.forEach((cell, hour) => {
+      column.hours[hour]!.sales += cell.sales;
+      column.hours[hour]!.orders += cell.orders;
+    });
+  }
+  for (const column of columns) for (const cell of column.hours) cell.sales = Math.round(cell.sales * 100) / 100;
+  return columns;
 }

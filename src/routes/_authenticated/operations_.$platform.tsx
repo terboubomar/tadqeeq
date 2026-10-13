@@ -288,7 +288,9 @@ function PlatformWorkspace({
         </section>
       ) : null}
 
-      {row?.days.length ? <SalesByHour key={month} platform={platform} month={month} branches={row.branches} /> : null}
+      {row?.days.length ? (
+        <SalesByHour key={`${month}:${row.days.length}`} platform={platform} days={row.days.map((day) => day.date)} branches={row.branches} />
+      ) : null}
 
       {row?.branches.length ? (
         <section className="overflow-hidden rounded-2xl border border-border bg-card">

@@ -43,7 +43,8 @@ export const getOperationHourly = createServerFn({ method: "POST" })
   .validator(
     z.object({
       platform: z.enum(["hungerstation", "keeta", "jahez"]),
-      month: z.string().regex(/^\d{4}-\d{2}$/),
+      from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       branchId: z.string().max(200).optional(),
       branchName: z.string().max(200).optional(),
     }),
