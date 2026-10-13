@@ -16,7 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { MotionConfig, motion, useInView, useReducedMotion, useScroll, useTransform } from "motion/react";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 
 import { isLoginHost } from "@/lib/login-host";
 import { isOpsHost } from "@/lib/ops";
@@ -785,7 +785,7 @@ const PRODUCT_CARDS: Array<{ key: ProductKey; wide?: boolean; dark?: boolean }> 
 ];
 
 /** Moves the card's spotlight to the cursor via CSS variables (transform-free, no re-render). */
-function trackSpotlight(event: React.PointerEvent<HTMLElement>) {
+function trackSpotlight(event: ReactPointerEvent<HTMLElement>) {
   const el = event.currentTarget;
   const rect = el.getBoundingClientRect();
   el.style.setProperty("--spot-x", `${event.clientX - rect.left}px`);
