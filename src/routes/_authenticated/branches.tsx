@@ -16,6 +16,9 @@ import { listBranchRegistry, resolveBranchName } from "@/lib/branch-registry";
 import { displayBranchName, platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
 
 import { EmptyState } from "@/components/AppShell";
+import { ChartCard } from "@/components/dash/DashKit";
+import { RateBars } from "@/components/dash/RateBars";
+import { money } from "@/lib/format";
 import { ReportTable, type Column } from "@/components/ReportTable";
 import type { BranchRow as AnalysisBranchRow } from "@/lib/analysis/types";
 
@@ -185,6 +188,22 @@ function BranchesPage() {
           </Button>
         }
       />
+      {rows.length > 1 ? (
+        <ChartCard title="تكلفة المنصة % لكل فرع" action={<span className="text-[11.5px] text-muted-foreground">من إجمالي مبيعات الفرع</span>}>
+          <RateBars
+            items={rows
+              .filter((row) => row.platformCostPctGross !== undefined)
+              .map((row) => ({
+                key: String(row.journalIndex),
+                label: row.branch,
+                rate: row.platformCostPctGross!,
+                sub: `${money(totalPlatformCharges(selected.platform, selected.branches[row.journalIndex]) ?? 0)} من ${money(row.grossSales)}`,
+              }))}
+            average={platformCostPct(totalPlatformCharges(selected.platform, selected.summary), selected.summary.grossSales)}
+            averageLabel="متوسط كل الفروع"
+          />
+        </ChartCard>
+      ) : null}
       <ReportTable
         title={selected.label}
         rows={rows as unknown as Record<string, unknown>[]}

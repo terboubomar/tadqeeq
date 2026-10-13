@@ -2,6 +2,8 @@ import { PageHeader } from "@/components/workspace/PageKit";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { EmptyState } from "@/components/AppShell";
+import { ChartCard } from "@/components/dash/DashKit";
+import { DailyHeatmap } from "@/components/dash/DailyHeatmap";
 import { ReportTable, type Column } from "@/components/ReportTable";
 import type { DailyRow } from "@/lib/analysis/types";
 import { useSelectedPeriod } from "@/lib/use-period";
@@ -59,6 +61,14 @@ function DailyPage() {
             : "حسب يوم التشغيل."
         }
       />
+      <ChartCard title="الفترة على التقويم" action={<span className="text-[11.5px] text-muted-foreground">الأغمق هو الأعلى</span>}>
+        <DailyHeatmap
+          salesLabel={selected.platform === "jahez" ? "Order Amount" : "المبيعات (شامل الضريبة)"}
+          days={selected.daily
+            .filter((day) => (!selected.period_start || day.date >= selected.period_start) && (!selected.period_end || day.date <= selected.period_end))
+            .map((day) => ({ date: day.date, sales: day.grossSales, orders: day.orders }))}
+        />
+      </ChartCard>
       <ReportTable
         title={selected.label}
         rows={selected.daily as unknown as Record<string, unknown>[]}

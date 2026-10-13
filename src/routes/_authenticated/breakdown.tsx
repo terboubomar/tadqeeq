@@ -10,6 +10,7 @@ import { vatBreakdown } from "@/lib/reporting-metrics";
 import { count, money, percent, sar } from "@/lib/format";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { keetaCostSplit, keetaOutsideInvoice } from "@/lib/keeta-cost";
+import { OTHER_SERIES_COLOR, seriesColor } from "@/lib/chart-palette";
 
 export const Route = createFileRoute("/_authenticated/breakdown")({
   head: () => ({
@@ -22,14 +23,6 @@ export const Route = createFileRoute("/_authenticated/breakdown")({
   }),
   component: BreakdownPage,
 });
-
-const COLORS = [
-  "var(--color-chart-1)",
-  "var(--color-chart-2)",
-  "var(--color-chart-3)",
-  "var(--color-chart-4)",
-  "var(--color-chart-5)",
-];
 
 interface Line {
   label: string;
@@ -49,7 +42,8 @@ function BreakdownPage() {
   const s = selected.summary;
   const isHunger = selected.platform === "hungerstation";
   const isJahez = selected.platform === "jahez";
-  const charges: Line[] = (
+  // Each charge keeps the colour of its place in the platform's list, so a line looks the same in every period.
+  const charges: (Line & { color: string })[] = (
     isHunger
       ? [
           { label: "عمولة المبيعات", amount: s.commission },
@@ -84,7 +78,9 @@ function BreakdownPage() {
           { label: "أقساط POS", amount: s.keetaPosFeesExVat ?? 0 },
           { label: "مصروفات أخرى", amount: (s.keetaOtherExpensesExVat ?? 0) - (s.keetaPosFeesExVat ?? 0) },
         ]
-  ).filter((line) => Math.abs(line.amount) > 0.005);
+  )
+    .map((line, slot) => ({ ...line, color: seriesColor(slot) }))
+    .filter((line) => Math.abs(line.amount) > 0.005);
 
   const discounts: Line[] = (
     isHunger
@@ -138,7 +134,15 @@ function BreakdownPage() {
       ]
     : [];
 
-  const ranked = charges.map((line, index) => ({ ...line, color: COLORS[index % COLORS.length] })).sort((x, y) => y.amount - x.amount);
+  const ranked = [...charges].sort((x, y) => y.amount - x.amount);
+  // The composition bar shows the positive lines; lines past the fifth colour share one grey «أخرى» segment.
+  const positive = charges.filter((line) => line.amount > 0);
+  const positiveTotal = positive.reduce((sum, line) => sum + line.amount, 0);
+  const named = positive.filter((line) => line.color !== OTHER_SERIES_COLOR);
+  const otherAmount = positive.filter((line) => line.color === OTHER_SERIES_COLOR).reduce((sum, line) => sum + line.amount, 0);
+  const segments = [...named, ...(otherAmount > 0 ? [{ label: "أخرى", amount: otherAmount, color: OTHER_SERIES_COLOR }] : [])];
+  // Keeta's and Jahez's settlement figures are different measures (sales, VAT, variances), so they are listed without bars.
+  const discountsComparable = isHunger;
   const largest = ranked[0];
   const maxCharge = Math.max(...ranked.map((line) => Math.abs(line.amount)), 1);
   const statuses = Object.entries(s.statusCounts ?? {}).sort((x, y) => y[1] - x[1]);
@@ -212,12 +216,13 @@ function BreakdownPage() {
         title={isHunger ? "تكوين خصومات المنصة بدون الضريبة" : isJahez ? "تكوين فاتورة جاهز بدون الضريبة" : "تكوين تكلفة كيتا بدون الضريبة"}
         action={<span className="text-[11.5px] text-muted-foreground">نسبة كل بند من إجمالي تكلفة المنصة</span>}
       >
-        <div className="flex h-3 overflow-hidden rounded-full bg-muted">
-          {charges.map((line, index) => (
+        <div className="flex h-3 gap-0.5 overflow-hidden rounded-full" role="img" aria-label={segments.map((line) => `${line.label} ${percent(positiveTotal > 0 ? line.amount / positiveTotal : 0, 1)}`).join("، ")}>
+          {segments.map((line) => (
             <span
               key={line.label}
-              title={line.label}
-              style={{ width: `${Math.max(total > 0 ? (line.amount / total) * 100 : 0, 0.5)}%`, background: COLORS[index % COLORS.length] }}
+              title={`${line.label} · ${money(line.amount)}`}
+              className="min-w-[3px] first:rounded-s-full last:rounded-e-full"
+              style={{ flexGrow: line.amount, flexBasis: 0, background: line.color }}
             />
           ))}
         </div>
@@ -243,7 +248,7 @@ function BreakdownPage() {
               key: line.label,
               label: line.label,
               value: money(line.amount),
-              size: Math.abs(line.amount) / maxDiscount,
+              size: discountsComparable ? Math.abs(line.amount) / maxDiscount : undefined,
               color: line.amount < 0 ? "var(--color-destructive)" : "var(--color-chart-2)",
             }))}
             empty="لا توجد قيم في هذه الفترة."

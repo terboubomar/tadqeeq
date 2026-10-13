@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Download } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { SERIES_COLORS } from "@/lib/chart-palette";
 
 import { EmptyState } from "@/components/AppShell";
 import { PlatformName } from "@/components/brand/PlatformLogo";
@@ -39,10 +40,11 @@ type MetricKey = keyof typeof METRICS;
 
 const PLATFORMS: TrendPlatform[] = ["hungerstation", "keeta", "jahez"];
 const PLATFORM_LABEL: Record<TrendPlatform, string> = { hungerstation: "هنقرستيشن", keeta: "كيتا", jahez: "جاهز" };
+/** Fixed slots from the checked report palette, so a platform keeps its colour whichever platforms are shown. */
 const PLATFORM_COLOR: Record<TrendPlatform, string> = {
-  hungerstation: "var(--color-chart-1)",
-  keeta: "var(--color-chart-2)",
-  jahez: "var(--color-chart-3)",
+  hungerstation: SERIES_COLORS[0],
+  keeta: SERIES_COLORS[1],
+  jahez: SERIES_COLORS[2],
 };
 
 export const Route = createFileRoute("/_authenticated/trends")({
@@ -92,6 +94,7 @@ function TrendsPage() {
   const change = latest ? compareFigures(latest.total, before?.total ?? null) : null;
   const rangeTotal = sumFigures(rows.map((m) => m.total));
   const chartPlatforms = platform === "all" ? present : [platform];
+  const isRate = metric === "costPct" || metric === "commissionPct";
   const chartRows = rows.map((m) => {
     const point: Record<string, number | string | null> = { month: m.month };
     for (const p of chartPlatforms) {
@@ -254,12 +257,16 @@ function TrendsPage() {
         ) : null}
         <div className="mt-4 h-72" dir="ltr">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartRows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 10 }} tickFormatter={(m: string) => monthName(m, false)} interval="preserveStartEnd" />
+            <LineChart data={chartRows} margin={{ top: 8, right: chartPlatforms.length > 1 ? 72 : 12, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="var(--color-border)" strokeOpacity={0.6} vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }} tickLine={false} axisLine={{ stroke: "var(--color-border)" }} tickFormatter={(m: string) => monthName(m, false)} interval="preserveStartEnd" />
               <YAxis
-                tick={{ fontSize: 10 }}
+                tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                tickLine={false}
+                axisLine={false}
                 width={52}
+                // Rates are read against each other, so their scale fits the data; amounts start at zero.
+                domain={isRate ? [(min: number) => Math.max(0, Math.floor((min - 0.01) * 100) / 100), (max: number) => Math.ceil((max + 0.01) * 100) / 100] : [0, "auto"]}
                 tickFormatter={(v: number) => (metric === "costPct" || metric === "commissionPct" ? `${Math.round(v * 1000) / 10}%` : new Intl.NumberFormat("en-US", { notation: "compact" }).format(v))}
               />
               <Tooltip
@@ -267,9 +274,35 @@ function TrendsPage() {
                 formatter={(value: number, name: string) => [METRICS[metric].format(value), PLATFORM_LABEL[name as TrendPlatform] ?? name]}
               />
               <Legend formatter={(name: string) => PLATFORM_LABEL[name as TrendPlatform] ?? name} wrapperStyle={{ fontSize: 12 }} />
-              {chartPlatforms.map((p) => (
-                <Line key={p} type="monotone" dataKey={p} stroke={PLATFORM_COLOR[p]} strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
-              ))}
+              {chartPlatforms.map((p) => {
+                // Name each line at its last point, so the platform is read off the line, not only the legend.
+                const last = chartRows.reduce((at, row, index) => (typeof (row as Record<string, unknown>)[p] === "number" ? index : at), -1);
+                return (
+                  <Line
+                    key={p}
+                    type="monotone"
+                    dataKey={p}
+                    stroke={PLATFORM_COLOR[p]}
+                    strokeWidth={2}
+                    dot={{ r: 3, strokeWidth: 2, fill: "var(--color-card)" }}
+                    activeDot={{ r: 5, stroke: "var(--color-card)", strokeWidth: 2 }}
+                    connectNulls
+                    isAnimationActive={false}
+                    label={
+                      chartPlatforms.length > 1
+                        ? ({ x, y, index }: { x?: number; y?: number; index?: number }) =>
+                            index === last && x !== undefined && y !== undefined ? (
+                              <text x={x + 8} y={y} dy={4} fontSize={11} fontWeight={600} fill="var(--color-foreground)">
+                                {PLATFORM_LABEL[p]}
+                              </text>
+                            ) : (
+                              <g />
+                            )
+                        : undefined
+                    }
+                  />
+                );
+              })}
             </LineChart>
           </ResponsiveContainer>
         </div>
