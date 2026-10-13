@@ -1,12 +1,18 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import {
+  Activity,
+  AlertTriangle,
   ArrowLeft,
   ArrowUp,
   Calculator,
   Check,
   ChevronDown,
   HandCoins,
+  Eye,
+  FileSpreadsheet,
+  Megaphone,
   Menu,
+  PieChart,
   SearchCheck,
   Play,
   Plus,
@@ -41,6 +47,8 @@ import { LogoWordmark } from "@/components/brand/Logo";
 import { LEGAL_COMPANY, LEGAL_DOCS } from "@/lib/legal";
 import { productPageFor } from "@/lib/product-pages";
 import { AssistantBeams } from "@/components/home/AssistantBeams";
+import { ProductIllustration } from "@/components/home/ProductIllustrations";
+import { BentoCard, BentoGrid } from "@/components/ui/bento-grid";
 import { ProductIcon } from "@/components/products/ProductIcon";
 import { ProductsMenu, ProductsMenuList } from "@/components/products/ProductsMenu";
 import { PRODUCTS, productTitle, type ProductKey } from "@/lib/products";
@@ -768,53 +776,48 @@ function HowItWorks() {
   );
 }
 
-/** Product cards laid out on a three-column grid; «مُطابِق» and «رقيب» take two columns. Each opens its own page. */
-const PRODUCT_CARDS: Array<{ key: ProductKey; wide?: boolean; dark?: boolean }> = [
-  { key: "mutabiq", wide: true, dark: true },
-  { key: "kashif" },
-  { key: "radar" },
-  { key: "istirdad" },
-  { key: "aaid" },
-  { key: "nabd" },
-  { key: "raqeeb", wide: true },
+/**
+ * The products as a bento (21st.dev «Bento Grid»), each card with a small animated drawing and a link to its own page.
+ * Large screens: «مُطابِق» stands two rows tall and «استرداد» spans two columns; tablets: two columns.
+ */
+const PRODUCT_BENTO: Array<{ key: ProductKey; icon: LucideIcon; className: string; dark?: boolean }> = [
+  { key: "mutabiq", icon: FileSpreadsheet, dark: true, className: "md:row-span-2 lg:col-start-1 lg:row-start-1 lg:row-span-2" },
+  { key: "kashif", icon: PieChart, className: "lg:col-start-2 lg:row-start-1" },
+  { key: "radar", icon: AlertTriangle, className: "lg:col-start-3 lg:row-start-1" },
+  { key: "istirdad", icon: Video, className: "md:col-span-2 lg:col-start-2 lg:row-start-2" },
+  { key: "aaid", icon: Megaphone, className: "lg:col-start-1 lg:row-start-3" },
+  { key: "nabd", icon: Activity, className: "lg:col-start-2 lg:row-start-3" },
+  { key: "raqeeb", icon: Eye, className: "md:col-span-2 lg:col-span-1 lg:col-start-3 lg:row-start-3" },
 ];
 
 function ProductsGrid() {
   return (
     <section id="products" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
       <SectionIntro title="أداة لكل بند في فاتورتك.">كل منتج يعالج جزءاً من الفاتورة. افتح أي منتج لتعرف كيف يعمل بالتفصيل.</SectionIntro>
-      <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {PRODUCT_CARDS.map(({ key, wide, dark }) => {
+      <BentoGrid className="mt-12">
+        {PRODUCT_BENTO.map(({ key, icon, className, dark }) => {
           const page = productPageFor(key);
           if (!page) return null;
           return (
-            <li key={key} data-reveal className={cn(wide && "lg:col-span-2")}>
-              <a
-                href={page.path}
-                className={cn(
-                  "group flex h-full flex-col gap-5 rounded-2xl border p-6 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 sm:p-7",
-                  dark
-                    ? "border-ink bg-ink text-ink-foreground hover:shadow-[0_24px_48px_-24px_rgb(19_35_43/0.55)]"
-                    : "border-border bg-card hover:border-ink/25 hover:shadow-[0_20px_40px_-24px_rgb(19_35_43/0.3)]",
-                )}
-              >
-                <ProductIcon product={key} className={cn("size-11", dark && "bg-ink-foreground/10 text-primary")} />
-                <div>
-                  <h3 className="font-display text-xl font-bold">
-                    {PRODUCTS[key].name}
-                    <span className={cn("ms-2 text-sm font-medium", dark ? "text-ink-muted" : "text-muted-foreground")}>{PRODUCTS[key].descriptor}</span>
-                  </h3>
-                  <p className={cn("mt-2 max-w-md text-[15px] leading-7", dark ? "text-ink-foreground/80" : "text-foreground/75")}>{page.summary}</p>
-                </div>
-                <span className={cn("mt-auto inline-flex items-center gap-1.5 text-sm font-semibold", dark ? "text-primary" : "text-primary-text")}>
-                  اعرف أكثر
-                  <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-1" />
-                </span>
-              </a>
-            </li>
+            <BentoCard
+              key={key}
+              Icon={icon}
+              dark={dark}
+              className={className}
+              name={
+                <>
+                  {PRODUCTS[key].name}
+                  <span className={cn("ms-2 text-sm font-medium", dark ? "text-ink-muted" : "text-muted-foreground")}>{PRODUCTS[key].descriptor}</span>
+                </>
+              }
+              description={page.summary}
+              href={page.path}
+              cta="اعرف أكثر"
+              background={<ProductIllustration product={key} />}
+            />
           );
         })}
-      </ul>
+      </BentoGrid>
       <div className="mt-8 flex justify-center">
         <Link to="/products" className="inline-flex h-11 items-center gap-2 rounded-xl border border-border bg-card px-5 text-sm font-semibold transition-colors hover:bg-muted/60">
           كل المنتجات

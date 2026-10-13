@@ -390,3 +390,37 @@
     animation: lp-sweep 0.9s ease-in-out;
   }
 }
+
+/* Homepage product bento drawings (src/components/home/ProductIllustrations.tsx). */
+@keyframes lp-scan-dark {
+  0%, 18%, 100% { background-color: transparent; }
+  6% { background-color: oklch(0.66 0.13 70 / 0.16); }
+}
+@keyframes lp-dash {
+  to { stroke-dashoffset: -48; }
+}
+@keyframes lp-draw {
+  0% { stroke-dashoffset: 1; }
+  45%, 85% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -1; }
+}
+@keyframes lp-run {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes lp-ring {
+  0%, 60%, 100% { transform: rotate(0); }
+  66% { transform: rotate(14deg); }
+  72% { transform: rotate(-12deg); }
+  78% { transform: rotate(8deg); }
+  84% { transform: rotate(-4deg); }
+}
+
+@layer components {
+  .lp-scan-dark { animation: lp-scan-dark 4.5s ease-in-out infinite; }
+  .lp-blink-dot { animation: lp-blink 1.4s ease-in-out infinite; }
+  .lp-dash { animation: lp-dash 1.6s linear infinite; }
+  .lp-draw { stroke-dasharray: 1; animation: lp-draw 4.5s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+  .lp-run { animation: lp-run 2.6s linear infinite; }
+  .lp-ring { transform-origin: 50% 10%; animation: lp-ring 3s ease-in-out infinite; }
+}
