@@ -8,6 +8,7 @@ import {
   KEETA_TOLERANCES,
 } from "./analysis/tolerances";
 import { buildMarketplaceChargeMap } from "./charges-mapper";
+import type { ContractComplianceSection } from "./contract-compliance";
 import type { StoredPeriod } from "./periods";
 
 export type ExceptionStatus =
@@ -927,6 +928,63 @@ export function buildPeriodExceptions(period: StoredPeriod): AuditException[] {
     };
     return rank[right.severity] - rank[left.severity] || right.reviewAmount - left.reviewAmount;
   });
+}
+
+const CONTRACT_SECTION_CATEGORY: Record<ContractComplianceSection["ruleType"], ExceptionCategory> = {
+  commission_rate: "commission",
+  payment_fee: "payment_fee",
+  wallet_fee: "payment_fee",
+  free_delivery_funding: "delivery_campaign",
+};
+
+const CONTRACT_SECTION_LABEL: Record<ContractComplianceSection["ruleType"], string> = {
+  commission_rate: "العمولة أعلى من نسبة العقد",
+  payment_fee: "رسوم الدفع أعلى من نسبة العقد",
+  wallet_fee: "رسوم المحافظ أعلى من نسبة العقد",
+  free_delivery_funding: "دعم التوصيل أعلى من الحد في العقد",
+};
+
+/**
+ * Charges above an approved contract, one exception per contract term and period, with the amount above the
+ * contract to claim. Built from the contract check (read only); its status is tracked like any other exception.
+ * Terms the period data cannot fully separate (claimable: false) stay on the contracts page and raise nothing.
+ */
+export function buildContractExceptions(
+  period: StoredPeriod,
+  findings: Array<{ contractId: string; contractName: string; sections: ContractComplianceSection[] }>,
+): AuditException[] {
+  const result: AuditException[] = [];
+  for (const finding of findings) {
+    for (const section of finding.sections) {
+      if (section.claimable === false) continue;
+      const over = section.rows.filter((row) => row.status === "overcharged" && (row.varianceAmount ?? 0) > 0);
+      if (!over.length) continue;
+      const excess = Math.round(over.reduce((sum, row) => sum + (row.varianceAmount ?? 0), 0) * 100) / 100;
+      const expected = Math.round(over.reduce((sum, row) => sum + row.expectedAmount, 0) * 100) / 100;
+      const charged = Math.round(over.reduce((sum, row) => sum + (row.observedAmount ?? 0), 0) * 100) / 100;
+      const top = [...over]
+        .sort((a, b) => (b.varianceAmount ?? 0) - (a.varianceAmount ?? 0))
+        .slice(0, 3)
+        .map((row) => `${row.branch} ${(row.varianceAmount ?? 0).toFixed(2)}`)
+        .join("، ");
+      result.push(
+        makeException(period, {
+          code: `contract_${section.ruleKey}_${finding.contractId}`,
+          sourceLevel: "summary",
+          category: CONTRACT_SECTION_CATEGORY[section.ruleType],
+          label: `${CONTRACT_SECTION_LABEL[section.ruleType]} · ${finding.contractName}`,
+          computed: expected,
+          invoiced: charged,
+          evidence: "contract",
+          tolerance: 0,
+          forceReviewAmount: excess,
+          forcePotentialRecovery: excess,
+          hint: `مقارنة بالعقد المعتمد «${finding.contractName}»: ${over.length} فرع فوق العقد بإجمالي ${excess.toFixed(2)} ر.س. الأعلى: ${top}. ${section.evidenceNote}`,
+        }),
+      );
+    }
+  }
+  return result;
 }
 
 export function buildAllExceptions(periods: StoredPeriod[]): AuditException[] {

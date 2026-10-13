@@ -12,6 +12,8 @@ interface GatewayCallInput {
   model?: string;
   reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh" | "max";
   imageDataUrls?: string[];
+  /** Defaults to 30 seconds. */
+  timeoutMs?: number;
 }
 
 interface OpenAiResponse {
@@ -56,7 +58,7 @@ async function requestOpenAi(
   maxOutputTokens: number,
 ): Promise<OpenAiResponse> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), input.timeoutMs ?? REQUEST_TIMEOUT_MS);
 
   try {
     const response = await fetch(OPENAI_RESPONSES_URL, {
