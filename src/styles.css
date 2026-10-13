@@ -59,6 +59,7 @@
   --color-ink-foreground: var(--ink-foreground);
   --color-ink-muted: var(--ink-muted);
   --color-primary-text: var(--primary-text);
+  --color-primary-soft: var(--primary-soft);
   --color-success-soft: var(--success-soft);
   --color-destructive-soft: var(--destructive-soft);
 
@@ -68,6 +69,7 @@
 
 :root {
   --radius: 0.625rem;
+  --primary-soft: oklch(0.95 0.03 80);
 
   --background: oklch(0.965 0.013 87);
   --foreground: oklch(0.22 0.027 218);

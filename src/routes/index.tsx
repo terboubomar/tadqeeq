@@ -8,6 +8,8 @@ import {
   HandCoins,
   Menu,
   SearchCheck,
+  Sparkles,
+  Workflow,
   Play,
   Plus,
   Upload,
@@ -16,7 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { MotionConfig, motion, useInView, useReducedMotion, useScroll, useTransform } from "motion/react";
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import { isLoginHost } from "@/lib/login-host";
 import { isOpsHost } from "@/lib/ops";
