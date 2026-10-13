@@ -510,31 +510,45 @@ export async function getOperationHourlyOnServer(input: { platform: OperationPla
   const bounds = monthBounds(input.month);
   const { data: imports, error: importsError } = await db
     .from("operation_imports")
-    .select("id")
+    .select("id,business_date,superseded_at")
     .eq("workspace_id", workspaceId)
     .eq("platform", input.platform)
     .eq("source_kind", `${input.platform}_orders`)
-    .is("superseded_at", null)
     .gte("business_date", bounds.start)
     .lte("business_date", bounds.end)
+    .order("created_at", { ascending: false })
     .limit(500);
   if (importsError) throw operationError(importsError);
-  const importIds = ((imports ?? []) as Array<{ id: string }>).map((item) => item.id);
+  // The same rule as the month overview: each day's newest upload that is not superseded owns that day's orders.
+  const byDay = new Map<string, string>();
+  for (const item of (imports ?? []) as Array<{ id: string; business_date: string; superseded_at: string | null }>) {
+    if (!item.superseded_at && !byDay.has(item.business_date)) byDay.set(item.business_date, item.id);
+  }
+  const importIds = [...byDay.values()];
+
+  // One day's upload at a time, the same read the day page uses (by upload, ordered by order number), rather than one
+  // query across the whole month, which can run past the database's time limit. A few days load side by side.
+  async function ordersOf(importId: string): Promise<HourlyOrderRow[]> {
+    const rows: HourlyOrderRow[] = [];
+    for (let start = 0; ; start += 1000) {
+      const { data, error } = await db
+        .from("operation_orders")
+        .select("order_id,business_date,status,gross_sales,raw_data")
+        .eq("workspace_id", workspaceId)
+        .eq("source_import_id", importId)
+        .eq("platform", input.platform)
+        .order("order_id", { ascending: true })
+        .range(start, start + 999);
+      if (error) throw operationError(error);
+      const page = (data ?? []) as HourlyOrderRow[];
+      rows.push(...page);
+      if (page.length < 1000) return rows;
+    }
+  }
   const rows: HourlyOrderRow[] = [];
-  for (let start = 0; importIds.length; start += 1000) {
-    const { data, error } = await db
-      .from("operation_orders")
-      .select("order_id,business_date,status,gross_sales,raw_data")
-      .eq("workspace_id", workspaceId)
-      .eq("platform", input.platform)
-      .in("source_import_id", importIds)
-      .order("source_import_id", { ascending: true })
-      .order("order_id", { ascending: true })
-      .range(start, start + 999);
-    if (error) throw operationError(error);
-    const page = (data ?? []) as HourlyOrderRow[];
-    rows.push(...page);
-    if (page.length < 1000) break;
+  for (let index = 0; index < importIds.length; index += 4) {
+    const batch = await Promise.all(importIds.slice(index, index + 4).map(ordersOf));
+    for (const dayRows of batch) rows.push(...dayRows);
   }
   return buildHourlyGrid(input.platform, rows);
 }
