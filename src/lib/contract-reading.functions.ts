@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { requireAiServerAuth } from "./ai/auth.server";
 import { requireAiEnabled } from "./ai/config.server";
-import { readContractDocumentOnServer } from "./contract-reading.server";
+import { importContractOnServer, readContractDocumentOnServer } from "./contract-reading.server";
 
 const uuid = z.string().uuid();
 
@@ -14,4 +14,16 @@ export const readContractDocument = createServerFn({ method: "POST" })
     requireAiEnabled();
     const auth = await requireAiServerAuth();
     return readContractDocumentOnServer(data, auth);
+  });
+
+/** Upload a contract: Tadqeeq AI reads it and the contract, version, document and terms are set up as a draft. */
+export const importContract = createServerFn({ method: "POST" })
+  .validator((data) => {
+    if (!(data instanceof FormData)) throw new Error("بيانات ملف العقد غير صالحة.");
+    return data;
+  })
+  .handler(async ({ data }) => {
+    requireAiEnabled();
+    const auth = await requireAiServerAuth();
+    return importContractOnServer(data, auth);
   });

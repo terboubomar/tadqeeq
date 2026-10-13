@@ -17,7 +17,7 @@ import {
  * reviews the terms and adds them to a draft version, which they then approve as usual.
  */
 
-export const CONTRACT_READING_PROMPT_VERSION = "contract-reading-v1";
+export const CONTRACT_READING_PROMPT_VERSION = "contract-reading-v2";
 
 /** One fee as the contract states it. */
 export const contractTermSchema = z.object({
@@ -42,6 +42,12 @@ export const contractTermSchema = z.object({
 
 export const contractReadingSchema = z.object({
   platform: z.enum(["hungerstation", "keeta", "jahez", "unknown"]),
+  /** Arabic, a short name for the contract, e.g. «اتفاقية تاجر كيتا». */
+  contractTitle: z.string(),
+  /** The agreement number printed on the contract. */
+  reference: z.string().nullable(),
+  /** The platform's legal name as printed. */
+  counterparty: z.string().nullable(),
   effectiveFrom: z.string().nullable(),
   effectiveTo: z.string().nullable(),
   /** Arabic, two or three sentences. */
@@ -58,9 +64,12 @@ export type ContractTerm = z.infer<typeof contractTermSchema>;
 export const CONTRACT_READING_JSON_SCHEMA: Record<string, unknown> = {
   type: "object",
   additionalProperties: false,
-  required: ["platform", "effectiveFrom", "effectiveTo", "summary", "warnings", "terms"],
+  required: ["platform", "contractTitle", "reference", "counterparty", "effectiveFrom", "effectiveTo", "summary", "warnings", "terms"],
   properties: {
     platform: { type: "string", enum: ["hungerstation", "keeta", "jahez", "unknown"] },
+    contractTitle: { type: "string" },
+    reference: { type: ["string", "null"] },
+    counterparty: { type: ["string", "null"] },
     effectiveFrom: { type: ["string", "null"], description: "YYYY-MM-DD" },
     effectiveTo: { type: ["string", "null"], description: "YYYY-MM-DD" },
     summary: { type: "string" },
@@ -101,6 +110,7 @@ export const CONTRACT_READING_SYSTEM_PROMPT = [
   "fundingSource: who pays the term (merchant for fees the restaurant pays).",
   "Percentages as numbers like 16 for 16%. Amounts in SAR as numbers.",
   "Dates as YYYY-MM-DD. Flag in warnings any date that looks wrong (a period that starts and ends on the same day, an end before the start).",
+  "contractTitle: a short Arabic name for the contract (for example «اتفاقية تاجر كيتا»). reference: the agreement number as printed, or null. counterparty: the platform company's legal name as printed, or null.",
   "summary, label, notes and warnings in Arabic. quote is a short excerpt of the contract's own words (any language).",
 ].join("\n");
 
@@ -214,6 +224,23 @@ export interface ContractReadingResult {
   summary: string;
   warnings: string[];
   rules: DraftRule[];
+  model: string;
+}
+
+/** What the one-step upload set up: a draft version with the document and terms, waiting for one approval. */
+export interface ContractImportResult {
+  contractId: string;
+  contractName: string;
+  createdContract: boolean;
+  versionId: string;
+  platform: ContractPlatform;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  summary: string;
+  warnings: string[];
+  rules: DraftRule[];
+  /** An approved version of the same contract whose dates overlap; approval is blocked until the dates change. */
+  overlapsVersion: number | null;
   model: string;
 }
 
