@@ -501,18 +501,21 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
 }
 
 /**
- * Sales by weekday and hour for one platform's month (optionally one branch), from the orders of each day's current
- * upload. Each order's hour comes from the time column kept in its stored file row; nothing is recalculated.
+ * Sales by date and hour for one platform between two dates (optionally one branch), from the orders of each day's
+ * current upload. Each order's hour comes from the time column kept in its stored file row; nothing is recalculated.
  */
 export async function getOperationHourlyOnServer(input: {
   platform: OperationPlatform;
-  month: string;
+  from: string;
+  to: string;
   branchId?: string;
   branchName?: string;
 }): Promise<HourlyGrid> {
   const { client, workspaceId } = await requireWorkspacePermission("financials.read");
   const db = client as unknown as LooseClient;
-  const bounds = monthBounds(input.month);
+  if (input.from > input.to) throw new Error("تاريخ البداية بعد تاريخ النهاية.");
+  if ((Date.parse(`${input.to}T00:00:00Z`) - Date.parse(`${input.from}T00:00:00Z`)) / 864e5 > 92) throw new Error("اختر مدة لا تزيد على ثلاثة أشهر.");
+  const bounds = { start: input.from, end: input.to };
   const { data: imports, error: importsError } = await db
     .from("operation_imports")
     .select("id,business_date,superseded_at")

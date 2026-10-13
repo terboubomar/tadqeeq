@@ -22,6 +22,8 @@ Tadqeeq is a production-critical product. It is not an MVP. Preserve existing be
 - Do not claim that work is ready to merge or deploy without evidence from the required checks.
 - Follow the user's stated rules and acceptance criteria exactly. When requirements are ambiguous or conflict with these rules, stop and ask rather than guessing.
 
+- Do not use Lovable credits: make every change in this repository and ship it through a pull request, never by prompting Lovable's AI or asking the user to; why: the user does not want to spend Lovable credits.
+
 ## Design work
 
 - For any UI or visual design task, use the `taste-skill` skill (`.claude/skills/taste-skill`) for layout, hierarchy, states, motion and mobile behaviour.
