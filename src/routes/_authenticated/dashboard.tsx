@@ -22,16 +22,7 @@ import {
   Upload,
   Wallet,
 } from "lucide-react";
-import {
-  Bar,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { EmptyState } from "@/components/AppShell";
 import { CombinedDashboard, ScopeBar, type ScopeValue } from "@/components/dash/CombinedDashboard";
 import { ActivityFeed, ChartCard, MetricCard, TrendCard, type FeedItem, type StatTile } from "@/components/dash/DashKit";
@@ -72,16 +63,11 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-const chartStyle = {
-  contentStyle: {
-    background: "var(--color-popover)",
-    border: "1px solid var(--color-border)",
-    borderRadius: "12px",
-    fontSize: "12px",
-    direction: "rtl" as const,
-  },
-  labelStyle: { color: "var(--color-muted-foreground)" },
-};
+/** Daily chart colours: the platform's share in the accent, the rest of the day's sales in a cool grey (checked for colour-blind separation and 3:1 contrast on the card). */
+const DAILY_COST_FILL = "var(--color-chart-1)";
+const DAILY_REST_FILL = "oklch(0.66 0.02 230)";
+
+type DailyPoint = { date: string; sales: number; cost: number; rest: number };
 
 type Metric = { label: string; value: string; hint?: string; icon: typeof Banknote; tone?: "default" | "positive" | "negative" };
 
@@ -180,7 +166,14 @@ function Dashboard() {
     isHunger ? branch.commission : isKeeta ? (branch.keetaTotalCostExVat ?? branch.totalCharges) : branch.totalCharges;
   const branchSales = (branch: (typeof selected.branches)[number]) => (isHunger ? branch.netSales : branch.grossSales);
   const topBranches = [...selected.branches].sort((a, b) => branchCost(b) - branchCost(a)).slice(0, 8);
-  const maxBranchCost = Math.max(...topBranches.map(branchCost), 1);
+  const branchRate = (branch: (typeof selected.branches)[number]) => {
+    const sales = branchSales(branch);
+    return sales ? branchCost(branch) / sales : 0;
+  };
+  // The bar shows each branch's rate; the marker is the rate across all branches, and branches above it stand out.
+  const allBranchSales = selected.branches.reduce((sum, branch) => sum + branchSales(branch), 0);
+  const branchAverageRate = allBranchSales ? selected.branches.reduce((sum, branch) => sum + branchCost(branch), 0) / allBranchSales : 0;
+  const maxBranchRate = Math.max(...topBranches.map(branchRate), branchAverageRate, 0.0001);
 
   const days = selected.daily
     .filter(
@@ -189,11 +182,11 @@ function Dashboard() {
         (!selected.period_end || day.date <= selected.period_end),
     )
     .sort((left, right) => left.date.localeCompare(right.date));
-  const daily = days.map((day) => ({
-    date: day.date.slice(8, 10) + "/" + day.date.slice(5, 7),
-    مبيعات: Number((isHunger ? day.netSales : day.grossSales).toFixed(2)),
-    [costLabel]: Number(day.commission.toFixed(2)),
-  }));
+  // Each day's bar is its sales; the platform's share is the bottom segment and the rest sits on top.
+  const daily: DailyPoint[] = days.map((day) => {
+    const sales = isHunger ? day.netSales : day.grossSales;
+    return { date: day.date.slice(8, 10) + "/" + day.date.slice(5, 7), sales, cost: day.commission, rest: Math.max(0, sales - day.commission) };
+  });
   const salesTotal = days.reduce((sum, day) => sum + (isHunger ? day.netSales : day.grossSales), 0);
   const costTotal = days.reduce((sum, day) => sum + day.commission, 0);
   const busiest = days.reduce<(typeof days)[number] | null>((max, day) => (!max || day.orders > max.orders ? day : max), null);
@@ -487,19 +480,19 @@ function Dashboard() {
             </figcaption>
             <div className="mt-3 h-64 xl:h-72" dir="ltr">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={daily} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
-                  <YAxis tickFormatter={(value: number) => short(value)} tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" width={44} />
-                  <Tooltip {...chartStyle} formatter={(value: number) => money(value)} />
-                  <Bar dataKey="مبيعات" fill="var(--color-chart-1)" radius={[4, 4, 0, 0]} maxBarSize={22} />
-                  <Line type="monotone" dataKey={costLabel} stroke="var(--color-chart-2)" strokeWidth={2} dot={false} />
-                </ComposedChart>
+                <BarChart data={daily} margin={{ top: 4, right: 4, left: 0, bottom: 0 }} barCategoryGap="18%">
+                  <CartesianGrid stroke="var(--color-border)" strokeOpacity={0.6} vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} tickLine={false} axisLine={{ stroke: "var(--color-border)" }} minTickGap={12} />
+                  <YAxis tickFormatter={(value: number) => short(value)} tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} tickLine={false} axisLine={false} width={44} />
+                  <Tooltip content={<DailyTip salesLabel={isHunger ? "صافي المبيعات" : "المبيعات"} costLabel={costLabel} />} cursor={{ fill: "var(--color-muted)", fillOpacity: 0.6 }} />
+                  <Bar dataKey="cost" stackId="day" fill={DAILY_COST_FILL} stroke="var(--color-card)" strokeWidth={1} maxBarSize={22} isAnimationActive={false} />
+                  <Bar dataKey="rest" stackId="day" fill={DAILY_REST_FILL} stroke="var(--color-card)" strokeWidth={1} radius={[4, 4, 0, 0]} maxBarSize={22} isAnimationActive={false} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
             <div className="mt-2 flex justify-center gap-5 text-[11.5px] text-muted-foreground">
-              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-chart-1" /> {isHunger ? "صافي المبيعات" : "المبيعات"}</span>
-              <span className="flex items-center gap-1.5"><span className="h-0.5 w-3 rounded bg-chart-2" /> {costLabel}</span>
+              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm" style={{ background: DAILY_COST_FILL }} /> {costLabel}</span>
+              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm" style={{ background: DAILY_REST_FILL }} /> باقي {isHunger ? "صافي المبيعات" : "المبيعات"}</span>
             </div>
           </figure>
         </div>
@@ -544,14 +537,28 @@ function Dashboard() {
       </div>
 
       <div className="grid gap-5 md:grid-cols-2">
-        <TrendCard
-          value={percent(s.commissionPct)}
-          label={isHunger ? "نسبة العمولة" : "نسبة عمولة المنصة"}
-          description={`${costLabel} اليومية خلال الفترة · والشريط أدناه لآخر فترات ${selected.platform === "hungerstation" ? "هنقرستيشن" : selected.platform === "jahez" ? "جاهز" : "كيتا"}.`}
-          data={days.map((d) => ({ label: dayLabel(d.date), value: d.commission }))}
-          format={(v) => sar(v)}
-          band={history.map((p) => ({ value: percent(p.summary.commissionPct, 1), label: p.label }))}
-        />
+        {isHunger ? (
+          // HungerStation's rate is commission ÷ net sales, both kept per day, so the chart can show the same rate daily.
+          <TrendCard
+            value={percent(s.commissionPct)}
+            label="نسبة العمولة"
+            description="نسبة العمولة يومياً خلال الفترة، والخط المتقطع متوسط الفترة · والشريط أدناه لآخر فترات هنقرستيشن."
+            variant="line"
+            data={days.filter((d) => d.netSales > 0).map((d) => ({ label: dayLabel(d.date), value: d.commission / d.netSales }))}
+            reference={s.commissionPct}
+            format={(v) => percent(v, 1)}
+            band={history.map((p) => ({ value: percent(p.summary.commissionPct, 1), label: p.label }))}
+          />
+        ) : (
+          <TrendCard
+            value={percent(s.commissionPct)}
+            label="نسبة عمولة المنصة"
+            description={`${costLabel} اليومية خلال الفترة · والشريط أدناه لآخر فترات ${selected.platform === "jahez" ? "جاهز" : "كيتا"}.`}
+            data={days.map((d) => ({ label: dayLabel(d.date), value: d.commission }))}
+            format={(v) => sar(v)}
+            band={history.map((p) => ({ value: percent(p.summary.commissionPct, 1), label: p.label }))}
+          />
+        )}
         <TrendCard
           value={count(s.orders)}
           label="الطلبات"
@@ -595,24 +602,39 @@ function Dashboard() {
                   <th className="px-5 py-2.5 text-start font-medium">الفرع</th>
                   <th className="px-3 py-2.5 text-start font-medium">{isHunger ? "صافي المبيعات" : "المبيعات"}</th>
                   <th className="px-3 py-2.5 text-start font-medium">{costLabel}</th>
-                  <th className="w-40 px-5 py-2.5 text-start font-medium">النسبة</th>
+                  <th className="w-48 px-5 py-2.5 text-start font-medium">
+                    النسبة{" "}
+                    <span className="font-normal">
+                      (المتوسط <span className="num">{percent(branchAverageRate, 1)}</span>)
+                    </span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {topBranches.map((branch) => {
                   const cost = branchCost(branch);
                   const sales = branchSales(branch);
+                  const rate = branchRate(branch);
+                  const aboveAverage = rate > branchAverageRate + 0.0005;
                   return (
                     <tr key={branch.branch} className="border-b border-border/70 last:border-0">
                       <td className="max-w-[220px] truncate px-5 py-3 font-medium" title={branch.branch}>{branch.branch}</td>
                       <td className="px-3 py-3"><span className="num">{money(sales)}</span></td>
                       <td className="px-3 py-3"><span className="num text-destructive">{money(cost)}</span></td>
                       <td className="px-5 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                            <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.max(4, (cost / maxBranchCost) * 100)}%` }} />
+                        <div className="flex items-center gap-2" title={aboveAverage ? "أعلى من متوسط الفروع" : "عند متوسط الفروع أو أقل"}>
+                          <span className="relative h-2 flex-1">
+                            <span
+                              className={cn("absolute inset-y-0 start-0 rounded-full", aboveAverage ? "bg-primary" : "bg-muted-foreground/45")}
+                              style={{ width: `${Math.max(3, (rate / maxBranchRate) * 100)}%` }}
+                            />
+                            <span
+                              aria-hidden="true"
+                              className="absolute -inset-y-1 w-0.5 rounded-full bg-foreground/70"
+                              style={{ insetInlineStart: `${(branchAverageRate / maxBranchRate) * 100}%` }}
+                            />
                           </span>
-                          <span className="num w-12 text-end text-xs text-muted-foreground">{percent(sales ? cost / sales : 0, 1)}</span>
+                          <span className={cn("num w-12 text-end text-xs", aboveAverage ? "font-semibold text-foreground" : "text-muted-foreground")}>{percent(rate, 1)}</span>
                         </div>
                       </td>
                     </tr>
@@ -641,5 +663,31 @@ function AttentionStat({ label, value, hint, tone }: { label: string; value: str
       <p className={cn("num mt-1 truncate text-[15px] font-semibold sm:text-[20px]", STAT_TONE[tone])}>{value}</p>
       <p className="mt-0.5 text-[10.5px] leading-4 text-muted-foreground sm:text-[11px]">{hint}</p>
     </Link>
+  );
+}
+
+/** Hover card for one day: sales, the platform's share and that share as a percentage. */
+function DailyTip({ active, payload, salesLabel, costLabel }: { active?: boolean; payload?: { payload: DailyPoint }[]; salesLabel: string; costLabel: string }) {
+  const point = active ? payload?.[0]?.payload : undefined;
+  if (!point) return null;
+  return (
+    <div dir="rtl" className="min-w-40 rounded-xl border border-border bg-popover px-3 py-2 text-[12px] shadow-sm">
+      <p className="num text-muted-foreground">{point.date}</p>
+      <p className="mt-1 flex justify-between gap-4">
+        <span>{salesLabel}</span>
+        <span className="num font-semibold">{money(point.sales)}</span>
+      </p>
+      <p className="flex justify-between gap-4">
+        <span className="flex items-center gap-1.5">
+          <span className="size-2 rounded-sm" style={{ background: DAILY_COST_FILL }} />
+          {costLabel}
+        </span>
+        <span className="num font-semibold">{money(point.cost)}</span>
+      </p>
+      <p className="flex justify-between gap-4 text-muted-foreground">
+        <span>النسبة من المبيعات</span>
+        <span className="num">{percent(point.sales ? point.cost / point.sales : 0, 1)}</span>
+      </p>
+    </div>
   );
 }

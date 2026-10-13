@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Area, AreaChart, Bar, BarChart, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, YAxis } from "recharts";
 
 import { cn } from "@/lib/utils";
 
@@ -67,6 +67,7 @@ export function TrendCard({
   description,
   data,
   variant = "area",
+  reference,
   format,
   band,
   className,
@@ -75,7 +76,9 @@ export function TrendCard({
   label: string;
   description?: string;
   data: TrendPoint[];
-  variant?: "area" | "bars";
+  /** "line" is for rates: no fill, the scale fits the data, and `reference` draws the average as a dashed line. */
+  variant?: "area" | "bars" | "line";
+  reference?: number;
   format: (value: number) => string;
   band: { value: string; label: string }[];
   className?: string;
@@ -91,7 +94,16 @@ export function TrendCard({
       <div className="mt-auto h-20 pt-3" dir="ltr">
         {data.length > 1 ? (
           <ResponsiveContainer width="100%" height="100%">
-            {variant === "area" ? (
+            {variant === "line" ? (
+              <LineChart data={data} margin={{ top: 6, right: 8, left: 8, bottom: 6 }}>
+                <YAxis hide domain={["dataMin", "dataMax"]} padding={{ top: 4, bottom: 4 }} />
+                <Tooltip content={<SparkTip format={format} />} cursor={{ stroke: "var(--color-border)" }} />
+                {reference !== undefined ? (
+                  <ReferenceLine y={reference} stroke="var(--color-muted-foreground)" strokeDasharray="4 4" strokeWidth={1} ifOverflow="extendDomain" />
+                ) : null}
+                <Line type="monotone" dataKey="value" stroke="var(--color-primary)" strokeWidth={2} dot={false} activeDot={{ r: 4, stroke: "var(--color-card)", strokeWidth: 2 }} isAnimationActive={false} />
+              </LineChart>
+            ) : variant === "area" ? (
               <AreaChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
