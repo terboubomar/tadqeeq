@@ -21,6 +21,9 @@ const term = (input: Partial<ContractTerm>): ContractTerm => ({
 // The Keeta contract SAWM-SE-D8-00281916 as Tadqeeq AI would report it.
 const keeta = contractReadingSchema.parse({
   platform: "keeta",
+  contractTitle: "اتفاقية تاجر كيتا",
+  reference: "SAWM-SE-D8-00281916",
+  counterparty: "Keeta Technologies Arabia Limited",
   effectiveFrom: "2025-10-08",
   effectiveTo: "2026-10-08",
   summary: "عقد كيتا",

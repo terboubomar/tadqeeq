@@ -72,6 +72,7 @@ import {
   type ContractVersionRecord,
 } from "@/lib/contract-rulebook";
 import { contractValidity } from "@/lib/contract-validity";
+import { ContractQuickUpload } from "@/components/contracts/ContractQuickUpload";
 import { ContractReadingReview } from "@/components/contracts/ContractReadingReview";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { AI_UI_ENABLED } from "@/lib/ai/config";
@@ -186,6 +187,9 @@ function ContractsPage() {
     [data?.events, selectedContract?.id],
   );
 
+  const { can } = useWorkspaceAccess();
+  const canQuickUpload = AI_UI_ENABLED && can("ai.use") && can("contracts.manage");
+
   async function refreshRulebook() {
     await queryClient.invalidateQueries({ queryKey: ["contract-rulebook"] });
     // «رادار» re-checks the periods against the changed terms.
@@ -220,6 +224,17 @@ function ContractsPage() {
             ? query.error.message
             : "تعذّر تحميل العقود."}
         </div>
+      ) : null}
+
+      {canQuickUpload ? (
+        <ContractQuickUpload
+          onImported={async (imported) => {
+            setSelectedContractId(imported.contractId);
+            setSelectedVersionId(imported.versionId);
+            await refreshRulebook();
+          }}
+          onApproved={refreshRulebook}
+        />
       ) : null}
 
       <CreateContractPanel
