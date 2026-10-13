@@ -5,6 +5,7 @@ import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL } from "../upload-validati
 import { mapStoredOperationOrder, type StoredOperationOrder } from "./details";
 import { isIncompleteDay } from "./completeness";
 import { forecastFromCompleteMonthToDate } from "./forecast";
+import { buildHourlyGrid, type HourlyGrid, type HourlyOrderRow } from "./hourly";
 import { parseOperationFile } from "./parser";
 import type {
   OperationAdjustmentDetail,
@@ -497,4 +498,43 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
     current: !item.superseded_at,
   }));
   return { month, daysInMonth: bounds.days, platforms: [...platforms.values()], imports: history };
+}
+
+/**
+ * Sales by weekday and hour for one platform's month, from the orders of each day's current upload. Each order's
+ * hour comes from the time column kept in its stored file row; nothing is recalculated.
+ */
+export async function getOperationHourlyOnServer(input: { platform: OperationPlatform; month: string }): Promise<HourlyGrid> {
+  const { client, workspaceId } = await requireWorkspacePermission("financials.read");
+  const db = client as unknown as LooseClient;
+  const bounds = monthBounds(input.month);
+  const { data: imports, error: importsError } = await db
+    .from("operation_imports")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("platform", input.platform)
+    .eq("source_kind", `${input.platform}_orders`)
+    .is("superseded_at", null)
+    .gte("business_date", bounds.start)
+    .lte("business_date", bounds.end)
+    .limit(500);
+  if (importsError) throw operationError(importsError);
+  const importIds = ((imports ?? []) as Array<{ id: string }>).map((item) => item.id);
+  const rows: HourlyOrderRow[] = [];
+  for (let start = 0; importIds.length; start += 1000) {
+    const { data, error } = await db
+      .from("operation_orders")
+      .select("order_id,business_date,status,gross_sales,raw_data")
+      .eq("workspace_id", workspaceId)
+      .eq("platform", input.platform)
+      .in("source_import_id", importIds)
+      .order("source_import_id", { ascending: true })
+      .order("order_id", { ascending: true })
+      .range(start, start + 999);
+    if (error) throw operationError(error);
+    const page = (data ?? []) as HourlyOrderRow[];
+    rows.push(...page);
+    if (page.length < 1000) break;
+  }
+  return buildHourlyGrid(input.platform, rows);
 }
