@@ -792,11 +792,71 @@ function trackSpotlight(event: ReactPointerEvent<HTMLElement>) {
   el.style.setProperty("--spot-y", `${event.clientY - rect.top}px`);
 }
 
+/** The invoice's journey through the products: one stop per product along a single line, alternating sides on wide screens. */
 function ProductsGrid() {
   return (
-    <section id="products" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-32">
+    <section id="products" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-32">
       <SectionIntro title="أداة لكل بند في فاتورتك.">كل منتج يعالج جزءاً من الفاتورة. افتح أي منتج لتعرف كيف يعمل بالتفصيل.</SectionIntro>
-      <ul className="mt-14 grid grid-flow-dense gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+      <ol className="relative mt-16">
+        <span aria-hidden className="absolute inset-y-6 start-6 w-px bg-gradient-to-b from-primary/60 via-border to-primary/60 md:start-1/2" />
+        {PRODUCT_CARDS.map(({ key }, index) => {
+          const page = productPageFor(key);
+          if (!page) return null;
+          const flip = index % 2 === 1;
+          return (
+            <li key={key} className="relative grid grid-cols-[3rem_1fr] gap-5 pb-8 last:pb-0 md:grid-cols-[1fr_4rem_1fr] md:gap-8 md:pb-6">
+              <span className="relative z-10 grid size-12 place-items-center self-start rounded-full border border-border bg-card shadow-[0_8px_20px_-12px_rgb(19_35_43/0.35)] md:col-start-2 md:mx-auto md:row-start-1 md:size-14">
+                <span className="num text-xs font-semibold text-primary-text">{String(index + 1).padStart(2, "0")}</span>
+              </span>
+              <a
+                href={page.path}
+                onPointerMove={trackSpotlight}
+                className={cn(
+                  "group relative flex items-start gap-4 overflow-hidden rounded-2xl border border-border bg-card p-5 transition-[transform,border-color,box-shadow] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_20px_40px_-24px_rgb(19_35_43/0.3)] sm:p-6 md:row-start-1",
+                  flip ? "md:col-start-3" : "md:col-start-1",
+                )}
+              >
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                  style={{ background: "radial-gradient(360px circle at var(--spot-x, 50%) var(--spot-y, 50%), color-mix(in oklab, var(--primary) 12%, transparent), transparent 65%)" }}
+                />
+                <ProductIcon product={key} className="relative size-11" />
+                <div className="relative min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-primary-text">{PRODUCTS[key].descriptor}</p>
+                  <h3 className="mt-1 font-display text-xl font-bold">{PRODUCTS[key].name}</h3>
+                  <p className="mt-2 text-[15px] leading-7 text-foreground/70 text-pretty">{page.summary}</p>
+                  <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold">
+                    اعرف أكثر
+                    <span className="grid size-7 place-items-center rounded-full bg-secondary text-primary-text transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-x-1">
+                      <ArrowLeft className="size-3.5" strokeWidth={1.75} />
+                    </span>
+                  </span>
+                </div>
+              </a>
+            </li>
+          );
+        })}
+      </ol>
+      <div className="mt-12 flex justify-center">
+        <Link
+          to="/products"
+          className="group inline-flex h-12 items-center gap-3 rounded-full border border-border bg-card ps-6 pe-1.5 text-sm font-semibold transition-colors hover:bg-muted/60 active:scale-[0.98]"
+        >
+          كل المنتجات
+          <span className="grid size-9 place-items-center rounded-full bg-secondary text-primary-text transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-x-1">
+            <ArrowLeft className="size-4" strokeWidth={1.75} />
+          </span>
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function ProductsGridOld() {
+  return (
+    <section>
+      <ul>
         {PRODUCT_CARDS.map(({ key, wide, dark }, index) => {
           const page = productPageFor(key);
           if (!page) return null;
