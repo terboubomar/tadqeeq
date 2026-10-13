@@ -45,6 +45,7 @@ import { ProductIcon } from "@/components/products/ProductIcon";
 import { ProductsMenu, ProductsMenuList } from "@/components/products/ProductsMenu";
 import { PRODUCTS, productTitle, type ProductKey } from "@/lib/products";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { OG_IMAGE, SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
 import { CONTENT_UPDATED, EXPLAINER_VIDEO, FAQS, FEATURES, formatArabicDate } from "@/lib/site-content";
 import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
@@ -743,28 +744,25 @@ const HOW_STEPS: Array<{ title: string; body: string; icon: LucideIcon }> = [
   { title: "استرد وأغلق", body: "جهّز مطالبة الاسترداد بأدلتها، ثم أغلق الفترة بسجل كامل قابل للمراجعة.", icon: HandCoins },
 ];
 
-/** Four steps in one row: upload, recalculate, review, recover. */
+/** An open four-stage process, with the original content and reading order. */
 function HowItWorks() {
   return (
-    <section id="how" className="border-y border-border bg-card">
-      <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
-        <SectionIntro title="أربع خطوات. بدون جداول يدوية.">ارفع ملفين في نهاية الفترة، وتدقيق يتولى الباقي.</SectionIntro>
-        <ol className="relative mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-          <span aria-hidden className="pointer-events-none absolute inset-x-[12%] top-[2.1rem] hidden h-px bg-gradient-to-l from-transparent via-primary/50 to-transparent lg:block" />
+    <section id="how" aria-labelledby="how-title" className="scroll-mt-20 bg-card">
+      <div className="mx-auto max-w-7xl px-6 py-20 sm:px-10 lg:px-16 lg:py-28">
+        <div className="max-w-3xl">
+          <h2 id="how-title" className="text-balance font-display text-3xl font-semibold leading-[1.6] text-foreground sm:text-4xl">أربع خطوات. بدون جداول يدوية.</h2>
+          <p className="mt-5 text-base leading-8 text-muted-foreground sm:text-lg">ارفع ملفين في نهاية الفترة، وتدقيق يتولى الباقي.</p>
+        </div>
+        <ol className="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:mt-20 lg:grid-cols-4 lg:gap-x-12">
           {HOW_STEPS.map((step, index) => (
-            <li key={step.title} className="group relative flex flex-col gap-5">
-              <div className="flex items-center gap-3">
-                <span className="relative grid size-[4.25rem] shrink-0 place-items-center rounded-2xl bg-ink text-ink-foreground ring-1 ring-ink/10 shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_18px_32px_-18px_rgb(19_35_43/0.6)] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-1">
-                  <step.icon strokeWidth={1.5} className="size-6 text-primary" />
-                </span>
-                <span className="num rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-semibold tracking-[0.15em] text-muted-foreground">
-                  0{index + 1}
-                </span>
+            <li key={step.title} className="relative">
+              <div className="flex items-center gap-5" aria-hidden="true">
+                <span className="num text-sm text-primary-text">0{index + 1}</span>
+                <span className="h-px flex-1 bg-border" />
+                <step.icon strokeWidth={1.5} className="size-5 shrink-0 text-muted-foreground" />
               </div>
-              <div>
-                <h3 className="font-display text-lg font-bold text-balance">{step.title}</h3>
-                <p className="mt-2 text-sm leading-7 text-muted-foreground text-pretty">{step.body}</p>
-              </div>
+              <h3 className="mt-7 text-balance font-display text-lg font-semibold leading-8">{step.title}</h3>
+              <p className="mt-3 max-w-sm text-pretty text-sm leading-7 text-muted-foreground">{step.body}</p>
             </li>
           ))}
         </ol>
@@ -792,45 +790,46 @@ function trackSpotlight(event: ReactPointerEvent<HTMLElement>) {
   el.style.setProperty("--spot-y", `${event.clientY - rect.top}px`);
 }
 
-/** The invoice's journey through the products, adapted from 21st.dev's "Process Timeline" (shadcnui-blocks): sticky title, one rail of stops. */
+/** A whitespace-led journey; each product retains its own page and original summary. */
 function ProductsGrid() {
   return (
-    <section id="products" className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20 lg:py-32">
-      <div className="lg:sticky lg:top-28 lg:self-start">
-        <SectionIntro title="أداة لكل بند في فاتورتك.">كل منتج يعالج جزءاً من الفاتورة. افتح أي منتج لتعرف كيف يعمل بالتفصيل.</SectionIntro>
-        <Link
-          to="/products"
-          className="group mt-8 inline-flex h-12 items-center gap-3 rounded-full border border-border bg-card ps-6 pe-1.5 text-sm font-semibold transition-colors hover:bg-muted/60 active:scale-[0.98]"
-        >
-          كل المنتجات
-          <span className="grid size-9 place-items-center rounded-full bg-ink text-ink-foreground transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-x-1">
-            <ArrowLeft className="size-4" strokeWidth={1.75} />
-          </span>
-        </Link>
-      </div>
-      <ol className="relative ms-6">
-        <span aria-hidden className="absolute inset-y-2 start-0 border-s border-border" />
+    <section id="products" aria-labelledby="products-title" className="scroll-mt-20 bg-background">
+      <div className="mx-auto max-w-7xl px-6 py-20 sm:px-10 lg:px-16 lg:py-28">
+        <div className="flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-end lg:gap-16">
+          <div className="max-w-2xl">
+            <h2 id="products-title" className="text-balance font-display text-3xl font-semibold leading-[1.6] text-foreground sm:text-4xl">أداة لكل بند في فاتورتك.</h2>
+            <p className="mt-5 max-w-xl text-pretty text-base leading-8 text-muted-foreground sm:text-lg">كل منتج يعالج جزءاً من الفاتورة. افتح أي منتج لتعرف كيف يعمل بالتفصيل.</p>
+          </div>
+          <Button asChild variant="ghost" className="group h-12 shrink-0 gap-4 rounded-md px-0 text-foreground hover:bg-transparent hover:text-primary-text">
+            <Link to="/products">كل المنتجات <ArrowLeft className="transition-transform duration-200 group-hover:-translate-x-1" /></Link>
+          </Button>
+        </div>
+        <ol className="relative mt-14 lg:mt-20">
         {PRODUCT_CARDS.map(({ key }, index) => {
           const page = productPageFor(key);
           if (!page) return null;
           return (
-            <li key={key} className="relative pb-4 ps-10 last:pb-0">
-              <ProductIcon product={key} className="absolute start-0 top-5 z-10 size-11 translate-x-1/2 rounded-full ring-8 ring-background" />
-              <a href={page.path} className="group -mx-4 flex items-start gap-6 rounded-2xl px-4 py-5 transition-colors duration-300 hover:bg-card">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-3">
-                    <h3 className="font-display text-xl font-bold">{PRODUCTS[key].name}</h3>
-                    <span className="text-sm text-muted-foreground">{PRODUCTS[key].descriptor}</span>
+            <li key={key} className="relative">
+              <span aria-hidden="true" className={cn("pointer-events-none absolute start-3 w-px bg-border lg:start-4", index === 0 ? "top-14 bottom-0 lg:top-20" : index === PRODUCT_CARDS.length - 1 ? "top-0 h-14 lg:h-20" : "inset-y-0")} />
+              <a href={page.path} aria-labelledby={`journey-${key}`} className="group relative grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-6 py-10 focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-ring sm:gap-x-10 lg:grid-cols-[2rem_minmax(0,1fr)] lg:gap-x-14 lg:py-14">
+                <span aria-hidden="true" className="num relative mt-1 self-start bg-background py-1 text-xs text-muted-foreground transition-colors group-hover:text-primary-text lg:text-sm">{String(index + 1).padStart(2, "0")}</span>
+                <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_2.5rem] lg:items-center lg:gap-12">
+                  <div className="flex min-w-0 items-center gap-5">
+                    <ProductIcon product={key} className="size-12 shrink-0 rounded-lg lg:size-14" />
+                    <div className="min-w-0">
+                      <h3 id={`journey-${key}`} className="font-display text-2xl font-semibold leading-10 transition-colors group-hover:text-primary-text">{PRODUCTS[key].name}</h3>
+                      <p className="mt-1 text-sm leading-7 text-muted-foreground">{PRODUCTS[key].descriptor}</p>
+                    </div>
                   </div>
-                  <p className="mt-1.5 text-[15px] leading-7 text-foreground/70 text-pretty">{page.summary}</p>
+                  <p className="max-w-md text-pretty text-base leading-8 text-muted-foreground">{page.summary}</p>
+                  <span aria-hidden="true" className="flex size-10 items-center justify-center text-foreground transition-transform duration-200 group-hover:-translate-x-1"><ArrowLeft className="size-5" strokeWidth={1.5} /></span>
                 </div>
-                <span className="num mt-1.5 text-xs font-semibold text-muted-foreground transition-colors group-hover:text-primary-text">{String(index + 1).padStart(2, "0")}</span>
-                <ArrowLeft className="mt-1.5 size-4 shrink-0 text-muted-foreground opacity-0 transition-[opacity,transform] duration-300 group-hover:-translate-x-1 group-hover:opacity-100" strokeWidth={1.75} />
               </a>
             </li>
           );
         })}
-      </ol>
+        </ol>
+      </div>
     </section>
   );
 }
