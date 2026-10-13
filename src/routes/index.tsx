@@ -40,6 +40,7 @@ import { listPublicPlans } from "@/lib/plans.functions";
 import { LogoWordmark } from "@/components/brand/Logo";
 import { LEGAL_COMPANY, LEGAL_DOCS } from "@/lib/legal";
 import { productPageFor } from "@/lib/product-pages";
+import { AssistantBeams } from "@/components/home/AssistantBeams";
 import { ProductIcon } from "@/components/products/ProductIcon";
 import { ProductsMenu, ProductsMenuList } from "@/components/products/ProductsMenu";
 import { PRODUCTS, productTitle, type ProductKey } from "@/lib/products";
@@ -384,6 +385,8 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         <HowItWorks />
 
         <ProductsGrid />
+
+        <AssistantSection />
 
         {plans.length ? <Pricing plans={plans} /> : null}
 
@@ -817,6 +820,45 @@ function ProductsGrid() {
           كل المنتجات
           <ArrowLeft className="size-4" />
         </Link>
+      </div>
+    </section>
+  );
+}
+
+const ASSISTANT_STEPS = [
+  { title: "اكتب طلبك في المحادثة", body: "مثل: «دقق فاتورة هنقرستيشن لشهر سبتمبر، رسوم البنك 1.8%»." },
+  { title: "ارفع من الرابط الجاهز", body: "رابط آمن فيه المنصة والنسبة مسبقاً. تسحب ملف الطلبات والفاتورة وتضغط تحليل." },
+  { title: "اسأل عن النتيجة", body: "الفروقات وما تطالب به، أعلى الفروع تكلفة، والمقارنة مع الشهر الماضي، في نفس المحادثة." },
+];
+
+/** Using Tadqeeq from an AI assistant over MCP (الشاملة, or the add-on on other plans): three steps beside the beams. */
+function AssistantSection() {
+  return (
+    <section id="assistant" className="bg-ink text-ink-foreground">
+      <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:py-28">
+        <div data-reveal>
+          <h2 className="font-display text-3xl font-bold leading-[1.4] sm:text-[2.5rem]">دقّق فواتيرك من داخل Claude و ChatGPT.</h2>
+          <p className="mt-4 max-w-xl text-base leading-8 text-ink-muted sm:text-[17px]">
+            اربط حساب تدقيق بمساعدك الذكي عبر MCP واطلب التدقيق بجملة. يعطيك رابط رفع جاهز، وبعد الرفع يشرح لك النتيجة في نفس المحادثة. الأرقام
+            من المحرك المحاسبي في تدقيق، والمساعد يشرحها فقط.
+          </p>
+          <ol className="mt-8 space-y-5">
+            {ASSISTANT_STEPS.map((step, index) => (
+              <li key={step.title} className="flex gap-4">
+                <span className="num grid size-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{index + 1}</span>
+                <span>
+                  <span className="block font-semibold">{step.title}</span>
+                  <span className="mt-1 block text-sm leading-7 text-ink-muted">{step.body}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-8 text-sm text-ink-muted">متاح في باقة الشاملة، أو كإضافة لباقتك.</p>
+        </div>
+        <figure data-reveal>
+          <AssistantBeams />
+          <figcaption className="mt-3 text-center text-xs text-ink-muted">يعمل مع Claude و ChatGPT وكل مساعد يدعم ربط MCP بحسابك</figcaption>
+        </figure>
       </div>
     </section>
   );
