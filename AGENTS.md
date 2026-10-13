@@ -28,4 +28,5 @@ Tadqeeq is a production-critical product. It is not an MVP. Preserve existing be
 - For typography (type scale, weights, line height, letter spacing, numeric figures, heading hierarchy), use the `design-md-library` skill (`.claude/skills/design-md-library`) and say which reference was used.
 - The 21st.dev MCP (`.mcp.json`, key in the `API_KEY_21ST` env var, never in the repo) is for finding component ideas; rewrite what it returns in Tadqeeq's tokens, fonts and RTL, and ask before adding any package it suggests.
 - Both are guidance inside these rules: keep Tadqeeq's own fonts, colour tokens and Arabic RTL layout, change only what the user asked for, and add no new UI or font libraries unless the user asks.
+- Homepage workflow and product-journey presentation stays independent of product definitions and accounting logic; why: visual revisions must preserve product destinations and financial behavior.
 
