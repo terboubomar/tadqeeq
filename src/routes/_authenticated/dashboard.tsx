@@ -41,6 +41,7 @@ import { ActionBar, PageHeader } from "@/components/workspace/PageKit";
 import { PRODUCTS } from "@/lib/products";
 import { cn } from "@/lib/utils";
 import { keetaCostSplit, keetaOutsideInvoice } from "@/lib/keeta-cost";
+import { CostDefinitionNote } from "@/components/dash/CostDefinitionNote";
 import { PLATFORM_COST_FORMULA_AR, platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
 
 type DashboardSearch = { company?: string; platform?: PlatformScope; month?: string };
@@ -460,6 +461,7 @@ function Dashboard() {
                 </div>
               ))}
             </dl>
+            <CostDefinitionNote className="mt-3" />
           </div>
           <figure className="min-w-0">
             <figcaption className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">

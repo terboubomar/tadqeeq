@@ -3,6 +3,7 @@ import * as React from 'react'
 import { Body, Button, Container, Head, Heading, Hr, Html, Preview, Section, Text } from '@react-email/components'
 import type { TemplateEntry } from './registry'
 import type { ReportDigest } from '../report-schedules'
+import { PLATFORM_COST_DEFINITION_AR } from '../reporting-metrics'
 
 interface Props {
   workspaceName?: string
@@ -79,6 +80,7 @@ const ReportSummaryEmail = ({ workspaceName, scheduleName, timing, digest, repor
         <Section style={{ margin: '24px 0 8px' }}>
           <Button href={reportsUrl} style={button}>فتح التقارير في تدقيق</Button>
         </Section>
+        <Text style={small}>{PLATFORM_COST_DEFINITION_AR}</Text>
         <Text style={small}>التفاصيل وملفات Excel متاحة بعد تسجيل الدخول.</Text>
         <Hr style={hr} />
         <Text style={footer}>

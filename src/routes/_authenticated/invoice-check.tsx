@@ -9,10 +9,12 @@ import { Callout, Segmented, SegmentBar } from "@/components/dash/DashKit";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 import { ActionBar, ActionDivider, NumberTiles, PageHeader, Section } from "@/components/workspace/PageKit";
 import { arabicDate, money, percent, sar } from "@/lib/format";
+import { BALANCE_DIRECTION_AR, balanceDirection, statementFormula } from "@/lib/statement-of-account";
+import { costReconciliation } from "@/lib/cost-reconciliation";
 import type { StoredPeriod } from "@/lib/periods";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
-import { vatBreakdown } from "@/lib/reporting-metrics";
+import { PLATFORM_COST_DEFINITION_AR, vatBreakdown } from "@/lib/reporting-metrics";
 
 export const Route = createFileRoute("/_authenticated/invoice-check")({
   head: () => ({
@@ -429,6 +431,7 @@ function InvoiceCheckBody({ selected }: { selected: StoredPeriod }) {
 
       {selected.invoice?.lineDetails?.length ? <InvoiceLinesSection period={selected} /> : null}
       {selected.invoice?.statementOfAccount ? <StatementSection period={selected} /> : null}
+      <CostReconciliationSection period={selected} />
 
       <section className="grid items-start gap-4 lg:grid-cols-2">
         <Section
@@ -579,6 +582,69 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
+const RECONCILIATION_SIGN = { start: "", less: "−", plus: "+", total: "=", residual: "−", info: "" } as const;
+
+/** From the charges behind platform cost % to the platform's invoice, line by line, with anything left over named. */
+function CostReconciliationSection({ period }: { period: StoredPeriod }) {
+  const reconciliation = costReconciliation(period);
+  if (!reconciliation) return null;
+  const closes = Math.abs(reconciliation.residual) < 0.01;
+  return (
+    <Section title="من نسبة التكلفة إلى الفاتورة" summary={closes ? "لا فرق غير مفسّر" : `فرق ${sar(reconciliation.residual)}`} defaultOpen={false}>
+      <div className="space-y-3 p-5">
+        <table className="w-full border-collapse text-[13px]">
+          <tbody>
+            {reconciliation.lines.map((line) => (
+              <tr
+                key={line.label}
+                className={cn(
+                  "border-b border-border/50",
+                  line.kind === "total" && "font-semibold",
+                  line.kind === "residual" && "text-warning",
+                  line.kind === "info" && "text-muted-foreground",
+                )}
+              >
+                <td className="w-5 py-2 align-top">
+                  <span className="num font-semibold">{RECONCILIATION_SIGN[line.kind]}</span>
+                </td>
+                <td className="py-2 pe-3">
+                  {line.label}
+                  {line.note ? <span className="mt-0.5 block text-[11.5px] font-normal text-muted-foreground">{line.note}</span> : null}
+                </td>
+                <td className="whitespace-nowrap py-2 text-end align-top">
+                  <span className="num">{sar(line.amount)}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {closes ? (
+          <p className="flex items-center gap-1.5 text-[12.5px] text-success">
+            <CheckCircle2 className="size-4" /> كل الفرق بين الرقمين مفسَّر ببنود محفوظة في التدقيق.
+          </p>
+        ) : null}
+        <p className="text-[11.5px] leading-5 text-muted-foreground">{PLATFORM_COST_DEFINITION_AR}</p>
+      </div>
+    </Section>
+  );
+}
+
+/** A balance as printed, with who owes whom in words. */
+function BalanceRow({ label, value }: { label: string; value: number }) {
+  const direction = balanceDirection(value);
+  return (
+    <div className="flex items-start justify-between gap-3 border-b border-border/50 pb-2">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-end">
+        <span className="num block font-semibold">{sar(value)}</span>
+        <span className={cn("mt-0.5 block text-[11.5px] font-medium", direction === "platform_owes" ? "text-success" : direction === "restaurant_owes" ? "text-primary-text" : "text-muted-foreground")}>
+          {BALANCE_DIRECTION_AR[direction]}
+        </span>
+      </dd>
+    </div>
+  );
+}
+
 const UNIT_LABELS = { orders: "طلب", sar_base: "أساس ر.س", count: "عدد" } as const;
 
 /** Every summary row of the invoice as printed: what was counted, at what rate, for how much. */
@@ -663,22 +729,63 @@ function StatementSection({ period }: { period: StoredPeriod }) {
   const cpc = period.invoice?.cpc;
   const advertising = soa.advertisingServicesInvoice;
   const verified = typeof advertising === "number" && typeof cpc === "number" && Math.abs(advertising - cpc) < 0.01;
-  const rows: Array<[string, number | undefined]> = [
-    ["الرصيد الافتتاحي (دفعة مقدمة + مستحق سابق)", soa.openingBalance],
+  // The balances (third item) also say who owes whom.
+  const rows: Array<[string, number | undefined, boolean?]> = [
+    ["الرصيد الافتتاحي (دفعة مقدمة + مستحق سابق)", soa.openingBalance, true],
     ["فاتورة العمولة (شامل الضريبة)", soa.commissionInvoice],
     ["فاتورة الخدمات الإعلانية (شامل الضريبة)", advertising],
     ["فاتورة أقساط القرض", soa.loanInstallmentInvoice],
     ["إجمالي المبيعات الإلكترونية", soa.totalOnlineSales],
-    ["صافي الرصيد الشهري المستحق", soa.netMonthlyDueBalance],
+    ["صافي الرصيد الشهري المستحق", soa.netMonthlyDueBalance, true],
   ];
+  const formula = statementFormula(soa);
   return (
     <Section title="كشف حساب الشهر" summary="كما ورد في الفاتورة · منفصل عن إجمالي العمولة" defaultOpen={false}>
       <div className="space-y-3 p-5">
         <dl className="space-y-2 text-sm">
-          {rows.map(([label, value]) =>
-            typeof value === "number" ? <Row key={label} label={label} value={sar(value)} /> : null,
+          {rows.map(([label, value, balance]) =>
+            typeof value === "number" ? (
+              balance ? (
+                <BalanceRow key={label} label={label} value={value} />
+              ) : (
+                <Row key={label} label={label} value={sar(value)} />
+              )
+            ) : null,
           )}
         </dl>
+        {formula ? (
+          <div className="rounded-lg bg-muted/50 p-3.5">
+            <h3 className="text-[12.5px] font-semibold">كيف يُحسب الرصيد الختامي</h3>
+            <p className="mt-0.5 text-[11.5px] text-muted-foreground">الرصيد الافتتاحي + الفواتير − ما حصّلته المنصة = الرصيد الختامي</p>
+            <dl className="mt-2.5 space-y-1.5 text-[12.5px]">
+              {formula.terms.map((term) => (
+                <div key={term.label} className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">
+                    <span className="num me-1.5 inline-block w-3 text-center font-semibold text-foreground">{term.sign > 0 ? "+" : "−"}</span>
+                    {term.label}
+                  </dt>
+                  <dd className="num">{sar(term.amount)}</dd>
+                </div>
+              ))}
+              <div className="flex items-center justify-between gap-3 border-t border-border pt-1.5 font-semibold">
+                <dt>
+                  <span className="num me-1.5 inline-block w-3 text-center">=</span>
+                  الرصيد الختامي المحسوب
+                </dt>
+                <dd className="num">{sar(formula.computed)}</dd>
+              </div>
+            </dl>
+            {formula.matches ? (
+              <p className="mt-2 flex items-center gap-1.5 text-[12px] text-success">
+                <CheckCircle2 className="size-4" /> يطابق صافي الرصيد المطبوع في الكشف.
+              </p>
+            ) : (
+              <p className="mt-2 flex items-center gap-1.5 text-[12px] text-warning">
+                <AlertTriangle className="size-4" /> يختلف عن الرصيد المطبوع بمقدار <span className="num">{sar(formula.difference)}</span>: بند في الكشف لم يُقرأ من الفاتورة.
+              </p>
+            )}
+          </div>
+        ) : null}
         {typeof advertising === "number" ? (
           verified ? (
             <p className="flex items-center gap-1.5 text-[12.5px] text-success">
@@ -691,6 +798,7 @@ function StatementSection({ period }: { period: StoredPeriod }) {
           )
         ) : null}
         <p className="text-[11.5px] leading-5 text-muted-foreground">
+          إشارة الرصيد كما في كشف المنصة: الموجب مستحق على المطعم للمنصة، والسالب مستحق من المنصة للمطعم.
           فاتورة الخدمات الإعلانية لا تُضاف إلى إجمالي العمولة أو رسوم المنصة.
         </p>
       </div>

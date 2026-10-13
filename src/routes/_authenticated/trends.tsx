@@ -5,6 +5,7 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 import { SERIES_COLORS } from "@/lib/chart-palette";
 
 import { EmptyState } from "@/components/AppShell";
+import { CostDefinitionNote } from "@/components/dash/CostDefinitionNote";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 import { Button } from "@/components/ui/button";
 import { ActionBar, ActionDivider, PageHeader } from "@/components/workspace/PageKit";
@@ -230,6 +231,7 @@ function TrendsPage() {
               hint={`متوسط الطلب ${averageOrder(latest.total) === null ? "—" : sar(averageOrder(latest.total))}`}
             />
           </div>
+          <CostDefinitionNote className="border-t border-border px-5 py-3" />
         </section>
       ) : null}
 
