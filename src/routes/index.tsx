@@ -752,7 +752,7 @@ function HowItWorks() {
         <ol className="relative mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
           <span aria-hidden className="pointer-events-none absolute inset-x-[12%] top-[2.1rem] hidden h-px bg-gradient-to-l from-transparent via-primary/50 to-transparent lg:block" />
           {HOW_STEPS.map((step, index) => (
-            <li key={step.title} data-reveal className="group relative flex flex-col gap-5">
+            <li key={step.title} className="group relative flex flex-col gap-5">
               <div className="flex items-center gap-3">
                 <span className="relative grid size-[4.25rem] shrink-0 place-items-center rounded-2xl bg-ink text-ink-foreground ring-1 ring-ink/10 shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_18px_32px_-18px_rgb(19_35_43/0.6)] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-1">
                   <step.icon strokeWidth={1.5} className="size-6 text-primary" />
@@ -845,76 +845,6 @@ function ProductsGrid() {
         >
           كل المنتجات
           <span className="grid size-9 place-items-center rounded-full bg-secondary text-primary-text transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-x-1">
-            <ArrowLeft className="size-4" strokeWidth={1.75} />
-          </span>
-        </Link>
-      </div>
-    </section>
-  );
-}
-
-function ProductsGridOld() {
-  return (
-    <section>
-      <ul>
-        {PRODUCT_CARDS.map(({ key, wide, dark }, index) => {
-          const page = productPageFor(key);
-          if (!page) return null;
-          return (
-            <li key={key} data-reveal className={cn(wide && "lg:col-span-2")}>
-              <div className={cn("h-full rounded-[1.75rem] p-1.5 ring-1", dark ? "bg-ink/10 ring-ink/15" : "bg-muted/50 ring-border")}>
-                <a
-                  href={page.path}
-                  onPointerMove={trackSpotlight}
-                  className={cn(
-                    "group relative flex h-full flex-col gap-6 overflow-hidden rounded-[calc(1.75rem-0.375rem)] p-6 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.99] sm:p-8",
-                    dark
-                      ? "bg-ink text-ink-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.1)]"
-                      : "bg-card shadow-[inset_0_1px_0_rgb(255_255_255/0.8)]",
-                  )}
-                >
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-                    style={{
-                      background: `radial-gradient(420px circle at var(--spot-x, 50%) var(--spot-y, 50%), color-mix(in oklab, var(--primary) ${dark ? 22 : 12}%, transparent), transparent 65%)`,
-                    }}
-                  />
-                  <div className="relative flex items-start justify-between gap-4">
-                    <ProductIcon product={key} className={cn("size-12", dark && "bg-ink-foreground/10 text-primary")} />
-                    <span className={cn("num text-[11px] font-semibold tracking-[0.2em]", dark ? "text-ink-muted" : "text-muted-foreground")}>
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                  </div>
-                  <div className="relative">
-                    <p className={cn("text-xs font-semibold tracking-wide", dark ? "text-primary" : "text-primary-text")}>{PRODUCTS[key].descriptor}</p>
-                    <h3 className={cn("mt-1.5 font-display font-bold text-balance", wide ? "text-2xl sm:text-3xl" : "text-xl")}>{PRODUCTS[key].name}</h3>
-                    <p className={cn("mt-3 max-w-md text-[15px] leading-7 text-pretty", dark ? "text-ink-foreground/75" : "text-foreground/70")}>{page.summary}</p>
-                  </div>
-                  <span className={cn("relative mt-auto inline-flex w-fit items-center gap-2.5 text-sm font-semibold", dark ? "text-ink-foreground" : "text-foreground")}>
-                    اعرف أكثر
-                    <span
-                      className={cn(
-                        "grid size-8 place-items-center rounded-full transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-x-1 group-hover:scale-105",
-                        dark ? "bg-primary text-primary-foreground" : "bg-ink text-ink-foreground",
-                      )}
-                    >
-                      <ArrowLeft className="size-4" strokeWidth={1.75} />
-                    </span>
-                  </span>
-                </a>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-      <div className="mt-10 flex justify-center">
-        <Link
-          to="/products"
-          className="group inline-flex h-12 items-center gap-3 rounded-full border border-border bg-card ps-6 pe-1.5 text-sm font-semibold transition-colors hover:bg-muted/60 active:scale-[0.98]"
-        >
-          كل المنتجات
-          <span className="grid size-9 place-items-center rounded-full bg-ink text-ink-foreground transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-x-1">
             <ArrowLeft className="size-4" strokeWidth={1.75} />
           </span>
         </Link>
