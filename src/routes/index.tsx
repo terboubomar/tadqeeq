@@ -17,7 +17,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { MotionConfig, motion, useInView, useReducedMotion, useScroll, useTransform } from "motion/react";
+import { AnimatePresence, MotionConfig, motion, useInView, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import { isLoginHost } from "@/lib/login-host";
@@ -843,35 +843,85 @@ const PRODUCT_CARDS: Array<{ key: ProductKey; wide?: boolean; dark?: boolean }> 
   { key: "raqeeb", wide: true },
 ];
 
-/** LeadFlow-style feature grid; each product retains its own page and original summary. */
+/** Scroll-driven feature showcase: the panel stays pinned while scrolling steps through each product. */
 function ProductsGrid() {
+  const items = PRODUCT_CARDS.flatMap(({ key }) => {
+    const page = productPageFor(key);
+    return page ? [{ key, page }] : [];
+  });
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+  const { scrollYProgress } = useScroll({ target: trackRef, offset: ["start start", "end end"] });
+  useMotionValueEvent(scrollYProgress, "change", (v) => {
+    setActive(Math.min(items.length - 1, Math.max(0, Math.floor(v * items.length))));
+  });
+  const current = items[active]!;
+
   return (
-    <section id="products" aria-labelledby="products-title" className="scroll-mt-20 border-b border-border px-6 py-16 sm:px-12">
-      <div className="max-w-2xl">
-        <SectionBadge icon={Sparkles}>المنتجات</SectionBadge>
-        <h2 id="products-title" className="mt-4 text-balance font-display text-3xl font-semibold leading-[1.5] text-foreground sm:text-4xl">أداة لكل بند في فاتورتك.</h2>
-        <p className="mt-4 text-pretty text-base leading-8 text-muted-foreground">كل منتج يعالج جزءاً من الفاتورة. افتح أي منتج لتعرف كيف يعمل بالتفصيل.</p>
-      </div>
-      <ul className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {PRODUCT_CARDS.map(({ key }) => {
-          const page = productPageFor(key);
-          if (!page) return null;
-          return (
-            <li key={key} className="min-w-0">
-              <a href={page.path} aria-labelledby={`journey-${key}`} className="group flex h-full flex-col items-start rounded-2xl border border-border bg-card p-8 text-start transition-[border-color,box-shadow] duration-200 hover:border-primary/40 hover:shadow-[0_8px_24px_-12px_color-mix(in_oklab,var(--primary)_35%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
-                <ProductIcon product={key} className="size-14 rounded-xl bg-primary text-primary-foreground [&_svg]:size-7" />
-                <h3 id={`journey-${key}`} className="mt-10 font-display text-xl font-semibold leading-8">{PRODUCTS[key].name}</h3>
-                <p className="mt-1 text-sm leading-7 text-foreground">{PRODUCTS[key].descriptor}</p>
-                <p className="mt-3 text-pretty text-sm leading-7 text-muted-foreground">{page.summary}</p>
-              </a>
-            </li>
-          );
-        })}
-      </ul>
-      <div className="mt-10 flex justify-center">
-        <Button asChild className="h-11 gap-2 rounded-md bg-primary px-5 text-primary-foreground hover:bg-primary/90">
-          <Link to="/products">كل المنتجات <ArrowLeft className="size-4" /></Link>
-        </Button>
+    <section id="products" aria-labelledby="products-title" className="scroll-mt-20 border-b border-border">
+      <div ref={trackRef} className="relative" style={{ height: `${items.length * 70 + 30}vh` }}>
+        <div className="sticky top-16 flex min-h-[calc(100dvh-4rem)] flex-col justify-center px-6 py-12 sm:px-12 lg:top-[72px] lg:min-h-[calc(100dvh-72px)]">
+          <div className="max-w-2xl">
+            <SectionBadge icon={Sparkles}>المنتجات</SectionBadge>
+            <h2 id="products-title" className="mt-4 text-balance font-display text-3xl font-semibold leading-[1.5] text-foreground sm:text-4xl">أداة لكل بند في فاتورتك.</h2>
+            <p className="mt-3 text-pretty text-base leading-8 text-muted-foreground">كل منتج يعالج جزءاً من الفاتورة. افتح أي منتج لتعرف كيف يعمل بالتفصيل.</p>
+          </div>
+
+          <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-10">
+            <ol className="hidden flex-col lg:flex">
+              {items.map(({ key }, i) => (
+                <li key={key}>
+                  <a
+                    href={productPageFor(key)!.path}
+                    className={cn(
+                      "flex items-center gap-4 border-s-2 py-2.5 ps-5 text-base transition-colors duration-300",
+                      i === active ? "border-primary font-semibold text-foreground" : "border-border text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <span className="num text-xs">0{i + 1}</span>
+                    {PRODUCTS[key].name}
+                    <span className="text-sm font-normal text-muted-foreground">· {PRODUCTS[key].descriptor}</span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+
+            <div className="relative overflow-hidden rounded-2xl border border-border bg-card">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.a
+                  key={current.key}
+                  href={current.page.path}
+                  aria-labelledby={`journey-${current.key}`}
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -40 }}
+                  transition={{ duration: 0.45, ease: EASE_OUT }}
+                  className="group flex min-h-[320px] flex-col items-start p-8 sm:p-10"
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <ProductIcon product={current.key} className="size-16 rounded-xl bg-primary text-primary-foreground [&_svg]:size-8" />
+                    <span className="num text-sm text-muted-foreground">0{active + 1} / 0{items.length}</span>
+                  </div>
+                  <h3 id={`journey-${current.key}`} className="mt-10 font-display text-2xl font-semibold leading-9 sm:text-3xl">{PRODUCTS[current.key].name}</h3>
+                  <p className="mt-1 text-base leading-7 text-foreground">{PRODUCTS[current.key].descriptor}</p>
+                  <p className="mt-4 max-w-lg text-pretty text-base leading-8 text-muted-foreground">{current.page.summary}</p>
+                  <span className="mt-auto inline-flex items-center gap-2 pt-8 text-sm font-semibold text-primary-text">
+                    اعرف أكثر <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-1" />
+                  </span>
+                </motion.a>
+              </AnimatePresence>
+              <div className="absolute inset-x-0 bottom-0 h-1 bg-muted">
+                <motion.div className="h-full origin-right bg-primary" style={{ scaleX: scrollYProgress }} />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 flex justify-center lg:justify-start">
+            <Button asChild className="h-11 gap-2 rounded-md bg-primary px-5 text-primary-foreground hover:bg-primary/90">
+              <Link to="/products">كل المنتجات <ArrowLeft className="size-4" /></Link>
+            </Button>
+          </div>
+        </div>
       </div>
     </section>
   );
