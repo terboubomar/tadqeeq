@@ -15,6 +15,7 @@ describe("orderHour", () => {
   test("falls back to Keeta's Date column and reads spreadsheet dates", () => {
     expect(orderHour("keeta", { "Order time": null, Date: "2026-10-06T19:45:00.000Z" })).toBe(19);
     expect(orderHour("keeta", { "Order time": 46301.75 })).toBe(18);
+    expect(orderHour("keeta", { "Order time": "46301.75" })).toBe(18);
   });
 
   test("returns null when the row has no time", () => {

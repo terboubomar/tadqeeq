@@ -5,7 +5,7 @@ import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL } from "../upload-validati
 import { mapStoredOperationOrder, type StoredOperationOrder } from "./details";
 import { isIncompleteDay } from "./completeness";
 import { forecastFromCompleteMonthToDate } from "./forecast";
-import { buildHourlyGrid, type HourlyGrid, type HourlyOrderRow } from "./hourly";
+import { buildHourlyGrid, ORDER_TIME_COLUMNS, type HourlyGrid, type HourlyOrderRow } from "./hourly";
 import { parseOperationFile } from "./parser";
 import type {
   OperationAdjustmentDetail,
@@ -501,10 +501,15 @@ export async function getOperationMonthOnServer(month: string): Promise<Operatio
 }
 
 /**
- * Sales by weekday and hour for one platform's month, from the orders of each day's current upload. Each order's
- * hour comes from the time column kept in its stored file row; nothing is recalculated.
+ * Sales by weekday and hour for one platform's month (optionally one branch), from the orders of each day's current
+ * upload. Each order's hour comes from the time column kept in its stored file row; nothing is recalculated.
  */
-export async function getOperationHourlyOnServer(input: { platform: OperationPlatform; month: string }): Promise<HourlyGrid> {
+export async function getOperationHourlyOnServer(input: {
+  platform: OperationPlatform;
+  month: string;
+  branchId?: string;
+  branchName?: string;
+}): Promise<HourlyGrid> {
   const { client, workspaceId } = await requireWorkspacePermission("financials.read");
   const db = client as unknown as LooseClient;
   const bounds = monthBounds(input.month);
@@ -526,28 +531,57 @@ export async function getOperationHourlyOnServer(input: { platform: OperationPla
   }
   const importIds = [...byDay.values()];
 
-  // One day's upload at a time, the same read the day page uses (by upload, ordered by order number), rather than one
-  // query across the whole month, which can run past the database's time limit. A few days load side by side.
+  // Only the order-time fields of each stored row are read (t0, t1… for the platform's time columns), not the whole
+  // row. If the database refuses that narrow read, the whole row is read instead.
+  const timeColumns = ORDER_TIME_COLUMNS[input.platform];
+  const narrowSelect = [
+    "business_date,status,gross_sales",
+    ...timeColumns.map((column, index) => `t${index}:raw_data->>"${column}"`),
+  ].join(",");
+  let narrow = true;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- PostgREST query builder (generated types lag migrations)
+  const scoped = (query: any, importId: string) => {
+    let next = query.eq("workspace_id", workspaceId).eq("source_import_id", importId).eq("platform", input.platform);
+    if (input.branchId) next = next.eq("branch_id", input.branchId);
+    else if (input.branchName) next = next.eq("branch_name", input.branchName);
+    return next.order("order_id", { ascending: true });
+  };
+
+  // One day's upload per request (the same read the day page uses), many days side by side.
   async function ordersOf(importId: string): Promise<HourlyOrderRow[]> {
     const rows: HourlyOrderRow[] = [];
     for (let start = 0; ; start += 1000) {
-      const { data, error } = await db
-        .from("operation_orders")
-        .select("order_id,business_date,status,gross_sales,raw_data")
-        .eq("workspace_id", workspaceId)
-        .eq("source_import_id", importId)
-        .eq("platform", input.platform)
-        .order("order_id", { ascending: true })
-        .range(start, start + 999);
-      if (error) throw operationError(error);
-      const page = (data ?? []) as HourlyOrderRow[];
+      let page: HourlyOrderRow[];
+      if (narrow) {
+        const { data, error } = await scoped(db.from("operation_orders").select(narrowSelect), importId).range(start, start + 999);
+        const found = (data ?? []) as Array<Record<string, string | number | null>>;
+        // A refused read, or one that brings back rows without any time, means the narrow read is not usable here.
+        if (error || (found.length > 0 && found.every((row) => timeColumns.every((_, index) => row[`t${index}`] == null)))) {
+          narrow = false;
+          return ordersOf(importId);
+        }
+        page = found.map((row) => ({
+          business_date: String(row["business_date"]),
+          status: row["status"] === null || row["status"] === undefined ? null : String(row["status"]),
+          gross_sales: row["gross_sales"] ?? 0,
+          raw_data: Object.fromEntries(timeColumns.map((column, index) => [column, row[`t${index}`] ?? null])),
+        }));
+      } else {
+        const { data, error } = await scoped(
+          db.from("operation_orders").select("business_date,status,gross_sales,raw_data"),
+          importId,
+        ).range(start, start + 999);
+        if (error) throw operationError(error);
+        page = (data ?? []) as HourlyOrderRow[];
+      }
       rows.push(...page);
       if (page.length < 1000) return rows;
     }
   }
   const rows: HourlyOrderRow[] = [];
-  for (let index = 0; index < importIds.length; index += 4) {
-    const batch = await Promise.all(importIds.slice(index, index + 4).map(ordersOf));
+  for (let index = 0; index < importIds.length; index += 10) {
+    const batch = await Promise.all(importIds.slice(index, index + 10).map(ordersOf));
     for (const dayRows of batch) rows.push(...dayRows);
   }
   return buildHourlyGrid(input.platform, rows);
