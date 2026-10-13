@@ -171,3 +171,78 @@ describe("Keeta contract compliance", () => {
     expect(result.commission.totals.complete).toBe(false);
   });
 });
+
+function rule(input: Partial<ContractRuleRecord> & Pick<ContractRuleRecord, "ruleKey" | "ruleType" | "valueKind" | "numericValue">): ContractRuleRecord {
+  return {
+    id: input.ruleKey,
+    contractId: "contract-1",
+    versionId: "version-1",
+    textValue: null,
+    currency: input.valueKind === "amount" ? "SAR" : null,
+    fundingSource: null,
+    scopeType: "all",
+    scopeKey: null,
+    notes: null,
+    createdAt: "2026-09-23T00:00:00.000Z",
+    ...input,
+  };
+}
+
+describe("Keeta bank fee and delivery funding against the contract", () => {
+  test("bank fee: contract rate on electronic payments, per branch", () => {
+    const p = period();
+    p.branches[0]!.keetaCreditSales = 1000;
+    p.branches[0]!.keetaBankFeesExVat = 25;
+    p.branches[1]!.keetaCreditSales = 800;
+    p.branches[1]!.keetaBankFeesExVat = 24;
+
+    const result = evaluateKeetaContractCompliance({
+      period: p,
+      rules: [rule({ ruleKey: "payment_fee", ruleType: "payment_fee", valueKind: "percentage", numericValue: 2.5 })],
+      version: VERSION,
+    });
+
+    expect(result.bankFee.rows.map((row) => [row.expectedAmount, row.observedAmount, row.status])).toEqual([
+      [25, 25, "matched"],
+      [20, 24, "overcharged"],
+    ]);
+    expect(result.bankFee.totals.overchargedAmount).toBe(4);
+    expect(result.bankFee.claimable).toBe(true);
+  });
+
+  test("delivery funding: anything above orders × the highest amount per order is over the contract", () => {
+    const p = period();
+    p.branches[0]!.keetaDeliveryCampaignExVat = 100; // 10 orders × 9 = 90 → 10 over
+    p.branches[1]!.keetaDeliveryCampaignExVat = 60; // under the ceiling: does not offset the first branch
+
+    const result = evaluateKeetaContractCompliance({
+      period: p,
+      rules: [
+        rule({ ruleKey: "free_delivery_funding_25_35", ruleType: "free_delivery_funding", valueKind: "amount", numericValue: 5 }),
+        rule({ ruleKey: "free_delivery_funding_35_plus", ruleType: "free_delivery_funding", valueKind: "amount", numericValue: 9 }),
+      ],
+      version: VERSION,
+    });
+
+    expect(result.deliveryFunding.rows.map((row) => [row.expectedAmount, row.observedAmount, row.varianceAmount, row.status])).toEqual([
+      [90, 100, 10, "overcharged"],
+      [90, 60, 0, "matched"],
+    ]);
+    expect(result.deliveryFunding.rows[0]?.contractLabel).toBe("حد 9.00 ر.س لكل طلب");
+    expect(result.deliveryFunding.totals.overchargedAmount).toBe(10);
+  });
+
+  test("commission is only an indicator when the contract adds a minimum fee or distance fee", () => {
+    const result = evaluateKeetaContractCompliance({
+      period: period(),
+      rules: [
+        commissionRule("all", null, 18),
+        rule({ ruleKey: "minimum_fee", ruleType: "minimum_fee", valueKind: "amount", numericValue: 5 }),
+      ],
+      version: VERSION,
+    });
+
+    expect(result.commission.claimable).toBe(false);
+    expect(result.commission.indicatorNote).toBeTruthy();
+  });
+});

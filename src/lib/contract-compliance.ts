@@ -23,11 +23,20 @@ export interface ContractComplianceRow {
   varianceAmount: number | null;
   status: ContractComplianceStatus;
   ruleId: string;
+  /** How the contract term reads when it is not a plain rate, e.g. "حد 9.00 ر.س لكل طلب". */
+  contractLabel?: string;
 }
 
 export interface ContractComplianceSection {
-  ruleType: "commission_rate" | "payment_fee" | "wallet_fee";
-  ruleKey: "commission_rate" | "payment_fee" | "wallet_fee";
+  ruleType: "commission_rate" | "payment_fee" | "wallet_fee" | "free_delivery_funding";
+  ruleKey: "commission_rate" | "payment_fee" | "wallet_fee" | "free_delivery_funding";
+  /**
+   * Whether an amount above the contract is a charge to claim. False when the contract also allows charges the
+   * period data cannot separate (a minimum fee per order, a distance fee), so the difference is only an indicator.
+   */
+  claimable?: boolean;
+  /** Why the section is an indicator rather than a claim. */
+  indicatorNote?: string;
   evidence:
     | "contract_plus_order_data"
     | "contract_plus_invoice"
@@ -75,6 +84,8 @@ export interface KeetaContractCompliance {
   periodStart: string;
   periodEnd: string;
   commission: ContractComplianceSection;
+  bankFee: ContractComplianceSection;
+  deliveryFunding: ContractComplianceSection;
 }
 
 export interface JahezContractCompliance {
@@ -529,6 +540,7 @@ function evaluateKeetaCommission(
     evidence: "contract_plus_platform_data",
     evidenceNote:
       "أساس العمولة والعمولة المرصودة مأخوذان من Order Summary في ملف كيتا، ويُقارن المبلغ المرصود بما تسمح به نسبة العمولة المعتمدة في العقد.",
+    ...keetaCommissionClaimability(rules),
     rows,
     missingRuleBranches,
     unsupportedRuleBranches,
@@ -641,6 +653,164 @@ export function evaluateJahezContractCompliance(input: {
   };
 }
 
+/**
+ * Keeta's contract can add a minimum fee per order and a distance fee on top of the commission rate. The period
+ * keeps one commission amount per branch, so with either term an amount above the rate is not proof of an
+ * overcharge: the section stays on the page as an indicator and raises no exception.
+ */
+function keetaCommissionClaimability(rules: ContractRuleRecord[]): Pick<ContractComplianceSection, "claimable" | "indicatorNote"> {
+  const allowsMore = rules.some((rule) => rule.ruleType === "minimum_fee" || rule.ruleType === "delivery_fee");
+  return allowsMore
+    ? {
+        claimable: false,
+        indicatorNote:
+          "العقد يضيف حداً أدنى للرسوم لكل طلب و/أو رسوم مسافة فوق النسبة، ولا تفصلها بيانات الفترة لكل طلب؛ لذلك الزيادة هنا مؤشر للمراجعة وليست مبلغاً للمطالبة.",
+      }
+    : { claimable: true };
+}
+
+/** Keeta's bank fee: the contract rate (before VAT) on the electronic payments of each branch. */
+function evaluateKeetaBankFee(period: StoredPeriod, rules: ContractRuleRecord[]): ContractComplianceSection {
+  const rows: ContractComplianceRow[] = [];
+  const missingRuleBranches: string[] = [];
+  const unsupportedRuleBranches: string[] = [];
+  const missingEvidenceBranches: string[] = [];
+
+  for (const branch of period.branches ?? []) {
+    if (branch.branchAuditStatus === "invoice_only") continue;
+    const baseAmount = branch.keetaCreditSales ?? 0;
+    if (baseAmount <= 0) continue;
+
+    const resolved = canonicalPercentageRuleForBranch(rules, branch.branch, "payment_fee", "payment_fee");
+    if (resolved.status === "missing") {
+      missingRuleBranches.push(branch.branch);
+      continue;
+    }
+    if (resolved.status === "unsupported") {
+      unsupportedRuleBranches.push(branch.branch);
+      continue;
+    }
+
+    const observedAmount = branch.keetaBankFeesExVat ?? null;
+    if (observedAmount == null) missingEvidenceBranches.push(branch.branch);
+    rows.push(
+      makeRow({
+        branch: branch.branch,
+        rule: resolved.rule,
+        baseAmount,
+        observedAmount,
+        tolerance: KEETA_TOLERANCES.check,
+      }),
+    );
+  }
+
+  return {
+    ruleType: "payment_fee",
+    ruleKey: "payment_fee",
+    evidence: "contract_plus_platform_data",
+    evidenceNote:
+      "الأساس هو المبيعات المدفوعة إلكترونياً (البيع الآجل) لكل فرع، والمرصود هو الرسوم المصرفية بدون الضريبة من ملف كيتا. نسبة العقد بدون الضريبة.",
+    claimable: true,
+    rows,
+    missingRuleBranches,
+    unsupportedRuleBranches,
+    missingEvidenceBranches,
+    totals: makeTotals({
+      rows,
+      missingRuleBranches,
+      unsupportedRuleBranches,
+      tolerance: KEETA_TOLERANCES.check,
+      totalsBlocked: missingEvidenceBranches.length > 0,
+    }),
+  };
+}
+
+/**
+ * Keeta's merchant-funded delivery subsidy: the contract sets an amount per order (by order value). The period
+ * keeps the order count per branch, not each order's value, so the check uses the highest amount for every order:
+ * a ceiling. Anything charged above the ceiling cannot come from the contract. The contract amount is compared
+ * as written against the charge before VAT, the smaller of the two possible readings.
+ */
+function evaluateKeetaDeliveryFunding(period: StoredPeriod, rules: ContractRuleRecord[]): ContractComplianceSection {
+  const rows: ContractComplianceRow[] = [];
+  const missingRuleBranches: string[] = [];
+  const unsupportedRuleBranches: string[] = [];
+  const missingEvidenceBranches: string[] = [];
+  const candidates = rules.filter((rule) => rule.ruleType === "free_delivery_funding");
+
+  for (const branch of period.branches ?? []) {
+    if (branch.branchAuditStatus === "invoice_only") continue;
+    const observedAmount = branch.keetaDeliveryCampaignExVat ?? null;
+    if (!branch.orders || (observedAmount ?? 0) <= 0) continue;
+
+    const applicable = resolveContractRulePrecedence(candidates, branch.branch);
+    if (!applicable.length) {
+      missingRuleBranches.push(branch.branch);
+      continue;
+    }
+    const amounts = applicable.filter((rule) => rule.valueKind === "amount" && rule.numericValue != null);
+    if (!amounts.length) {
+      unsupportedRuleBranches.push(branch.branch);
+      continue;
+    }
+    const rule = amounts.reduce((top, item) => ((item.numericValue ?? 0) > (top.numericValue ?? 0) ? item : top));
+    const cap = rule.numericValue ?? 0;
+    const expectedAmount = roundMoney(branch.orders * cap);
+    const observed = observedAmount == null ? null : roundMoney(observedAmount);
+    const above = observed == null ? null : roundMoney(observed - expectedAmount);
+    if (observed == null) missingEvidenceBranches.push(branch.branch);
+
+    rows.push({
+      branch: branch.branch,
+      contractRatePct: 0,
+      contractLabel: `حد ${cap.toFixed(2)} ر.س لكل طلب`,
+      observedRatePct: null,
+      baseAmount: branch.orders,
+      expectedAmount,
+      observedAmount: observed,
+      // Below the ceiling is within the contract, not an undercharge.
+      varianceAmount: above == null ? null : Math.max(0, above),
+      status: above == null ? "evidence_missing" : above > KEETA_TOLERANCES.check ? "overcharged" : "matched",
+      ruleId: rule.id,
+    });
+  }
+
+  return {
+    ruleType: "free_delivery_funding",
+    ruleKey: "free_delivery_funding",
+    evidence: "contract_plus_platform_data",
+    evidenceNote:
+      "الحد الأعلى = عدد الطلبات × أعلى مبلغ دعم في العقد لكل طلب (لا تحفظ الفترة قيمة كل طلب). المرصود هو «دعم توصيل كيتا» بدون الضريبة من ملف كيتا. أي مبلغ فوق الحد لا يأتي من العقد إلا إذا اشتركت في حملة إضافية.",
+    claimable: true,
+    rows,
+    missingRuleBranches,
+    unsupportedRuleBranches,
+    missingEvidenceBranches,
+    totals: ceilingTotals(
+      makeTotals({
+        rows,
+        missingRuleBranches,
+        unsupportedRuleBranches,
+        tolerance: KEETA_TOLERANCES.check,
+        totalsBlocked: missingEvidenceBranches.length > 0,
+      }),
+      rows,
+    ),
+  };
+}
+
+/** For a ceiling, branches under it do not offset branches over it: the excess is the sum of each branch's excess. */
+function ceilingTotals(totals: ContractComplianceSection["totals"], rows: ContractComplianceRow[]): ContractComplianceSection["totals"] {
+  if (totals.observedAmount == null) return totals;
+  const excess = roundMoney(rows.reduce((sum, row) => sum + (row.varianceAmount ?? 0), 0));
+  return {
+    ...totals,
+    varianceAmount: totals.complete ? excess : null,
+    overchargedAmount: totals.complete ? excess : null,
+    underchargedAmount: totals.complete ? 0 : null,
+  };
+}
+
 export function evaluateKeetaContractCompliance(input: {
   period: StoredPeriod;
   rules: ContractRuleRecord[];
@@ -670,6 +840,8 @@ export function evaluateKeetaContractCompliance(input: {
     periodStart: period.period_start,
     periodEnd: period.period_end,
     commission: evaluateKeetaCommission(period, rules),
+    bankFee: evaluateKeetaBankFee(period, rules),
+    deliveryFunding: evaluateKeetaDeliveryFunding(period, rules),
   };
 }
 
@@ -707,4 +879,13 @@ export function evaluateHungerStationContractCompliance(input: {
     paymentFee: evaluatePaymentFee(period, rules),
     walletFee: evaluateWalletFee(period, rules),
   };
+}
+
+/** Every checked term of a contract check, in page order. */
+export function complianceSections(
+  compliance: HungerStationContractCompliance | KeetaContractCompliance | JahezContractCompliance,
+): ContractComplianceSection[] {
+  if (compliance.platform === "hungerstation") return [compliance.commission, compliance.paymentFee, compliance.walletFee];
+  if (compliance.platform === "keeta") return [compliance.commission, compliance.deliveryFunding, compliance.bankFee];
+  return [compliance.commission];
 }

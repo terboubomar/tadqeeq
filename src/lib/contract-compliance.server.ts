@@ -51,6 +51,18 @@ export async function evaluateContractComplianceOnServer(input: {
   if (period.platform !== contract.platform) {
     throw new Error("منصة فترة التدقيق لا تطابق منصة العقد.");
   }
+  return evaluateForPeriod(client, userId, contract, period);
+}
+
+type ComplianceClient = Awaited<ReturnType<typeof requireWorkspacePermission>>["client"];
+
+async function evaluateForPeriod(
+  client: ComplianceClient,
+  userId: string,
+  contract: { id: string; platform: string },
+  period: StoredPeriod,
+): Promise<ContractComplianceResult> {
+  const input = { contractId: contract.id };
   if (!period.period_start || !period.period_end) {
     return {
       status: "not_covered",
@@ -139,4 +151,47 @@ export async function evaluateContractComplianceOnServer(input: {
               version: versionInput,
             }),
   };
+}
+
+export interface ContractFinding {
+  contractId: string;
+  contractName: string;
+  compliance: HungerStationContractCompliance | KeetaContractCompliance | JahezContractCompliance;
+}
+
+/**
+ * Every active contract of the period's platform with one approved version covering the whole period, checked
+ * against it. Read only: nothing is written to the period. Contracts without such a version are left out.
+ */
+export async function getContractFindingsOnServer(periodId: string): Promise<ContractFinding[]> {
+  const { client, userId } = await requireWorkspacePermission("contracts.read");
+  const { data: rawPeriod, error: periodError } = await client
+    .from("periods")
+    .select("*")
+    .eq("id", periodId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (periodError) throw new Error(periodError.message);
+  if (!rawPeriod) return [];
+  const period = rawPeriod as unknown as StoredPeriod;
+
+  const { data: contracts, error: contractsError } = await client
+    .from("platform_contracts")
+    .select("id, platform, name")
+    .eq("user_id", userId)
+    .eq("platform", period.platform)
+    .is("archived_at", null);
+  if (contractsError) throw new Error(contractsError.message);
+
+  const findings: ContractFinding[] = [];
+  for (const contract of contracts ?? []) {
+    try {
+      const result = await evaluateForPeriod(client, userId, contract, period);
+      if (result.status === "evaluated") findings.push({ contractId: contract.id, contractName: contract.name, compliance: result.compliance });
+    } catch (cause) {
+      // One contract with overlapping versions must not hide the others' findings.
+      console.error("Contract check skipped", contract.id, cause instanceof Error ? cause.message : cause);
+    }
+  }
+  return findings;
 }

@@ -19,7 +19,7 @@ import { requireWorkspacePermission, type ServerUserClient } from "./server-auth
 import { safeStorageFileName, sha256Hex } from "./source-file-utils";
 import { MAX_UPLOAD_SIZE_BYTES } from "./upload-validation";
 
-const CONTRACT_DOCUMENT_BUCKET = "contract-files";
+export const CONTRACT_DOCUMENT_BUCKET = "contract-files";
 const CONTRACT_DOCUMENT_EXTENSIONS = new Set([
   ".pdf",
   ".doc",
@@ -125,7 +125,7 @@ async function assertOwnedContract(
   return data;
 }
 
-async function assertDraftVersion(
+export async function assertDraftVersion(
   client: ServerUserClient,
   userId: string,
   contractId: string,

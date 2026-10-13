@@ -2,6 +2,9 @@ import { PageHeader } from "@/components/workspace/PageKit";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
+  AlertTriangle,
+  Loader2,
+  Sparkles,
   Archive,
   ArchiveRestore,
   CheckCircle2,
@@ -66,7 +69,14 @@ import {
   type ContractRuleType,
   type ContractScopeType,
   type ContractValueKind,
+  type ContractVersionRecord,
 } from "@/lib/contract-rulebook";
+import { contractValidity } from "@/lib/contract-validity";
+import { ContractReadingReview } from "@/components/contracts/ContractReadingReview";
+import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
+import { AI_UI_ENABLED } from "@/lib/ai/config";
+import type { ContractReadingResult } from "@/lib/contract-reading";
+import { readContractDocument } from "@/lib/contract-reading.functions";
 import {
   MAX_UPLOAD_SIZE_LABEL,
   uploadSizeError,
@@ -178,6 +188,8 @@ function ContractsPage() {
 
   async function refreshRulebook() {
     await queryClient.invalidateQueries({ queryKey: ["contract-rulebook"] });
+    // «رادار» re-checks the periods against the changed terms.
+    await queryClient.invalidateQueries({ queryKey: ["contract-findings"] });
   }
 
   if (query.isLoading) {
@@ -284,6 +296,7 @@ function ContractsPage() {
 
           {selectedContract ? (
             <main className="min-w-0 space-y-5">
+              <ContractValidityNotice versions={versions} />
               <ContractHeader
                 key={`header-${selectedContract.id}`}
                 contract={selectedContract}
@@ -328,6 +341,7 @@ function ContractsPage() {
                     contractId={selectedContract.id}
                     version={selectedVersion}
                     documents={documents}
+                    rules={rules}
                     onChanged={refreshRulebook}
                   />
                   <ApprovalPanel
@@ -941,11 +955,25 @@ function ContractCompliancePanel({
                 />
               </>
             ) : compliance.platform === "keeta" ? (
-              <ContractComplianceSectionPanel
-                title="عمولة الطلب — كيتا"
-                baseLabel="المبيعات بدون الضريبة"
-                section={compliance.commission}
-              />
+              <>
+                <ContractComplianceSectionPanel
+                  title="عمولة الطلب — كيتا"
+                  baseLabel="المبيعات بدون الضريبة"
+                  section={compliance.commission}
+                />
+                <ContractComplianceSectionPanel
+                  title="دعم التوصيل الممول من المطعم — كيتا"
+                  baseLabel="الطلبات"
+                  baseFormat={formatNumber}
+                  expectedLabel="الحد الأعلى حسب العقد"
+                  section={compliance.deliveryFunding}
+                />
+                <ContractComplianceSectionPanel
+                  title="الرسوم المصرفية — كيتا"
+                  baseLabel="المدفوعات الإلكترونية"
+                  section={compliance.bankFee}
+                />
+              </>
             ) : (
               <ContractComplianceSectionPanel
                 title="عمولة الطلب — جاهز"
@@ -963,10 +991,14 @@ function ContractCompliancePanel({
 function ContractComplianceSectionPanel({
   title,
   baseLabel,
+  baseFormat = formatSar,
+  expectedLabel = "المتوقع حسب العقد",
   section,
 }: {
   title: string;
   baseLabel: string;
+  baseFormat?: (value: number) => string;
+  expectedLabel?: string;
   section: ContractComplianceSection;
 }) {
   return (
@@ -985,7 +1017,7 @@ function ContractComplianceSectionPanel({
 
       <div className="grid gap-3 bg-surface-raised/40 px-4 py-4 sm:grid-cols-2 xl:grid-cols-4">
         <ComplianceMetric
-          label="المتوقع حسب العقد"
+          label={expectedLabel}
           value={formatSar(section.totals.expectedAmount)}
         />
         <ComplianceMetric
@@ -993,7 +1025,7 @@ function ContractComplianceSectionPanel({
           value={formatOptionalSar(section.totals.observedAmount)}
         />
         <ComplianceMetric
-          label="زيادة محتملة"
+          label={section.claimable === false ? "زيادة (مؤشر)" : "زيادة محتملة"}
           value={formatOptionalSar(section.totals.overchargedAmount)}
         />
         <ComplianceMetric
@@ -1001,6 +1033,8 @@ function ContractComplianceSectionPanel({
           value={formatOptionalSignedSar(section.totals.varianceAmount)}
         />
       </div>
+
+      {section.indicatorNote ? <ComplianceWarning>{section.indicatorNote}</ComplianceWarning> : null}
 
       {section.missingRuleBranches.length > 0 ? (
         <ComplianceWarning>
@@ -1033,12 +1067,12 @@ function ContractComplianceSectionPanel({
             >
               <div>
                 <p className="font-medium">{row.branch}</p>
-                <p className="num mt-0.5 text-[11px] text-muted-foreground">
-                  {baseLabel} {formatSar(row.baseAmount)}
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  {baseLabel} <span className="num">{baseFormat(row.baseAmount)}</span>
                 </p>
               </div>
-              <span className="num">
-                عقد {row.contractRatePct.toFixed(2)}%
+              <span>
+                {row.contractLabel ?? <span className="num">عقد {row.contractRatePct.toFixed(2)}%</span>}
               </span>
               <span className="num">
                 متوقع {formatSar(row.expectedAmount)}
@@ -1068,6 +1102,38 @@ function ContractComplianceSectionPanel({
           لا توجد حركة قابلة للحساب لهذا البند ضمن الأدلة المتاحة.
         </p>
       )}
+    </div>
+  );
+}
+
+/** The contract's last approved version has ended, or ends within a month, with no next version approved. */
+function ContractValidityNotice({ versions }: { versions: ContractVersionRecord[] }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const validity = contractValidity(versions, today);
+  if (!validity) return null;
+  return (
+    <div
+      role="status"
+      className={cn(
+        "flex items-start gap-2.5 rounded-[10px] border px-4 py-3 text-sm leading-6",
+        validity.kind === "expired" ? "border-destructive/30 bg-destructive/[0.04] text-destructive" : "border-amber-200 bg-amber-50/70 text-amber-800",
+      )}
+    >
+      <AlertTriangle className="mt-1 size-4 shrink-0" />
+      <p>
+        {validity.kind === "expired" ? (
+          <>
+            انتهت آخر نسخة معتمدة من هذا العقد في <span className="num">{validity.endedOn}</span>، ولا توجد نسخة سارية بعدها. الفواتير بعد هذا
+            التاريخ لا تُفحص مقابل العقد، وإذا كان في النسخة سعر مخفّض لفترة محددة فقد تكون المنصة عادت إلى السعر الأساسي. أضف النسخة الجديدة
+            أو التمديد من المنصة.
+          </>
+        ) : (
+          <>
+            تنتهي النسخة المعتمدة الحالية في <span className="num">{validity.endsOn}</span> (بعد <span className="num">{validity.daysLeft}</span>{" "}
+            يوماً). تأكد من التمديد أو الشروط الجديدة مع المنصة قبل ذلك التاريخ.
+          </>
+        )}
+      </p>
     </div>
   );
 }
@@ -1709,6 +1775,7 @@ function ContractEvidencePanel({
   contractId,
   version,
   documents,
+  rules,
   onChanged,
 }: {
   contractId: string;
@@ -1718,11 +1785,20 @@ function ContractEvidencePanel({
     status: "draft" | "approved";
   };
   documents: ContractDocumentRecord[];
+  rules: ContractRuleRecord[];
   onChanged: () => Promise<void>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const locked = version.status === "approved";
+  const { can } = useWorkspaceAccess();
+  const canRead = AI_UI_ENABLED && can("ai.use") && can("contracts.manage") && !locked;
+  const [reading, setReading] = useState<ContractReadingResult | null>(null);
+  const readMutation = useMutation({
+    mutationFn: (documentId: string) => readContractDocument({ data: { contractId, versionId: version.id, documentId } }),
+    onSuccess: (result) => setReading(result),
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -1774,9 +1850,28 @@ function ContractEvidencePanel({
                   {document.sha256.slice(0, 16)}…
                 </p>
               </div>
-              <span className="num text-[11px] text-muted-foreground">
-                {formatDateTime(document.createdAt)}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="num text-[11px] text-muted-foreground">
+                  {formatDateTime(document.createdAt)}
+                </span>
+                {canRead && /\.(pdf|png|jpe?g|csv)$/i.test(document.originalName) ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    disabled={readMutation.isPending}
+                    onClick={() => readMutation.mutate(document.id)}
+                  >
+                    {readMutation.isPending && readMutation.variables === document.id ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="size-3.5" />
+                    )}
+                    {readMutation.isPending && readMutation.variables === document.id ? "يقرأ العقد…" : "قراءة الشروط بالذكاء الاصطناعي"}
+                  </Button>
+                ) : null}
+              </div>
             </div>
           ))}
         </div>
@@ -1836,6 +1931,15 @@ function ContractEvidencePanel({
           مستندات النسخة المعتمدة مقفلة ولا يمكن تغييرها.
         </div>
       )}
+
+      <ContractReadingReview
+        result={reading}
+        contractId={contractId}
+        versionId={version.id}
+        existingRules={rules}
+        onClose={() => setReading(null)}
+        onAdded={onChanged}
+      />
     </section>
   );
 }
