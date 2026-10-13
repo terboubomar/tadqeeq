@@ -5,7 +5,7 @@
  */
 
 /** Last meaningful change to the public content (YYYY-MM-DD). */
-export const CONTENT_UPDATED = "2026-10-10";
+export const CONTENT_UPDATED = "2026-10-13";
 
 /** "4 أكتوبر 2026" for visible last-updated lines. */
 export function formatArabicDate(date: string): string {
