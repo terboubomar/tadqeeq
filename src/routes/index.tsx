@@ -752,7 +752,7 @@ function HowItWorks() {
         <ol className="relative mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
           <span aria-hidden className="pointer-events-none absolute inset-x-[12%] top-[2.1rem] hidden h-px bg-gradient-to-l from-transparent via-primary/50 to-transparent lg:block" />
           {HOW_STEPS.map((step, index) => (
-            <li key={step.title} data-reveal className="group relative flex flex-col gap-5">
+            <li key={step.title} className="group relative flex flex-col gap-5">
               <div className="flex items-center gap-3">
                 <span className="relative grid size-[4.25rem] shrink-0 place-items-center rounded-2xl bg-ink text-ink-foreground ring-1 ring-ink/10 shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_18px_32px_-18px_rgb(19_35_43/0.6)] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-1">
                   <step.icon strokeWidth={1.5} className="size-6 text-primary" />
@@ -792,69 +792,59 @@ function trackSpotlight(event: ReactPointerEvent<HTMLElement>) {
   el.style.setProperty("--spot-y", `${event.clientY - rect.top}px`);
 }
 
+/** The invoice's journey through the products: one stop per product along a single line, alternating sides on wide screens. */
 function ProductsGrid() {
   return (
-    <section id="products" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-32">
+    <section id="products" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-32">
       <SectionIntro title="أداة لكل بند في فاتورتك.">كل منتج يعالج جزءاً من الفاتورة. افتح أي منتج لتعرف كيف يعمل بالتفصيل.</SectionIntro>
-      <ul className="mt-14 grid grid-flow-dense gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
-        {PRODUCT_CARDS.map(({ key, wide, dark }, index) => {
+      <ol className="relative mt-16">
+        <span aria-hidden className="absolute inset-y-6 start-6 w-px bg-gradient-to-b from-primary/60 via-border to-primary/60 md:start-1/2" />
+        {PRODUCT_CARDS.map(({ key }, index) => {
           const page = productPageFor(key);
           if (!page) return null;
+          const flip = index % 2 === 1;
           return (
-            <li key={key} data-reveal className={cn(wide && "lg:col-span-2")}>
-              <div className={cn("h-full rounded-[1.75rem] p-1.5 ring-1", dark ? "bg-ink/10 ring-ink/15" : "bg-muted/50 ring-border")}>
-                <a
-                  href={page.path}
-                  onPointerMove={trackSpotlight}
-                  className={cn(
-                    "group relative flex h-full flex-col gap-6 overflow-hidden rounded-[calc(1.75rem-0.375rem)] p-6 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.99] sm:p-8",
-                    dark
-                      ? "bg-ink text-ink-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.1)]"
-                      : "bg-card shadow-[inset_0_1px_0_rgb(255_255_255/0.8)]",
-                  )}
-                >
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-                    style={{
-                      background: `radial-gradient(420px circle at var(--spot-x, 50%) var(--spot-y, 50%), color-mix(in oklab, var(--primary) ${dark ? 22 : 12}%, transparent), transparent 65%)`,
-                    }}
-                  />
-                  <div className="relative flex items-start justify-between gap-4">
-                    <ProductIcon product={key} className={cn("size-12", dark && "bg-ink-foreground/10 text-primary")} />
-                    <span className={cn("num text-[11px] font-semibold tracking-[0.2em]", dark ? "text-ink-muted" : "text-muted-foreground")}>
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                  </div>
-                  <div className="relative">
-                    <p className={cn("text-xs font-semibold tracking-wide", dark ? "text-primary" : "text-primary-text")}>{PRODUCTS[key].descriptor}</p>
-                    <h3 className={cn("mt-1.5 font-display font-bold text-balance", wide ? "text-2xl sm:text-3xl" : "text-xl")}>{PRODUCTS[key].name}</h3>
-                    <p className={cn("mt-3 max-w-md text-[15px] leading-7 text-pretty", dark ? "text-ink-foreground/75" : "text-foreground/70")}>{page.summary}</p>
-                  </div>
-                  <span className={cn("relative mt-auto inline-flex w-fit items-center gap-2.5 text-sm font-semibold", dark ? "text-ink-foreground" : "text-foreground")}>
+            <li key={key} className="relative grid grid-cols-[3rem_1fr] gap-5 pb-8 last:pb-0 md:grid-cols-[1fr_4rem_1fr] md:gap-8 md:pb-6">
+              <span className="relative z-10 grid size-12 place-items-center self-start rounded-full border border-border bg-card shadow-[0_8px_20px_-12px_rgb(19_35_43/0.35)] md:col-start-2 md:mx-auto md:row-start-1 md:size-14">
+                <span className="num text-xs font-semibold text-primary-text">{String(index + 1).padStart(2, "0")}</span>
+              </span>
+              <a
+                href={page.path}
+                onPointerMove={trackSpotlight}
+                className={cn(
+                  "group relative flex items-start gap-4 overflow-hidden rounded-2xl border border-border bg-card p-5 transition-[transform,border-color,box-shadow] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_20px_40px_-24px_rgb(19_35_43/0.3)] sm:p-6 md:row-start-1",
+                  flip ? "md:col-start-3" : "md:col-start-1",
+                )}
+              >
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                  style={{ background: "radial-gradient(360px circle at var(--spot-x, 50%) var(--spot-y, 50%), color-mix(in oklab, var(--primary) 12%, transparent), transparent 65%)" }}
+                />
+                <ProductIcon product={key} className="relative size-11" />
+                <div className="relative min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-primary-text">{PRODUCTS[key].descriptor}</p>
+                  <h3 className="mt-1 font-display text-xl font-bold">{PRODUCTS[key].name}</h3>
+                  <p className="mt-2 text-[15px] leading-7 text-foreground/70 text-pretty">{page.summary}</p>
+                  <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold">
                     اعرف أكثر
-                    <span
-                      className={cn(
-                        "grid size-8 place-items-center rounded-full transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-x-1 group-hover:scale-105",
-                        dark ? "bg-primary text-primary-foreground" : "bg-ink text-ink-foreground",
-                      )}
-                    >
-                      <ArrowLeft className="size-4" strokeWidth={1.75} />
+                    <span className="grid size-7 place-items-center rounded-full bg-secondary text-primary-text transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-x-1">
+                      <ArrowLeft className="size-3.5" strokeWidth={1.75} />
                     </span>
                   </span>
-                </a>
-              </div>
+                </div>
+              </a>
             </li>
           );
         })}
-      </ul>
-      <div className="mt-10 flex justify-center">
+      </ol>
+      <div className="mt-12 flex justify-center">
         <Link
           to="/products"
           className="group inline-flex h-12 items-center gap-3 rounded-full border border-border bg-card ps-6 pe-1.5 text-sm font-semibold transition-colors hover:bg-muted/60 active:scale-[0.98]"
         >
           كل المنتجات
-          <span className="grid size-9 place-items-center rounded-full bg-ink text-ink-foreground transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-x-1">
+          <span className="grid size-9 place-items-center rounded-full bg-secondary text-primary-text transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-x-1">
             <ArrowLeft className="size-4" strokeWidth={1.75} />
           </span>
         </Link>
