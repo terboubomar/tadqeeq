@@ -289,14 +289,14 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
   }, []);
 
   return (
-    <div ref={rootRef} id="top" className="lp-root min-h-screen bg-background" dir="rtl">
+    <div ref={rootRef} id="top" className="lp-root lp-leadflow min-h-screen bg-background" dir="rtl">
       <ExplainerVideoLauncher />
       <span ref={sentinelRef} aria-hidden="true" className="absolute top-0 h-px w-px" />
 
       <header
         className={cn(
           "sticky top-0 z-40 transition-[background-color,box-shadow] duration-300",
-          scrolled ? "bg-background/90 shadow-[0_1px_0_0_rgb(19_35_43/0.08)] backdrop-blur-md" : "bg-transparent",
+          scrolled ? "border-b border-border bg-background/95 backdrop-blur-md" : "border-b border-border bg-background",
         )}
       >
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:h-[72px]">
@@ -318,13 +318,13 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
             </nav>
           </div>
           <div className="flex items-center gap-1.5">
-            <Link to="/auth" className="hidden px-3.5 py-1.5 text-sm font-medium text-foreground/75 transition-colors hover:text-foreground sm:block">
+            <Link to="/auth" className="hidden h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:inline-flex">
               تسجيل الدخول
             </Link>
             <Link
               to="/auth"
               search={{ mode: "signup" }}
-              className="inline-flex h-10 items-center gap-1.5 rounded-lg bg-ink px-4 text-sm font-semibold text-ink-foreground transition-[background-color,transform] hover:bg-ink/90 active:scale-[0.98]"
+              className="inline-flex h-10 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-[background-color,transform] hover:bg-primary/90 active:scale-[0.98]"
             >
               ابدأ مجاناً
             </Link>
@@ -356,10 +356,10 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         ) : null}
       </header>
 
-      <main>
+      <main className="mx-auto max-w-7xl overflow-x-hidden border-x border-border">
         <Hero />
 
-        <section aria-labelledby="clients-title" className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
+        <section aria-labelledby="clients-title" className="border-b border-border px-4 py-12 sm:px-6">
           <h2 id="clients-title" className="text-center text-sm font-medium text-muted-foreground">
             مطاعم تراجع فواتيرها مع تدقيق
           </h2>
@@ -383,6 +383,8 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
           </ul>
         </section>
 
+        <RecordsRibbon />
+
         <HowItWorks />
 
         <ProductsGrid />
@@ -391,7 +393,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
 
         {plans.length ? <Pricing plans={plans} /> : null}
 
-        <section id="faq" className="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.6fr)_minmax(0,1.4fr)] lg:py-24">
+        <section id="faq" className="grid gap-10 border-b border-border px-6 py-16 sm:px-12 lg:grid-cols-[minmax(0,0.6fr)_minmax(0,1.4fr)] lg:py-24">
           <div className="lg:sticky lg:top-24 lg:self-start">
             <SectionIntro title="قبل أن تبدأ">
               ما يسأله أصحاب المطاعم عادة.
@@ -413,7 +415,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
           </div>
         </section>
 
-        <section id="final-cta" className="px-4 pb-16 sm:px-6">
+        <section id="final-cta" className="px-6 py-16 sm:px-12">
           <div
             data-reveal
             className="relative mx-auto flex max-w-7xl flex-col items-center gap-5 overflow-hidden rounded-[24px] bg-ink px-6 py-16 text-center text-ink-foreground sm:py-20"
@@ -552,15 +554,15 @@ function Hero() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <section ref={ref} className="relative overflow-hidden pb-20 pt-10 sm:pt-14 lg:pb-28">
+      <section ref={ref} className="relative overflow-hidden border-b border-border pb-16 pt-12 lg:pb-20 lg:pt-20">
         <motion.span aria-hidden="true" style={{ y: driftDown }} className="pointer-events-none absolute -top-40 -start-32 size-[30rem] rounded-full bg-primary/[0.07]" />
         <motion.span aria-hidden="true" style={{ y: driftUp }} className="pointer-events-none absolute -bottom-56 -end-48 size-[36rem] rounded-full bg-ink/[0.035]" />
-        <GridPattern className="opacity-[0.035]" />
+        
 
-        <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16">
+        <div className="relative grid items-center gap-14 px-6 sm:px-12 lg:grid-cols-2 lg:gap-12">
           <div className="lp-stagger flex flex-col items-start">
             <p
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-card py-1 ps-1 pe-3 text-xs font-medium text-muted-foreground"
+              className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary-soft py-1 ps-1 pe-3 text-xs font-semibold text-primary-text"
             >
               <span aria-hidden="true" className="flex">
                 {PLATFORM_KEYS.map((key, i) => (
@@ -575,7 +577,7 @@ function Hero() {
             >
               لا تدفع فاتورة هنقرستيشن أو جاهز أو كيتا{" "}
               <span className="relative inline-block">
-                <span className="relative z-10">قبل ما تتأكد منها.</span>
+                <span className="relative z-10 text-primary">قبل ما تتأكد منها.</span>
                 <motion.span
                   aria-hidden="true"
                   className="absolute inset-x-0 bottom-1.5 -z-0 h-3 origin-right rounded-full bg-primary/25"
@@ -594,14 +596,14 @@ function Hero() {
               <Link
                 to="/auth"
                 search={{ mode: "signup" }}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-ink px-6 text-[15px] font-semibold text-ink-foreground transition-[background-color,transform] hover:bg-ink/90 active:scale-[0.98]"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-primary px-6 text-[15px] font-semibold text-primary-foreground transition-[background-color,transform] hover:bg-primary/90 active:scale-[0.98]"
               >
                 ابدأ التدقيق
                 <ArrowLeft className="size-4" />
               </Link>
               <a
                 href="#video"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-6 text-[15px] font-semibold text-foreground transition-colors hover:bg-muted/60"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-border bg-card px-6 text-[15px] font-semibold text-foreground transition-colors hover:bg-muted/60"
               >
                 <Play className="size-4 fill-current" />
                 شاهد كيف يعمل
