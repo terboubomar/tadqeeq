@@ -13,6 +13,9 @@ export const TELEGRAM_GET_FILE_LIMIT_BYTES = 20 * 1024 * 1024;
 /** Largest image sent to AI order-number detection (read in memory, never stored). */
 export const ORDER_NUMBER_DETECTION_MAX_BYTES = 8_000_000;
 
+/** Largest document attached to a رادار exception; matches the exception-documents bucket limit (migration 0059). */
+export const EXCEPTION_DOCUMENT_MAX_BYTES = 20 * 1024 * 1024;
+
 /** How long a branch's Telegram connection code stays valid. */
 export const TELEGRAM_CONNECTION_CODE_TTL_MINUTES = 30;
 

@@ -4,6 +4,7 @@ import {
   buildPeriodExceptions,
   summarizeExceptions,
   type AuditException,
+  isOpenException,
 } from "@/lib/exceptions";
 import type { StoredPeriod } from "@/lib/periods";
 
@@ -116,7 +117,7 @@ export function buildPeriodSummaryAiPacket(
   const exceptions = providedExceptions ?? buildPeriodExceptions(period);
   const exceptionSummary = summarizeExceptions(exceptions);
   const open = exceptions.filter(
-    (item) => item.status !== "closed" && item.status !== "recovered",
+    isOpenException,
   );
 
   const severityCounts = open.reduce<Record<string, number>>((acc, item) => {

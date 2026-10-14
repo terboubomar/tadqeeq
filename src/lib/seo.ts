@@ -72,6 +72,7 @@ export const PRIVATE_PAGES = [
   "/accept-invite",
   "/ai",
   "/ask",
+  "/branch-mapping",
   "/branches",
   "/breakdown",
   "/charges",

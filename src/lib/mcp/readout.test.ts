@@ -128,9 +128,20 @@ describe("invoice detail (lines, branch charges, statement of account, compensat
 
   test("branch charges stay on their branch; summary-only charges are unallocated", () => {
     const branches = branchPerformance(detailed);
-    expect(branches.find((b) => b.branch === "Motto - Uhud")?.invoice_only_charges).toEqual([{ line: "الاشتراك الشهري", amount_sar: 200 }]);
+    expect(branches.find((b) => b.branch === "Motto - Uhud")?.invoice_only_charges).toEqual([
+      { line: "الاشتراك الشهري", amount_sar: 200, allocation_rule: "direct_to_branch: printed in that branch's invoice section" },
+    ]);
     expect(branches.find((b) => b.branch === "PAST - Al Nasim")?.invoice_only_charges).toEqual([]);
-    expect(readout.unallocated_charges).toEqual([{ line: "رسوم حملات التوصيل المجاني", amount_sar: 587.83, allocation: "unallocated" }]);
+    expect(readout.unallocated_charges).toEqual([
+      {
+        line: "رسوم حملات التوصيل المجاني",
+        amount_sar: 587.83,
+        allocation: "unallocated",
+        allocation_rule: "platform_level: printed only in the consolidated summary, not allocated",
+      },
+    ]);
+    // Branch charges plus platform-level ones add up to the invoice-only total.
+    expect(readout.invoice_only_allocation).toMatchObject({ allocated_to_branches_sar: 200, unallocated_sar: 587.83, total_sar: 787.83 });
   });
 
   test("the statement of account is separate and the advertising invoice is verified against CPC", () => {
@@ -147,7 +158,13 @@ describe("invoice detail (lines, branch charges, statement of account, compensat
   });
 
   test("compensation shows invoiced, recalculated with its source, and the exact difference", () => {
-    expect(readout.compensation).toMatchObject({ invoiced: 2612.16, recalculated: 2612.17, difference: 0.01, within_tolerance: true });
+    // 2612.1739 against 2612.16 is 0.0139 apart: shown as 0.01, but not within the strict under-one-halala tolerance.
+    expect(readout.compensation).toMatchObject({ invoiced: 2612.16, recalculated: 2612.17, difference: 0.01, within_tolerance: false });
     expect(readout.compensation?.recalculated_source).toContain("Compensated Orders");
+  });
+
+  test("compensation under one halala apart is within tolerance", () => {
+    const close = periodReadout({ ...detailed, summary: { ...detailed.summary, compensation: 2612.165 } } as unknown as StoredPeriod, "x");
+    expect(close.compensation).toMatchObject({ within_tolerance: true });
   });
 });

@@ -1,5 +1,7 @@
 import { buildPeriodSummaryAiPacket } from "@/lib/ai/period-summary-ai";
-import { buildPeriodExceptions } from "@/lib/exceptions";
+import { buildPeriodExceptions, isOpenException } from "@/lib/exceptions";
+import { requiredEvidence } from "@/lib/exception-recovery";
+import { ALLOCATION_RULE_EN, invoiceOnlyAllocation } from "@/lib/invoice-only-allocation";
 import type { StoredPeriod } from "@/lib/periods";
 import {
   displayBranchName,
@@ -97,7 +99,22 @@ export function unallocatedCharges(period: StoredPeriod) {
     line: item.label,
     amount_sar: round(item.amount),
     allocation: "unallocated" as const,
+    allocation_rule: ALLOCATION_RULE_EN.platform_level,
   }));
+}
+
+/** Branch invoice-only charges plus platform-level ones reconcile to the invoice-only total, with any residual. */
+function allocationSummary(period: StoredPeriod) {
+  const allocation = invoiceOnlyAllocation(period);
+  if (!allocation.rows.length) return null;
+  return {
+    allocated_to_branches_sar: allocation.allocated,
+    unallocated_sar: allocation.unallocated,
+    total_sar: allocation.total,
+    invoice_only_total_sar: allocation.invoiceTotal,
+    residual_sar: allocation.residual,
+    rules: ALLOCATION_RULE_EN,
+  };
 }
 
 /** The statement of account as printed; the advertising invoice is verified against the CPC invoice when one was uploaded. */
@@ -130,7 +147,8 @@ function compensationComparison(period: StoredPeriod) {
     recalculated: round(recalculated),
     recalculated_source: "Sum of the Compensated Orders sheet (incl. VAT) per branch ÷ 1.15",
     difference,
-    within_tolerance: Math.abs(difference) <= 0.01,
+    // Strictly under one halala, on the unrounded figures (0.0139 is a real difference, not rounding).
+    within_tolerance: Math.abs(recalculated - invoiced) < 0.01,
   };
 }
 
@@ -151,6 +169,7 @@ export function periodReadout(period: StoredPeriod, appUrl: string) {
     invoice_check: invoiceChecks(period),
     invoice_lines: invoiceLines(period),
     unallocated_charges: unallocatedCharges(period),
+    invoice_only_allocation: allocationSummary(period),
     statement_of_account: statementOfAccount(period),
     compensation: compensationComparison(period),
     charges_vat: chargesVat(period),
@@ -159,6 +178,7 @@ export function periodReadout(period: StoredPeriod, appUrl: string) {
       critical_count: packet.exceptions.criticalCount,
       amount_to_review_sar: round(packet.exceptions.underReview),
       potential_recovery_sar: round(packet.exceptions.potentialRecovery),
+      claimable_sar: round(packet.exceptions.claimable),
       already_recovered_sar: round(packet.exceptions.recovered),
       by_category: packet.categoryExposure.map((c) => ({
         category: c.category,
@@ -212,6 +232,7 @@ export function branchPerformance(period: StoredPeriod) {
         invoice_only_charges: (b.invoiceBranchName ? (itemsByInvoiceName.get(b.invoiceBranchName) ?? []) : []).map((item) => ({
           line: item.label,
           amount_sar: round(item.amount),
+          allocation_rule: ALLOCATION_RULE_EN.direct,
         })),
       };
     })
@@ -221,7 +242,7 @@ export function branchPerformance(period: StoredPeriod) {
 /** Differences found in a period, open ones first and largest first; closed ones only when asked. */
 export function exceptionList(period: StoredPeriod, includeClosed: boolean) {
   return buildPeriodExceptions(period)
-    .filter((e) => includeClosed || (e.status !== "closed" && e.status !== "recovered"))
+    .filter((e) => includeClosed || isOpenException(e))
     .sort((left, right) => right.reviewAmount - left.reviewAmount)
     .map((e) => ({
       what: e.label,
@@ -234,7 +255,12 @@ export function exceptionList(period: StoredPeriod, includeClosed: boolean) {
       difference_sar: round(e.difference),
       amount_to_review_sar: round(e.reviewAmount),
       potential_recovery_sar: round(e.potentialRecovery),
+      claimable_sar: round(e.claimableAmount),
       recovered_sar: round(e.recoveredAmount),
+      required_evidence: requiredEvidence(e).document,
+      ...(e.owner ? { owner: e.owner } : {}),
+      ...(e.classification ? { classification: e.classification } : {}),
+      ...(e.attachments.length ? { attached_documents: e.attachments.map((a) => a.name) } : {}),
       ...(e.hint ? { hint: e.hint } : {}),
     }));
 }

@@ -85,6 +85,7 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
     title: "الإعداد",
     items: [
       { to: "/import", label: "رفع البيانات", permission: "imports.create" },
+      { to: "/branch-mapping", label: "ربط الفروع بين المنصات", permission: "branches.read" },
       { to: "/team", label: "المستخدمون والصلاحيات", permission: "users.manage" },
     ],
   },
@@ -111,6 +112,7 @@ const ROUTE_PERMISSIONS: Record<string, WorkspacePermission> = {
   "/trends": "reports.read",
   "/report-schedules": "reports.read",
   "/import": "imports.create",
+  "/branch-mapping": "branches.read",
   "/team": "users.manage",
 };
 

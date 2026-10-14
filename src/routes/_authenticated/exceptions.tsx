@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PRODUCTS, productPageTitle } from "@/lib/products";
 import { ProductName } from "@/components/ProductName";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -6,15 +6,20 @@ import {
   Calculator,
   CheckCircle2,
   CircleDollarSign,
+  Copy,
   Database,
   Eye,
   FileSearch,
+  FileText,
   History,
   Info,
   Loader2,
+  Paperclip,
   RefreshCw,
   Search,
   Sparkles,
+  Tags,
+  Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -43,6 +48,7 @@ import {
 import {
   buildExceptionEvidence,
   buildPeriodExceptions,
+  CLAIM_EXCEPTION_STATUSES,
   EXCEPTION_SEVERITY_LABELS,
   EXCEPTION_STATUS_LABELS,
   summarizeExceptions,
@@ -50,13 +56,25 @@ import {
   type ExceptionSeverity,
   type ExceptionStatus,
   type ExceptionWorkflowEntry,
+  isOpenException,
 } from "@/lib/exceptions";
 import { arabicDate, money, sar } from "@/lib/format";
+import { applyClassificationRules, classifyLines, disputeLetter, requiredEvidence, type ClassificationRule } from "@/lib/exception-recovery";
+import {
+  addClassificationRule,
+  deleteClassificationRule,
+  exceptionDocumentUrl,
+  listClassificationRules,
+  uploadExceptionDocument,
+} from "@/lib/exception-recovery.data";
+import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { updateExceptionWorkflow } from "@/lib/periods";
+import { useBranchLabel } from "@/lib/use-branch-label";
 import { setSelectedPeriodId, useSelectedPeriod } from "@/lib/use-period";
 import { monthLabel, unmatchedForException, unmatchedJahezCompensations } from "@/lib/jahez-unmatched";
 import { reanalyzeAuditPeriod } from "@/lib/reanalyze-period.functions";
-import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { cn } from "@/lib/utils";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 
@@ -80,6 +98,7 @@ type WorkflowMutation = {
 };
 
 function ExceptionsPage() {
+  const branchLabel = useBranchLabel();
   const { selected, isLoading } = useSelectedPeriod();
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
@@ -97,9 +116,12 @@ function ExceptionsPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const { data: rules = [] } = useQuery({ queryKey: ["exception-rules"], queryFn: listClassificationRules, retry: false });
+  const [letterOpen, setLetterOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const exceptions = useMemo(
-    () => (selected ? buildPeriodExceptions(selected) : []),
-    [selected],
+    () => (selected ? applyClassificationRules(buildPeriodExceptions(selected), rules) : []),
+    [selected, rules],
   );
   const summary = useMemo(() => summarizeExceptions(exceptions), [exceptions]);
 
@@ -108,7 +130,7 @@ function ExceptionsPage() {
     return exceptions.filter((item) => {
       if (
         status === "open" &&
-        (item.status === "closed" || item.status === "recovered")
+        !isOpenException(item)
       ) {
         return false;
       }
@@ -119,6 +141,7 @@ function ExceptionsPage() {
       return [
         item.periodLabel,
         item.branch,
+        branchLabel(item.platform, item.branchId, item.branch),
         item.branchId,
         item.categoryLabel,
         item.label,
@@ -127,7 +150,7 @@ function ExceptionsPage() {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(needle));
     });
-  }, [exceptions, query, severity, status]);
+  }, [branchLabel, exceptions, query, severity, status]);
 
   if (isLoading) {
     return <p className="py-20 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>;
@@ -163,11 +186,23 @@ function ExceptionsPage() {
           </span>
         }
         aside={
-          <span className="rounded-full border border-border bg-card px-3 py-1 text-[12px] text-muted-foreground">
-            {exceptions.length} استثناء في الملف المحدد
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-border bg-card px-3 py-1 text-[12px] text-muted-foreground">
+              {exceptions.length} استثناء في الملف المحدد
+            </span>
+            <Button type="button" variant="outline" size="sm" className="gap-1.5 rounded-full" onClick={() => setRulesOpen(true)}>
+              <Tags className="size-4" />
+              قواعد التصنيف
+            </Button>
+            <Button type="button" size="sm" className="gap-1.5 rounded-full" disabled={!summary.claimable} onClick={() => setLetterOpen(true)}>
+              <FileText className="size-4" />
+              خطاب الاعتراض
+            </Button>
           </span>
         }
       />
+      <DisputeLetterDialog open={letterOpen} onOpenChange={setLetterOpen} period={selected} items={exceptions} />
+      <ClassificationRulesDialog open={rulesOpen} onOpenChange={setRulesOpen} rules={rules} />
 
       <RadarSummary
         summary={summary}
@@ -235,6 +270,7 @@ function ExceptionsPage() {
                 saving={updateWorkflow.isPending}
                 onUpdate={(patch) => update(active, patch)}
                 onEvidence={() => setSelectedException(active)}
+                rules={rules}
               />
             ) : null
           }
@@ -274,14 +310,14 @@ function RadarSummary({
   severity: string;
   onSeverity: (value: string) => void;
 }) {
-  const open = exceptions.filter((item) => item.status !== "closed" && item.status !== "recovered");
+  const open = exceptions.filter(isOpenException);
   const bySeverity = SEVERITY_ORDER.map((level) => {
     const items = open.filter((item) => item.severity === level);
     return { level, count: items.length, amount: items.reduce((sum, item) => sum + item.reviewAmount, 0) };
   });
   return (
     <section aria-label="ملخص الاستثناءات" className="overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="grid grid-cols-2 gap-px bg-border lg:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(0,1fr))]">
+      <div className="grid grid-cols-2 gap-px bg-border lg:grid-cols-[minmax(0,1.5fr)_repeat(4,minmax(0,1fr))]">
         <div className="col-span-2 bg-card px-5 py-5 lg:col-span-1">
           <p className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
             <CircleDollarSign className="size-4 text-primary-text" aria-hidden />
@@ -302,6 +338,7 @@ function RadarSummary({
           tone={summary.criticalCount ? "danger" : undefined}
         />
         <SummaryStat label="المبالغ محل المراجعة" value={sar(summary.underReview)} hint="بعد منع التكرار بين الإجمالي والفروع" />
+        <SummaryStat label="قابل للمطالبة" value={sar(summary.claimable)} hint="البنود المعلّمة قابلة للمطالبة أو المُعترض عليها" />
         <SummaryStat
           label="تم استرداده"
           value={sar(summary.recovered)}
@@ -385,9 +422,13 @@ function SummaryStat({
 const STATUS_PILL: Record<ExceptionStatus, string> = {
   new: "bg-destructive-soft text-destructive",
   reviewing: "bg-secondary text-primary-text",
+  evidence_requested: "bg-warning/15 text-foreground",
+  classified: "bg-muted text-foreground",
+  claimable: "bg-primary/15 text-primary-text",
   contacted: "bg-muted text-muted-foreground",
   disputed: "bg-ink/10 text-foreground",
   recovered: "bg-success-soft text-success",
+  rejected: "bg-destructive-soft text-destructive",
   closed: "bg-muted text-muted-foreground",
 };
 
@@ -416,6 +457,7 @@ function ExceptionList({
   activeId: string | null;
   onOpen: (item: AuditException) => void;
 }) {
+  const branchLabel = useBranchLabel();
   if (!items.length) {
     return (
       <section className="rounded-2xl border border-border bg-card px-5 py-16 text-center text-sm text-muted-foreground">
@@ -463,7 +505,7 @@ function ExceptionList({
                     </Td>
                     <Td>
                       {item.branch ? (
-                        <span className="block max-w-44 truncate" title={item.branch}>{item.branch}</span>
+                        <span className="block max-w-44 truncate" title={item.branch}>{branchLabel(item.platform, item.branchId, item.branch)}</span>
                       ) : (
                         <span className="text-muted-foreground">إجمالي الفترة</span>
                       )}
@@ -490,7 +532,7 @@ function ExceptionList({
               <span className="min-w-0 flex-1">
                 <span className="block font-semibold leading-6">{item.label}</span>
                 <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
-                  {item.branch ?? "إجمالي الفترة"} · {EXCEPTION_SEVERITY_LABELS[item.severity]}
+                  {item.branch ? branchLabel(item.platform, item.branchId, item.branch) : "إجمالي الفترة"} · {EXCEPTION_SEVERITY_LABELS[item.severity]}
                 </span>
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1">
@@ -512,17 +554,20 @@ function ExceptionDetail({
   saving,
   onUpdate,
   onEvidence,
+  rules,
 }: {
   item: AuditException;
   period: NonNullable<ReturnType<typeof useSelectedPeriod>["selected"]>;
   saving: boolean;
   onUpdate: (patch: Partial<ExceptionWorkflowEntry>) => void;
   onEvidence: () => void;
+  rules: ClassificationRule[];
 }) {
+  const branchLabel = useBranchLabel();
   const evidence = buildExceptionEvidence(period, item);
   return (
     <DetailPanel
-      eyebrow={(item.branch ?? "إجمالي الفترة") + " · " + EXCEPTION_SEVERITY_LABELS[item.severity] + " · " + item.categoryLabel}
+      eyebrow={(item.branch ? branchLabel(item.platform, item.branchId, item.branch) : "إجمالي الفترة") + " · " + EXCEPTION_SEVERITY_LABELS[item.severity] + " · " + item.categoryLabel}
       title={item.label}
       value={sar(item.reviewAmount)}
     >
@@ -551,6 +596,7 @@ function ExceptionDetail({
         <p className="mt-1.5 rounded-xl bg-surface-raised px-3 py-2.5 text-[12.5px] leading-6">{evidence.formula}</p>
       </div>
       {item.code === "JAHEZ_COMPENSATION_UNKNOWN_ORDER" ? <MissingOrderFile item={item} period={period} /> : null}
+      <EvidenceRequest item={item} period={period} saving={saving} onUpdate={onUpdate} rules={rules} />
       <WorkflowFields item={item} saving={saving} onUpdate={onUpdate} />
       <Button type="button" variant="outline" className="w-full gap-1.5" onClick={onEvidence}>
         <Eye className="size-4" />
@@ -627,11 +673,18 @@ function WorkflowFields({
 }) {
   const [note, setNote] = useState(item.note ?? "");
   const [recovered, setRecovered] = useState(item.recoveredAmount ? String(item.recoveredAmount) : "");
+  const [owner, setOwner] = useState(item.owner ?? "");
+  const [classification, setClassification] = useState(item.classification ?? "");
+  const [claimable, setClaimable] = useState(item.claimableAmount ? String(item.claimableAmount) : "");
 
   useEffect(() => {
     setNote(item.note ?? "");
     setRecovered(item.recoveredAmount ? String(item.recoveredAmount) : "");
-  }, [item.id, item.note, item.recoveredAmount]);
+    setOwner(item.owner ?? "");
+    setClassification(item.classification ?? "");
+    setClaimable(item.claimableAmount ? String(item.claimableAmount) : "");
+  }, [item.id, item.note, item.recoveredAmount, item.owner, item.classification, item.claimableAmount]);
+  const claimOpen = CLAIM_EXCEPTION_STATUSES.has(item.status);
 
   return (
     <div className="space-y-2.5">
@@ -650,6 +703,54 @@ function WorkflowFields({
           </SelectContent>
         </Select>
       </label>
+      <label className="block space-y-1">
+        <span className="text-[12px] text-muted-foreground">المسؤول عن المتابعة</span>
+        <Input
+          disabled={saving}
+          value={owner}
+          maxLength={120}
+          onChange={(event) => setOwner(event.target.value)}
+          onBlur={() => {
+            const trimmed = owner.trim();
+            if (trimmed !== (item.owner ?? "")) onUpdate({ owner: trimmed || null });
+          }}
+          placeholder="اسم أو دور، مثل: المحاسب"
+          className="h-9"
+        />
+      </label>
+      <label className="block space-y-1">
+        <span className="text-[12px] text-muted-foreground">التصنيف</span>
+        <Input
+          disabled={saving}
+          value={classification}
+          maxLength={200}
+          onChange={(event) => setClassification(event.target.value)}
+          onBlur={() => {
+            const trimmed = classification.trim();
+            if (trimmed !== (item.classification ?? "")) onUpdate({ classification: trimmed || null });
+          }}
+          placeholder="مثل: أجهزة، غير خاضع للعمولة"
+          className="h-9"
+        />
+      </label>
+      {claimOpen ? (
+        <label className="block space-y-1">
+          <span className="text-[12px] text-muted-foreground">المبلغ المطالَب به (ر.س)</span>
+          <Input
+            inputMode="decimal"
+            value={claimable}
+            onChange={(event) => setClaimable(event.target.value)}
+            disabled={saving}
+            onBlur={() => {
+              const value = Number(claimable.replace(/,/g, ""));
+              if (!claimable.trim() || !Number.isFinite(value) || value < 0) return;
+              if (value !== item.claimableAmount) onUpdate({ claimableAmount: value });
+            }}
+            placeholder={money(item.claimableAmount)}
+            className="h-9"
+          />
+        </label>
+      ) : null}
       <label className="block space-y-1">
         <span className="text-[12px] text-muted-foreground">المسترد فعلياً (ر.س)</span>
         <Input
@@ -706,6 +807,7 @@ function EvidenceSheet({
   saving: boolean;
   onUpdate: (patch: Partial<ExceptionWorkflowEntry>) => void;
 }) {
+  const branchLabel = useBranchLabel();
   if (!item) return null;
 
   const evidence = buildExceptionEvidence(period, item);
@@ -717,7 +819,7 @@ function EvidenceSheet({
           <SheetTitle>مسار الأدلة</SheetTitle>
           <SheetDescription>
             {item.periodLabel}
-            {item.branch ? " · " + item.branch : " · إجمالي الفترة"}
+            {item.branch ? " · " + branchLabel(item.platform, item.branchId, item.branch) : " · إجمالي الفترة"}
             {item.branchId ? " · " + item.branchId : ""}
           </SheetDescription>
         </SheetHeader>
@@ -1109,5 +1211,279 @@ function MoneyCell({ value, signed = false }: { value?: number; signed?: boolean
         {sar(value)}
       </span>
     </Td>
+  );
+}
+
+/** What document settles the exception, and the documents attached to it so far. */
+function EvidenceRequest({
+  item,
+  period,
+  saving,
+  onUpdate,
+  rules,
+}: {
+  item: AuditException;
+  period: NonNullable<ReturnType<typeof useSelectedPeriod>["selected"]>;
+  saving: boolean;
+  onUpdate: (patch: Partial<ExceptionWorkflowEntry>) => void;
+  rules: ClassificationRule[];
+}) {
+  const { context, can } = useWorkspaceAccess();
+  const [uploading, setUploading] = useState(false);
+  const needed = requiredEvidence(item);
+  const canManage = can("exceptions.manage");
+
+  async function attach(file: File) {
+    setUploading(true);
+    try {
+      const attachment = await uploadExceptionDocument(context.workspaceId, period.id, item.id, file);
+      onUpdate({ attachments: [...item.attachments, attachment] });
+      toast.success("أُرفق المستند.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذّر إرفاق المستند.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function open(path: string) {
+    try {
+      window.open(await exceptionDocumentUrl(path), "_blank", "noopener");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذّر فتح المستند.");
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-border px-3 py-3 text-[12.5px] leading-6">
+      <p className="font-semibold">المستند المطلوب</p>
+      <p className="mt-1">{needed.document}</p>
+      <p className="mt-1 text-muted-foreground">
+        المبلغ المطلوب تفسيره <span className="num">{sar(needed.expectedAmount)}</span>
+        {needed.branch ? <> · الفرع {needed.branch}</> : " · على مستوى الفترة"}
+      </p>
+      {item.lines?.length ? (
+        <ul className="mt-2 divide-y divide-border/70 rounded-lg border border-border">
+          {classifyLines(item, rules).map((line, index) => (
+            <li key={line.label + index} className="flex items-start justify-between gap-3 px-2.5 py-1.5">
+              <span>
+                {line.label}
+                <span className="block text-[11.5px] text-muted-foreground">
+                  {line.rule ? `${line.rule.classification} · ${line.rule.claimable ? "قابل للمطالبة" : "رسم مستحق"}` : "بلا قاعدة تصنيف"}
+                </span>
+              </span>
+              <span className="num shrink-0">{sar(line.amount)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {item.attachments.length ? (
+        <ul className="mt-2 space-y-1">
+          {item.attachments.map((attachment) => (
+            <li key={attachment.path}>
+              <button type="button" className="inline-flex items-center gap-1.5 text-primary-text underline-offset-4 hover:underline" onClick={() => open(attachment.path)}>
+                <Paperclip className="size-3.5" />
+                {attachment.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {canManage ? (
+        <div className="mt-2.5 flex flex-wrap gap-2">
+          <label className={cn("inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[12px] font-semibold", (saving || uploading) && "pointer-events-none opacity-50")}>
+            <Paperclip className="size-3.5" />
+            {uploading ? "جارٍ الرفع…" : "أرفق مستنداً"}
+            <input
+              type="file"
+              className="sr-only"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.xls,.csv,.doc,.docx"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) void attach(file);
+              }}
+            />
+          </label>
+          {item.status === "new" || item.status === "reviewing" ? (
+            <Button type="button" size="sm" variant="ghost" className="h-8 rounded-full text-[12px]" disabled={saving} onClick={() => onUpdate({ status: "evidence_requested" })}>
+              اطلب المستند
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** The dispute letter to the platform, in Arabic and English, from the period's claimable items. */
+function DisputeLetterDialog({
+  open,
+  onOpenChange,
+  period,
+  items,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  period: NonNullable<ReturnType<typeof useSelectedPeriod>["selected"]>;
+  items: AuditException[];
+}) {
+  const letter = useMemo(() => disputeLetter(period, items.filter(isOpenException)), [period, items]);
+  const [language, setLanguage] = useState<"ar" | "en">("ar");
+  const text = letter ? (language === "ar" ? letter.arabic : letter.english) : "";
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent dir="rtl" className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>خطاب الاعتراض</DialogTitle>
+          <DialogDescription>
+            {letter ? (
+              <>
+                <span className="num">{letter.items.length}</span> بند قابل للمطالبة بإجمالي <span className="num">{sar(letter.total)}</span>. راجع النص ثم انسخه وأرسله للمنصة مع المرفقات.
+              </>
+            ) : (
+              "لا توجد بنود قابلة للمطالبة. علّم البنود «قابل للمطالبة» أولاً."
+            )}
+          </DialogDescription>
+        </DialogHeader>
+        {letter ? (
+          <>
+            <div className="flex gap-2" role="group" aria-label="لغة الخطاب">
+              {(["ar", "en"] as const).map((value) => (
+                <Button key={value} type="button" size="sm" variant={language === value ? "default" : "outline"} className="rounded-full" onClick={() => setLanguage(value)}>
+                  {value === "ar" ? "العربية" : "English"}
+                </Button>
+              ))}
+            </div>
+            <Textarea readOnly dir={language === "ar" ? "rtl" : "ltr"} value={text} className="min-h-72 text-[13px] leading-7" />
+            <DialogFooter>
+              <Button
+                type="button"
+                className="gap-1.5"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(text);
+                    toast.success("نُسخ الخطاب.");
+                  } catch {
+                    toast.error("تعذّر النسخ. حدّد النص وانسخه يدوياً.");
+                  }
+                }}
+              >
+                <Copy className="size-4" />
+                نسخ الخطاب
+              </Button>
+            </DialogFooter>
+          </>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** The workspace's rules, such as «Printers → hardware, not commissionable», applied to every period. */
+function ClassificationRulesDialog({
+  open,
+  onOpenChange,
+  rules,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  rules: ClassificationRule[];
+}) {
+  const { can } = useWorkspaceAccess();
+  const queryClient = useQueryClient();
+  const canManage = can("exceptions.manage");
+  const [matchText, setMatchText] = useState("");
+  const [classification, setClassification] = useState("");
+  const [claimable, setClaimable] = useState(false);
+  const save = useMutation({
+    mutationFn: () =>
+      addClassificationRule({
+        platform: null,
+        match_text: matchText.trim(),
+        classification: classification.trim(),
+        commissionable: false,
+        claimable,
+        note: null,
+      }),
+    onSuccess: async () => {
+      setMatchText("");
+      setClassification("");
+      setClaimable(false);
+      await queryClient.invalidateQueries({ queryKey: ["exception-rules"] });
+      toast.success("أُضيفت القاعدة وطُبّقت على كل الفترات.");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteClassificationRule(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["exception-rules"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent dir="rtl" className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>قواعد التصنيف</DialogTitle>
+          <DialogDescription>
+            كل بند يحتوي النص المحدد يأخذ التصنيف تلقائياً في الفترات السابقة والقادمة، ما لم يغيّر أحد حالته يدوياً.
+          </DialogDescription>
+        </DialogHeader>
+        {rules.length ? (
+          <ul className="divide-y divide-border rounded-xl border border-border text-[13px]">
+            {rules.map((rule) => (
+              <li key={rule.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                <span>
+                  <span className="font-semibold">«{rule.match_text}»</span> ← {rule.classification}
+                  <span className="block text-[12px] text-muted-foreground">{rule.claimable ? "قابل للمطالبة" : "مُصنّف (رسم مستحق)"}</span>
+                </span>
+                {canManage ? (
+                  <Button type="button" size="icon" variant="ghost" aria-label={`حذف قاعدة ${rule.match_text}`} disabled={remove.isPending} onClick={() => remove.mutate(rule.id)}>
+                    <Trash2 className="size-4" />
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[13px] text-muted-foreground">لا توجد قواعد بعد.</p>
+        )}
+        {canManage ? (
+          <form
+            className="space-y-2.5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (matchText.trim().length < 2 || classification.trim().length < 2) {
+                toast.error("اكتب نص البند والتصنيف.");
+                return;
+              }
+              save.mutate();
+            }}
+          >
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <label className="block space-y-1">
+                <span className="text-[12px] text-muted-foreground">نص البند في الفاتورة</span>
+                <Input value={matchText} maxLength={120} onChange={(event) => setMatchText(event.target.value)} placeholder="Printers" className="h-9" />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-[12px] text-muted-foreground">التصنيف</span>
+                <Input value={classification} maxLength={120} onChange={(event) => setClassification(event.target.value)} placeholder="أجهزة" className="h-9" />
+              </label>
+            </div>
+            <label className="flex items-center gap-2 text-[13px]">
+              <input type="checkbox" checked={claimable} onChange={(event) => setClaimable(event.target.checked)} />
+              البند غير مستحق ويُطالَب باسترداده
+            </label>
+            <DialogFooter>
+              <Button type="submit" disabled={save.isPending}>
+                إضافة القاعدة
+              </Button>
+            </DialogFooter>
+          </form>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }

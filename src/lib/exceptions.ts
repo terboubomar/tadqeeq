@@ -13,10 +13,30 @@ import type { StoredPeriod } from "./periods";
 export type ExceptionStatus =
   | "new"
   | "reviewing"
+  | "evidence_requested"
+  | "classified"
+  | "claimable"
   | "contacted"
   | "disputed"
   | "recovered"
+  | "rejected"
   | "closed";
+
+/** Statuses that end an exception: recovered, rejected by the platform, or closed. */
+export const CLOSED_EXCEPTION_STATUSES: ReadonlySet<ExceptionStatus> = new Set(["recovered", "rejected", "closed"]);
+/** Statuses where a claim stands against the platform, so its amount counts as claimable. */
+export const CLAIM_EXCEPTION_STATUSES: ReadonlySet<ExceptionStatus> = new Set(["claimable", "contacted", "disputed"]);
+
+export function isOpenException(item: { status: ExceptionStatus }): boolean {
+  return !CLOSED_EXCEPTION_STATUSES.has(item.status);
+}
+
+/** A document attached to an exception, stored in the exception-documents bucket. */
+export interface ExceptionAttachment {
+  path: string;
+  name: string;
+  uploadedAt?: string;
+}
 
 export type ExceptionSeverity = "critical" | "high" | "medium" | "low";
 
@@ -33,6 +53,12 @@ export interface ExceptionWorkflowEntry {
   status: ExceptionStatus;
   note?: string;
   recoveredAmount?: number;
+  /** Who follows the exception up (a name or role). */
+  owner?: string | null;
+  classification?: string | null;
+  /** The amount claimed from the platform, when it differs from the review amount. */
+  claimableAmount?: number | null;
+  attachments?: ExceptionAttachment[] | null;
   updatedAt?: string;
   history?: ExceptionWorkflowEvent[];
 }
@@ -80,16 +106,37 @@ export interface AuditException {
   status: ExceptionStatus;
   note?: string;
   recoveredAmount: number;
+  owner?: string;
+  classification?: string;
+  attachments: ExceptionAttachment[];
+  /**
+   * What stands claimed against the platform: the entered claimable amount, else the potential recovery, else the
+   * review amount, while the status is claimable, contacted or disputed; 0 otherwise.
+   */
+  claimableAmount: number;
+  /** The individual charges behind a combined exception (unclassified fee-map lines), for classification rules. */
+  lines?: ExceptionLine[];
+  /** Of those lines, the ones a claimable classification rule covers (what a dispute letter names). */
+  claimLines?: ExceptionLine[];
   rollup: boolean;
   hint?: string;
+}
+
+export interface ExceptionLine {
+  label: string;
+  amount: number;
 }
 
 export const EXCEPTION_STATUS_LABELS: Record<ExceptionStatus, string> = {
   new: "جديد",
   reviewing: "قيد المراجعة",
+  evidence_requested: "بانتظار المستند",
+  classified: "مُصنّف",
+  claimable: "قابل للمطالبة",
   contacted: "تم التواصل",
   disputed: "تم الاعتراض",
   recovered: "تم الاسترداد",
+  rejected: "مرفوض",
   closed: "مغلق",
 };
 
@@ -223,6 +270,7 @@ function makeException(
     hint?: string;
     forceReviewAmount?: number;
     forcePotentialRecovery?: number;
+    lines?: ExceptionLine[];
   },
 ): AuditException {
   const computed = input.computed;
@@ -251,7 +299,7 @@ function makeException(
     legacyId !== id ? workflowFor(period, legacyId) : undefined;
   const workflow = directWorkflow ?? legacyWorkflow;
 
-  return {
+  const item: AuditException = {
     id,
     code: input.code,
     legacyId: !directWorkflow && legacyWorkflow ? legacyId : undefined,
@@ -281,9 +329,23 @@ function makeException(
     status: workflow?.status ?? "new",
     note: workflow?.note,
     recoveredAmount: workflow?.recoveredAmount ?? 0,
+    owner: workflow?.owner ?? undefined,
+    classification: workflow?.classification ?? undefined,
+    attachments: workflow?.attachments ?? [],
+    claimableAmount: 0,
+    ...(input.lines?.length ? { lines: input.lines } : {}),
     rollup: false,
     hint: input.hint,
   };
+  item.claimableAmount = claimableAmountFor(item, workflow?.claimableAmount);
+  return item;
+}
+
+/** The amount standing claimed against the platform for an exception (see AuditException.claimableAmount). */
+export function claimableAmountFor(item: Pick<AuditException, "status" | "potentialRecovery" | "reviewAmount">, entered?: number | null): number {
+  if (!CLAIM_EXCEPTION_STATUSES.has(item.status)) return 0;
+  if (typeof entered === "number" && entered >= 0) return entered;
+  return item.potentialRecovery > 0 ? item.potentialRecovery : item.reviewAmount;
 }
 
 function summaryExceptions(period: StoredPeriod): AuditException[] {
@@ -903,6 +965,9 @@ function marketplaceChargeExceptions(period: StoredPeriod): AuditException[] {
         " SAR. يحتاج إلى مستند أو قاعدة تصنيف قبل اعتباره رسماً صحيحاً أو مبلغاً قابلاً للاسترداد.",
       forceReviewAmount: map.unmappedAuditAmount,
       forcePotentialRecovery: 0,
+      lines: map.lines
+        .filter((line) => line.scope === "audit_total" && !line.mapped && Math.abs(line.amount) > DEFAULT_DATA_TOLERANCE)
+        .map((line) => ({ label: line.label, amount: Math.abs(line.amount) })),
     }),
   ];
 }
@@ -942,13 +1007,13 @@ export interface ExceptionSummary {
   criticalCount: number;
   underReview: number;
   potentialRecovery: number;
+  /** Amounts standing claimed against the platform (status claimable, contacted or disputed). */
+  claimable: number;
   recovered: number;
 }
 
 export function summarizeExceptions(exceptions: AuditException[]): ExceptionSummary {
-  const open = exceptions.filter(
-    (item) => item.status !== "closed" && item.status !== "recovered",
-  );
+  const open = exceptions.filter(isOpenException);
 
   return {
     total: exceptions.length,
@@ -956,6 +1021,7 @@ export function summarizeExceptions(exceptions: AuditException[]): ExceptionSumm
     criticalCount: open.filter((item) => item.severity === "critical").length,
     underReview: open.reduce((sum, item) => sum + item.reviewAmount, 0),
     potentialRecovery: open.reduce((sum, item) => sum + item.potentialRecovery, 0),
+    claimable: open.reduce((sum, item) => sum + item.claimableAmount, 0),
     recovered: exceptions.reduce((sum, item) => sum + item.recoveredAmount, 0),
   };
 }
