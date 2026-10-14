@@ -17,6 +17,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingDotmdRouteImport } from './routes/pricing[.]md'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as OpsRouteImport } from './routes/ops'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as McpRouteImport } from './routes/mcp'
@@ -129,6 +130,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const PricingDotmdRoute = PricingDotmdRouteImport.update({
   id: '/pricing.md',
   path: '/pricing.md',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OpsRoute = OpsRouteImport.update({
@@ -523,6 +529,7 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/onboarding': typeof OnboardingRoute
   '/ops': typeof OpsRouteWithChildren
+  '/pricing': typeof PricingRoute
   '/pricing.md': typeof PricingDotmdRoute
   '/privacy': typeof PrivacyRoute
   '/refund-policy': typeof RefundPolicyRoute
@@ -603,6 +610,7 @@ export interface FileRoutesByTo {
   '/llms.txt': typeof LlmsDottxtRoute
   '/mcp': typeof McpRoute
   '/onboarding': typeof OnboardingRoute
+  '/pricing': typeof PricingRoute
   '/pricing.md': typeof PricingDotmdRoute
   '/privacy': typeof PrivacyRoute
   '/refund-policy': typeof RefundPolicyRoute
@@ -687,6 +695,7 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/onboarding': typeof OnboardingRoute
   '/ops': typeof OpsRouteWithChildren
+  '/pricing': typeof PricingRoute
   '/pricing.md': typeof PricingDotmdRoute
   '/privacy': typeof PrivacyRoute
   '/refund-policy': typeof RefundPolicyRoute
@@ -771,6 +780,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/onboarding'
     | '/ops'
+    | '/pricing'
     | '/pricing.md'
     | '/privacy'
     | '/refund-policy'
@@ -851,6 +861,7 @@ export interface FileRouteTypes {
     | '/llms.txt'
     | '/mcp'
     | '/onboarding'
+    | '/pricing'
     | '/pricing.md'
     | '/privacy'
     | '/refund-policy'
@@ -934,6 +945,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/onboarding'
     | '/ops'
+    | '/pricing'
     | '/pricing.md'
     | '/privacy'
     | '/refund-policy'
@@ -1018,6 +1030,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   OnboardingRoute: typeof OnboardingRoute
   OpsRoute: typeof OpsRouteWithChildren
+  PricingRoute: typeof PricingRoute
   PricingDotmdRoute: typeof PricingDotmdRoute
   PrivacyRoute: typeof PrivacyRoute
   RefundPolicyRoute: typeof RefundPolicyRoute
@@ -1105,6 +1118,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing.md'
       fullPath: '/pricing.md'
       preLoaderRoute: typeof PricingDotmdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ops': {
@@ -1740,6 +1760,7 @@ const rootRouteChildren: RootRouteChildren = {
   McpRoute: McpRoute,
   OnboardingRoute: OnboardingRoute,
   OpsRoute: OpsRouteWithChildren,
+  PricingRoute: PricingRoute,
   PricingDotmdRoute: PricingDotmdRoute,
   PrivacyRoute: PrivacyRoute,
   RefundPolicyRoute: RefundPolicyRoute,

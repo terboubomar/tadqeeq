@@ -56,6 +56,7 @@ export const PUBLIC_PAGES: PublicPage[] = [
   { path: "/products/promotions-roi", title: "عائد · عائد العروض والإعلانات", lastmod: "2026-10-05", changefreq: "monthly", priority: 0.7 },
   { path: "/products/smart-alerts", title: "رقيب · المراقب الذكي", lastmod: "2026-10-05", changefreq: "monthly", priority: 0.7 },
   { path: "/products/daily-tracking", title: "نَبْض · المتابعة اليومية", lastmod: "2026-10-14", changefreq: "monthly", priority: 0.7 },
+  { path: "/pricing", title: "الخطط والأسعار", lastmod: "2026-10-14", changefreq: "monthly", priority: 0.8 },
   { path: "/contact", title: "تواصل معنا", lastmod: "2026-10-05", changefreq: "yearly", priority: 0.5 },
   { path: "/privacy", title: "سياسة الخصوصية", lastmod: "2026-10-05", changefreq: "yearly", priority: 0.3 },
   { path: "/terms", title: "الشروط والأحكام", lastmod: "2026-10-14", changefreq: "yearly", priority: 0.3 },
