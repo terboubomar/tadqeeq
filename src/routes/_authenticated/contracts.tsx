@@ -949,6 +949,12 @@ function ContractCompliancePanel({
             {compliance.effectiveTo ?? "مفتوح"} · فترة التدقيق{" "}
             {compliance.periodStart} — {compliance.periodEnd}
           </div>
+          {result?.status === "evaluated" && result.coverageNote ? (
+            <p className="flex items-start gap-2 border-t border-amber-200 bg-amber-50/60 px-5 py-2.5 text-xs leading-5 text-amber-800">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+              {result.coverageNote}
+            </p>
+          ) : null}
 
           <div className="space-y-5 border-t border-border p-5">
             {compliance.platform === "hungerstation" ? (
@@ -1129,23 +1135,19 @@ function ContractValidityNotice({ versions }: { versions: ContractVersionRecord[
   return (
     <div
       role="status"
-      className={cn(
-        "flex items-start gap-2.5 rounded-[10px] border px-4 py-3 text-sm leading-6",
-        validity.kind === "expired" ? "border-destructive/30 bg-destructive/[0.04] text-destructive" : "border-amber-200 bg-amber-50/70 text-amber-800",
-      )}
+      className="flex items-start gap-2.5 rounded-[10px] border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm leading-6 text-amber-800"
     >
       <AlertTriangle className="mt-1 size-4 shrink-0" />
       <p>
         {validity.kind === "expired" ? (
           <>
-            انتهت آخر نسخة معتمدة من هذا العقد في <span className="num">{validity.endedOn}</span>، ولا توجد نسخة سارية بعدها. الفواتير بعد هذا
-            التاريخ لا تُفحص مقابل العقد، وإذا كان في النسخة سعر مخفّض لفترة محددة فقد تكون المنصة عادت إلى السعر الأساسي. أضف النسخة الجديدة
-            أو التمديد من المنصة.
+            انتهت مدة آخر نسخة معتمدة في <span className="num">{validity.endedOn}</span>، وما زالت تُستخدم في فحص الفواتير حتى ترفع عقداً
+            جديداً. إذا كان فيها سعر مخفّض لفترة محددة فقد تكون المنصة عادت إلى السعر الأساسي؛ ارفع العقد الجديد أو التمديد من المنصة.
           </>
         ) : (
           <>
             تنتهي النسخة المعتمدة الحالية في <span className="num">{validity.endsOn}</span> (بعد <span className="num">{validity.daysLeft}</span>{" "}
-            يوماً). تأكد من التمديد أو الشروط الجديدة مع المنصة قبل ذلك التاريخ.
+            يوماً)، وتبقى مستخدمة بعده حتى ترفع عقداً جديداً. تأكد من التمديد أو الشروط الجديدة مع المنصة.
           </>
         )}
       </p>

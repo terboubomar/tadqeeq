@@ -951,7 +951,7 @@ const CONTRACT_SECTION_LABEL: Record<ContractComplianceSection["ruleType"], stri
  */
 export function buildContractExceptions(
   period: StoredPeriod,
-  findings: Array<{ contractId: string; contractName: string; sections: ContractComplianceSection[] }>,
+  findings: Array<{ contractId: string; contractName: string; sections: ContractComplianceSection[]; note?: string | null }>,
 ): AuditException[] {
   const result: AuditException[] = [];
   for (const finding of findings) {
@@ -979,7 +979,7 @@ export function buildContractExceptions(
           tolerance: 0,
           forceReviewAmount: excess,
           forcePotentialRecovery: excess,
-          hint: `مقارنة بالعقد المعتمد «${finding.contractName}»: ${over.length} فرع فوق العقد بإجمالي ${excess.toFixed(2)} ر.س. الأعلى: ${top}. ${section.evidenceNote}`,
+          hint: `مقارنة بالعقد المعتمد «${finding.contractName}»: ${over.length} فرع فوق العقد بإجمالي ${excess.toFixed(2)} ر.س. الأعلى: ${top}. ${section.evidenceNote}${finding.note ? ` ${finding.note}` : ""}`,
         }),
       );
     }

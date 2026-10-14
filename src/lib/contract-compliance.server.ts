@@ -7,12 +7,15 @@ import {
   type KeetaContractCompliance,
   type JahezContractCompliance,
 } from "./contract-compliance";
+import { versionForPeriod } from "./contract-validity";
 import type { StoredPeriod } from "./periods";
 import { requireWorkspacePermission } from "./server-auth.server";
 
 export type ContractComplianceResult =
   | {
       status: "evaluated";
+      /** Set when the version applied is past its end date or does not cover the whole period. */
+      coverageNote: string | null;
       compliance: HungerStationContractCompliance | KeetaContractCompliance | JahezContractCompliance;
     }
   | {
@@ -71,31 +74,30 @@ async function evaluateForPeriod(
     };
   }
 
+  // A contract stays in force until a newer version is uploaded (versionForPeriod).
   const { data: versions, error: versionError } = await client
     .from("contract_versions")
     .select("id, version_number, effective_from, effective_to")
     .eq("user_id", userId)
     .eq("contract_id", input.contractId)
     .eq("status", "approved")
-    .lte("effective_from", period.period_start)
-    .or(`effective_to.is.null,effective_to.gte.${period.period_end}`)
-    .order("effective_from", { ascending: false })
-    .limit(2);
+    .lte("effective_from", period.period_end);
 
   if (versionError) throw new Error(versionError.message);
-  if (!versions?.length) {
+  const chosen = versionForPeriod(
+    (versions ?? []).map((row) => ({ ...row, effectiveFrom: row.effective_from, effectiveTo: row.effective_to })),
+    period.period_start,
+    period.period_end,
+  );
+  if (!chosen) {
     return {
       status: "not_covered",
       reason: "no_single_approved_version",
-      message:
-        "لا توجد نسخة عقد معتمدة واحدة تغطي كامل فترة التدقيق. إذا تغيرت الشروط داخل الفترة، قسّم التدقيق حسب تواريخ السريان بدلاً من استخدام معدل مفترض.",
+      message: "لا توجد نسخة عقد معتمدة بدأت قبل نهاية فترة التدقيق.",
     };
   }
-  if (versions.length > 1) {
-    throw new Error("وجدت أكثر من نسخة عقد معتمدة تغطي كامل فترة التدقيق.");
-  }
 
-  const version = versions[0]!;
+  const version = chosen.version;
   const { data: ruleRows, error: rulesError } = await client
     .from("contract_fee_rules")
     .select("id, contract_id, version_id, rule_key, rule_type, value_kind, numeric_value, text_value, currency, funding_source, scope_type, scope_key, notes, created_at")
@@ -132,6 +134,7 @@ async function evaluateForPeriod(
 
   return {
     status: "evaluated",
+    coverageNote: chosen.note,
     compliance:
       contract.platform === "hungerstation"
         ? evaluateHungerStationContractCompliance({
@@ -156,12 +159,13 @@ async function evaluateForPeriod(
 export interface ContractFinding {
   contractId: string;
   contractName: string;
+  coverageNote: string | null;
   compliance: HungerStationContractCompliance | KeetaContractCompliance | JahezContractCompliance;
 }
 
 /**
- * Every active contract of the period's platform with one approved version covering the whole period, checked
- * against it. Read only: nothing is written to the period. Contracts without such a version are left out.
+ * Every active contract of the period's platform with an approved version in force for the period (a contract stays
+ * in force until a newer version is uploaded), checked against it. Read only: nothing is written to the period.
  */
 export async function getContractFindingsOnServer(periodId: string): Promise<ContractFinding[]> {
   const { client, userId } = await requireWorkspacePermission("contracts.read");
@@ -187,7 +191,9 @@ export async function getContractFindingsOnServer(periodId: string): Promise<Con
   for (const contract of contracts ?? []) {
     try {
       const result = await evaluateForPeriod(client, userId, contract, period);
-      if (result.status === "evaluated") findings.push({ contractId: contract.id, contractName: contract.name, compliance: result.compliance });
+      if (result.status === "evaluated") {
+        findings.push({ contractId: contract.id, contractName: contract.name, coverageNote: result.coverageNote, compliance: result.compliance });
+      }
     } catch (cause) {
       // One contract with overlapping versions must not hide the others' findings.
       console.error("Contract check skipped", contract.id, cause instanceof Error ? cause.message : cause);

@@ -15,6 +15,7 @@ import {
   type ContractVersionRecord,
 } from "./contract-rulebook";
 import { resolveContractRulePrecedence } from "./contract-rulebook-resolver";
+import { versionOnDate } from "./contract-validity";
 import { requireWorkspacePermission, type ServerUserClient } from "./server-auth.server";
 import { safeStorageFileName, sha256Hex } from "./source-file-utils";
 import { MAX_UPLOAD_SIZE_BYTES } from "./upload-validation";
@@ -750,10 +751,7 @@ export async function resolveContractTermsOnServer(
     .eq("user_id", userId)
     .eq("contract_id", input.contractId)
     .eq("status", "approved")
-    .lte("effective_from", input.onDate)
-    .or(`effective_to.is.null,effective_to.gte.${input.onDate}`)
-    .order("effective_from", { ascending: false })
-    .limit(2);
+    .lte("effective_from", input.onDate);
 
   if (versionsError) {
     throw explainDatabaseError(
@@ -762,24 +760,18 @@ export async function resolveContractTermsOnServer(
     );
   }
 
-  if (!versionRows?.length) {
+  // A contract stays in force until a newer version is uploaded, also after its own end date.
+  const version = versionOnDate(
+    (versionRows ?? []).map((row) => ({ ...row, effectiveFrom: row.effective_from, effectiveTo: row.effective_to })),
+    input.onDate,
+  );
+  if (!version) {
     return {
       status: "not_found",
       contractId: input.contractId,
       onDate: input.onDate,
       branchKey: textOrNull(input.branchKey),
     };
-  }
-
-  if (versionRows.length > 1) {
-    throw new Error(
-      "وجدت أكثر من نسخة عقد معتمدة سارية لنفس التاريخ. راجع تواريخ العقد قبل الاستخدام.",
-    );
-  }
-
-  const version = versionRows[0];
-  if (!version) {
-    throw new Error("تعذّر تحديد نسخة العقد السارية.");
   }
 
   const { data: ruleRows, error: rulesError } = await client
