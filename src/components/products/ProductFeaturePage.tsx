@@ -5,7 +5,7 @@ import type { ComponentType } from "react";
 import { GuideShell, Section } from "@/components/guides/GuidePages";
 import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
 import { ProductIcon } from "@/components/products/ProductIcon";
-import { guideBySlug, type GuideSection } from "@/lib/guides";
+import { guideBySlug } from "@/lib/guides";
 import { PRODUCT_PAGES, type ProductPage } from "@/lib/product-pages";
 import { PRODUCTS, type ProductKey } from "@/lib/products";
 import { formatArabicDate } from "@/lib/site-content";
@@ -27,6 +27,7 @@ export function ProductFeaturePage({ page }: { page: ProductPage }) {
   const guides = page.relatedGuides.map(guideBySlug);
   const others = PRODUCT_PAGES.filter((other) => other.slug !== page.slug);
   const Visual = HERO_VISUALS[page.product];
+  const short = page.short;
   let bulletBlocks = 0;
 
   return (
@@ -48,8 +49,8 @@ export function ProductFeaturePage({ page }: { page: ProductPage }) {
                 {product.name}
               </span>
             </nav>
-            <h1 className="mt-6 max-w-[20ch] text-balance font-display text-[2.1rem] font-extrabold leading-[1.35] sm:text-5xl sm:leading-[1.3]">{page.title}</h1>
-            <p className="mt-6 max-w-[62ch] text-lg leading-9 text-foreground/80">{page.answer}</p>
+            <h1 className="mt-6 max-w-[20ch] text-balance font-display text-[2.1rem] font-extrabold leading-[1.35] sm:text-5xl sm:leading-[1.3]">{short?.title ?? page.title}</h1>
+            <p className="mt-6 max-w-[62ch] text-lg leading-9 text-foreground/80">{short?.lead ?? page.answer}</p>
             {page.availability ? (
               <p className="mt-5 flex max-w-[62ch] items-start gap-2.5 text-[15px] leading-7 text-muted-foreground">
                 <Info className="mt-1 size-4 shrink-0 text-primary-text" />
@@ -81,12 +82,21 @@ export function ProductFeaturePage({ page }: { page: ProductPage }) {
       </div>
 
       {page.sections.map((section) => {
-        if (section.steps) return <StepsBlock key={section.heading} section={section} />;
+        const brief = short?.sections[section.heading];
+        if (brief?.steps) return <StepsBlock key={section.heading} heading={section.heading} steps={brief.steps} />;
+        if (brief?.items) {
+          const dark = bulletBlocks++ % 2 === 1;
+          return <BulletsBlock key={section.heading} heading={section.heading} items={brief.items} dark={dark} compact />;
+        }
+        if (brief?.text) return <ParagraphsBlock key={section.heading} heading={section.heading} paragraphs={[brief.text]} statement />;
+        if (section.steps) return <StepsBlock key={section.heading} heading={section.heading} steps={section.steps.map((step) => [step, undefined])} />;
         if (section.bullets && !section.table && !section.quote) {
           const dark = bulletBlocks++ % 2 === 1;
-          return <BulletsBlock key={section.heading} section={section} dark={dark} />;
+          return <BulletsBlock key={section.heading} heading={section.heading} items={section.bullets} dark={dark} />;
         }
-        if (section.paragraphs && !section.table && !section.quote) return <ParagraphsBlock key={section.heading} section={section} />;
+        if (section.paragraphs && !section.table && !section.quote) {
+          return <ParagraphsBlock key={section.heading} heading={section.heading} paragraphs={section.paragraphs} />;
+        }
         return (
           <div key={section.heading} className="mx-auto max-w-3xl px-4 sm:px-6">
             <Section section={section} />
@@ -157,20 +167,38 @@ export function ProductFeaturePage({ page }: { page: ProductPage }) {
             ))}
           </ul>
         </nav>
+
+        {short ? (
+          <details className="group mt-12 border-t border-border pt-4">
+            <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
+              التفاصيل الكاملة عن {product.name}
+              <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="max-w-3xl pb-4">
+              <p className="mt-6 text-[16px] leading-8 text-foreground/85">{page.answer}</p>
+              {page.sections.map((section) => (
+                <Section key={section.heading} section={section} />
+              ))}
+            </div>
+          </details>
+        ) : null}
       </div>
     </GuideShell>
   );
 }
 
 /** "Why" sections: heading on one side, the reasoning on the other, ruled off from the hero. */
-function ParagraphsBlock({ section }: { section: GuideSection }) {
+function ParagraphsBlock({ heading, paragraphs, statement = false }: { heading: string; paragraphs: string[]; statement?: boolean }) {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6">
-      <div className="grid gap-6 border-t border-border py-16 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:gap-16 lg:py-20">
-        <h2 className="text-balance font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem]">{section.heading}</h2>
+      <div className="grid gap-6 border-t border-border py-16 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:items-center lg:gap-16 lg:py-20">
+        <h2 className="text-balance font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem]">{heading}</h2>
         <div className="space-y-5">
-          {section.paragraphs?.map((paragraph) => (
-            <p key={paragraph} className="max-w-[65ch] text-lg leading-9 text-foreground/80">
+          {paragraphs.map((paragraph) => (
+            <p
+              key={paragraph}
+              className={statement ? "max-w-[30ch] text-balance text-2xl font-semibold leading-[1.6] text-foreground/75 sm:text-[1.75rem]" : "max-w-[65ch] text-lg leading-9 text-foreground/80"}
+            >
               {paragraph}
             </p>
           ))}
@@ -181,20 +209,26 @@ function ParagraphsBlock({ section }: { section: GuideSection }) {
 }
 
 /** Steps as a vertical timeline: numbered nodes joined by a dashed rail, heading held beside it on wide screens. */
-function StepsBlock({ section }: { section: GuideSection }) {
-  const steps = section.steps ?? [];
+function StepsBlock({ heading, steps }: { heading: string; steps: Array<[title: string, line: string | undefined]> }) {
   return (
     <section className="bg-secondary/60">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:gap-16 lg:py-24">
-        <h2 className="text-balance font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem] lg:sticky lg:top-24 lg:self-start">{section.heading}</h2>
+        <h2 className="text-balance font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem] lg:sticky lg:top-24 lg:self-start">{heading}</h2>
         <ol className="relative">
-          {steps.map((step, index) => (
+          {steps.map(([step, line], index) => (
             <li key={step} className="relative flex gap-5 pb-10 last:pb-0">
               {index < steps.length - 1 ? (
                 <span aria-hidden="true" className="absolute bottom-0 start-[19px] top-11 border-s-2 border-dashed border-primary/35" />
               ) : null}
               <span className="num relative grid size-10 shrink-0 place-items-center rounded-lg bg-ink text-base font-semibold text-ink-foreground">{index + 1}</span>
-              <p className="max-w-[60ch] pt-1.5 text-[17px] leading-8">{step}</p>
+              {line ? (
+                <div className="pt-0.5">
+                  <h3 className="text-xl font-bold leading-9">{step}</h3>
+                  <p className="mt-1 max-w-[50ch] text-base leading-7 text-muted-foreground">{line}</p>
+                </div>
+              ) : (
+                <p className="max-w-[60ch] pt-1.5 text-[17px] leading-8">{step}</p>
+              )}
             </li>
           ))}
         </ol>
@@ -204,14 +238,13 @@ function StepsBlock({ section }: { section: GuideSection }) {
 }
 
 /** Bullet sections: a ruled grid on the page, or (every other one) a list on the ink surface for rhythm. */
-function BulletsBlock({ section, dark }: { section: GuideSection; dark: boolean }) {
-  const bullets = section.bullets ?? [];
+function BulletsBlock({ heading, items: bullets, dark, compact = false }: { heading: string; items: string[]; dark: boolean; compact?: boolean }) {
   if (dark) {
     return (
       <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-12">
         <div className="rounded-2xl bg-ink px-6 py-12 text-ink-foreground sm:px-12 lg:py-16">
-          <h2 className="text-balance font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem]">{section.heading}</h2>
-          <ul className="mt-10 grid gap-x-12 gap-y-7 md:grid-cols-2">
+          <h2 className="text-balance font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem]">{heading}</h2>
+          <ul className={cn("mt-10 grid gap-x-12 gap-y-7 md:grid-cols-2", compact && "text-lg font-semibold lg:grid-cols-4")}>
             {bullets.map((bullet) => (
               <li key={bullet} className="flex gap-3.5 text-[17px] leading-8">
                 <span className="mt-1 grid size-6 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
@@ -227,10 +260,10 @@ function BulletsBlock({ section, dark }: { section: GuideSection; dark: boolean 
   }
   return (
     <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:py-24">
-      <h2 className="max-w-[24ch] text-balance font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem]">{section.heading}</h2>
+      <h2 className="max-w-[24ch] text-balance font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem]">{heading}</h2>
       <ul className="mt-10 grid gap-x-10 sm:grid-cols-2 lg:grid-cols-3">
         {bullets.map((bullet) => (
-          <li key={bullet} className="flex gap-3.5 border-t border-border py-6 text-[17px] leading-8">
+          <li key={bullet} className={cn("flex gap-3.5 border-t border-border py-6 text-[17px] leading-8", compact && "text-xl font-semibold")}>
             <Check className="mt-1.5 size-5 shrink-0 text-success" strokeWidth={2.5} />
             <span>{bullet}</span>
           </li>

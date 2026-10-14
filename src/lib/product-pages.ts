@@ -27,6 +27,18 @@ export interface ProductPage {
   availability?: string;
   /** Guide slugs to link at the end. */
   relatedGuides: string[];
+  /**
+   * Short on-screen copy for the feature layout. The full title, answer and sections above stay as they are for
+   * search engines, structured data and llms-full.txt, and in a folded «التفاصيل الكاملة» block on the page.
+   */
+  short?: ProductPageShort;
+}
+
+export interface ProductPageShort {
+  title: string;
+  lead: string;
+  /** Keyed by the heading of the section it shortens. */
+  sections: Record<string, { text?: string; items?: string[]; steps?: Array<[title: string, line: string]> }>;
 }
 
 const UPDATED = "2026-10-05";
@@ -87,6 +99,23 @@ export const PRODUCT_PAGES: ProductPage[] = [
       ["هل يمكنني تجربته مجاناً؟", "نعم. التجربة المجانية تتيح رفع ملفات منصة واحدة لفترة واحدة ورؤية المطابقة كاملة."],
     ],
     relatedGuides: ["keeta-invoice", "jahez-commission"],
+    short: {
+      title: "مُطابِق: طابق فاتورة المنصة مع طلباتك",
+      lead: "ارفع الفاتورة وملف الطلبات، ويعيد مُطابِق احتساب كل بند لكل فرع ويُظهر الفرق قبل السداد.",
+      sections: {
+        "لماذا لا يكفي النظر إلى إجمالي الفاتورة؟": { text: "الإجمالي قد يبدو صحيحاً، والفرق مخفي في البنود." },
+        "كيف يعمل مُطابِق": {
+          steps: [
+            ["ارفع الملفين", "ملف الطلبات (Excel أو CSV) وفاتورة المنصة (PDF) لنفس الفترة."],
+            ["نعيد الاحتساب", "كل بند من طلباتك، لكل فرع وقناة."],
+            ["نقارن بالفاتورة", "كل رقم محتسب مقابل ما في الفاتورة."],
+            ["تظهر الفروقات", "لكل فرع مع مصدرها، وتنتقل إلى «رادار» للمتابعة."],
+          ],
+        },
+        "ما الذي يتحقق منه": { items: ["العمولة", "رسوم الدفع", "حملات التوصيل", "الضريبة", "التعويضات", "صافي التحويل"] },
+        "ما يميز النتيجة": { items: ["كل رقم بمعادلته", "نتيجة ثابتة لنفس الملفات", "تأكيد عند تغيّر أعمدة الملف", "تصدير Excel"] },
+      },
+    },
   },
   {
     product: "kashif",
