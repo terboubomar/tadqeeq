@@ -104,7 +104,7 @@ export const Route = createFileRoute("/")({
 
 const HOME_TITLE = "تدقيق فواتير هنقرستيشن وجاهز وكيتا للمطاعم | تدقيق";
 const HOME_DESCRIPTION =
-  "تدقيق يعيد احتساب كل بند في فواتير هنقرستيشن وجاهز وكيتا من ملف طلباتك وعقدك، ويكشف فروقات العمولة والرسوم لكل فرع، ويجهّز مطالبات التعويض بالأدلة.";
+  "تدقيق يعيد احتساب كل بند في فواتير هنقرستيشن وجاهز وكيتا من ملف طلباتك، ويكشف فروقات العمولة والرسوم لكل فرع، ويجهّز مطالبات التعويض بالأدلة.";
 
 /** Header links after the «المنتجات» menu. */
 const NAV = [
@@ -165,7 +165,7 @@ const BEFORE = [
 
 const AFTER = [
   "كل بند مُعاد احتسابه قبل السداد",
-  "نسبة عقدك على كل طلب",
+  "العمولة على كل طلب من بياناته",
   "تعويضات تُعترض بفيديو من الفرع",
   "تقرير واضح لكل فرع",
   "فترة مغلقة بسجل قابل للمراجعة",
@@ -176,10 +176,10 @@ type CheckItem = { title: string; body: string; icon: LucideIcon; how: string; e
 const CHECKS: CheckItem[] = [
   {
     title: "عمولة المبيعات",
-    body: "حسب نسبة العقد لكل فرع وقناة",
+    body: "من بيانات كل طلب لكل فرع وقناة",
     icon: Percent,
-    how: "نضرب قيمة كل طلب في نسبة العمولة المتفق عليها لذلك الفرع والقناة، ونقارن الناتج بالعمولة المخصومة في الفاتورة.",
-    example: "طلب 100 ر.س × 18% = 18.00، والفاتورة خصمت 20.00 ← فرق 2.00 لصالحك",
+    how: "نعيد احتساب عمولة كل طلب من بياناته في ملف الطلبات لذلك الفرع والقناة، ونقارن المجموع بالعمولة المخصومة في الفاتورة.",
+    example: "عمولة الطلبات في الملف 18.00، والفاتورة خصمت 20.00 ← فرق 2.00 لصالحك",
   },
   {
     title: "رسوم الدفع الإلكتروني",
@@ -192,7 +192,7 @@ const CHECKS: CheckItem[] = [
     title: "حملات التوصيل المجاني",
     body: "حصة المطعم من كل حملة",
     icon: Truck,
-    how: "نحتسب حصة المطعم من رسوم التوصيل حسب نسبة المشاركة في العقد، ونتأكد أن الحملة كانت فعّالة في تاريخ الطلب.",
+    how: "نحتسب حصة المطعم من رسوم التوصيل حسب بيانات الحملة في ملف الطلبات، ونتأكد أن الحملة كانت فعّالة في تاريخ الطلب.",
     example: "رسوم توصيل 12 ر.س × حصة 50% = 6.00 على المطعم",
   },
   {
@@ -228,7 +228,7 @@ const CHECKS: CheckItem[] = [
     body: "أي خصم لا يطابق خريطة الرسوم",
     icon: CircleHelp,
     how: "أي خصم لا يطابق بنداً في خريطة الرسوم لا يُقبل تلقائياً، بل يظهر كبند يحتاج مراجعة مع سطره في الفاتورة.",
-    example: "«رسوم خدمة إضافية» 350.00 ر.س غير موجودة في العقد ← تحتاج مراجعة",
+    example: "«رسوم خدمة إضافية» 350.00 ر.س لا يقابلها شيء في ملف الطلبات ← تحتاج مراجعة",
   },
 ];
 
@@ -498,7 +498,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
                 لا تدفع فاتورة هنقرستيشن أو جاهز أو كيتا قبل ما تتأكد منها.
               </h1>
               <p className="max-w-xl text-base leading-8 text-muted-foreground sm:text-lg">
-                تدقيق يعيد احتساب كل بند في فاتورة تطبيق التوصيل من ملف طلباتك ومعادلات عقدك، يكشف الفرق لكل فرع، ويجهّز مطالبة التعويض بأدلتها.
+                تدقيق يعيد احتساب كل بند في فاتورة تطبيق التوصيل من ملف طلباتك، يكشف الفرق لكل فرع، ويجهّز مطالبة التعويض بأدلتها.
               </p>
               <div className="flex flex-wrap gap-3">
                 <Link
@@ -600,8 +600,8 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
 
         <section id="features" className="bg-[oklch(0.975_0.018_85)]">
           <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:py-28">
-            <SectionIntro eyebrow="مُطابِق · مطابقة الفاتورة" title="ما خصمته المنصة. ما يقوله عقدك. والفرق بينهما.">
-              ارفع الفاتورة ويعيد تدقيق بناءها بنداً بنداً من ملف الطلبات. عند الاختلاف ترى البند والنسبة المحتسبة والنسبة المتفق عليها.
+            <SectionIntro eyebrow="مُطابِق · مطابقة الفاتورة" title="ما خصمته المنصة. ما تقوله طلباتك. والفرق بينهما.">
+              ارفع الفاتورة ويعيد تدقيق بناءها بنداً بنداً من ملف الطلبات. عند الاختلاف ترى البند والمبلغ في الفاتورة والمبلغ المحتسب من طلباتك.
               <Link
                 to="/auth"
                 search={{ mode: "signup" }}
@@ -683,7 +683,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
               <LogoWordmark className="h-9 text-ink" />
             </Link>
             <p className="max-w-sm text-sm leading-7 text-muted-foreground">
-              نعيد احتساب كل بند في فواتير تطبيقات التوصيل من طلباتك وعقدك، ونجهّز مطالبات التعويض بالأدلة لكل فرع.
+              نعيد احتساب كل بند في فواتير تطبيقات التوصيل من طلباتك، ونجهّز مطالبات التعويض بالأدلة لكل فرع.
             </p>
             <ul aria-label="المنصات المدعومة" className="flex flex-wrap gap-2 text-xs font-semibold">
               {PLATFORM_KEYS.map((key) => (
@@ -917,8 +917,8 @@ const SHOWCASE: TourItem[] = [
     name: PRODUCTS.mutabiq.name,
     descriptor: PRODUCTS.mutabiq.descriptor,
     product: "mutabiq",
-    tagline: "ما خصمته المنصة، وما يقوله عقدك، والفرق.",
-    body: "ارفع الفاتورة وملف الطلبات ويعيد تدقيق احتساب كل بند من عقدك. كل فرق يظهر باسمه ومبلغه ونسبته، وجاهز للمطالبة.",
+    tagline: "ما خصمته المنصة، وما تقوله طلباتك، والفرق.",
+    body: "ارفع الفاتورة وملف الطلبات ويعيد تدقيق احتساب كل بند من طلباتك. كل فرق يظهر باسمه ومبلغه ونسبته، وجاهز للمطالبة.",
     icon: FileSpreadsheet,
   },
   {
@@ -1272,10 +1272,10 @@ const CAPABILITIES: TourItem[] = [
     icon: ShieldCheck,
   },
   {
-    key: "contracts",
-    name: "العقود وأرشيف الفترات",
-    tagline: "كل فترة تبقى كما اعتُمدت.",
-    body: "نسب العمولة والرسوم المتفق عليها مع كل منصة في نسخ معتمدة تُقفل. كل فترة تُحفظ، وعند تعديل عقد أو ربط فرع تعيد تحليلها بضغطة دون رفع الملفات من جديد.",
+    key: "archive",
+    name: "أرشيف الفترات",
+    tagline: "كل فترة تبقى كما حُللت.",
+    body: "كل فترة تُحفظ بملفاتها ونتيجتها. عند ربط فرع أو تحديث المحرك تعيد تحليلها بضغطة دون رفع الملفات من جديد، والنتيجة الأصلية تبقى محفوظة للمقارنة.",
     icon: FileText,
   },
   {
@@ -1400,22 +1400,22 @@ function CapabilityVisual({ kind, active }: { kind: string; active: boolean }) {
       </div>
     );
   }
-  if (kind === "contracts") {
+  if (kind === "archive") {
     const versions: Array<[string, string, string, string, string]> = [
-      ["النسخة 2", "18%", "1.8%", "معتمدة", "bg-success/15 text-success"],
-      ["النسخة 1", "20%", "2%", "مقفلة", "bg-muted text-muted-foreground"],
+      ["سبتمبر", "12,480", "845,300", "محفوظة", "bg-success/15 text-success"],
+      ["أغسطس", "13,120", "889,750", "مغلقة", "bg-muted text-muted-foreground"],
     ];
     return (
       <div className={card}>
-        <p className="text-sm font-semibold">عقد هنقرستيشن</p>
+        <p className="text-sm font-semibold">فترات هنقرستيشن</p>
         <ul className="mt-4 space-y-2.5">
-          {versions.map(([name, commission, paymentFee, status, tone], i) => (
+          {versions.map(([name, orders, sales, status, tone], i) => (
             <li key={name} {...rise(i)}>
               <span className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
                 <span>
                   <span className="block text-[13px] font-semibold">{name}</span>
                   <span className="block text-xs text-muted-foreground">
-                    عمولة <bdi dir="ltr" className="num">{commission}</bdi> · رسوم دفع <bdi dir="ltr" className="num">{paymentFee}</bdi>
+                    <bdi dir="ltr" className="num">{orders}</bdi> طلب · مبيعات <bdi dir="ltr" className="num">{sales}</bdi>
                   </span>
                 </span>
                 <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold", tone)}>{status}</span>
@@ -1499,7 +1499,7 @@ function AudienceVisual({ kind, active }: { kind: string; active: boolean }) {
   const card = "w-full max-w-md rounded-2xl bg-card p-5 shadow-[0_24px_48px_-28px_rgb(19_35_43/0.45)]";
   if (kind === "owner") {
     const rows: Array<[string, string, string]> = [
-      ["المستحق حسب عقدك", "142,415.00", "text-foreground"],
+      ["المستحق حسب طلباتك", "142,415.00", "text-foreground"],
       ["المحوّل من المنصة", "140,507.15", "text-foreground"],
       ["الفرق لصالحك", "1,907.85", "text-primary-text"],
     ];
@@ -1641,7 +1641,7 @@ function ShowcaseVisual({ kind, active }: { kind: string; active: boolean }) {
             <p className="num mt-2 text-2xl font-semibold">16,590.00</p>
           </div>
           <div className="rounded-2xl bg-card p-4 shadow-[0_20px_40px_-24px_rgb(19_35_43/0.35)]">
-            <p className="text-xs text-muted-foreground">حسب عقدك</p>
+            <p className="text-xs text-muted-foreground">حسب طلباتك</p>
             <p className="num mt-2 text-2xl font-semibold text-success">14,931.00</p>
           </div>
         </div>
@@ -1696,7 +1696,7 @@ function ShowcaseVisual({ kind, active }: { kind: string; active: boolean }) {
   }
   if (kind === "exceptions") {
     const rows: Array<[string, string, string, string]> = [
-      ["عمولة أعلى من العقد", "فرع العليا", "مفتوح", "bg-destructive/12 text-destructive"],
+      ["عمولة أعلى من المحتسب", "فرع العليا", "مفتوح", "bg-destructive/12 text-destructive"],
       ["تعويض على فرع خاطئ", "فرع الملقا", "قيد المعالجة", "bg-warning/15 text-warning"],
       ["رسوم حملة غير متفق عليها", "فرع النرجس", "مغلق", "bg-success/15 text-success"],
     ];
@@ -1940,7 +1940,7 @@ function ShowcaseVisual({ kind, active }: { kind: string; active: boolean }) {
       </p>
       <p className="w-fit self-end rounded-2xl rounded-ee-sm bg-ink px-3.5 py-2 text-sm text-ink-foreground">ما الذي أكل أكثر من إيراداتي هذا الشهر؟</p>
       <p className={cn("rounded-2xl rounded-es-sm bg-muted px-3.5 py-2.5 text-sm leading-7 transition-opacity duration-700", active ? "opacity-100" : "opacity-0")} style={{ transitionDelay: "0.4s" }}>
-        العمولة أخذت 20% من المبيعات في هنقرستيشن، أعلى بنقطتين من عقدك. الفرق <span className="num font-semibold">1,659.00 ر.س</span> ومسجل كاستثناء جاهز للمطالبة.
+        العمولة أخذت 20% من المبيعات في هنقرستيشن، أعلى بنقطتين مما تقوله طلباتك. الفرق <span className="num font-semibold">1,659.00 ر.س</span> ومسجل كاستثناء جاهز للمطالبة.
       </p>
       <p className="text-[11px] text-muted-foreground">الأرقام من المحرك المحاسبي، والصياغة من الذكاء الاصطناعي.</p>
     </div>
@@ -2539,7 +2539,7 @@ function HeroDashboard() {
           <div className="flex flex-col gap-2 rounded-xl border border-border p-3.5 text-xs">
             <p className="font-semibold">أحدث الفروقات</p>
             {[
-              ["عمولة أعلى من العقد", "حرج", true],
+              ["عمولة أعلى من المحتسب", "حرج", true],
               ["تعويض على فرع خاطئ", "تحذير", false],
               ["رسوم غير مصنفة", "تحذير", false],
             ].map(([label, level, critical], index) => (
@@ -2581,9 +2581,9 @@ function InvoiceMock() {
           <p className="mt-2 text-xs text-muted-foreground">عمولة 20% محتسبة</p>
         </div>
         <div className="rounded-2xl bg-card p-5 shadow-[0_20px_40px_-24px_rgb(19_35_43/0.35)]">
-          <p className="text-xs text-muted-foreground">حسب عقدك</p>
+          <p className="text-xs text-muted-foreground">حسب طلباتك</p>
           <p className="num mt-2.5 text-3xl font-semibold text-success">14,931.00</p>
-          <p className="mt-2 text-xs text-muted-foreground">عمولة 18% متفق عليها</p>
+          <p className="mt-2 text-xs text-muted-foreground">عمولة 18% من ملف الطلبات</p>
         </div>
       </div>
       <div className="flex flex-col gap-1 rounded-2xl bg-card p-3 text-[13px]">
@@ -2865,8 +2865,8 @@ const HOW_FLOW: FlowStep[] = [
   {
     title: "نعيد الاحتساب",
     who: "المحرك المحاسبي · تلقائياً",
-    body: "محرك ثابت يعيد بناء كل بند في الفاتورة من الطلبات نفسها، بمعادلات عقدك النافذ في تاريخ كل طلب.",
-    detail: "نفس الملفات تعطي نفس النتيجة دائماً، وكل احتساب يُحفظ برقم نسخة المحرك وإصدار العقد.",
+    body: "محرك ثابت يعيد بناء كل بند في الفاتورة من الطلبات نفسها، بمعادلات كل منصة.",
+    detail: "نفس الملفات تعطي نفس النتيجة دائماً، وكل احتساب يُحفظ برقم نسخة المحرك.",
     icon: Calculator,
   },
   {
@@ -2880,7 +2880,7 @@ const HOW_FLOW: FlowStep[] = [
     title: "استرد وأغلق",
     who: "نهاية الفترة",
     body: "جهّز مطالبة الاسترداد بأدلتها، ثم أغلق الفترة لتُحفظ في الفترات السابقة بسجل كامل قابل للمراجعة.",
-    detail: "يمكن إعادة تحليل أي فترة لاحقاً عند تحديث العقد، مع بقاء النتيجة الأصلية محفوظة للمقارنة.",
+    detail: "يمكن إعادة تحليل أي فترة لاحقاً عند ربط فرع أو تحديث المحرك، مع بقاء النتيجة الأصلية محفوظة للمقارنة.",
     icon: HandCoins,
   },
 ];
@@ -2951,7 +2951,7 @@ function HowStepVisual({ step, active }: { step: number; active: boolean }) {
       <div className={cn("w-full max-w-md rounded-2xl bg-card p-5", shadow)}>
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold">إعادة الاحتساب</p>
-          <span className="num rounded-full bg-muted px-2.5 py-1 text-[11px]" dir="ltr">engine v1.1 · عقد 2026</span>
+          <span className="num rounded-full bg-muted px-2.5 py-1 text-[11px]" dir="ltr">engine v1.1</span>
         </div>
         <div className="mt-4 space-y-2">
           {lines.map(([label, formula, value], i) => (

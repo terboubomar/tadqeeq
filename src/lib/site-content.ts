@@ -5,7 +5,7 @@
  */
 
 /** Last meaningful change to the public content (YYYY-MM-DD). */
-export const CONTENT_UPDATED = "2026-10-13";
+export const CONTENT_UPDATED = "2026-10-14";
 
 /** "4 أكتوبر 2026" for visible last-updated lines. */
 export function formatArabicDate(date: string): string {
@@ -17,7 +17,7 @@ export function formatArabicDate(date: string): string {
 export const FAQS: Array<[question: string, answer: string]> = [
   [
     "ما هو تدقيق؟",
-    "تدقيق منصة سعودية لمراجعة فواتير تطبيقات التوصيل. ترفع ملف الطلبات وفاتورة هنقرستيشن أو كيتا أو جاهز، فيعيد تدقيق احتساب العمولة ورسوم الدفع والحملات والتعويضات من بياناتك وعقدك، ويعرض كل فرق باسم الفرع والمبلغ مع مصدره، ويجهّز مطالبة التعويض بأدلتها.",
+    "تدقيق منصة سعودية لمراجعة فواتير تطبيقات التوصيل. ترفع ملف الطلبات وفاتورة هنقرستيشن أو كيتا أو جاهز، فيعيد تدقيق احتساب العمولة ورسوم الدفع والحملات والتعويضات من ملفاتك، ويعرض كل فرق باسم الفرع والمبلغ مع مصدره، ويجهّز مطالبة التعويض بأدلتها.",
   ],
   [
     "هل يمكنني تجربة تدقيق قبل الاشتراك؟",
@@ -30,7 +30,7 @@ export const FAQS: Array<[question: string, answer: string]> = [
   ],
   [
     "ما منتجات تدقيق؟",
-    "مُطابِق لمطابقة الفاتورة مع طلباتك وعقدك، وكاشِف لخريطة كل رسم تخصمه المنصة، ورادار لمتابعة الفروقات حتى تُغلق، واسترداد للاعتراض على التعويضات بأدلة Telegram، وعائد لربح كل عرض وإعلان بعد العمولة، ورقيب لتنبيهك لما هو غير معتاد في كل فرع، ونَبْض لمتابعة المبيعات وتكلفة كل منصة يوماً بيوم، و Tadqeeq AI للإجابة عن أسئلتك عن أرقامك.",
+    "مُطابِق لمطابقة الفاتورة مع طلباتك، وكاشِف لخريطة كل رسم تخصمه المنصة، ورادار لمتابعة الفروقات حتى تُغلق، واسترداد للاعتراض على التعويضات بأدلة Telegram، وعائد لربح كل عرض وإعلان بعد العمولة، ورقيب لتنبيهك لما هو غير معتاد في كل فرع، ونَبْض لمتابعة المبيعات وتكلفة كل منصة يوماً بيوم، و Tadqeeq AI للإجابة عن أسئلتك عن أرقامك.",
   ],
   [
     "ما المنصات التي يدعمها تدقيق؟",
@@ -39,7 +39,7 @@ export const FAQS: Array<[question: string, answer: string]> = [
   ["ما الملفات التي أحتاجها؟", "ملف الطلبات من بوابة التاجر وفاتورة المنصة لنفس الفترة. نقبل Excel وCSV وPDF."],
   [
     "كيف أعرف أن عمولة المنصة صحيحة؟",
-    "تدقيق يعيد احتساب العمولة لكل طلب من قيمة الطلب ونسبة عقدك لذلك الفرع والقناة، ثم يقارن المجموع بما خصمته المنصة في الفاتورة. أي فرق يظهر باسم الفرع والمبلغ والنسبة المحتسبة مقابل النسبة المتفق عليها، ويتحول إلى استثناء له مسؤول وحالة حتى يُغلق.",
+    "تدقيق يعيد احتساب العمولة لكل طلب من بياناته في ملف الطلبات لذلك الفرع والقناة، ثم يقارن المجموع بما خصمته المنصة في الفاتورة. أي فرق يظهر باسم الفرع والمبلغ في الفاتورة مقابل المبلغ المحتسب من طلباتك، ويتحول إلى استثناء له مسؤول وحالة حتى يُغلق.",
   ],
   [
     "كيف أعترض على تعويض خصمته المنصة؟",
@@ -88,7 +88,7 @@ export const FEATURES: Array<{ name: string; nameEn: string; description: string
     name: "مُطابِق · مطابقة الفاتورة",
     nameEn: "Mutabiq · Invoice check",
     description:
-      "Upload the platform invoice (PDF) and the merchant order file (Excel or CSV); every line is recalculated from the orders and the contract by a versioned engine, so the same files always give the same result.",
+      "Upload the platform invoice (PDF) and the merchant order file (Excel or CSV); every line is recalculated from the orders by a versioned engine, so the same files always give the same result.",
   },
   {
     name: "كاشِف · خريطة الرسوم",
@@ -136,10 +136,10 @@ export const FEATURES: Array<{ name: string; nameEn: string; description: string
       "One account holds several companies or brands, each with its own data, branches and team. Six roles (owner, admin, auditor, compensation officer, branch manager, viewer); branch managers can be limited to their branches. Password sign-ins need a 6-digit code sent by email, or an authenticator app.",
   },
   {
-    name: "العقود والتقارير وأرشيف الفترات",
-    nameEn: "Contracts, reports and period archive",
+    name: "التقارير وأرشيف الفترات",
+    nameEn: "Reports and period archive",
     description:
-      "Versioned platform contracts (approved versions are locked), executive dashboard, branch, daily and line-item reports, saved periods with one-click re-analysis, and branch names matched once and remembered.",
+      "Executive dashboard, branch, daily and line-item reports, saved periods with one-click re-analysis, and branch names matched once and remembered.",
   },
   {
     name: "قراءة ذكية للملفات",

@@ -124,7 +124,7 @@ export function ProductsIndexPage() {
     <GuideShell>
       <h1 className="font-display text-3xl font-extrabold leading-[1.45] sm:text-4xl">{PRODUCTS_INDEX.title}</h1>
       <p className="mt-4 text-[17px] leading-8 text-muted-foreground">
-        كل منتج يغطي جزءاً من مراجعة فواتير هنقرستيشن وجاهز وكيتا: من مطابقة الفاتورة مع طلباتك وعقدك، إلى متابعة الفروقات واسترداد التعويضات وقياس عائد الإعلانات ومتابعة تكلفة كل منصة يوماً بيوم.
+        كل منتج يغطي جزءاً من مراجعة فواتير هنقرستيشن وجاهز وكيتا: من مطابقة الفاتورة مع طلباتك، إلى متابعة الفروقات واسترداد التعويضات وقياس عائد الإعلانات ومتابعة تكلفة كل منصة يوماً بيوم.
       </p>
       <ul className="mt-10 grid gap-4">
         {PRODUCT_PAGES.map((page) => (
