@@ -14,6 +14,9 @@ import { branchJournalEntry, type JournalEntry } from "@/lib/journal-entries";
 
 import { listBranchRegistry, resolveBranchName } from "@/lib/branch-registry";
 import { displayBranchName, platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
+import { ALLOCATION_RULE_AR, invoiceOnlyAllocation } from "@/lib/invoice-only-allocation";
+import { money } from "@/lib/format";
+import type { StoredPeriod } from "@/lib/periods";
 
 import { EmptyState } from "@/components/AppShell";
 import { ReportTable, type Column } from "@/components/ReportTable";
@@ -215,6 +218,7 @@ function BranchesPage() {
               : "جاهز لا يوفّر تفاصيل فاتورة حسب الفرع في الملفات الحالية؛ يتم التحقق من Restaurant Amount لكل فرع، ويُضاف تقرير التعويضات حسب الفرع مع كشف التكرار والطلبات غير المعروفة. مطابقة الفاتورة الضريبية تبقى على إجمالي التاجر."
         }
       />
+      <AllocationNote period={selected} />
       <JournalEntryDialog entry={entry} costCenter={entryKey ? costCenters[entryKey] : undefined} onClose={() => setEntry(null)} />
       <BranchJournalsDialog
         title={selected.label}
@@ -223,5 +227,23 @@ function BranchesPage() {
         onClose={() => setJournals(null)}
       />
     </div>
+  );
+}
+
+/** Branch totals plus what stays at platform level add up to the invoice-only total; each part names its rule. */
+function AllocationNote({ period }: { period: StoredPeriod }) {
+  const allocation = invoiceOnlyAllocation(period);
+  if (!allocation.rows.length) return null;
+  return (
+    <p className="rounded-xl border border-border bg-card px-4 py-3 text-[12.5px] leading-6 text-muted-foreground">
+      بنود الفاتورة فقط: على الفروع <span className="num">{money(allocation.allocated)}</span> ({ALLOCATION_RULE_AR.direct}) + غير موزّع{" "}
+      <span className="num">{money(allocation.unallocated)}</span> ({ALLOCATION_RULE_AR.platform_level}) ={" "}
+      <span className="num font-semibold text-foreground">{money(allocation.total)}</span> ر.س
+      {allocation.invoiceTotal !== null && Math.abs(allocation.residual ?? 0) >= 0.01 ? (
+        <>
+          {" "}· فرق عن إجمالي البنود المأخوذة من الفاتورة <span className="num">{money(allocation.residual ?? 0)}</span>
+        </>
+      ) : null}
+    </p>
   );
 }
