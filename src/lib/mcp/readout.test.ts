@@ -147,7 +147,13 @@ describe("invoice detail (lines, branch charges, statement of account, compensat
   });
 
   test("compensation shows invoiced, recalculated with its source, and the exact difference", () => {
-    expect(readout.compensation).toMatchObject({ invoiced: 2612.16, recalculated: 2612.17, difference: 0.01, within_tolerance: true });
+    // 2612.1739 against 2612.16 is 0.0139 apart: shown as 0.01, but not within the strict under-one-halala tolerance.
+    expect(readout.compensation).toMatchObject({ invoiced: 2612.16, recalculated: 2612.17, difference: 0.01, within_tolerance: false });
     expect(readout.compensation?.recalculated_source).toContain("Compensated Orders");
+  });
+
+  test("compensation under one halala apart is within tolerance", () => {
+    const close = periodReadout({ ...detailed, summary: { ...detailed.summary, compensation: 2612.165 } } as unknown as StoredPeriod, "x");
+    expect(close.compensation).toMatchObject({ within_tolerance: true });
   });
 });
