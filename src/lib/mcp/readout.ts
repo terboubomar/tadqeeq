@@ -1,5 +1,6 @@
 import { buildPeriodSummaryAiPacket } from "@/lib/ai/period-summary-ai";
 import { buildPeriodExceptions } from "@/lib/exceptions";
+import { ALLOCATION_RULE_EN, invoiceOnlyAllocation } from "@/lib/invoice-only-allocation";
 import type { StoredPeriod } from "@/lib/periods";
 import {
   displayBranchName,
@@ -97,7 +98,22 @@ export function unallocatedCharges(period: StoredPeriod) {
     line: item.label,
     amount_sar: round(item.amount),
     allocation: "unallocated" as const,
+    allocation_rule: ALLOCATION_RULE_EN.platform_level,
   }));
+}
+
+/** Branch invoice-only charges plus platform-level ones reconcile to the invoice-only total, with any residual. */
+function allocationSummary(period: StoredPeriod) {
+  const allocation = invoiceOnlyAllocation(period);
+  if (!allocation.rows.length) return null;
+  return {
+    allocated_to_branches_sar: allocation.allocated,
+    unallocated_sar: allocation.unallocated,
+    total_sar: allocation.total,
+    invoice_only_total_sar: allocation.invoiceTotal,
+    residual_sar: allocation.residual,
+    rules: ALLOCATION_RULE_EN,
+  };
 }
 
 /** The statement of account as printed; the advertising invoice is verified against the CPC invoice when one was uploaded. */
@@ -152,6 +168,7 @@ export function periodReadout(period: StoredPeriod, appUrl: string) {
     invoice_check: invoiceChecks(period),
     invoice_lines: invoiceLines(period),
     unallocated_charges: unallocatedCharges(period),
+    invoice_only_allocation: allocationSummary(period),
     statement_of_account: statementOfAccount(period),
     compensation: compensationComparison(period),
     charges_vat: chargesVat(period),
@@ -213,6 +230,7 @@ export function branchPerformance(period: StoredPeriod) {
         invoice_only_charges: (b.invoiceBranchName ? (itemsByInvoiceName.get(b.invoiceBranchName) ?? []) : []).map((item) => ({
           line: item.label,
           amount_sar: round(item.amount),
+          allocation_rule: ALLOCATION_RULE_EN.direct,
         })),
       };
     })

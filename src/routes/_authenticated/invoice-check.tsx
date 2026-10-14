@@ -14,7 +14,8 @@ import { costReconciliation } from "@/lib/cost-reconciliation";
 import type { StoredPeriod } from "@/lib/periods";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
-import { PLATFORM_COST_DEFINITION_AR, vatBreakdown } from "@/lib/reporting-metrics";
+import { ALLOCATION_RULE_AR, invoiceOnlyAllocation } from "@/lib/invoice-only-allocation";
+import { PLATFORM_COST_DEFINITION_AR, displayBranchName, vatBreakdown } from "@/lib/reporting-metrics";
 
 export const Route = createFileRoute("/_authenticated/invoice-check")({
   head: () => ({
@@ -654,7 +655,6 @@ function InvoiceLinesSection({ period }: { period: StoredPeriod }) {
   const recalculated = period.platform === "hungerstation" ? period.summary.compensation : undefined;
   const compensationDiff =
     compensation && typeof recalculated === "number" ? Math.round((recalculated - compensation.amount) * 100) / 100 : null;
-  const unallocated = period.invoice?.unallocatedCharges ?? [];
 
   return (
     <Section title="سطور الفاتورة كما وردت" summary={lines.length + " سطر · الكمية والمعدل والمبلغ"} defaultOpen={false}>
@@ -706,19 +706,69 @@ function InvoiceLinesSection({ period }: { period: StoredPeriod }) {
             {Math.abs(compensationDiff) <= 0.01 ? " (ضمن هامش التقريب)" : ""}
           </p>
         ) : null}
-        {unallocated.length ? (
-          <p>
-            غير موزّعة على الفروع (في ملخص الفاتورة فقط):{" "}
-            {unallocated.map((item, index) => (
-              <span key={item.label}>
-                {index ? " · " : ""}
-                {item.label} <span className="num">{money(item.amount)}</span>
-              </span>
-            ))}
-          </p>
-        ) : null}
       </div>
+      <AllocationTable period={period} />
     </Section>
+  );
+}
+
+/** Where each invoice-only charge sits and by which rule, adding up to the invoice-only total. */
+function AllocationTable({ period }: { period: StoredPeriod }) {
+  const allocation = invoiceOnlyAllocation(period);
+  if (!allocation.rows.length) return null;
+  return (
+    <div className="border-t border-border/70">
+      <p className="px-4 pt-3 text-[12.5px] font-semibold">توزيع بنود الفاتورة فقط على الفروع</p>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[600px] text-[12.5px]">
+          <thead className="text-[11.5px] text-muted-foreground">
+            <tr>
+              <th className="px-4 py-2 text-start font-semibold">الفرع</th>
+              <th className="px-4 py-2 text-start font-semibold">البند</th>
+              <th className="px-4 py-2 text-start font-semibold">قاعدة التوزيع</th>
+              <th className="px-4 py-2 text-right font-semibold">المبلغ (بدون الضريبة)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {allocation.rows.map((row, index) => (
+              <tr key={(row.branch ?? "") + row.label + index} className="border-t border-border/70">
+                <td className="px-4 py-2 font-medium">{row.branch ? displayBranchName(row.branch) : "غير موزّع"}</td>
+                <td className="px-4 py-2">{row.label}</td>
+                <td className="px-4 py-2 text-muted-foreground">{ALLOCATION_RULE_AR[row.rule]}</td>
+                <td className="px-4 py-2 text-right">
+                  <span className="num">{money(row.amount)}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="text-[12px]">
+            <tr className="border-t border-border">
+              <td colSpan={3} className="px-4 py-2">
+                على الفروع <span className="num">{money(allocation.allocated)}</span> + غير موزّع{" "}
+                <span className="num">{money(allocation.unallocated)}</span>
+              </td>
+              <td className="px-4 py-2 text-right">
+                <span className="num font-semibold">{money(allocation.total)}</span>
+              </td>
+            </tr>
+            {allocation.invoiceTotal !== null ? (
+              <tr>
+                <td colSpan={4} className="px-4 pb-3 text-muted-foreground">
+                  {Math.abs(allocation.residual ?? 0) < 0.01 ? (
+                    <>يطابق إجمالي البنود المأخوذة من الفاتورة <span className="num">{money(allocation.invoiceTotal)}</span>.</>
+                  ) : (
+                    <>
+                      إجمالي البنود المأخوذة من الفاتورة <span className="num">{money(allocation.invoiceTotal)}</span> · فرق غير موزّع{" "}
+                      <span className="num">{money(allocation.residual ?? 0)}</span>
+                    </>
+                  )}
+                </td>
+              </tr>
+            ) : null}
+          </tfoot>
+        </table>
+      </div>
+    </div>
   );
 }
 
