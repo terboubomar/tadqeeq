@@ -85,7 +85,6 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
     title: "الإعداد",
     items: [
       { to: "/import", label: "رفع البيانات", permission: "imports.create" },
-      { to: "/contracts", label: "العقود وشروط المنصات", permission: "contracts.read" },
       { to: "/team", label: "المستخدمون والصلاحيات", permission: "users.manage" },
     ],
   },
@@ -112,7 +111,6 @@ const ROUTE_PERMISSIONS: Record<string, WorkspacePermission> = {
   "/trends": "reports.read",
   "/report-schedules": "reports.read",
   "/import": "imports.create",
-  "/contracts": "contracts.read",
   "/team": "users.manage",
 };
 

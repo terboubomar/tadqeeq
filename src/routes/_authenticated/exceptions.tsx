@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PRODUCTS, productPageTitle } from "@/lib/products";
 import { ProductName } from "@/components/ProductName";
 import { createFileRoute } from "@tanstack/react-router";
@@ -20,9 +20,6 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/AppShell";
-import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
-import { complianceSections } from "@/lib/contract-compliance";
-import { getContractFindings } from "@/lib/contract-compliance.functions";
 import { AI_UI_ENABLED } from "@/lib/ai/config";
 import { explainExceptionWithAi } from "@/lib/ai/exception-ai.functions";
 import type { ExceptionAiResult } from "@/lib/ai/exception-ai";
@@ -45,7 +42,6 @@ import {
 } from "@/components/ui/select";
 import {
   buildExceptionEvidence,
-  buildContractExceptions,
   buildPeriodExceptions,
   EXCEPTION_SEVERITY_LABELS,
   EXCEPTION_STATUS_LABELS,
@@ -98,30 +94,10 @@ function ExceptionsPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const { can } = useWorkspaceAccess();
-  // Charges above the approved platform contract (from «العقود وشروط المنصات»), next to the audit's own exceptions.
-  const contractFindings = useQuery({
-    queryKey: ["contract-findings", selected?.id],
-    queryFn: () => getContractFindings({ data: { periodId: selected!.id } }),
-    enabled: Boolean(selected) && can("contracts.read"),
-    staleTime: 5 * 60_000,
-  });
-  const exceptions = useMemo(() => {
-    if (!selected) return [];
-    const contract = buildContractExceptions(
-      selected,
-      (contractFindings.data ?? []).map((finding) => ({
-        contractId: finding.contractId,
-        contractName: finding.contractName,
-        sections: complianceSections(finding.compliance),
-        note: finding.coverageNote,
-      })),
-    );
-    const rank = { critical: 4, high: 3, medium: 2, low: 1 } as const;
-    return [...buildPeriodExceptions(selected), ...contract].sort(
-      (left, right) => rank[right.severity] - rank[left.severity] || right.reviewAmount - left.reviewAmount,
-    );
-  }, [selected, contractFindings.data]);
+  const exceptions = useMemo(
+    () => (selected ? buildPeriodExceptions(selected) : []),
+    [selected],
+  );
   const summary = useMemo(() => summarizeExceptions(exceptions), [exceptions]);
 
   const filtered = useMemo(() => {
@@ -809,8 +785,7 @@ function AiExplanationPanel({ item }: { item: AuditException }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Contract exceptions carry their own explanation; the AI explainer reads the audit's exceptions only.
-  if (!AI_UI_ENABLED || item.code.startsWith("contract_")) return null;
+  if (!AI_UI_ENABLED) return null;
 
   async function explain() {
     setLoading(true);

@@ -7,7 +7,8 @@ export const PLAN_FEATURES: Array<{ key: PlanFeature; label: string }> = [
   { key: "invoice_audit", label: "مُطابِق وكاشِف وعائد: مطابقة الفاتورة وخريطة الرسوم وعائد العروض" },
   { key: "exceptions", label: productTitle("radar") },
   { key: "compensation", label: `${productTitle("istirdad")} وأدلة Telegram` },
-  { key: "contracts", label: "العقود وشروط المنصات" },
+  // Kept for existing plans: it still unlocks the journal-entry account settings (contracts.manage).
+  { key: "contracts", label: "إعدادات حسابات القيود" },
   { key: "ai", label: "Tadqeeq AI" },
 ];
 
@@ -168,7 +169,6 @@ export function planComparison(plans: PublicPlan[]): ComparisonRow[] {
     { label: productTitle("aaid"), cells: plans.map((plan) => featureCell(plan, "invoice_audit")) },
     { label: productTitle("nabd"), cells: plans.map((plan) => featureCell(plan, "invoice_audit")) },
     { label: productTitle("radar"), cells: plans.map((plan) => featureCell(plan, "exceptions")) },
-    { label: "العقود وشروط المنصات", cells: plans.map((plan) => featureCell(plan, "contracts")) },
     { label: "القيود المحاسبية ومراكز التكلفة", cells: yes() },
     { label: `${productTitle("raqeeb")} والقراءة الذكية للملفات`, cells: yes() },
     { label: `${productTitle("istirdad")} وبوت Telegram`, cells: plans.map((plan) => featureCell(plan, "compensation")) },

@@ -37,7 +37,6 @@ import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/as
 import { Route as AuthenticatedBranchesRouteImport } from './routes/_authenticated/branches'
 import { Route as AuthenticatedBreakdownRouteImport } from './routes/_authenticated/breakdown'
 import { Route as AuthenticatedChargesRouteImport } from './routes/_authenticated/charges'
-import { Route as AuthenticatedContractsRouteImport } from './routes/_authenticated/contracts'
 import { Route as AuthenticatedDailyRouteImport } from './routes/_authenticated/daily'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedExceptionsRouteImport } from './routes/_authenticated/exceptions'
@@ -230,11 +229,6 @@ const AuthenticatedBreakdownRoute = AuthenticatedBreakdownRouteImport.update({
 const AuthenticatedChargesRoute = AuthenticatedChargesRouteImport.update({
   id: '/charges',
   path: '/charges',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedContractsRoute = AuthenticatedContractsRouteImport.update({
-  id: '/contracts',
-  path: '/contracts',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDailyRoute = AuthenticatedDailyRouteImport.update({
@@ -543,7 +537,6 @@ export interface FileRoutesByFullPath {
   '/branches': typeof AuthenticatedBranchesRoute
   '/breakdown': typeof AuthenticatedBreakdownRoute
   '/charges': typeof AuthenticatedChargesRoute
-  '/contracts': typeof AuthenticatedContractsRoute
   '/daily': typeof AuthenticatedDailyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exceptions': typeof AuthenticatedExceptionsRoute
@@ -624,7 +617,6 @@ export interface FileRoutesByTo {
   '/branches': typeof AuthenticatedBranchesRoute
   '/breakdown': typeof AuthenticatedBreakdownRoute
   '/charges': typeof AuthenticatedChargesRoute
-  '/contracts': typeof AuthenticatedContractsRoute
   '/daily': typeof AuthenticatedDailyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exceptions': typeof AuthenticatedExceptionsRoute
@@ -709,7 +701,6 @@ export interface FileRoutesById {
   '/_authenticated/branches': typeof AuthenticatedBranchesRoute
   '/_authenticated/breakdown': typeof AuthenticatedBreakdownRoute
   '/_authenticated/charges': typeof AuthenticatedChargesRoute
-  '/_authenticated/contracts': typeof AuthenticatedContractsRoute
   '/_authenticated/daily': typeof AuthenticatedDailyRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/exceptions': typeof AuthenticatedExceptionsRoute
@@ -794,7 +785,6 @@ export interface FileRouteTypes {
     | '/branches'
     | '/breakdown'
     | '/charges'
-    | '/contracts'
     | '/daily'
     | '/dashboard'
     | '/exceptions'
@@ -875,7 +865,6 @@ export interface FileRouteTypes {
     | '/branches'
     | '/breakdown'
     | '/charges'
-    | '/contracts'
     | '/daily'
     | '/dashboard'
     | '/exceptions'
@@ -959,7 +948,6 @@ export interface FileRouteTypes {
     | '/_authenticated/branches'
     | '/_authenticated/breakdown'
     | '/_authenticated/charges'
-    | '/_authenticated/contracts'
     | '/_authenticated/daily'
     | '/_authenticated/dashboard'
     | '/_authenticated/exceptions'
@@ -1257,13 +1245,6 @@ declare module '@tanstack/react-router' {
       path: '/charges'
       fullPath: '/charges'
       preLoaderRoute: typeof AuthenticatedChargesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/contracts': {
-      id: '/_authenticated/contracts'
-      path: '/contracts'
-      fullPath: '/contracts'
-      preLoaderRoute: typeof AuthenticatedContractsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/daily': {
@@ -1646,7 +1627,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBranchesRoute: typeof AuthenticatedBranchesRoute
   AuthenticatedBreakdownRoute: typeof AuthenticatedBreakdownRoute
   AuthenticatedChargesRoute: typeof AuthenticatedChargesRoute
-  AuthenticatedContractsRoute: typeof AuthenticatedContractsRoute
   AuthenticatedDailyRoute: typeof AuthenticatedDailyRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExceptionsRoute: typeof AuthenticatedExceptionsRoute
@@ -1671,7 +1651,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBranchesRoute: AuthenticatedBranchesRoute,
   AuthenticatedBreakdownRoute: AuthenticatedBreakdownRoute,
   AuthenticatedChargesRoute: AuthenticatedChargesRoute,
-  AuthenticatedContractsRoute: AuthenticatedContractsRoute,
   AuthenticatedDailyRoute: AuthenticatedDailyRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExceptionsRoute: AuthenticatedExceptionsRoute,

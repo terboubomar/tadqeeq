@@ -42,7 +42,7 @@ export const Route = createFileRoute("/_authenticated/subscribe")({
 type Cycle = "monthly" | "yearly";
 
 /** What every order-based plan includes, whatever its size. */
-const INCLUDED = ["فروع ومنصات ومستخدمون بلا حدود", "رفع ملفات بلا حدود", ...PLAN_FEATURES.filter((f) => ["invoice_audit", "exceptions", "contracts"].includes(f.key)).map((f) => f.label), "رقيب · المراقب الذكي والقراءة الذكية للملفات"];
+const INCLUDED = ["فروع ومنصات ومستخدمون بلا حدود", "رفع ملفات بلا حدود", ...PLAN_FEATURES.filter((f) => ["invoice_audit", "exceptions"].includes(f.key)).map((f) => f.label), "رقيب · المراقب الذكي والقراءة الذكية للملفات"];
 
 function SubscribePage() {
   const { context } = useWorkspaceAccess();

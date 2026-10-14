@@ -5,7 +5,6 @@ import {
   CalendarDays,
   ChartLine,
   FileCheck2,
-  FileSignature,
   HandCoins,
   History,
   LayoutDashboard,
@@ -40,6 +39,5 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   "/history": History,
   "/report-schedules": CalendarClock,
   "/import": Upload,
-  "/contracts": FileSignature,
   "/team": Users,
 };
