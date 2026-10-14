@@ -13,7 +13,7 @@ import {
 import type { BranchRow } from "@/lib/analysis/types";
 import { normalizeCheckMetadata } from "@/lib/analysis/check-metadata";
 import type { StoredPeriod } from "@/lib/periods";
-import { PLATFORM_COST_FORMULA_AR, platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
+import { PLATFORM_COST_FORMULA_AR, branchPlatformCharges, periodPlatformCharges, platformCostPct } from "@/lib/reporting-metrics";
 
 import { APP_KNOWLEDGE, normalizeAppRoute } from "./app-knowledge";
 
@@ -146,9 +146,7 @@ function redactPrivateTokens(value: unknown, tokens: string[]): unknown {
 }
 
 function branchPlatformCost(period: StoredPeriod, branch: BranchRow): number {
-  return period.platform === "keeta"
-    ? (branch.keetaTotalCostExVat ?? branch.totalCharges)
-    : branch.totalCharges;
+  return branchPlatformCharges(period, branch) ?? branch.totalCharges;
 }
 
 function branchPlatformCostRate(period: StoredPeriod, branch: BranchRow): number {
@@ -180,7 +178,8 @@ class FactBuilder {
 
 function addPeriodFacts(builder: FactBuilder, period: StoredPeriod, exceptions: AuditException[]) {
   const s = period.summary;
-  const platformCostRate = platformCostPct(totalPlatformCharges(period.platform, s), s.grossSales) ?? 0;
+  const platformCharges = periodPlatformCharges(period) ?? s.totalCharges;
+  const platformCostRate = platformCostPct(platformCharges, s.grossSales) ?? 0;
   const exceptionSummary = summarizeExceptions(exceptions);
 
   builder.add("period", "عدد الطلبات", String(s.orders), {
@@ -207,8 +206,8 @@ function addPeriodFacts(builder: FactBuilder, period: StoredPeriod, exceptions: 
     valuePct: s.commissionPct * 100,
     unit: "percent",
   });
-  builder.add("period", "إجمالي تكلفة المنصة", money(s.totalCharges), {
-    value: s.totalCharges,
+  builder.add("period", "إجمالي تكلفة المنصة", money(platformCharges), {
+    value: platformCharges,
     unit: "sar",
   });
   builder.add("period", "نسبة تكلفة المنصة من إجمالي المبيعات", pct(platformCostRate), {
@@ -673,10 +672,8 @@ function addHistoryFacts(
   for (const period of ordered) {
     const exceptions = buildPeriodExceptions(period);
     const exceptionSummary = summarizeExceptions(exceptions);
-    const costRate =
-      period.summary.grossSales > 0
-        ? period.summary.totalCharges / period.summary.grossSales
-        : 0;
+    const platformCost = periodPlatformCharges(period) ?? period.summary.totalCharges;
+    const costRate = period.summary.grossSales > 0 ? platformCost / period.summary.grossSales : 0;
 
     builder.add(
       "history",
@@ -691,7 +688,7 @@ function addHistoryFacts(
         netSales: period.summary.netSales,
         commission: period.summary.commission,
         commissionRatePct: period.summary.commissionPct * 100,
-        platformCost: period.summary.totalCharges,
+        platformCost,
         platformCostRatePct: costRate * 100,
         openExceptions: exceptionSummary.openCount,
         underReview: exceptionSummary.underReview,

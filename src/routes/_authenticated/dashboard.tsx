@@ -42,7 +42,7 @@ import { PRODUCTS } from "@/lib/products";
 import { cn } from "@/lib/utils";
 import { keetaCostSplit, keetaOutsideInvoice } from "@/lib/keeta-cost";
 import { CostDefinitionNote } from "@/components/dash/CostDefinitionNote";
-import { PLATFORM_COST_FORMULA_AR, platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
+import { PLATFORM_COST_FORMULA_AR, periodPlatformCharges, platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
 import { useBranchLabel } from "@/lib/use-branch-label";
 
 type DashboardSearch = { company?: string; platform?: PlatformScope; month?: string };
@@ -202,12 +202,12 @@ function Dashboard() {
     .slice(0, 3);
 
   // Platform cost %: total platform charges ÷ gross sales, with the previous period of the same platform.
-  const costPct = platformCostPct(totalPlatformCharges(selected.platform, s), s.grossSales);
+  const costPct = platformCostPct(periodPlatformCharges(selected), s.grossSales);
   const previous = periods
     .filter((p) => p.platform === selected.platform && !p.superseded_by && p.id !== selected.id)
     .filter((p) => (p.period_end ?? "") < (selected.period_start ?? selected.period_end ?? ""))
     .sort((a, b) => (b.period_end ?? "").localeCompare(a.period_end ?? ""))[0];
-  const previousCostPct = previous ? platformCostPct(totalPlatformCharges(previous.platform, previous.summary), previous.summary.grossSales) : null;
+  const previousCostPct = previous ? platformCostPct(periodPlatformCharges(previous), previous.summary.grossSales) : null;
   const costPctChange = costPct !== null && previousCostPct !== null ? (costPct - previousCostPct) * 100 : null;
   const costPctTile = {
     label: "نسبة تكلفة المنصة",

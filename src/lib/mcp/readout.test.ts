@@ -78,6 +78,21 @@ describe("reporting clarity (cost %, VAT, branch names)", () => {
     expect(periodHeadline(hungerstation)).not.toHaveProperty("platform_cost_pct_of_net");
   });
 
+  test("platform cost % includes HungerStation's CPC advertising without VAT, with the excl-ads figure beside it", () => {
+    const withCpc = { ...hungerstation, invoice: { ...hungerstation.invoice, cpc: 70624.35 } } as StoredPeriod;
+    expect(periodHeadline(withCpc)).toMatchObject({
+      total_platform_charges_sar: 379515.79,
+      platform_cost_pct: 0.286,
+      advertising_ex_vat_sar: 61412.48,
+      platform_cost_pct_excl_ads: 0.2397,
+    });
+    expect(periodHeadline({ ...keeta, summary: { ...keeta.summary, keetaMerchantAdExVat: 31229.18 } } as StoredPeriod)).toMatchObject({
+      platform_cost_pct: 0.316,
+      advertising_ex_vat_sar: 31229.18,
+      platform_cost_pct_excl_ads: 0.2992,
+    });
+  });
+
   test("VAT is shown separately, from the invoice or marked computed", () => {
     expect(periodReadout(hungerstation, "https://tadqeeq.app").charges_vat).toEqual({
       total_charges_ex_vat_sar: 318103.4,

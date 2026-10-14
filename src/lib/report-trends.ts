@@ -6,7 +6,7 @@
  * end date falls in; several periods of one platform in a month are added together.
  */
 import type { StoredPeriod } from "./periods";
-import { totalPlatformCharges } from "./reporting-metrics";
+import { periodPlatformCharges } from "./reporting-metrics";
 
 export type TrendPlatform = StoredPeriod["platform"];
 
@@ -47,7 +47,7 @@ function add(target: TrendFigures, period: StoredPeriod) {
   target.grossSales += finite(s?.grossSales);
   target.commission += commission;
   if (pct > 0) target.commissionBase += commission / pct;
-  target.platformCharges += finite(totalPlatformCharges(period.platform, s));
+  target.platformCharges += finite(periodPlatformCharges(period));
 }
 
 /** The month a period belongs to: its end date, else its start, else when it was saved. */

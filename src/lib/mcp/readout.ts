@@ -7,8 +7,11 @@ import {
   displayBranchName,
   PLATFORM_COST_DEFINITION,
   PLATFORM_COST_FORMULA,
+  advertisingExVat,
+  branchPlatformCharges,
+  periodPlatformCharges,
+  periodPlatformChargesExclAds,
   platformCostPct,
-  totalPlatformCharges,
   vatBreakdown,
 } from "@/lib/reporting-metrics";
 
@@ -28,7 +31,12 @@ const round = (value: number | undefined | null) => (typeof value === "number" &
 const ratio = (value: number | undefined | null) => (typeof value === "number" && Number.isFinite(value) ? Math.round(value * 10000) / 10000 : null);
 
 /** One line per period for lists: dates and the headline numbers. */
-export function periodHeadline(period: Pick<StoredPeriod, "id" | "label" | "platform" | "period_start" | "period_end" | "created_at"> & { summary?: Partial<StoredPeriod["summary"]> | null }) {
+export function periodHeadline(
+  period: Pick<StoredPeriod, "id" | "label" | "platform" | "period_start" | "period_end" | "created_at"> & {
+    summary?: Partial<StoredPeriod["summary"]> | null;
+    invoice?: Partial<Pick<StoredPeriod["invoice"], "cpc" | "cpcBranches">> | null;
+  },
+) {
   const s = period.summary ?? {};
   return {
     id: period.id,
@@ -42,8 +50,10 @@ export function periodHeadline(period: Pick<StoredPeriod, "id" | "label" | "plat
     gross_sales_sar: round(s.grossSales),
     commission_sar: round(s.commission),
     commission_pct: round(s.commissionPct),
-    total_platform_charges_sar: round(s.totalCharges),
-    platform_cost_pct: ratio(platformCostPct(totalPlatformCharges(period.platform, s), s.grossSales)),
+    total_platform_charges_sar: round(periodPlatformCharges(period)),
+    platform_cost_pct: ratio(platformCostPct(periodPlatformCharges(period), s.grossSales)),
+    advertising_ex_vat_sar: round(advertisingExVat(period)),
+    platform_cost_pct_excl_ads: ratio(platformCostPct(periodPlatformChargesExclAds(period), s.grossSales)),
     platform_cost_pct_formula: PLATFORM_COST_FORMULA,
     platform_cost_pct_definition: PLATFORM_COST_DEFINITION,
     ...(period.platform === "keeta" ? { platform_cost_pct_of_net: ratio(s.keetaPlatformCostPct) } : {}),
@@ -132,7 +142,7 @@ function statementOfAccount(period: StoredPeriod) {
     ...(verified ? { advertising_verified_against: "CPC invoice (incl. VAT)" } : {}),
     loan_installment_invoice: round(soa.loanInstallmentInvoice),
     net_monthly_due_balance: round(soa.netMonthlyDueBalance),
-    note: "Separate from the commission total; not added to platform charges.",
+    note: "Separate from the commission invoice. The advertising invoice, without its VAT, is counted in platform charges and platform cost %.",
   };
 }
 
@@ -216,7 +226,7 @@ export function branchPerformance(period: StoredPeriod) {
   );
   return (period.branches ?? [])
     .map((b) => {
-      const cost = totalPlatformCharges(period.platform, b as never);
+      const cost = branchPlatformCharges(period, b);
       return {
         branch: b.branch,
         display_name: displayBranchName(b.branch),
