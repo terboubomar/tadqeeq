@@ -53,9 +53,9 @@ export function buildRobots() {
 }
 
 const SUMMARY_EN =
-  "Tadqeeq is a Saudi SaaS that re-calculates every line of HungerStation, Keeta and Jahez delivery-app invoices from the restaurant's own order file and contract, flags differences per branch, and prepares compensation claims with evidence. Arabic-first.";
+  "Tadqeeq is a Saudi SaaS that re-calculates every line of HungerStation, Keeta and Jahez delivery-app invoices from the restaurant's own order file, flags differences per branch, and prepares compensation claims with evidence. Arabic-first.";
 const SUMMARY_AR =
-  "تدقيق منصة سعودية تعيد احتساب كل بند في فواتير هنقرستيشن وكيتا وجاهز من ملف الطلبات والعقد، وتكشف فروقات العمولة والرسوم لكل فرع، وتجهّز مطالبات التعويض بالأدلة.";
+  "تدقيق منصة سعودية تعيد احتساب كل بند في فواتير هنقرستيشن وكيتا وجاهز من ملف الطلبات، وتكشف فروقات العمولة والرسوم لكل فرع، وتجهّز مطالبات التعويض بالأدلة.";
 
 const AUDIENCE =
   "Restaurant owners, finance managers, multi-branch restaurant groups and accounting teams in Saudi Arabia selling on delivery apps (HungerStation, Keeta, Jahez).";
@@ -122,7 +122,7 @@ function pricingBody(plans: PublicPlan[]): string {
     return plans.length ? plans.map(planLines).join("\n\n") : "Paid plans: shown on the homepage pricing section; contact us from inside the account to subscribe.";
   }
   return [
-    "Priced by the number of orders checked per month across all delivery platforms. Every plan includes unlimited branches, platforms, users and uploads, with Mutabiq (invoice check), Kashif (fee map), Radar (exceptions), contracts, Aaid (promotion & ad ROI), Raqeeb (smart watch) and smart file reading. The order limit is soft: uploads are never blocked.",
+    "Priced by the number of orders checked per month across all delivery platforms. Every plan includes unlimited branches, platforms, users and uploads, with Mutabiq (invoice check), Kashif (fee map), Radar (exceptions), Aaid (promotion & ad ROI), Raqeeb (smart watch) and smart file reading. The order limit is soft: uploads are never blocked.",
     ordered.map(orderPlanLines).join("\n\n"),
     "## Add-on",
     "",
@@ -172,7 +172,7 @@ ${AUDIENCE}
 ## How it works
 
 1. Upload the month's order file from the platform's merchant portal (Excel or CSV) and the platform invoice (PDF). Platform, period and branches are detected automatically; files up to 25 MB.
-2. A versioned accounting engine recalculates every line from the orders and the contract: commission, payment fees, campaigns, compensations.
+2. A versioned accounting engine recalculates every line from the orders: commission, payment fees, campaigns, compensations.
 3. Each difference between the invoice and the recalculation appears with the branch, the amount and its source, and becomes an exception with an owner and a status until it is closed.
 4. For compensations, branch staff send order videos or receipt photos in the branch Telegram group; the Tadqeeq bot links them to the order number, and staff get a ready review request in Arabic and English to send to the platform.
 

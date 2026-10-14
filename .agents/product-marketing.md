@@ -5,10 +5,10 @@ _Version 1.2 · 2026-10-10 · read by the marketing skills (seo-audit, competito
 ## Product Overview
 
 - **Name**: تدقيق (Tadqeeq) — tadqeeq.app
-- **One line**: تدقيق يعيد احتساب كل بند في فواتير تطبيقات التوصيل (هنقرستيشن، جاهز، كيتا) من ملف الطلبات والعقد، ويكشف الفروقات لكل فرع، ويجهّز مطالبات التعويض بالأدلة.
+- **One line**: تدقيق يعيد احتساب كل بند في فواتير تطبيقات التوصيل (هنقرستيشن، جاهز، كيتا) من ملف الطلبات، ويكشف الفروقات لكل فرع، ويجهّز مطالبات التعويض بالأدلة.
 - **Category**: Restaurant delivery-invoice reconciliation / financial operations SaaS (Saudi Arabia).
 - **Products** (names from `src/lib/products.ts`; use them in all copy, first mention with the descriptor):
-  - **مُطابِق (Mutabiq) · مطابقة الفاتورة**: upload the platform invoice + merchant order file (Excel/CSV/PDF); platform, period and branches auto-detected; every line recalculated by a versioned engine (engine + contract version saved with each result); format-change alerts instead of unreliable results.
+  - **مُطابِق (Mutabiq) · مطابقة الفاتورة**: upload the platform invoice + merchant order file (Excel/CSV/PDF); platform, period and branches auto-detected; every line recalculated from the uploaded files by a versioned engine (engine version saved with each result); there is no contracts section, results come from the data only; format-change alerts instead of unreliable results.
   - **كاشِف (Kashif) · خريطة الرسوم**: commission, payment fees, free-delivery campaigns, VAT, offers, compensations and unclassified lines per platform and branch.
   - **رادار (Radar) · مركز الاستثناءات**: each difference becomes an exception with severity, source line, formula, owner and status (جديد ← قيد المراجعة ← تم التواصل ← تم الاعتراض ← تم الاسترداد).
   - **استرداد (Istirdad) · مركز التعويضات**: cashiers send order video/receipt photos in the branch Telegram group; the bot links evidence to the order number; dispute letters in Arabic and English; recovery tracking.
@@ -17,7 +17,7 @@ _Version 1.2 · 2026-10-10 · read by the marketing skills (seo-audit, competito
   - **نَبْض (Nabd) · المتابعة اليومية**: upload the daily order file (HungerStation, Keeta, Jahez) to follow sales, platform cost %, cost per order and month-end payout forecast per platform and branch; flags files exported before the platform settled commissions. Public page: /products/daily-tracking.
   - **Tadqeeq AI · المساعد الذكي**: answers questions about the numbers in Arabic; never changes them. Also usable from Claude and ChatGPT (MCP) on the top plan or with the add-on.
   - **القيود المحاسبية (journal entries)**: one entry per branch and platform from the audit result, cost center per branch, export for Excel, Odoo, Zoho Books, QuickBooks, Qoyod (قيود) and Daftra (دفترة).
-  - Also: several companies/brands per account (workspace switcher, limit per plan); six roles (owner, admin, auditor, compensation officer, branch manager, viewer) with branch scope; every password sign-in needs a 6-digit email code (or an authenticator app); versioned contracts (approved versions locked); executive dashboard, branch/daily/line-item reports; saved periods and re-analysis; branch names matched once. Shown in the homepage section «الحساب والفريق والتقارير».
+  - Also: several companies/brands per account (workspace switcher, limit per plan); six roles (owner, admin, auditor, compensation officer, branch manager, viewer) with branch scope; every password sign-in needs a 6-digit email code (or an authenticator app); executive dashboard, branch/daily/line-item reports; saved periods and re-analysis; branch names matched once. Shown in the homepage section «الحساب والفريق والتقارير».
 - **Pricing** (order-based, live in the database; homepage pricing section and `/pricing.md`): البداية 299 SAR/month up to 15,000 orders; النمو 499 SAR up to 45,000; الشاملة 799 SAR unlimited, includes استرداد + Tadqeeq AI + Claude/ChatGPT. Add-on (استرداد + Tadqeeq AI + MCP) 399 SAR every 4 months on the other plans. Yearly = 2 months free. Free trial: one upload. Prices exclude VAT; bank transfer after invoice.
 - **Public pages**: `/`, `/products` (+ 7 product pages), `/guides` (+ 3 guides), `/contact`, `/privacy`, `/terms`, `/refund-policy`, `/cookies`.
 
@@ -54,14 +54,14 @@ See `docs/marketing/competitors/` for profiles.
 ## Differentiation
 
 - Arabic-first product and language (Flowwtics is English-first with `?lang=ar`).
-- Line-by-line recalculation with a visible formula, source line and versioned engine/contract — auditable.
+- Line-by-line recalculation with a visible formula, source line and versioned engine — auditable.
 - Exceptions workflow with owners and statuses, period close and re-analysis.
 - Compensation evidence via Telegram with no staff app, plus bilingual dispute letters.
 - Self-serve software (vs. Lift's managed service); AI explains but never changes numbers.
 
 ## Objections
 
-- "My accountant already checks it" → spreadsheets check totals, not each fee line against the contract.
+- "My accountant already checks it" → spreadsheets check totals, not each fee line against the orders.
 - "Platforms change file formats" → format-change alerts instead of wrong results.
 - "Is my data separate/secure?" → separate workspace per company with role permissions.
 - "Will staff need another app?" → no, Telegram group only.
