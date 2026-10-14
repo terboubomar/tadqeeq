@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PRODUCTS, productPageTitle } from "@/lib/products";
 import { ProductName } from "@/components/ProductName";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Calculator,
   CheckCircle2,
@@ -53,7 +53,10 @@ import {
 } from "@/lib/exceptions";
 import { arabicDate, money, sar } from "@/lib/format";
 import { updateExceptionWorkflow } from "@/lib/periods";
-import { useSelectedPeriod } from "@/lib/use-period";
+import { setSelectedPeriodId, useSelectedPeriod } from "@/lib/use-period";
+import { monthLabel, unmatchedForException, unmatchedJahezCompensations } from "@/lib/jahez-unmatched";
+import { reanalyzeAuditPeriod } from "@/lib/reanalyze-period.functions";
+import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { cn } from "@/lib/utils";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 
@@ -547,12 +550,68 @@ function ExceptionDetail({
         <p className="text-[12px] font-semibold">طريقة الاحتساب</p>
         <p className="mt-1.5 rounded-xl bg-surface-raised px-3 py-2.5 text-[12.5px] leading-6">{evidence.formula}</p>
       </div>
+      {item.code === "JAHEZ_COMPENSATION_UNKNOWN_ORDER" ? <MissingOrderFile item={item} period={period} /> : null}
       <WorkflowFields item={item} saving={saving} onUpdate={onUpdate} />
       <Button type="button" variant="outline" className="w-full gap-1.5" onClick={onEvidence}>
         <Eye className="size-4" />
         مسار الأدلة الكامل{AI_UI_ENABLED ? " وشرح Tadqeeq AI" : ""}
       </Button>
     </DetailPanel>
+  );
+}
+
+/**
+ * A Jahez compensation whose order is in no saved order file: which order file to upload, and, once a saved period
+ * holds the order, a re-run of this period's analysis to match it. Stays out of the claimable total until matched.
+ */
+function MissingOrderFile({ item, period }: { item: AuditException; period: NonNullable<ReturnType<typeof useSelectedPeriod>["selected"]> }) {
+  const { periods } = useSelectedPeriod();
+  const { can } = useWorkspaceAccess();
+  const queryClient = useQueryClient();
+  const missing = unmatchedForException(item.branchId, unmatchedJahezCompensations(period, periods));
+  const rematch = useMutation({
+    mutationFn: () => reanalyzeAuditPeriod({ data: { periodId: period.id } }),
+    onSuccess: async (response) => {
+      setSelectedPeriodId(response.periodId);
+      await queryClient.invalidateQueries({ queryKey: ["periods"] });
+      toast.success("أُعيدت مطابقة تعويضات الفترة مع كل ملفات الطلبات المحفوظة.");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  if (!missing) return null;
+  return (
+    <div className="rounded-xl border border-border bg-surface-raised px-3 py-3 text-[12.5px] leading-6">
+      <p className="font-semibold">الملف المطلوب للمطابقة</p>
+      {missing.foundIn ? (
+        <p className="mt-1">
+          الطلب <span className="num">{missing.orderId}</span> موجود الآن في فترة «{missing.foundIn.periodLabel}». أعد مطابقة هذه الفترة ليُربط
+          التعويض بطلبه.
+        </p>
+      ) : (
+        <p className="mt-1">
+          ملف طلبات جاهز لفرع «{missing.branch}»
+          {missing.neededMonths.length ? <> لشهر {missing.neededMonths.map(monthLabel).join(" أو ")}</> : <> للشهر الذي فيه الطلب</>}، فيه
+          الطلب <span className="num">{missing.orderId}</span>. لا يُحتسب التعويض ضمن المبالغ القابلة للاسترداد حتى يُطابق.
+        </p>
+      )}
+      <div className="mt-2.5 flex flex-wrap gap-2">
+        {missing.foundIn ? (
+          can("periods.reanalyze") ? (
+            <Button type="button" size="sm" className="rounded-full" disabled={rematch.isPending} onClick={() => rematch.mutate()}>
+              {rematch.isPending ? "جارٍ المطابقة…" : "أعد المطابقة"}
+            </Button>
+          ) : (
+            <span className="text-muted-foreground">إعادة المطابقة تحتاج صلاحية إعادة التحليل.</span>
+          )
+        ) : can("imports.create") ? (
+          <Button asChild size="sm" variant="outline" className="rounded-full">
+            <Link to="/import" search={{ platform: "jahez" }}>
+              ارفع ملف طلبات جاهز
+            </Link>
+          </Button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
