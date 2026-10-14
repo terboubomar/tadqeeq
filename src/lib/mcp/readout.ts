@@ -130,7 +130,8 @@ function compensationComparison(period: StoredPeriod) {
     recalculated: round(recalculated),
     recalculated_source: "Sum of the Compensated Orders sheet (incl. VAT) per branch ÷ 1.15",
     difference,
-    within_tolerance: Math.abs(difference) <= 0.01,
+    // Strictly under one halala, on the unrounded figures (0.0139 is a real difference, not rounding).
+    within_tolerance: Math.abs(recalculated - invoiced) < 0.01,
   };
 }
 
