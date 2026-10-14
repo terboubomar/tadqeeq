@@ -3,6 +3,7 @@ import {
   buildPeriodExceptions,
   summarizeExceptions,
   type AuditException,
+  isOpenException,
 } from "@/lib/exceptions";
 import {
   buildPeriodComparison,
@@ -487,7 +488,7 @@ function addExceptionFacts(
   exceptions: AuditException[],
 ) {
   const open = exceptions.filter(
-    (item) => item.status !== "closed" && item.status !== "recovered",
+    isOpenException,
   );
   const included = open.slice(0, MAX_EXCEPTION_DETAILS);
 
@@ -818,7 +819,7 @@ export function buildAnalystContext(
   const builder = new FactBuilder();
   const exceptions = buildPeriodExceptions(current);
   const open = exceptions.filter(
-    (item) => item.status !== "closed" && item.status !== "recovered",
+    isOpenException,
   );
 
   addPeriodFacts(builder, current, exceptions);

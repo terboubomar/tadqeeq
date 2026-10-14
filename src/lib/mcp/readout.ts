@@ -1,5 +1,6 @@
 import { buildPeriodSummaryAiPacket } from "@/lib/ai/period-summary-ai";
-import { buildPeriodExceptions } from "@/lib/exceptions";
+import { buildPeriodExceptions, isOpenException } from "@/lib/exceptions";
+import { requiredEvidence } from "@/lib/exception-recovery";
 import { ALLOCATION_RULE_EN, invoiceOnlyAllocation } from "@/lib/invoice-only-allocation";
 import type { StoredPeriod } from "@/lib/periods";
 import {
@@ -177,6 +178,7 @@ export function periodReadout(period: StoredPeriod, appUrl: string) {
       critical_count: packet.exceptions.criticalCount,
       amount_to_review_sar: round(packet.exceptions.underReview),
       potential_recovery_sar: round(packet.exceptions.potentialRecovery),
+      claimable_sar: round(packet.exceptions.claimable),
       already_recovered_sar: round(packet.exceptions.recovered),
       by_category: packet.categoryExposure.map((c) => ({
         category: c.category,
@@ -240,7 +242,7 @@ export function branchPerformance(period: StoredPeriod) {
 /** Differences found in a period, open ones first and largest first; closed ones only when asked. */
 export function exceptionList(period: StoredPeriod, includeClosed: boolean) {
   return buildPeriodExceptions(period)
-    .filter((e) => includeClosed || (e.status !== "closed" && e.status !== "recovered"))
+    .filter((e) => includeClosed || isOpenException(e))
     .sort((left, right) => right.reviewAmount - left.reviewAmount)
     .map((e) => ({
       what: e.label,
@@ -253,7 +255,12 @@ export function exceptionList(period: StoredPeriod, includeClosed: boolean) {
       difference_sar: round(e.difference),
       amount_to_review_sar: round(e.reviewAmount),
       potential_recovery_sar: round(e.potentialRecovery),
+      claimable_sar: round(e.claimableAmount),
       recovered_sar: round(e.recoveredAmount),
+      required_evidence: requiredEvidence(e).document,
+      ...(e.owner ? { owner: e.owner } : {}),
+      ...(e.classification ? { classification: e.classification } : {}),
+      ...(e.attachments.length ? { attached_documents: e.attachments.map((a) => a.name) } : {}),
       ...(e.hint ? { hint: e.hint } : {}),
     }));
 }
