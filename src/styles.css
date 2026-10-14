@@ -121,43 +121,6 @@
   --chart-5: oklch(0.55 0.09 300);
 }
 
-/*
- * «Classic blue and dark» from 21st.dev (community theme by eliaszaki), scoped to the pages that opt in with this
- * class (the product-page pilot). Its palette as given, except: a darker blue for small blue text and a mid grey for
- * secondary text, so both pass 4.5:1 on the white page; Tadqeeq's own Arabic fonts stay.
- */
-.theme-classic-blue {
-  --background: #fcfcfc;
-  --foreground: #171717;
-  --card: #ffffff;
-  --card-foreground: #171717;
-  --popover: #ffffff;
-  --popover-foreground: #171717;
-  --primary: #0095ff;
-  --primary-foreground: #1e2723;
-  --primary-text: #0067b8;
-  --secondary: #f2f2f2;
-  --secondary-foreground: #171717;
-  --muted: #ededed;
-  --muted-foreground: #5e5e5e;
-  --accent: #ededed;
-  --accent-foreground: #202020;
-  --destructive: #ca3214;
-  --destructive-soft: #fbe9e5;
-  --success: #17804a;
-  --success-soft: #e3f4ea;
-  --border: #dfdfdf;
-  --input: #f6f6f6;
-  --ring: #0095ff;
-  --ink: #131313;
-  --ink-2: #1c1c1c;
-  --ink-foreground: #e2e8f0;
-  --ink-muted: #a2a2a2;
-  background-color: var(--background);
-  color: var(--foreground);
-}
-.theme-classic-blue ::selection { background: rgb(0 149 255 / 0.22); }
-
 @layer base {
   * {
     border-color: var(--color-border);

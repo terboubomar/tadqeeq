@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Check, ChevronDown, Info } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, FileSpreadsheet, FileText, Info } from "lucide-react";
 import type { ComponentType } from "react";
 
 import { GuideShell, Section } from "@/components/guides/GuidePages";
@@ -12,35 +12,33 @@ import { formatArabicDate } from "@/lib/site-content";
 import { cn } from "@/lib/utils";
 
 /**
- * A product page laid out as a feature page: split hero with a product panel, the "why" as an editorial split, the
- * steps as a vertical timeline, checks as a ruled grid, and the FAQs as an accordion. Same content as
- * ProductLandingPage (title, answer, sections, FAQs, links), wider layout.
- *
- * Colours: the «Classic blue and dark» 21st.dev theme, scoped to this page (styles.css, .theme-classic-blue).
- * Type follows Linear's scale from the design-md-library (56 / 40 / 28 / 20 / 18 px steps), with Arabic line heights
- * and no negative tracking. Layout ideas from 21st.dev, rebuilt in Tadqeeq's tokens and RTL with no new packages:
- * «Product Hero with Demo Panel» (hero beside a live-looking product panel), «Vertical How It Works Timeline»
- * (numbered nodes on a dashed rail) and «FAQ 3» (accordion FAQ).
+ * A product page laid out as a feature page, with the full text on screen: split hero beside a product panel, the
+ * problem beside the cases it names, the steps as a titled timeline beside a files panel, the checks as side-by-side
+ * columns, FAQs, other products as cards and a closing call to action. Tadqeeq's own colours and type; the order of
+ * sections follows a common SaaS product-page pattern, with no copy, illustrations or eyebrows borrowed.
  */
 export function ProductFeaturePage({ page }: { page: ProductPage }) {
   const product = PRODUCTS[page.product];
   const guides = page.relatedGuides.map(guideBySlug);
   const others = PRODUCT_PAGES.filter((other) => other.slug !== page.slug);
   const Visual = HERO_VISUALS[page.product];
-  const short = page.short;
-  let bulletBlocks = 0;
+  const feature = page.feature;
+  const why = page.sections.find((section) => section.paragraphs && !section.steps && !section.bullets && !section.table && !section.quote);
+  const steps = page.sections.find((section) => section.steps);
+  const columns = page.sections.filter((section) => section.bullets && !section.steps && !section.table && !section.quote);
+  const rest = page.sections.filter((section) => section !== why && section !== steps && !columns.includes(section));
 
   return (
-    <GuideShell wide theme="theme-classic-blue">
+    <GuideShell wide>
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <header className={cn("grid gap-12 pb-16 pt-10 sm:pt-14 lg:pb-24", Visual && "lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-16")}>
+        <header className={cn("grid gap-12 pb-16 pt-10 sm:pt-14 lg:pb-24", Visual && "lg:grid-cols-2 lg:items-center lg:gap-16")}>
           <div>
             <nav aria-label="مسار الصفحة" className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <Link to="/" className="rounded hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary">
+              <Link to="/" className="rounded hover:text-foreground">
                 الرئيسية
               </Link>
               <span aria-hidden="true">/</span>
-              <Link to="/products" className="rounded hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary">
+              <Link to="/products" className="rounded hover:text-foreground">
                 المنتجات
               </Link>
               <span aria-hidden="true">/</span>
@@ -49,10 +47,10 @@ export function ProductFeaturePage({ page }: { page: ProductPage }) {
                 {product.name}
               </span>
             </nav>
-            <h1 className="mt-6 max-w-[20ch] text-balance font-display text-[2.1rem] font-extrabold leading-[1.35] sm:text-5xl sm:leading-[1.3]">{short?.title ?? page.title}</h1>
-            <p className="mt-6 max-w-[62ch] text-lg leading-9 text-foreground/80">{short?.lead ?? page.answer}</p>
+            <h1 className="mt-6 text-balance font-display text-[2.1rem] font-extrabold leading-[1.35] sm:text-5xl sm:leading-[1.3]">{page.title}</h1>
+            <p className="mt-6 max-w-[60ch] text-lg leading-9 text-foreground/75">{page.answer}</p>
             {page.availability ? (
-              <p className="mt-5 flex max-w-[62ch] items-start gap-2.5 text-[15px] leading-7 text-muted-foreground">
+              <p className="mt-5 flex max-w-[60ch] items-start gap-2.5 text-[15px] leading-7 text-muted-foreground">
                 <Info className="mt-1 size-4 shrink-0 text-primary-text" />
                 <span>{page.availability}</span>
               </p>
@@ -61,87 +59,149 @@ export function ProductFeaturePage({ page }: { page: ProductPage }) {
               <Link
                 to="/auth"
                 search={{ mode: "signup" }}
-                className="inline-flex h-12 items-center gap-2 rounded-lg bg-primary px-6 text-[15px] font-bold text-primary-foreground transition-transform hover:bg-primary/90 active:scale-[0.98]"
+                className="inline-flex h-12 items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-bold text-ink-foreground transition-transform hover:bg-ink/90 active:scale-[0.98]"
               >
                 جرّب {product.name} مجاناً
                 <ArrowLeft className="size-4" />
               </Link>
-              <Link
-                to="/pricing"
-                className="inline-flex h-12 items-center rounded-lg border border-border bg-card px-6 text-[15px] font-semibold transition-colors hover:border-primary"
-              >
+              <Link to="/pricing" className="inline-flex h-12 items-center rounded-full border border-border bg-card px-6 text-[15px] font-semibold transition-colors hover:border-primary">
                 الخطط والأسعار
               </Link>
             </div>
-            <p className="mt-6 text-sm text-muted-foreground">
-              آخر تحديث: <time dateTime={page.updated}>{formatArabicDate(page.updated)}</time>
-            </p>
           </div>
           {Visual ? <Visual /> : null}
         </header>
       </div>
 
-      {page.sections.map((section) => {
-        const brief = short?.sections[section.heading];
-        if (brief?.steps) return <StepsBlock key={section.heading} heading={section.heading} steps={brief.steps} />;
-        if (brief?.items) {
-          const dark = bulletBlocks++ % 2 === 1;
-          return <BulletsBlock key={section.heading} heading={section.heading} items={brief.items} dark={dark} compact />;
-        }
-        if (brief?.text) return <ParagraphsBlock key={section.heading} heading={section.heading} paragraphs={[brief.text]} statement />;
-        if (section.steps) return <StepsBlock key={section.heading} heading={section.heading} steps={section.steps.map((step) => [step, undefined])} />;
-        if (section.bullets && !section.table && !section.quote) {
-          const dark = bulletBlocks++ % 2 === 1;
-          return <BulletsBlock key={section.heading} heading={section.heading} items={section.bullets} dark={dark} />;
-        }
-        if (section.paragraphs && !section.table && !section.quote) {
-          return <ParagraphsBlock key={section.heading} heading={section.heading} paragraphs={section.paragraphs} />;
-        }
-        return (
-          <div key={section.heading} className="mx-auto max-w-3xl px-4 sm:px-6">
-            <Section section={section} />
+      {why ? (
+        <section className="border-t border-border">
+          <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:py-24">
+            <div>
+              <h2 className="text-balance font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem]">{why.heading}</h2>
+              {why.paragraphs?.map((paragraph) => (
+                <p key={paragraph} className="mt-5 max-w-[60ch] text-lg leading-9 text-foreground/75">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+            {feature?.problems.length ? (
+              <ul className="grid self-start overflow-hidden rounded-[22px] border border-border bg-card sm:grid-cols-3">
+                {feature.problems.map(([title, text]) => (
+                  <li key={title} className="border-border p-6 [&:not(:first-child)]:border-t sm:[&:not(:first-child)]:border-s sm:[&:not(:first-child)]:border-t-0">
+                    <h3 className="font-bold leading-7">{title}</h3>
+                    <p className="mt-2 text-sm leading-7 text-muted-foreground">{text}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
-        );
-      })}
+        </section>
+      ) : null}
 
-      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:gap-16 lg:py-24">
-        <h2 className="font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem]">أسئلة شائعة</h2>
-        <div className="border-b border-border">
-          {page.faqs.map(([question, answer], index) => (
-            <details key={question} open={index === 0} className="group border-t border-border">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded py-5 text-lg font-bold focus-visible:outline-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
-                <h3>{question}</h3>
-                <ChevronDown className="size-5 shrink-0 text-primary-text transition-transform duration-300 group-open:rotate-180" />
-              </summary>
-              <p className="max-w-[65ch] pb-6 text-base leading-8 text-muted-foreground">{answer}</p>
-            </details>
-          ))}
+      {steps?.steps ? (
+        <section className="bg-secondary/50">
+          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:py-24">
+            <h2 className="text-balance font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem]">{steps.heading}</h2>
+            <div className="mt-12 grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
+              <ol>
+                {steps.steps.map((step, index, all) => (
+                  <li key={step} className="relative flex gap-4 pb-8 last:pb-0">
+                    {index < all.length - 1 ? <span aria-hidden="true" className="absolute bottom-0 start-[7px] top-6 border-s border-primary/40" /> : null}
+                    <span aria-hidden="true" className="relative mt-1.5 grid size-4 shrink-0 place-items-center rounded-full border border-primary bg-background">
+                      <span className="size-1.5 rounded-full bg-primary" />
+                    </span>
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        الخطوة <span className="num">{index + 1}</span>
+                      </p>
+                      {feature?.stepTitles[index] ? <h3 className="mt-1 text-lg font-bold leading-8">{feature.stepTitles[index]}</h3> : null}
+                      <p className="mt-1 max-w-[56ch] text-[15px] leading-7 text-muted-foreground">{step}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <FilesPanel />
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {columns.length ? (
+        <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:py-24">
+          {feature?.capabilitiesHeading ? (
+            <h2 className="max-w-[22ch] text-balance font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem]">{feature.capabilitiesHeading}</h2>
+          ) : null}
+          <div className={cn("mt-12 grid gap-12", columns.length > 1 && "md:grid-cols-2", columns.length > 2 && "lg:grid-cols-3")}>
+            {columns.map((column) => (
+              <div key={column.heading}>
+                <h3 className="flex items-center gap-2.5 text-lg font-bold">
+                  <span aria-hidden="true" className="h-4 w-1 rounded-full bg-primary" />
+                  {column.heading}
+                </h3>
+                <ul className="mt-5 space-y-4">
+                  {column.bullets?.map((bullet) => (
+                    <li key={bullet} className="flex gap-3 text-[15px] leading-7 text-foreground/80">
+                      <Check className="mt-1 size-4 shrink-0 text-success" />
+                      <span>{bullet}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {rest.map((section) => (
+        <div key={section.heading} className="mx-auto max-w-3xl px-4 sm:px-6">
+          <Section section={section} />
+        </div>
+      ))}
+
+      <section className="border-t border-border">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:py-24">
+          <h2 className="font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem]">أسئلة شائعة</h2>
+          <div className="border-b border-border">
+            {page.faqs.map(([question, answer], index) => (
+              <details key={question} open={index === 0} className="group border-t border-border">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded py-5 text-lg font-bold [&::-webkit-details-marker]:hidden">
+                  <h3>{question}</h3>
+                  <ChevronDown className="size-5 shrink-0 text-primary-text transition-transform duration-300 group-open:rotate-180" />
+                </summary>
+                <p className="max-w-[65ch] pb-6 text-base leading-8 text-muted-foreground">{answer}</p>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
-        <aside className="flex flex-col items-start gap-6 rounded-2xl bg-ink p-8 text-ink-foreground sm:p-12 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="font-display text-[1.75rem] font-extrabold leading-[1.4]">ابدأ بملفات شهر واحد.</p>
-            <p className="mt-2 text-base leading-8 text-ink-muted">ارفع فاتورة المنصة وملف الطلبات مجاناً وشاهد الفروقات لكل فرع.</p>
-          </div>
-          <Link
-            to="/auth"
-            search={{ mode: "signup" }}
-            className="inline-flex h-12 shrink-0 items-center gap-2 rounded-lg bg-primary px-6 text-[15px] font-bold text-primary-foreground transition-transform hover:bg-primary/90 active:scale-[0.98]"
-          >
-            ابدأ مجاناً
-            <ArrowLeft className="size-4" />
-          </Link>
-        </aside>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <nav aria-label="منتجات أخرى" className="border-t border-border py-16 lg:py-20">
+          <h2 className="font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.25rem]">منتجات أخرى من تدقيق</h2>
+          <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {others.map((other) => (
+              <li key={other.slug}>
+                <a href={other.path} className="group flex h-full flex-col rounded-[22px] border border-border bg-card p-6 transition-colors hover:border-primary">
+                  <ProductIcon product={other.product} className="size-10" />
+                  <span className="mt-5 font-display text-lg font-extrabold">{PRODUCTS[other.product].name}</span>
+                  <span className="mt-1 text-sm leading-7 text-muted-foreground">{other.summary}</span>
+                  <span className="mt-auto flex items-center gap-1.5 pt-5 text-sm font-semibold text-primary-text">
+                    اكتشف {PRODUCTS[other.product].name}
+                    <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" />
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
         {guides.length ? (
-          <nav aria-label="أدلة مرتبطة" className="mt-14">
+          <nav aria-label="أدلة مرتبطة" className="pb-16">
             <h2 className="font-display text-xl font-extrabold">أدلة مرتبطة</h2>
             <ul className="mt-4 grid gap-3 sm:grid-cols-2">
               {guides.map((guide) => (
                 <li key={guide.slug}>
-                  <a href={guide.path} className="flex h-full items-start gap-3 rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary">
+                  <a href={guide.path} className="flex h-full items-start gap-3 rounded-2xl border border-border bg-card p-5 transition-colors hover:border-primary">
                     <PlatformIcon platform={guide.platform} className="size-8 shrink-0 rounded-full" />
                     <span className="font-semibold leading-7">{guide.title}</span>
                   </a>
@@ -151,125 +211,61 @@ export function ProductFeaturePage({ page }: { page: ProductPage }) {
           </nav>
         ) : null}
 
-        <nav aria-label="منتجات أخرى" className="mt-12">
-          <h2 className="font-display text-xl font-extrabold">منتجات أخرى من تدقيق</h2>
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {others.map((other) => (
-              <li key={other.slug}>
-                <a href={other.path} className="flex h-full items-center gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary">
-                  <ProductIcon product={other.product} className="size-9" />
-                  <span>
-                    <span className="block font-bold">{PRODUCTS[other.product].name}</span>
-                    <span className="block text-sm text-muted-foreground">{PRODUCTS[other.product].descriptor}</span>
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
+        <aside className="mb-16 flex flex-col items-center rounded-[28px] bg-secondary px-6 py-16 text-center sm:py-20">
+          <p className="max-w-[18ch] text-balance font-display text-3xl font-extrabold leading-[1.4] sm:text-[2.75rem]">ابدأ بملفات شهر واحد.</p>
+          <p className="mt-4 max-w-xl text-base leading-8 text-foreground/75 sm:text-lg">ارفع فاتورة المنصة وملف الطلبات مجاناً وشاهد الفروقات لكل فرع.</p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link
+              to="/auth"
+              search={{ mode: "signup" }}
+              className="inline-flex h-12 items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-bold text-ink-foreground transition-transform hover:bg-ink/90 active:scale-[0.98]"
+            >
+              ابدأ مجاناً
+              <ArrowLeft className="size-4" />
+            </Link>
+            <Link to="/pricing" className="inline-flex h-12 items-center rounded-full border border-ink/15 bg-card px-6 text-[15px] font-semibold transition-colors hover:border-primary">
+              الخطط والأسعار
+            </Link>
+          </div>
+        </aside>
 
-        {short ? (
-          <details className="group mt-12 border-t border-border pt-4">
-            <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded text-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
-              التفاصيل الكاملة عن {product.name}
-              <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="max-w-3xl pb-4">
-              <p className="mt-6 text-[16px] leading-8 text-foreground/85">{page.answer}</p>
-              {page.sections.map((section) => (
-                <Section key={section.heading} section={section} />
-              ))}
-            </div>
-          </details>
-        ) : null}
+        <p className="pb-10 text-sm text-muted-foreground">
+          آخر تحديث: <time dateTime={page.updated}>{formatArabicDate(page.updated)}</time>
+        </p>
       </div>
     </GuideShell>
   );
 }
 
-/** "Why" sections: heading on one side, the reasoning on the other, ruled off from the hero. */
-function ParagraphsBlock({ heading, paragraphs, statement = false }: { heading: string; paragraphs: string[]; statement?: boolean }) {
+/** Beside the steps: the two files going in and what comes out. Illustrative, no figures. */
+function FilesPanel() {
   return (
-    <section className="mx-auto max-w-7xl px-4 sm:px-6">
-      <div className="grid gap-6 border-t border-border py-16 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:items-center lg:gap-16 lg:py-20">
-        <h2 className="text-balance font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem]">{heading}</h2>
-        <div className="space-y-5">
-          {paragraphs.map((paragraph) => (
-            <p
-              key={paragraph}
-              className={statement ? "max-w-[30ch] text-balance text-2xl font-semibold leading-[1.6] text-foreground/75 sm:text-[1.75rem]" : "max-w-[65ch] text-lg leading-9 text-foreground/80"}
-            >
-              {paragraph}
-            </p>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/** Steps as a vertical timeline: numbered nodes joined by a dashed rail, heading held beside it on wide screens. */
-function StepsBlock({ heading, steps }: { heading: string; steps: Array<[title: string, line: string | undefined]> }) {
-  return (
-    <section className="bg-secondary/60">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:gap-16 lg:py-24">
-        <h2 className="text-balance font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem] lg:sticky lg:top-24 lg:self-start">{heading}</h2>
-        <ol className="relative">
-          {steps.map(([step, line], index) => (
-            <li key={step} className="relative flex gap-5 pb-10 last:pb-0">
-              {index < steps.length - 1 ? (
-                <span aria-hidden="true" className="absolute bottom-0 start-[19px] top-11 border-s-2 border-dashed border-primary/35" />
-              ) : null}
-              <span className="num relative grid size-10 shrink-0 place-items-center rounded-lg bg-ink text-base font-semibold text-ink-foreground">{index + 1}</span>
-              {line ? (
-                <div className="pt-0.5">
-                  <h3 className="text-xl font-bold leading-9">{step}</h3>
-                  <p className="mt-1 max-w-[50ch] text-base leading-7 text-muted-foreground">{line}</p>
-                </div>
-              ) : (
-                <p className="max-w-[60ch] pt-1.5 text-[17px] leading-8">{step}</p>
-              )}
-            </li>
-          ))}
-        </ol>
-      </div>
-    </section>
-  );
-}
-
-/** Bullet sections: a ruled grid on the page, or (every other one) a list on the ink surface for rhythm. */
-function BulletsBlock({ heading, items: bullets, dark, compact = false }: { heading: string; items: string[]; dark: boolean; compact?: boolean }) {
-  if (dark) {
-    return (
-      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-12">
-        <div className="rounded-2xl bg-ink px-6 py-12 text-ink-foreground sm:px-12 lg:py-16">
-          <h2 className="text-balance font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem]">{heading}</h2>
-          <ul className={cn("mt-10 grid gap-x-12 gap-y-7 md:grid-cols-2", compact && "text-lg font-semibold lg:grid-cols-4")}>
-            {bullets.map((bullet) => (
-              <li key={bullet} className="flex gap-3.5 text-[17px] leading-8">
-                <span className="mt-1 grid size-6 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
-                  <Check className="size-3.5" strokeWidth={3} />
-                </span>
-                <span className="text-ink-foreground/90">{bullet}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-    );
-  }
-  return (
-    <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:py-24">
-      <h2 className="max-w-[24ch] text-balance font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem]">{heading}</h2>
-      <ul className="mt-10 grid gap-x-10 sm:grid-cols-2 lg:grid-cols-3">
-        {bullets.map((bullet) => (
-          <li key={bullet} className={cn("flex gap-3.5 border-t border-border py-6 text-[17px] leading-8", compact && "text-xl font-semibold")}>
-            <Check className="mt-1.5 size-5 shrink-0 text-success" strokeWidth={2.5} />
-            <span>{bullet}</span>
-          </li>
+    <div aria-hidden="true" className="rounded-[28px] bg-secondary p-6 sm:p-10">
+      <div className="grid gap-3">
+        {[
+          { icon: FileSpreadsheet, name: "ملف الطلبات", type: "Excel أو CSV" },
+          { icon: FileText, name: "فاتورة المنصة", type: "PDF" },
+        ].map(({ icon: Icon, name, type }) => (
+          <div key={name} className="flex items-center gap-3 rounded-2xl bg-card p-4">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-background text-primary-text">
+              <Icon className="size-5" />
+            </span>
+            <span className="flex-1">
+              <span className="block font-semibold">{name}</span>
+              <span className="block text-xs text-muted-foreground">{type}</span>
+            </span>
+            <Check className="size-4 text-success" />
+          </div>
         ))}
-      </ul>
-    </section>
+      </div>
+      <div className="my-4 flex justify-center text-primary-text">
+        <ChevronDown className="size-5" />
+      </div>
+      <div className="rounded-2xl bg-ink p-5 text-ink-foreground">
+        <p className="text-sm text-ink-muted">النتيجة</p>
+        <p className="mt-1 font-display text-lg font-extrabold">الفرق لكل فرع، مع مصدره ومعادلته</p>
+      </div>
+    </div>
   );
 }
 
@@ -285,8 +281,8 @@ function MutabiqPanel() {
   ];
   return (
     <figure className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-3 motion-safe:duration-700">
-      <div className="rounded-2xl bg-secondary p-3 sm:p-4">
-        <div className="rounded-xl bg-card p-5 shadow-[0_1px_3px_rgb(0_0_0/0.12),0_12px_32px_-16px_rgb(0_0_0/0.18)] sm:p-6">
+      <div className="rounded-[28px] bg-secondary p-4 sm:p-8">
+        <div className="rounded-[20px] bg-card p-5 shadow-[0_24px_48px_-28px_rgb(19_35_43/0.35)] sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="font-display text-base font-extrabold">عمولة الطلبات حسب الفرع</p>
             <PlatformName platform="hungerstation" className="text-xs font-semibold text-muted-foreground" iconClassName="size-4 rounded" />
@@ -327,8 +323,8 @@ function MutabiqPanel() {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 px-2 pb-1 pt-4">
-          <span className="flex items-center gap-2 rounded-lg bg-ink px-4 py-2 text-[13px] text-ink-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-1 pt-4">
+          <span className="flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[13px] text-ink-foreground">
             فرق قبل السداد <span className="num font-semibold text-primary">1,660.85 ر.س</span>
           </span>
           <span className="text-xs text-muted-foreground">ينتقل كل فرق إلى «رادار» للمتابعة</span>
