@@ -841,6 +841,53 @@ export type Database = {
         }
         Relationships: []
       }
+      exception_classification_rules: {
+        Row: {
+          claimable: boolean
+          classification: string
+          commissionable: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          match_text: string
+          note: string | null
+          platform: string | null
+          workspace_id: string
+        }
+        Insert: {
+          claimable?: boolean
+          classification: string
+          commissionable?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          match_text: string
+          note?: string | null
+          platform?: string | null
+          workspace_id?: string
+        }
+        Update: {
+          claimable?: boolean
+          classification?: string
+          commissionable?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          match_text?: string
+          note?: string | null
+          platform?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exception_classification_rules_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exception_events: {
         Row: {
           created_at: string
@@ -2811,6 +2858,10 @@ export type Database = {
       }
       mcp_create_audit_request: {
         Args: { p_bank_fee_pct: number; p_label: string; p_platform: string }
+        Returns: string
+      }
+      merge_branches: {
+        Args: { p_source: string; p_target: string }
         Returns: string
       }
       my_workspace_plan: { Args: { p_workspace_id: string }; Returns: Json }
