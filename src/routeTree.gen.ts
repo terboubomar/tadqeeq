@@ -77,6 +77,7 @@ import { Route as AuthenticatedDailyRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedChargesRouteImport } from './routes/_authenticated/charges'
 import { Route as AuthenticatedBreakdownRouteImport } from './routes/_authenticated/breakdown'
 import { Route as AuthenticatedBranchesRouteImport } from './routes/_authenticated/branches'
+import { Route as AuthenticatedBranchMappingRouteImport } from './routes/_authenticated/branch-mapping'
 import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
 import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
@@ -437,6 +438,11 @@ const AuthenticatedBranchesRoute = AuthenticatedBranchesRouteImport.update({
   path: '/branches',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBranchMappingRoute = AuthenticatedBranchMappingRouteImport.update({
+  id: '/branch-mapping',
+  path: '/branch-mapping',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAskRoute = AuthenticatedAskRouteImport.update({
   id: '/ask',
   path: '/ask',
@@ -542,6 +548,7 @@ export interface FileRoutesByFullPath {
   '/ai': typeof AuthenticatedAiRoute
   '/ask': typeof AuthenticatedAskRoute
   '/branches': typeof AuthenticatedBranchesRoute
+  '/branch-mapping': typeof AuthenticatedBranchMappingRoute
   '/breakdown': typeof AuthenticatedBreakdownRoute
   '/charges': typeof AuthenticatedChargesRoute
   '/daily': typeof AuthenticatedDailyRoute
@@ -623,6 +630,7 @@ export interface FileRoutesByTo {
   '/ai': typeof AuthenticatedAiRoute
   '/ask': typeof AuthenticatedAskRoute
   '/branches': typeof AuthenticatedBranchesRoute
+  '/branch-mapping': typeof AuthenticatedBranchMappingRoute
   '/breakdown': typeof AuthenticatedBreakdownRoute
   '/charges': typeof AuthenticatedChargesRoute
   '/daily': typeof AuthenticatedDailyRoute
@@ -708,6 +716,7 @@ export interface FileRoutesById {
   '/_authenticated/ai': typeof AuthenticatedAiRoute
   '/_authenticated/ask': typeof AuthenticatedAskRoute
   '/_authenticated/branches': typeof AuthenticatedBranchesRoute
+  '/_authenticated/branch-mapping': typeof AuthenticatedBranchMappingRoute
   '/_authenticated/breakdown': typeof AuthenticatedBreakdownRoute
   '/_authenticated/charges': typeof AuthenticatedChargesRoute
   '/_authenticated/daily': typeof AuthenticatedDailyRoute
@@ -793,6 +802,7 @@ export interface FileRouteTypes {
     | '/ai'
     | '/ask'
     | '/branches'
+    | '/branch-mapping'
     | '/breakdown'
     | '/charges'
     | '/daily'
@@ -874,6 +884,7 @@ export interface FileRouteTypes {
     | '/ai'
     | '/ask'
     | '/branches'
+    | '/branch-mapping'
     | '/breakdown'
     | '/charges'
     | '/daily'
@@ -958,6 +969,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ai'
     | '/_authenticated/ask'
     | '/_authenticated/branches'
+    | '/_authenticated/branch-mapping'
     | '/_authenticated/breakdown'
     | '/_authenticated/charges'
     | '/_authenticated/daily'
@@ -1540,6 +1552,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBranchesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/branch-mapping': {
+      id: '/_authenticated/branch-mapping'
+      path: '/branch-mapping'
+      fullPath: '/branch-mapping'
+      preLoaderRoute: typeof AuthenticatedBranchMappingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/ask': {
       id: '/_authenticated/ask'
       path: '/ask'
@@ -1645,6 +1664,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAiRoute: typeof AuthenticatedAiRoute
   AuthenticatedAskRoute: typeof AuthenticatedAskRoute
   AuthenticatedBranchesRoute: typeof AuthenticatedBranchesRoute
+  AuthenticatedBranchMappingRoute: typeof AuthenticatedBranchMappingRoute
   AuthenticatedBreakdownRoute: typeof AuthenticatedBreakdownRoute
   AuthenticatedChargesRoute: typeof AuthenticatedChargesRoute
   AuthenticatedDailyRoute: typeof AuthenticatedDailyRoute
@@ -1669,6 +1689,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAiRoute: AuthenticatedAiRoute,
   AuthenticatedAskRoute: AuthenticatedAskRoute,
   AuthenticatedBranchesRoute: AuthenticatedBranchesRoute,
+  AuthenticatedBranchMappingRoute: AuthenticatedBranchMappingRoute,
   AuthenticatedBreakdownRoute: AuthenticatedBreakdownRoute,
   AuthenticatedChargesRoute: AuthenticatedChargesRoute,
   AuthenticatedDailyRoute: AuthenticatedDailyRoute,
