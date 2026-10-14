@@ -74,7 +74,6 @@ export const PRIVATE_PAGES = [
   "/branches",
   "/breakdown",
   "/charges",
-  "/contracts",
   "/daily",
   "/dashboard",
   "/email-confirmed",

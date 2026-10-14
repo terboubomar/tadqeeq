@@ -424,7 +424,7 @@ function BranchPicker({
 function roleSummary(role: WorkspaceRole): string {
   if (role === "owner") return "صلاحية كاملة وإدارة المالك.";
   if (role === "admin") return "إدارة تشغيلية كاملة، بما فيها المستخدمون والإعدادات.";
-  if (role === "auditor") return "التدقيق، التقارير، العقود، الاستثناءات، التعويضات والاسترداد.";
+  if (role === "auditor") return "التدقيق، التقارير، الاستثناءات، التعويضات والاسترداد.";
   if (role === "compensation") return "التعويضات وTelegram والاسترداد للفروع المخصصة.";
   if (role === "branch_manager") return "قراءة تقارير وأدلة وتعويضات الفروع المخصصة فقط.";
   const count = ROLE_PERMISSIONS.viewer.length;
