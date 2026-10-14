@@ -438,11 +438,12 @@ const AuthenticatedBranchesRoute = AuthenticatedBranchesRouteImport.update({
   path: '/branches',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedBranchMappingRoute = AuthenticatedBranchMappingRouteImport.update({
-  id: '/branch-mapping',
-  path: '/branch-mapping',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
+const AuthenticatedBranchMappingRoute =
+  AuthenticatedBranchMappingRouteImport.update({
+    id: '/branch-mapping',
+    path: '/branch-mapping',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAskRoute = AuthenticatedAskRouteImport.update({
   id: '/ask',
   path: '/ask',
@@ -547,8 +548,8 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/ai': typeof AuthenticatedAiRoute
   '/ask': typeof AuthenticatedAskRoute
-  '/branches': typeof AuthenticatedBranchesRoute
   '/branch-mapping': typeof AuthenticatedBranchMappingRoute
+  '/branches': typeof AuthenticatedBranchesRoute
   '/breakdown': typeof AuthenticatedBreakdownRoute
   '/charges': typeof AuthenticatedChargesRoute
   '/daily': typeof AuthenticatedDailyRoute
@@ -629,8 +630,8 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/ai': typeof AuthenticatedAiRoute
   '/ask': typeof AuthenticatedAskRoute
-  '/branches': typeof AuthenticatedBranchesRoute
   '/branch-mapping': typeof AuthenticatedBranchMappingRoute
+  '/branches': typeof AuthenticatedBranchesRoute
   '/breakdown': typeof AuthenticatedBreakdownRoute
   '/charges': typeof AuthenticatedChargesRoute
   '/daily': typeof AuthenticatedDailyRoute
@@ -715,8 +716,8 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/ai': typeof AuthenticatedAiRoute
   '/_authenticated/ask': typeof AuthenticatedAskRoute
-  '/_authenticated/branches': typeof AuthenticatedBranchesRoute
   '/_authenticated/branch-mapping': typeof AuthenticatedBranchMappingRoute
+  '/_authenticated/branches': typeof AuthenticatedBranchesRoute
   '/_authenticated/breakdown': typeof AuthenticatedBreakdownRoute
   '/_authenticated/charges': typeof AuthenticatedChargesRoute
   '/_authenticated/daily': typeof AuthenticatedDailyRoute
@@ -801,8 +802,8 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/ai'
     | '/ask'
-    | '/branches'
     | '/branch-mapping'
+    | '/branches'
     | '/breakdown'
     | '/charges'
     | '/daily'
@@ -883,8 +884,8 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/ai'
     | '/ask'
-    | '/branches'
     | '/branch-mapping'
+    | '/branches'
     | '/breakdown'
     | '/charges'
     | '/daily'
@@ -968,8 +969,8 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/ai'
     | '/_authenticated/ask'
-    | '/_authenticated/branches'
     | '/_authenticated/branch-mapping'
+    | '/_authenticated/branches'
     | '/_authenticated/breakdown'
     | '/_authenticated/charges'
     | '/_authenticated/daily'
@@ -1663,8 +1664,8 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAiRoute: typeof AuthenticatedAiRoute
   AuthenticatedAskRoute: typeof AuthenticatedAskRoute
-  AuthenticatedBranchesRoute: typeof AuthenticatedBranchesRoute
   AuthenticatedBranchMappingRoute: typeof AuthenticatedBranchMappingRoute
+  AuthenticatedBranchesRoute: typeof AuthenticatedBranchesRoute
   AuthenticatedBreakdownRoute: typeof AuthenticatedBreakdownRoute
   AuthenticatedChargesRoute: typeof AuthenticatedChargesRoute
   AuthenticatedDailyRoute: typeof AuthenticatedDailyRoute
@@ -1688,8 +1689,8 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAiRoute: AuthenticatedAiRoute,
   AuthenticatedAskRoute: AuthenticatedAskRoute,
-  AuthenticatedBranchesRoute: AuthenticatedBranchesRoute,
   AuthenticatedBranchMappingRoute: AuthenticatedBranchMappingRoute,
+  AuthenticatedBranchesRoute: AuthenticatedBranchesRoute,
   AuthenticatedBreakdownRoute: AuthenticatedBreakdownRoute,
   AuthenticatedChargesRoute: AuthenticatedChargesRoute,
   AuthenticatedDailyRoute: AuthenticatedDailyRoute,
