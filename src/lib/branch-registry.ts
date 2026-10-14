@@ -36,3 +36,20 @@ export function resolveBranchName(
     (name && registry.find((b) => norm(b[key]) === name || norm(b.name) === name));
   return hit ? hit.name : null;
 }
+
+/**
+ * Folds one branch into another (migration 0058): the kept branch takes the other's platform ids, team access,
+ * Telegram groups, evidence and cases. Needs branches.manage.
+ */
+export async function mergeBranches(sourceId: string, targetId: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).rpc("merge_branches", { p_source: sourceId, p_target: targetId });
+  if (!error) return;
+  const message = String(error.message ?? "");
+  if (message.includes("same platform")) throw new Error("الفرعان مرتبطان بمعرّفين مختلفين على المنصة نفسها، فهما فرعان مختلفان.");
+  if (message.includes("not allowed")) throw new Error("دمج الفروع يحتاج صلاحية إدارة الفروع.");
+  if (message.includes("merge_branches") && message.includes("does not exist")) {
+    throw new Error("ميزة دمج الفروع تحتاج تحديث قاعدة البيانات (الترحيل 0058) قبل استخدامها.");
+  }
+  throw new Error(message || "تعذّر دمج الفرعين.");
+}

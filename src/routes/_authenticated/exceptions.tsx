@@ -53,7 +53,7 @@ import {
 } from "@/lib/exceptions";
 import { arabicDate, money, sar } from "@/lib/format";
 import { updateExceptionWorkflow } from "@/lib/periods";
-import { displayBranchName } from "@/lib/reporting-metrics";
+import { useBranchLabel } from "@/lib/use-branch-label";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
 import { PlatformName } from "@/components/brand/PlatformLogo";
@@ -78,6 +78,7 @@ type WorkflowMutation = {
 };
 
 function ExceptionsPage() {
+  const branchLabel = useBranchLabel();
   const { selected, isLoading } = useSelectedPeriod();
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
@@ -117,7 +118,7 @@ function ExceptionsPage() {
       return [
         item.periodLabel,
         item.branch,
-        displayBranchName(item.branch),
+        branchLabel(item.platform, item.branchId, item.branch),
         item.branchId,
         item.categoryLabel,
         item.label,
@@ -126,7 +127,7 @@ function ExceptionsPage() {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(needle));
     });
-  }, [exceptions, query, severity, status]);
+  }, [branchLabel, exceptions, query, severity, status]);
 
   if (isLoading) {
     return <p className="py-20 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>;
@@ -415,6 +416,7 @@ function ExceptionList({
   activeId: string | null;
   onOpen: (item: AuditException) => void;
 }) {
+  const branchLabel = useBranchLabel();
   if (!items.length) {
     return (
       <section className="rounded-2xl border border-border bg-card px-5 py-16 text-center text-sm text-muted-foreground">
@@ -462,7 +464,7 @@ function ExceptionList({
                     </Td>
                     <Td>
                       {item.branch ? (
-                        <span className="block max-w-44 truncate" title={item.branch}>{displayBranchName(item.branch)}</span>
+                        <span className="block max-w-44 truncate" title={item.branch}>{branchLabel(item.platform, item.branchId, item.branch)}</span>
                       ) : (
                         <span className="text-muted-foreground">إجمالي الفترة</span>
                       )}
@@ -489,7 +491,7 @@ function ExceptionList({
               <span className="min-w-0 flex-1">
                 <span className="block font-semibold leading-6">{item.label}</span>
                 <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
-                  {item.branch ? displayBranchName(item.branch) : "إجمالي الفترة"} · {EXCEPTION_SEVERITY_LABELS[item.severity]}
+                  {item.branch ? branchLabel(item.platform, item.branchId, item.branch) : "إجمالي الفترة"} · {EXCEPTION_SEVERITY_LABELS[item.severity]}
                 </span>
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1">
@@ -518,10 +520,11 @@ function ExceptionDetail({
   onUpdate: (patch: Partial<ExceptionWorkflowEntry>) => void;
   onEvidence: () => void;
 }) {
+  const branchLabel = useBranchLabel();
   const evidence = buildExceptionEvidence(period, item);
   return (
     <DetailPanel
-      eyebrow={(item.branch ? displayBranchName(item.branch) : "إجمالي الفترة") + " · " + EXCEPTION_SEVERITY_LABELS[item.severity] + " · " + item.categoryLabel}
+      eyebrow={(item.branch ? branchLabel(item.platform, item.branchId, item.branch) : "إجمالي الفترة") + " · " + EXCEPTION_SEVERITY_LABELS[item.severity] + " · " + item.categoryLabel}
       title={item.label}
       value={sar(item.reviewAmount)}
     >
@@ -649,6 +652,7 @@ function EvidenceSheet({
   saving: boolean;
   onUpdate: (patch: Partial<ExceptionWorkflowEntry>) => void;
 }) {
+  const branchLabel = useBranchLabel();
   if (!item) return null;
 
   const evidence = buildExceptionEvidence(period, item);
@@ -660,7 +664,7 @@ function EvidenceSheet({
           <SheetTitle>مسار الأدلة</SheetTitle>
           <SheetDescription>
             {item.periodLabel}
-            {item.branch ? " · " + displayBranchName(item.branch) : " · إجمالي الفترة"}
+            {item.branch ? " · " + branchLabel(item.platform, item.branchId, item.branch) : " · إجمالي الفترة"}
             {item.branchId ? " · " + item.branchId : ""}
           </SheetDescription>
         </SheetHeader>

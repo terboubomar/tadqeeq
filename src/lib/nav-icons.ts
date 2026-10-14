@@ -5,10 +5,12 @@ import {
   CalendarDays,
   ChartLine,
   FileCheck2,
+  GitMerge,
   HandCoins,
   History,
   LayoutDashboard,
   ListTree,
+  type LucideIcon,
   Megaphone,
   Radar,
   ReceiptText,
@@ -16,7 +18,6 @@ import {
   Store,
   Upload,
   Users,
-  type LucideIcon,
 } from "lucide-react";
 
 import { PRODUCTS } from "@/lib/products";
@@ -39,5 +40,6 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   "/history": History,
   "/report-schedules": CalendarClock,
   "/import": Upload,
+  "/branch-mapping": GitMerge,
   "/team": Users,
 };

@@ -42,7 +42,8 @@ import { PRODUCTS } from "@/lib/products";
 import { cn } from "@/lib/utils";
 import { keetaCostSplit, keetaOutsideInvoice } from "@/lib/keeta-cost";
 import { CostDefinitionNote } from "@/components/dash/CostDefinitionNote";
-import { PLATFORM_COST_FORMULA_AR, displayBranchName, platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
+import { PLATFORM_COST_FORMULA_AR, platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
+import { useBranchLabel } from "@/lib/use-branch-label";
 
 type DashboardSearch = { company?: string; platform?: PlatformScope; month?: string };
 
@@ -76,6 +77,7 @@ function Dashboard() {
   const queryClient = useQueryClient();
   const { can, context } = useWorkspaceAccess();
   const { selected, periods, isLoading } = useSelectedPeriod();
+  const branchLabel = useBranchLabel();
   const [reanalyzing, setReanalyzing] = useState(false);
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -229,7 +231,7 @@ function Dashboard() {
       icon: e.severity === "critical" ? CircleAlert : AlertTriangle,
       tone: e.severity === "critical" ? "critical" : e.severity === "high" ? "warning" : "default",
       title: e.label,
-      meta: [e.categoryLabel, e.branch ? displayBranchName(e.branch) : null].filter(Boolean).join(" · "),
+      meta: [e.categoryLabel, e.branch ? branchLabel(e.platform, e.branchId, e.branch) : null].filter(Boolean).join(" · "),
       aside: e.potentialRecovery > 0 ? `${short(e.potentialRecovery)} ر.س` : undefined,
       to: "/exceptions",
     }));
@@ -620,7 +622,7 @@ function Dashboard() {
                   const aboveAverage = rate > branchAverageRate + 0.0005;
                   return (
                     <tr key={branch.branch} className="border-b border-border/70 last:border-0">
-                      <td className="max-w-[220px] truncate px-5 py-3 font-medium" title={branch.branch}>{displayBranchName(branch.branch)}</td>
+                      <td className="max-w-[220px] truncate px-5 py-3 font-medium" title={branch.branch}>{branchLabel(selected.platform, branch.branchId, branch.branch)}</td>
                       <td className="px-3 py-3"><span className="num">{money(sales)}</span></td>
                       <td className="px-3 py-3"><span className="num text-destructive">{money(cost)}</span></td>
                       <td className="px-5 py-3">
