@@ -114,6 +114,7 @@ function ExceptionsPage() {
         contractId: finding.contractId,
         contractName: finding.contractName,
         sections: complianceSections(finding.compliance),
+        note: finding.coverageNote,
       })),
     );
     const rank = { critical: 4, high: 3, medium: 2, low: 1 } as const;

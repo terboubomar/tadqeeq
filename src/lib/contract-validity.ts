@@ -35,3 +35,47 @@ export function contractValidity(versions: Pick<ContractVersionRecord, "status" 
   const daysLeft = dayNumber(endsOn) - now;
   return daysLeft <= warnDays ? { kind: "ending", endsOn, daysLeft } : null;
 }
+
+interface DatedVersion {
+  id: string;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+}
+
+/**
+ * The approved version that applies to a period. A contract stays in force until a newer version is uploaded:
+ * the version that started on or before the period's first day applies even after its own end date. When none had
+ * started by then, the first version starting inside the period applies. The note says when either happened.
+ */
+export function versionForPeriod<T extends DatedVersion>(
+  approved: T[],
+  periodStart: string,
+  periodEnd: string,
+): { version: T; note: string | null } | null {
+  const sorted = [...approved].sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom));
+  const started = sorted.filter((version) => version.effectiveFrom <= periodStart).at(-1);
+  const inside = sorted.filter((version) => version.effectiveFrom > periodStart && version.effectiveFrom <= periodEnd);
+
+  if (started) {
+    const notes: string[] = [];
+    if (started.effectiveTo && started.effectiveTo < periodEnd) {
+      notes.push(`انتهت مدة هذه النسخة في ${started.effectiveTo} وتبقى مستخدمة حتى تُرفع نسخة جديدة.`);
+    }
+    if (inside[0]) {
+      notes.push(`نسخة أحدث تبدأ في ${inside[0].effectiveFrom} داخل الفترة؛ استُخدمت النسخة السارية في أول يوم من الفترة.`);
+    }
+    return { version: started, note: notes.join(" ") || null };
+  }
+  if (inside[0]) {
+    return {
+      version: inside[0],
+      note: `يبدأ العقد في ${inside[0].effectiveFrom} داخل الفترة، فالأيام قبله فُحصت بشروطه أيضاً.`,
+    };
+  }
+  return null;
+}
+
+/** The approved version in force on a date: the latest one that had started by then. */
+export function versionOnDate<T extends DatedVersion>(approved: T[], onDate: string): T | null {
+  return [...approved].filter((version) => version.effectiveFrom <= onDate).sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom)).at(-1) ?? null;
+}

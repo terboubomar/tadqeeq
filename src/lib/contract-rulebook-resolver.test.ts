@@ -34,7 +34,7 @@ function rule(
 }
 
 describe("effective contract term resolution", () => {
-  test("server lookup uses only approved versions whose date range contains the request", async () => {
+  test("server lookup uses approved versions started by the date, the latest staying in force until a newer one", async () => {
     const source = await readFile(
       path.resolve(process.cwd(), "src/lib/contract-rulebook.server.ts"),
       "utf8",
@@ -42,10 +42,7 @@ describe("effective contract term resolution", () => {
 
     expect(source).toContain('.eq("status", "approved")');
     expect(source).toContain('.lte("effective_from", input.onDate)');
-    expect(source).toContain(
-      '.or(`effective_to.is.null,effective_to.gte.${input.onDate}`)',
-    );
-    expect(source).toContain("if (versionRows.length > 1)");
+    expect(source).toContain("versionOnDate(");
     expect(source).toContain("resolveContractRulePrecedence(rules, branchKey)");
   });
 
