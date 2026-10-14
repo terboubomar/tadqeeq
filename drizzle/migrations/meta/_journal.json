@@ -414,6 +414,13 @@
       "when": 1792690000000,
       "tag": "0058_merge_branches",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1792700000000,
+      "tag": "0059_exception_recovery",
+      "breakpoints": true
     }
   ]
 }

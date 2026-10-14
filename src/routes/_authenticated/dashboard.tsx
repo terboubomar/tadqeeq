@@ -28,7 +28,7 @@ import { CombinedDashboard, ScopeBar, type ScopeValue } from "@/components/dash/
 import { ActivityFeed, ChartCard, MetricCard, TrendCard, type FeedItem, type StatTile } from "@/components/dash/DashKit";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { AI_UI_ENABLED } from "@/lib/ai/config";
-import { buildPeriodExceptions, summarizeExceptions } from "@/lib/exceptions";
+import { buildPeriodExceptions, summarizeExceptions, isOpenException } from "@/lib/exceptions";
 import { Button } from "@/components/ui/button";
 import { arabicDate, count, money, percent, sar, short } from "@/lib/format";
 import { reanalyzeAuditPeriod } from "@/lib/reanalyze-period.functions";
@@ -223,7 +223,7 @@ function Dashboard() {
   const exceptions = can("exceptions.read") ? buildPeriodExceptions(selected) : [];
   const exceptionSummary = summarizeExceptions(exceptions);
   const attention: FeedItem[] = exceptions
-    .filter((e) => e.status !== "closed" && e.status !== "recovered")
+    .filter(isOpenException)
     .sort((a, b) => b.potentialRecovery - a.potentialRecovery || b.reviewAmount - a.reviewAmount)
     .slice(0, 6)
     .map((e) => ({

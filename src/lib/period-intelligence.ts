@@ -3,6 +3,7 @@ import {
   summarizeExceptions,
   type AuditException,
   type ExceptionSummary,
+  isOpenException,
 } from "./exceptions";
 import type { BranchRow } from "./analysis/types";
 import type { StoredPeriod } from "./periods";
@@ -214,7 +215,7 @@ function buildBranchMovements(
 
 function aggregateExceptionCategories(exceptions: AuditException[]) {
   const open = exceptions.filter(
-    (item) => item.status !== "closed" && item.status !== "recovered",
+    isOpenException,
   );
   const map = new Map<
     string,
