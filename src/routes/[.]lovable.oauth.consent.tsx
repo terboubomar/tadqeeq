@@ -1,6 +1,7 @@
 import { createFileRoute, redirect, type ErrorComponentProps } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { LogoWordmark } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { loadSupabase } from "@/integrations/supabase/lazy-client";
 import { needsMfaCode } from "@/lib/mfa";
@@ -66,8 +67,12 @@ function Consent() {
   return (
     <main dir="rtl" className="grid min-h-screen place-items-center bg-background px-4">
       <div className="panel w-full max-w-md p-7 text-center">
+        <LogoWordmark aria-label="تدقيق" className="mx-auto mb-5 h-9 text-ink" />
         <h1 className="font-display text-xl font-bold">ربط {name} بحسابك في تدقيق</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">سيتمكن {name} من قراءة فترات الفواتير والفروع في مساحة عملك نيابةً عنك.</p>
+        <p className="mt-3 rounded-lg bg-muted px-3 py-2 text-xs leading-5 text-muted-foreground">
+          وافق فقط إذا بدأت هذا الربط بنفسك من مساعدك الذكي. لا يطلب تدقيق أبداً كلمة مرور حساباتك في تطبيقات التوصيل.
+        </p>
         {error ? <p role="alert" className="mt-3 text-sm text-destructive">{error}</p> : null}
         <div className="mt-6 flex gap-3">
           <Button className="flex-1" disabled={busy} onClick={() => decide(true)}>موافقة</Button>

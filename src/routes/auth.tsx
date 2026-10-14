@@ -8,11 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { LogoWordmark } from "@/components/brand/Logo";
-import { PlatformName } from "@/components/brand/PlatformLogo";
 import { EmailCodeStep, MfaCodeStep } from "@/components/TwoFactor";
 import { getEmailCodeStatus } from "@/lib/email-signin.functions";
 import { needsMfaCode } from "@/lib/mfa";
-import { PLATFORM_KEYS } from "@/lib/platforms";
 import {
   appOriginFor,
   HANDOFF_STATE_KEY,
@@ -468,15 +466,10 @@ function AuthAside({ signup }: { signup: boolean }) {
           {signup ? "ابدأ بتدقيق فترة واحدة مجاناً." : "راجع فاتورتك القادمة قبل أن تدفعها."}
         </p>
         <p className="mt-3 max-w-sm text-[15px] leading-7 text-ink-foreground/75">
-          {signup ? "ارفع ملف الطلبات وفاتورة المنصة واعرف الفرق." : "إعادة احتساب كل بند من طلباتك وعقدك."}
+          {signup ? "ارفع ملف الطلبات وفاتورة المنصة واعرف الفرق." : "إعادة احتساب كل بند من طلباتك."}
         </p>
-        <ul aria-label="المنصات المدعومة" className="mt-8 flex flex-wrap gap-2 text-sm font-semibold">
-          {PLATFORM_KEYS.map((key) => (
-            <li key={key} className="rounded-full bg-ink-foreground/10 py-1 ps-1 pe-3 ring-1 ring-inset ring-ink-foreground/15">
-              <PlatformName platform={key} iconClassName="size-6 rounded-full" />
-            </li>
-          ))}
-        </ul>
+        {/* Text only: other companies' logos next to a password form read as impersonation to browser safety checks. */}
+        <p className="mt-8 text-sm text-ink-foreground/70">لملفات هنقرستيشن وكيتا وجاهز. حسابك في تدقيق منفصل عن حساباتك في تطبيقات التوصيل.</p>
       </div>
     </aside>
   );
