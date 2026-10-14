@@ -4,7 +4,7 @@ import { PRODUCTS, type ProductKey } from "./products";
 /**
  * Public landing pages for each Tadqeeq product (/products/...). Each targets the plain search words for what the
  * product does (the descriptor), names the product, and describes only what the app really does. Results come from
- * the uploaded files, and numbers are labelled as examples. Rendered by ProductLandingPage, listed in PUBLIC_PAGES, and
+ * the uploaded files, and numbers are labelled as examples. Rendered by ProductFeaturePage, listed in PUBLIC_PAGES, and
  * included in llms-full.txt.
  */
 
@@ -27,6 +27,17 @@ export interface ProductPage {
   availability?: string;
   /** Guide slugs to link at the end. */
   relatedGuides: string[];
+  /** Extra structure for the feature-page layout (ProductFeaturePage); the text above is shown in full. */
+  feature?: ProductPageFeature;
+}
+
+export interface ProductPageFeature {
+  /** The problems named in the «why» section, as short title + line, shown beside it. */
+  problems?: Array<[title: string, text: string]>;
+  /** A short title for each step of the steps section, same order. */
+  stepTitles?: string[];
+  /** Heading over adjacent bullet sections, shown side by side as columns; without it each list stands alone. */
+  capabilitiesHeading?: string;
 }
 
 const UPDATED = "2026-10-05";
@@ -87,6 +98,15 @@ export const PRODUCT_PAGES: ProductPage[] = [
       ["هل يمكنني تجربته مجاناً؟", "نعم. التجربة المجانية تتيح رفع ملفات منصة واحدة لفترة واحدة ورؤية المطابقة كاملة."],
     ],
     relatedGuides: ["keeta-invoice", "jahez-commission"],
+    feature: {
+      problems: [
+        ["عمولة أعلى من طلباتك", "عمولة في الفاتورة أعلى مما تقوله طلبات فرع واحد."],
+        ["رسوم دفع على طلبات نقدية", "رسوم دفع إلكتروني محسوبة على طلبات لم تُدفع إلكترونياً."],
+        ["تعويض على طلب سليم", "تعويض خُصم من التحويل على طلب سُلّم سليماً."],
+      ],
+      stepTitles: ["ارفع الملفين", "نعيد الاحتساب", "نقارن بالفاتورة", "تظهر الفروقات"],
+      capabilitiesHeading: "كل بند في الفاتورة، محسوب ومفسَّر",
+    },
   },
   {
     product: "kashif",
@@ -131,6 +151,13 @@ export const PRODUCT_PAGES: ProductPage[] = [
       ["هل يحسب كاشِف صافي المطعم؟", "نعم، يعرض الصافي بعد كل الخصومات ونسبته من المبيعات، ويطابقه «مُطابِق» مع التحويل الفعلي."],
     ],
     relatedGuides: ["keeta-invoice", "jahez-commission"],
+    feature: {
+      problems: [
+        ["أرقام متفرقة", "الفاتورة تعطيك كل رسم وحده، بلا صورة واحدة."],
+        ["أي فرع يدفع أكثر؟", "لا يظهر من الفاتورة الفرع الذي تكلفته أعلى من غيره."],
+        ["أي رسم ارتفع؟", "لا تقارن الفاتورة رسوم هذا الشهر بما قبله."],
+      ],
+    },
   },
   {
     product: "radar",
@@ -172,6 +199,13 @@ export const PRODUCT_PAGES: ProductPage[] = [
       ["هل الاسترداد المحتمل مبلغ مؤكد؟", "لا، هو المبلغ الذي يمكن المطالبة به حسب الحساب، والاسترداد الفعلي يُسجَّل عند تأكيد المنصة."],
     ],
     relatedGuides: ["hungerstation-compensation"],
+    feature: {
+      problems: [
+        ["فرق بلا صاحب", "يُكتشف الفرق ثم لا يتابعه أحد حتى تردّ المنصة."],
+        ["متابعة متفرقة", "الفروق تضيع بين رسائل البريد وجداول الإكسل."],
+        ["مبلغ غير واضح", "لا يُعرف المبلغ محل المراجعة ولا ما يمكن استرداده."],
+      ],
+    },
   },
   {
     product: "istirdad",
@@ -219,6 +253,14 @@ export const PRODUCT_PAGES: ProductPage[] = [
       ["هل يعمل مع كل المنصات؟", "نعم، مع هنقرستيشن وجاهز وكيتا."],
     ],
     relatedGuides: ["hungerstation-compensation"],
+    feature: {
+      problems: [
+        ["يُخصم بعد أيام", "التعويض يصل بعد أيام من الطلب."],
+        ["لا أحد يتذكر الطلب", "حين يصل الخصم، لا أحد يعرف ما حدث فيه."],
+        ["الدليل ضاع", "الصورة كانت في جوال الكاشير ولم تُحفظ مع الطلب."],
+      ],
+      stepTitles: ["اربط البوت", "صوّر الطلب", "ابحث برقم الطلب", "أرسل طلب المراجعة", "تابع الحالة"],
+    },
   },
   {
     product: "aaid",
@@ -259,6 +301,14 @@ export const PRODUCT_PAGES: ProductPage[] = [
       ["ما الفرق بين ROI المنصة والعائد الحقيقي؟", "ROI المنصة يقارن المبيعات بالإنفاق الإعلاني، والعائد الحقيقي يطرح العمولة والخصومات والتكاليف أولاً."],
     ],
     relatedGuides: ["jahez-commission"],
+    feature: {
+      problems: [
+        ["عائد المنصة", "يقارن المبيعات بالإنفاق الإعلاني فقط."],
+        ["تكاليف لا تظهر", "العمولة والخصومات وتكلفة الطعام خارج الحساب."],
+        ["حملة تبدو ناجحة", "وقد لا تغطي تكلفتها بعد هذه الخصومات."],
+      ],
+      stepTitles: ["يقرأ الأرقام الموثقة", "تضيف ما ينقص", "يحسب العائد الحقيقي", "تقارن الحملات"],
+    },
   },
   {
     product: "raqeeb",
@@ -346,6 +396,13 @@ export const PRODUCT_PAGES: ProductPage[] = [
       ["ماذا لو رفعت ملف اليوم مرة ثانية؟", "يحل الملف الأحدث محل السابق لنفس اليوم والمصدر، فلا تُحسب الطلبات مرتين."],
     ],
     relatedGuides: ["jahez-commission", "keeta-invoice"],
+    feature: {
+      problems: [
+        ["الفاتورة تتأخر", "تصل بعد انتهاء الشهر."],
+        ["ارتفاع يستمر أسابيع", "أي زيادة في التكلفة تبقى حتى تصل الفاتورة."],
+        ["تحويل غير معروف", "لا تقدير لما سيصلك قبل نهاية الشهر."],
+      ],
+    },
   },
 ];
 
