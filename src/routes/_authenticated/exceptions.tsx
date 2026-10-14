@@ -53,6 +53,7 @@ import {
 } from "@/lib/exceptions";
 import { arabicDate, money, sar } from "@/lib/format";
 import { updateExceptionWorkflow } from "@/lib/periods";
+import { displayBranchName } from "@/lib/reporting-metrics";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
 import { PlatformName } from "@/components/brand/PlatformLogo";
@@ -116,6 +117,7 @@ function ExceptionsPage() {
       return [
         item.periodLabel,
         item.branch,
+        displayBranchName(item.branch),
         item.branchId,
         item.categoryLabel,
         item.label,
@@ -460,7 +462,7 @@ function ExceptionList({
                     </Td>
                     <Td>
                       {item.branch ? (
-                        <span className="block max-w-44 truncate" title={item.branch}>{item.branch}</span>
+                        <span className="block max-w-44 truncate" title={item.branch}>{displayBranchName(item.branch)}</span>
                       ) : (
                         <span className="text-muted-foreground">إجمالي الفترة</span>
                       )}
@@ -487,7 +489,7 @@ function ExceptionList({
               <span className="min-w-0 flex-1">
                 <span className="block font-semibold leading-6">{item.label}</span>
                 <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
-                  {item.branch ?? "إجمالي الفترة"} · {EXCEPTION_SEVERITY_LABELS[item.severity]}
+                  {item.branch ? displayBranchName(item.branch) : "إجمالي الفترة"} · {EXCEPTION_SEVERITY_LABELS[item.severity]}
                 </span>
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1">
@@ -519,7 +521,7 @@ function ExceptionDetail({
   const evidence = buildExceptionEvidence(period, item);
   return (
     <DetailPanel
-      eyebrow={(item.branch ?? "إجمالي الفترة") + " · " + EXCEPTION_SEVERITY_LABELS[item.severity] + " · " + item.categoryLabel}
+      eyebrow={(item.branch ? displayBranchName(item.branch) : "إجمالي الفترة") + " · " + EXCEPTION_SEVERITY_LABELS[item.severity] + " · " + item.categoryLabel}
       title={item.label}
       value={sar(item.reviewAmount)}
     >
@@ -658,7 +660,7 @@ function EvidenceSheet({
           <SheetTitle>مسار الأدلة</SheetTitle>
           <SheetDescription>
             {item.periodLabel}
-            {item.branch ? " · " + item.branch : " · إجمالي الفترة"}
+            {item.branch ? " · " + displayBranchName(item.branch) : " · إجمالي الفترة"}
             {item.branchId ? " · " + item.branchId : ""}
           </SheetDescription>
         </SheetHeader>
