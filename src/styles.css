@@ -318,32 +318,6 @@
   .lp-float-slow { animation: lp-float 8s ease-in-out infinite; }
   .lp-marquee { animation: lp-marquee 64s linear infinite; }
   .lp-marquee-wrap:hover .lp-marquee { animation-play-state: paused; }
-  /* Pricing orders slider: a filled track in the brand amber (fills from the right in RTL) and a round thumb. */
-  .lp-range {
-    appearance: none;
-    height: 10px;
-    border-radius: 999px;
-    background: linear-gradient(to left, var(--primary) var(--fill, 0%), var(--muted) var(--fill, 0%));
-    cursor: pointer;
-  }
-  .lp-range:focus-visible { outline: 2px solid var(--primary); outline-offset: 6px; }
-  .lp-range::-webkit-slider-thumb {
-    appearance: none;
-    width: 28px;
-    height: 28px;
-    border-radius: 999px;
-    background: var(--card);
-    border: 2px solid var(--primary);
-    box-shadow: 0 2px 8px rgb(19 35 43 / 0.18);
-  }
-  .lp-range::-moz-range-thumb {
-    width: 26px;
-    height: 26px;
-    border-radius: 999px;
-    background: var(--card);
-    border: 2px solid var(--primary);
-    box-shadow: 0 2px 8px rgb(19 35 43 / 0.18);
-  }
   .lp-pulse { animation: lp-pulse 2.4s ease-out infinite; }
   .lp-scan { animation: lp-scan 6s ease-in-out infinite; }
   .lp-rec::after {

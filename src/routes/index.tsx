@@ -41,7 +41,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { isLoginHost } from "@/lib/login-host";
 import { isOpsHost } from "@/lib/ops";
@@ -3200,51 +3200,33 @@ function CompensationStepVisual({ step, active }: { step: number; active: boolea
   );
 }
 
-/** Stops on the orders slider; each plan's own limit is added, so every plan can be landed on exactly. */
-const ORDER_STEPS = [1000, 2000, 3000, 5000, 8000, 12000, 16000, 20000, 25000, 30000, 40000, 50000, 60000, 80000, 100000, 150000];
-
-/** Slider stops up to the largest plan limit, then one stop past it for "more than". */
-function orderSteps(plans: PublicPlan[]): number[] {
-  const limits = plans.map((plan) => plan.orderLimit).filter((limit): limit is number => limit !== null);
-  const largest = Math.max(0, ...limits);
-  if (!largest) return ORDER_STEPS;
-  const steps = [...new Set([...ORDER_STEPS.filter((step) => step < largest), ...limits])].sort((a, b) => a - b);
-  return [...steps, largest + 1];
-}
-
 function Pricing({ plans }: { plans: PublicPlan[] }) {
   const ordered = orderBasedPlans(plans);
-  return ordered.length ? <OrderPricing plans={ordered} /> : <LegacyPricing plans={plans} />;
+  return ordered.length ? <OrderPricing plans={ordered.slice(0, 3)} /> : <LegacyPricing plans={plans} />;
 }
 
-/** Plans priced by orders checked per month, with a calculator that points to the right one. */
+/**
+ * Three order-based plans side by side, with a monthly / yearly switch. After Linear's pricing (design-md-library:
+ * same-size cards, the featured plan set apart by surface tone rather than size) and two 21st.dev ideas rebuilt in
+ * Tadqeeq's own tokens: the yearly total and saving under each price («Annual Savings Pricing Grid») and a soft
+ * fade on the price when the cycle changes («Pricing Section with Frequency Toggle»).
+ */
 function OrderPricing({ plans }: { plans: PublicPlan[] }) {
   const [cycle, setCycle] = useState<PublicPlan["cycle"]>("monthly");
-  const [orders, setOrders] = useState<number | null>(null);
-  const recommended = orders !== null ? recommendPlan(plans, orders) : null;
   const yearly = cycle === "yearly";
   const largestLimit = Math.max(0, ...plans.map((plan) => plan.orderLimit ?? 0));
-  const steps = orderSteps(plans);
-  // Before the visitor moves the slider it rests on the most chosen plan's limit; cards only change once they do.
-  const restingOrders = plans.find((plan) => plan.highlighted)?.orderLimit ?? steps[Math.floor(steps.length / 2)] ?? 0;
-  const sliderOrders = orders ?? restingOrders;
-  const sliderIndex = Math.max(0, steps.findIndex((step) => step >= sliderOrders));
-  const sliderPlan = recommendPlan(plans, sliderOrders);
-  const beyond = largestLimit > 0 && sliderOrders > largestLimit;
-  const fill = steps.length > 1 ? (sliderIndex / (steps.length - 1)) * 100 : 0;
-  const sliderPrice = sliderPlan && !sliderPlan.customPrice ? (yearly && sliderPlan.priceYearly !== null ? sliderPlan.priceYearly : sliderPlan.price) : null;
   const bundled = (plan: PublicPlan) => PLAN_ADDONS.some((addon) => planIncludesAddon(plan.features, addon.key));
   const addonFor = plans.filter((plan) => !bundled(plan) && !plan.customPrice).map((plan) => plan.name);
   const addonIn = plans.filter(bundled).map((plan) => plan.name);
   const comparison = planComparison(plans);
   const addon = PLAN_ADDONS[0];
-  const featured = (plan: PublicPlan) => recommended?.id === plan.id || (recommended === null && plan.highlighted);
+  const featured = (plan: PublicPlan) => plan.highlighted;
 
   return (
     <section id="pricing" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
       <div className="flex flex-wrap items-end justify-between gap-6">
         <SectionIntro eyebrow="الخطط والأسعار" title="ادفع حسب طلباتك، لا حسب فروعك.">
-          فروع ومنصات ومستخدمون بلا حدود في كل الباقات. ابدأ بتجربة مجانية بدون بطاقة، ثم اختر الباقة على قدّ طلباتك الشهرية.
+          فروع ومنصات ومستخدمون بلا حدود في كل الباقات. ابدأ بتجربة مجانية بدون بطاقة.
         </SectionIntro>
         <div role="group" aria-label="دورة الفوترة" className="flex rounded-full bg-muted p-1 text-sm">
           {(["monthly", "yearly"] as const).map((value) => (
@@ -3253,7 +3235,10 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
               type="button"
               aria-pressed={cycle === value}
               onClick={() => setCycle(value)}
-              className={cn("rounded-full px-5 py-2.5", cycle === value ? "bg-card font-semibold shadow-sm" : "text-muted-foreground")}
+              className={cn(
+                "rounded-full px-5 py-2.5 transition-colors",
+                cycle === value ? "bg-card font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
             >
               {value === "monthly" ? "شهري" : "سنوي · شهران مجاناً"}
             </button>
@@ -3261,126 +3246,70 @@ function OrderPricing({ plans }: { plans: PublicPlan[] }) {
         </div>
       </div>
 
-      {/* Orders calculator after the Loops pricing slider (21st.dev «PricingSlider Loops»): drag to your monthly
-          orders, the plan that fits and its price update beside it. */}
-      <div data-reveal className="mt-10 grid gap-4 lg:grid-cols-[1.35fr_1fr]">
-        <div className="flex flex-col rounded-[22px] border border-border bg-card p-6 sm:p-8">
-          <label htmlFor="pricing-orders" className="text-[15px] font-semibold">
-            كم طلب يصلك شهرياً من كل تطبيقات التوصيل؟
-          </label>
-          <p className="mt-4 font-display text-[28px] font-extrabold leading-tight sm:text-[34px]" aria-live="polite">
-            {beyond ? "أكثر من " : "حتى "}
-            <span className="num">{(beyond ? largestLimit : sliderOrders).toLocaleString("en-US")}</span> طلب
-          </p>
-          <input
-            id="pricing-orders"
-            type="range"
-            dir="rtl"
-            min={0}
-            max={steps.length - 1}
-            step={1}
-            value={sliderIndex}
-            aria-valuetext={`${beyond ? "أكثر من" : "حتى"} ${(beyond ? largestLimit : sliderOrders).toLocaleString("en-US")} طلب شهرياً`}
-            onChange={(event) => setOrders(steps[Number(event.target.value)] ?? null)}
-            style={{ "--fill": `${fill}%` } as CSSProperties}
-            className="lp-range mt-8 w-full"
-          />
-          <div className="mt-3 flex justify-between text-xs text-muted-foreground">
-            <span className="num">{(steps[0] ?? 0).toLocaleString("en-US")}</span>
-            <span>
-              {largestLimit ? (
-                <>
-                  <span className="num">{largestLimit.toLocaleString("en-US")}</span>+
-                </>
-              ) : null}
-            </span>
-          </div>
-          <p className="mt-auto pt-8 text-sm text-muted-foreground">
-            فروع ومنصات ومستخدمون بلا حدود في كل الباقات، فلا يتغيّر السعر إلا بعدد الطلبات.
-          </p>
-        </div>
-
-        <div className="flex flex-col rounded-[22px] bg-ink p-6 text-ink-foreground sm:p-8">
-          <p className="text-[15px] font-semibold text-ink-muted">الباقة المناسبة لك</p>
-          {sliderPlan ? (
-            <>
-              <h3 className="mt-4 font-display text-[28px] font-extrabold leading-tight sm:text-[34px]">{sliderPlan.name}</h3>
-              {sliderPrice !== null ? (
-                <p className="mt-3 flex flex-wrap items-baseline gap-x-2">
-                  <span className="num text-[2.2rem] font-semibold leading-none">{sliderPrice.toLocaleString("en-US")}</span>
-                  <span className="text-sm text-ink-muted">
-                    ر.س / {yearly && sliderPlan.priceYearly !== null ? "سنوياً" : "شهرياً"}
-                  </span>
-                </p>
-              ) : (
-                <p className="mt-3 font-display text-2xl font-extrabold">بالاتفاق</p>
-              )}
-              <div className="mt-auto pt-8">
-                <Link
-                  to="/auth"
-                  search={{ mode: "signup" }}
-                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground"
-                >
-                  {sliderPlan.customPrice ? "تواصل معنا" : "ابدأ تجربتك المجانية"}
-                  <ArrowLeft className="size-4" />
-                </Link>
-              </div>
-            </>
-          ) : null}
-        </div>
-      </div>
-
-      <div
-        className={cn(
-          "mt-6 grid items-stretch gap-4 sm:grid-cols-2",
-          plans.length <= 3 ? "lg:grid-cols-3" : plans.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-5",
-        )}
-      >
+      <div className="mt-12 grid items-stretch gap-4 md:grid-cols-3">
         {plans.map((plan, index) => {
-          const fit = recommended?.id === plan.id;
-          const dark = fit || (recommended === null && plan.highlighted);
+          const dark = plan.highlighted;
           const price = yearly && plan.priceYearly !== null ? plan.priceYearly : plan.price;
+          const perYear = plan.priceYearly !== null && !plan.customPrice;
+          const saving = perYear ? plan.price * 12 - plan.priceYearly! : 0;
           return (
             <article
               key={plan.id}
+              data-reveal
               className={cn(
-                "relative flex flex-col gap-4 rounded-[22px] p-6 transition-colors",
+                "relative flex flex-col rounded-[22px] p-6 sm:p-7",
                 dark ? "bg-ink text-ink-foreground shadow-[0_30px_60px_-30px_rgb(19_35_43/0.5)]" : "border border-border bg-card",
               )}
             >
-              {fit || (recommended === null && plan.highlighted) ? (
-                <span className="absolute -top-3 start-6 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">
-                  {fit ? "الأنسب لطلباتك" : "الأكثر اختياراً"}
-                </span>
+              {dark ? (
+                <span className="absolute -top-3 start-6 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">الأكثر اختياراً</span>
               ) : null}
-              <div>
-                <h3 className="font-display text-xl font-extrabold">{plan.name}</h3>
-                <p className={cn("mt-1 text-sm", dark ? "text-ink-muted" : "text-muted-foreground")}>
-                  {plan.orderLimit !== null || plan.customPrice ? (
-                    <>
-                      {plan.customPrice ? "أكثر من" : "حتى"} <span className="num">{(plan.orderLimit ?? largestLimit).toLocaleString("en-US")}</span> طلب شهرياً
-                    </>
-                  ) : (
-                    "طلبات بلا حدود"
-                  )}
-                </p>
+              <h3 className="font-display text-xl font-extrabold">{plan.name}</h3>
+              <p className={cn("mt-1 text-sm", dark ? "text-ink-muted" : "text-muted-foreground")}>
+                {plan.orderLimit !== null || plan.customPrice ? (
+                  <>
+                    {plan.customPrice ? "أكثر من" : "حتى"} <span className="num">{(plan.orderLimit ?? largestLimit).toLocaleString("en-US")}</span> طلب شهرياً
+                  </>
+                ) : (
+                  "طلبات بلا حدود"
+                )}
+              </p>
+
+              <div className="mt-6 min-h-[5.5rem]">
+                {plan.customPrice ? (
+                  <p className="font-display text-3xl font-extrabold">بالاتفاق</p>
+                ) : (
+                  <>
+                    {/* Remounts on each cycle change so the new price fades in. */}
+                    <p key={cycle} className="flex flex-wrap items-baseline gap-x-2 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300">
+                      <span className="num text-[2.6rem] font-semibold leading-none">{price.toLocaleString("en-US")}</span>
+                      <span className={cn("text-sm", dark ? "text-ink-muted" : "text-muted-foreground")}>
+                        ر.س / {yearly && plan.priceYearly !== null ? "سنوياً" : "شهرياً"}
+                      </span>
+                    </p>
+                    {perYear ? (
+                      <p className={cn("mt-2.5 text-[13px]", dark ? "text-ink-muted" : "text-muted-foreground")}>
+                        {yearly ? (
+                          <>
+                            توفّر <span className={cn("num font-semibold", dark ? "text-primary" : "text-success")}>{saving.toLocaleString("en-US")}</span> ر.س في السنة
+                          </>
+                        ) : (
+                          <>
+                            أو <span className="num font-semibold">{plan.priceYearly!.toLocaleString("en-US")}</span> ر.س سنوياً
+                          </>
+                        )}
+                      </p>
+                    ) : null}
+                  </>
+                )}
               </div>
-              {plan.customPrice ? (
-                <p className="font-display text-2xl font-extrabold">بالاتفاق</p>
-              ) : (
-                <p className="flex flex-wrap items-baseline gap-x-2">
-                  <span className="num text-[2.2rem] font-semibold leading-none">{price.toLocaleString("en-US")}</span>
-                  <span className={cn("text-sm", dark ? "text-ink-muted" : "text-muted-foreground")}>
-                    ر.س / {yearly && plan.priceYearly !== null ? "سنوياً" : "شهرياً"}
-                  </span>
-                </p>
-              )}
+
               <Link
                 to="/auth"
                 search={{ mode: "signup" }}
                 className={cn(
-                  "inline-flex h-11 items-center justify-center rounded-full text-sm font-bold",
-                  dark ? "bg-primary text-primary-foreground" : "bg-ink text-ink-foreground",
+                  "mt-6 inline-flex h-11 items-center justify-center rounded-full text-sm font-bold transition-transform active:scale-[0.98]",
+                  dark ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-ink text-ink-foreground hover:bg-ink/90",
                 )}
               >
                 {plan.customPrice ? "تواصل معنا" : "ابدأ تجربتك المجانية"}
