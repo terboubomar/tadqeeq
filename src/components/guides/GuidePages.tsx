@@ -10,11 +10,12 @@ import { formatArabicDate } from "@/lib/site-content";
 
 /**
  * Header, main column and footer shared by the guides, the product pages and their indexes. `wide` hands the page
- * full width (the pricing page) instead of the narrow reading column.
+ * full width (the pricing page) instead of the narrow reading column. `theme` adds a scoped colour theme class
+ * (see styles.css) to the whole page, header and footer included.
  */
-export function GuideShell({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
+export function GuideShell({ children, wide = false, theme }: { children: ReactNode; wide?: boolean; theme?: string }) {
   return (
-    <div className="min-h-screen bg-background" dir="rtl">
+    <div className={theme ? `min-h-screen bg-background ${theme}` : "min-h-screen bg-background"} dir="rtl">
       <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur">
         <div className={`relative mx-auto flex h-16 ${wide ? "max-w-7xl" : "max-w-5xl"} items-center justify-between gap-3 px-4 sm:px-6`}>
           <Link to="/" aria-label="تدقيق — الرئيسية">
@@ -42,7 +43,7 @@ export function GuideShell({ children, wide = false }: { children: ReactNode; wi
         </div>
       </header>
       {wide ? <main>{children}</main> : <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">{children}</main>}
-      <footer className="border-t border-border bg-[oklch(0.975_0.018_85)]">
+      <footer className={theme ? "border-t border-border bg-secondary" : "border-t border-border bg-[oklch(0.975_0.018_85)]"}>
         <div className={`mx-auto flex ${wide ? "max-w-7xl" : "max-w-5xl"} flex-col gap-4 px-4 py-10 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6`}>
           <p>تدقيق · مراجعة فواتير هنقرستيشن وكيتا وجاهز للمطاعم في السعودية</p>
           <nav aria-label="روابط" className="flex flex-wrap gap-4">

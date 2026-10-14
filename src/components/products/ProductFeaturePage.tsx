@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
  * steps as a vertical timeline, checks as a ruled grid, and the FAQs as an accordion. Same content as
  * ProductLandingPage (title, answer, sections, FAQs, links), wider layout.
  *
+ * Colours: the «Classic blue and dark» 21st.dev theme, scoped to this page (styles.css, .theme-classic-blue).
  * Type follows Linear's scale from the design-md-library (56 / 40 / 28 / 20 / 18 px steps), with Arabic line heights
  * and no negative tracking. Layout ideas from 21st.dev, rebuilt in Tadqeeq's tokens and RTL with no new packages:
  * «Product Hero with Demo Panel» (hero beside a live-looking product panel), «Vertical How It Works Timeline»
@@ -29,7 +30,7 @@ export function ProductFeaturePage({ page }: { page: ProductPage }) {
   let bulletBlocks = 0;
 
   return (
-    <GuideShell wide>
+    <GuideShell wide theme="theme-classic-blue">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <header className={cn("grid gap-12 pb-16 pt-10 sm:pt-14 lg:pb-24", Visual && "lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-16")}>
           <div>
@@ -59,14 +60,14 @@ export function ProductFeaturePage({ page }: { page: ProductPage }) {
               <Link
                 to="/auth"
                 search={{ mode: "signup" }}
-                className="inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 text-[15px] font-bold text-primary-foreground transition-transform hover:bg-primary/90 active:scale-[0.98]"
+                className="inline-flex h-12 items-center gap-2 rounded-lg bg-primary px-6 text-[15px] font-bold text-primary-foreground transition-transform hover:bg-primary/90 active:scale-[0.98]"
               >
                 جرّب {product.name} مجاناً
                 <ArrowLeft className="size-4" />
               </Link>
               <Link
                 to="/pricing"
-                className="inline-flex h-12 items-center rounded-full border border-border bg-card px-6 text-[15px] font-semibold transition-colors hover:border-primary"
+                className="inline-flex h-12 items-center rounded-lg border border-border bg-card px-6 text-[15px] font-semibold transition-colors hover:border-primary"
               >
                 الخطط والأسعار
               </Link>
@@ -109,7 +110,7 @@ export function ProductFeaturePage({ page }: { page: ProductPage }) {
       </section>
 
       <div className="mx-auto max-w-7xl px-4 pb-16 sm:px-6">
-        <aside className="flex flex-col items-start gap-6 rounded-[28px] bg-ink p-8 text-ink-foreground sm:p-12 lg:flex-row lg:items-center lg:justify-between">
+        <aside className="flex flex-col items-start gap-6 rounded-2xl bg-ink p-8 text-ink-foreground sm:p-12 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="font-display text-[1.75rem] font-extrabold leading-[1.4]">ابدأ بملفات شهر واحد.</p>
             <p className="mt-2 text-base leading-8 text-ink-muted">ارفع فاتورة المنصة وملف الطلبات مجاناً وشاهد الفروقات لكل فرع.</p>
@@ -117,7 +118,7 @@ export function ProductFeaturePage({ page }: { page: ProductPage }) {
           <Link
             to="/auth"
             search={{ mode: "signup" }}
-            className="inline-flex h-12 shrink-0 items-center gap-2 rounded-full bg-primary px-6 text-[15px] font-bold text-primary-foreground transition-transform hover:bg-primary/90 active:scale-[0.98]"
+            className="inline-flex h-12 shrink-0 items-center gap-2 rounded-lg bg-primary px-6 text-[15px] font-bold text-primary-foreground transition-transform hover:bg-primary/90 active:scale-[0.98]"
           >
             ابدأ مجاناً
             <ArrowLeft className="size-4" />
@@ -130,7 +131,7 @@ export function ProductFeaturePage({ page }: { page: ProductPage }) {
             <ul className="mt-4 grid gap-3 sm:grid-cols-2">
               {guides.map((guide) => (
                 <li key={guide.slug}>
-                  <a href={guide.path} className="flex h-full items-start gap-3 rounded-2xl border border-border bg-card p-5 transition-colors hover:border-primary">
+                  <a href={guide.path} className="flex h-full items-start gap-3 rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary">
                     <PlatformIcon platform={guide.platform} className="size-8 shrink-0 rounded-full" />
                     <span className="font-semibold leading-7">{guide.title}</span>
                   </a>
@@ -145,7 +146,7 @@ export function ProductFeaturePage({ page }: { page: ProductPage }) {
           <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {others.map((other) => (
               <li key={other.slug}>
-                <a href={other.path} className="flex h-full items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary">
+                <a href={other.path} className="flex h-full items-center gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary">
                   <ProductIcon product={other.product} className="size-9" />
                   <span>
                     <span className="block font-bold">{PRODUCTS[other.product].name}</span>
@@ -192,7 +193,7 @@ function StepsBlock({ section }: { section: GuideSection }) {
               {index < steps.length - 1 ? (
                 <span aria-hidden="true" className="absolute bottom-0 start-[19px] top-11 border-s-2 border-dashed border-primary/35" />
               ) : null}
-              <span className="num relative grid size-10 shrink-0 place-items-center rounded-full bg-ink text-base font-semibold text-ink-foreground">{index + 1}</span>
+              <span className="num relative grid size-10 shrink-0 place-items-center rounded-lg bg-ink text-base font-semibold text-ink-foreground">{index + 1}</span>
               <p className="max-w-[60ch] pt-1.5 text-[17px] leading-8">{step}</p>
             </li>
           ))}
@@ -208,12 +209,12 @@ function BulletsBlock({ section, dark }: { section: GuideSection; dark: boolean 
   if (dark) {
     return (
       <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-12">
-        <div className="rounded-[28px] bg-ink px-6 py-12 text-ink-foreground sm:px-12 lg:py-16">
+        <div className="rounded-2xl bg-ink px-6 py-12 text-ink-foreground sm:px-12 lg:py-16">
           <h2 className="text-balance font-display text-[1.75rem] font-extrabold leading-[1.4] sm:text-[2.5rem]">{section.heading}</h2>
           <ul className="mt-10 grid gap-x-12 gap-y-7 md:grid-cols-2">
             {bullets.map((bullet) => (
               <li key={bullet} className="flex gap-3.5 text-[17px] leading-8">
-                <span className="mt-1 grid size-6 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+                <span className="mt-1 grid size-6 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
                   <Check className="size-3.5" strokeWidth={3} />
                 </span>
                 <span className="text-ink-foreground/90">{bullet}</span>
@@ -251,8 +252,8 @@ function MutabiqPanel() {
   ];
   return (
     <figure className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-3 motion-safe:duration-700">
-      <div className="rounded-[26px] bg-secondary p-3 sm:p-4">
-        <div className="rounded-[20px] bg-card p-5 shadow-[0_24px_48px_-28px_rgb(19_35_43/0.35)] sm:p-6">
+      <div className="rounded-2xl bg-secondary p-3 sm:p-4">
+        <div className="rounded-xl bg-card p-5 shadow-[0_1px_3px_rgb(0_0_0/0.12),0_12px_32px_-16px_rgb(0_0_0/0.18)] sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="font-display text-base font-extrabold">عمولة الطلبات حسب الفرع</p>
             <PlatformName platform="hungerstation" className="text-xs font-semibold text-muted-foreground" iconClassName="size-4 rounded" />
@@ -294,7 +295,7 @@ function MutabiqPanel() {
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 px-2 pb-1 pt-4">
-          <span className="flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[13px] text-ink-foreground">
+          <span className="flex items-center gap-2 rounded-lg bg-ink px-4 py-2 text-[13px] text-ink-foreground">
             فرق قبل السداد <span className="num font-semibold text-primary">1,660.85 ر.س</span>
           </span>
           <span className="text-xs text-muted-foreground">ينتقل كل فرق إلى «رادار» للمتابعة</span>
