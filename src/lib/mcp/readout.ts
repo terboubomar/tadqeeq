@@ -272,6 +272,19 @@ export function exceptionList(period: StoredPeriod, includeClosed: boolean) {
       ...(e.owner ? { owner: e.owner } : {}),
       ...(e.classification ? { classification: e.classification } : {}),
       ...(e.attachments.length ? { attached_documents: e.attachments.map((a) => a.name) } : {}),
+      ...(e.lines?.length
+        ? {
+            items: e.lines.map((line) => {
+              const decision = e.items.find((entry) => entry.line === line.label);
+              return {
+                line: line.label,
+                amount_sar: round(line.amount),
+                status: decision?.status ?? "pending",
+                document_ref: decision?.documentRef ?? null,
+              };
+            }),
+          }
+        : {}),
       ...(e.hint ? { hint: e.hint } : {}),
     }));
 }

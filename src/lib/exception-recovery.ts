@@ -1,4 +1,4 @@
-import type { AuditException, ExceptionStatus } from "./exceptions";
+import type { AuditException, ExceptionItemDecision, ExceptionItemStatus, ExceptionStatus, ExceptionWorkflowEntry } from "./exceptions";
 import { displayBranchName } from "./reporting-metrics";
 import type { StoredPeriod } from "./periods";
 
@@ -87,6 +87,8 @@ const ruleText = (rule: ClassificationRule) => rule.classification + (rule.commi
 export function applyClassificationRules(items: AuditException[], rules: ClassificationRule[]): AuditException[] {
   if (!rules.length) return items;
   return items.map((item) => {
+    // A person's decision on the charges inside the exception wins over the rules.
+    if (item.items.some((decision) => decision.status !== "pending")) return item;
     if (item.lines?.length) {
       const lines = classifyLines(item, rules);
       const covered = lines.filter((line) => line.rule);
@@ -114,6 +116,30 @@ export function applyClassificationRules(items: AuditException[], rules: Classif
         : item.claimableAmount;
     return { ...item, status, classification: item.classification ?? ruleText(rule), claimableAmount: claimable };
   });
+}
+
+export const ITEM_STATUS_LABELS: Record<ExceptionItemStatus, string> = {
+  pending: "بانتظار المستند",
+  accepted: "رسم صحيح",
+  claimable: "قابل للمطالبة",
+};
+
+/** Statuses a person moved the exception on to (a claim sent, or settled); per-charge decisions no longer reset them. */
+const SETTLED_OR_CLAIMED: ReadonlySet<ExceptionStatus> = new Set(["contacted", "disputed", "recovered", "rejected"]);
+
+/**
+ * The workflow patch for a set of per-charge decisions. Once every charge of the exception is decided, the exception
+ * follows them: claimable for the sum of the charges marked claimable, else closed (every charge is a valid fee).
+ * Until then, or once a claim was sent or settled, only the decisions are saved.
+ */
+export function itemDecisionsPatch(item: AuditException, decisions: ExceptionItemDecision[]): Partial<ExceptionWorkflowEntry> {
+  const patch: Partial<ExceptionWorkflowEntry> = { items: decisions };
+  const lines = item.lines ?? [];
+  const decisionOf = (label: string) => decisions.find((decision) => decision.line === label);
+  const allDecided = lines.length > 0 && lines.every((line) => (decisionOf(line.label)?.status ?? "pending") !== "pending");
+  if (!allDecided || SETTLED_OR_CLAIMED.has(item.status)) return patch;
+  const owed = round2(lines.filter((line) => decisionOf(line.label)?.status === "claimable").reduce((sum, line) => sum + line.amount, 0));
+  return owed > 0 ? { ...patch, status: "claimable", claimableAmount: owed } : { ...patch, status: "closed", claimableAmount: null };
 }
 
 const PLATFORM_NAMES: Record<string, { ar: string; en: string }> = {

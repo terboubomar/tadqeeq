@@ -114,3 +114,37 @@ describe("exception documents bucket (0059)", () => {
     expect(bucket.rows).toEqual([{ public: false }]);
   });
 });
+
+describe("per-charge decisions (0060)", () => {
+  test("each charge can carry a status and a document reference", async () => {
+    const items = [
+      { line: "الطابعات", status: "accepted", documentRef: "INV-PRN-1" },
+      { line: "رسوم حملات التوصيل المجاني", status: "claimable", documentRef: null },
+      { line: "الاشتراك الشهري", status: "pending" },
+    ];
+    const result = await asUser<{ period: { invoice: { exceptionWorkflow: Record<string, Record<string, unknown>> } } }>(db, U.ownerA, SET, [
+      periodA,
+      "combined",
+      JSON.stringify({ items, status: "claimable", claimableAmount: 587.83 }),
+    ]);
+    expect(result.error).toBeNull();
+    expect(result.rows[0]!.period.invoice.exceptionWorkflow["combined"]).toMatchObject({ items, status: "claimable" });
+  });
+
+  test("an unknown item status, a missing line or a long reference is refused", async () => {
+    for (const items of [
+      [{ line: "الطابعات", status: "paid" }],
+      [{ status: "accepted" }],
+      [{ line: "الطابعات", status: "accepted", documentRef: "x".repeat(201) }],
+      { line: "الطابعات" },
+    ]) {
+      const refused = await asUser(db, U.ownerA, SET, [periodA, "combined", JSON.stringify({ items })]);
+      expect(refused.error).toContain("INVALID_WORKFLOW_ITEMS");
+    }
+  });
+
+  test("a viewer cannot record decisions", async () => {
+    const viewer = await asUser(db, U.viewerA, SET, [periodA, "combined", JSON.stringify({ items: [] })]);
+    expect(viewer.error).toContain("FORBIDDEN");
+  });
+});

@@ -53,13 +53,22 @@ import {
   EXCEPTION_STATUS_LABELS,
   summarizeExceptions,
   type AuditException,
+  type ExceptionItemStatus,
   type ExceptionSeverity,
   type ExceptionStatus,
   type ExceptionWorkflowEntry,
   isOpenException,
 } from "@/lib/exceptions";
 import { arabicDate, money, sar } from "@/lib/format";
-import { applyClassificationRules, classifyLines, disputeLetter, requiredEvidence, type ClassificationRule } from "@/lib/exception-recovery";
+import {
+  applyClassificationRules,
+  classifyLines,
+  disputeLetter,
+  ITEM_STATUS_LABELS,
+  itemDecisionsPatch,
+  requiredEvidence,
+  type ClassificationRule,
+} from "@/lib/exception-recovery";
 import {
   addClassificationRule,
   deleteClassificationRule,
@@ -1263,19 +1272,14 @@ function EvidenceRequest({
         {needed.branch ? <> · الفرع {needed.branch}</> : " · على مستوى الفترة"}
       </p>
       {item.lines?.length ? (
-        <ul className="mt-2 divide-y divide-border/70 rounded-lg border border-border">
-          {classifyLines(item, rules).map((line, index) => (
-            <li key={line.label + index} className="flex items-start justify-between gap-3 px-2.5 py-1.5">
-              <span>
-                {line.label}
-                <span className="block text-[11.5px] text-muted-foreground">
-                  {line.rule ? `${line.rule.classification} · ${line.rule.claimable ? "قابل للمطالبة" : "رسم مستحق"}` : "بلا قاعدة تصنيف"}
-                </span>
-              </span>
-              <span className="num shrink-0">{sar(line.amount)}</span>
-            </li>
-          ))}
-        </ul>
+        <ItemDecisions
+          key={item.id + JSON.stringify(item.items)}
+          item={item}
+          rules={rules}
+          canManage={canManage}
+          saving={saving}
+          onUpdate={onUpdate}
+        />
       ) : null}
       {item.attachments.length ? (
         <ul className="mt-2 space-y-1">
@@ -1312,6 +1316,116 @@ function EvidenceRequest({
           ) : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Each charge inside a combined exception with its own decision: pending, a valid fee, or claimable, and the
+ * document it rests on. Once every charge is decided the exception follows them (see itemDecisionsPatch).
+ */
+function ItemDecisions({
+  item,
+  rules,
+  canManage,
+  saving,
+  onUpdate,
+}: {
+  item: AuditException;
+  rules: ClassificationRule[];
+  canManage: boolean;
+  saving: boolean;
+  onUpdate: (patch: Partial<ExceptionWorkflowEntry>) => void;
+}) {
+  const lines = classifyLines(item, rules);
+  const saved = lines.map((line) => {
+    const decision = item.items.find((entry) => entry.line === line.label);
+    return { line: line.label, status: decision?.status ?? ("pending" as ExceptionItemStatus), documentRef: decision?.documentRef ?? "" };
+  });
+  const [draft, setDraft] = useState(saved);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  const decided = draft.filter((entry) => entry.status !== "pending").length;
+  const update = (index: number, change: Partial<(typeof draft)[number]>) =>
+    setDraft((prev) => prev.map((entry, i) => (i === index ? { ...entry, ...change } : entry)));
+
+  return (
+    <div className="mt-2 rounded-lg border border-border">
+      <ul className="divide-y divide-border/70">
+        {lines.map((line, index) => {
+          const entry = draft[index]!;
+          return (
+            <li key={line.label + index} className="space-y-1.5 px-2.5 py-2">
+              <div className="flex items-start justify-between gap-3">
+                <span>
+                  {line.label}
+                  <span className="block text-[11.5px] text-muted-foreground">
+                    {line.rule ? `${line.rule.classification} · ${line.rule.claimable ? "قابل للمطالبة" : "رسم مستحق"}` : "بلا قاعدة تصنيف"}
+                  </span>
+                </span>
+                <span className="num shrink-0">{sar(line.amount)}</span>
+              </div>
+              {canManage ? (
+                <div className="grid gap-1.5 sm:grid-cols-[9rem_1fr]">
+                  <Select
+                    value={entry.status}
+                    disabled={saving}
+                    onValueChange={(value) => update(index, { status: value as ExceptionItemStatus })}
+                  >
+                    <SelectTrigger aria-label={`حالة ${line.label}`} className="h-8 text-[12px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(ITEM_STATUS_LABELS) as ExceptionItemStatus[]).map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {ITEM_STATUS_LABELS[status]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    aria-label={`مرجع مستند ${line.label}`}
+                    className="h-8 text-[12px]"
+                    placeholder="مرجع المستند (رقم الفاتورة أو الاتفاقية)"
+                    maxLength={200}
+                    value={entry.documentRef}
+                    disabled={saving}
+                    onChange={(event) => update(index, { documentRef: event.target.value })}
+                  />
+                </div>
+              ) : (
+                <p className="text-[11.5px] text-muted-foreground">
+                  {ITEM_STATUS_LABELS[entry.status]}
+                  {entry.documentRef ? ` · المرجع: ${entry.documentRef}` : ""}
+                </p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 px-2.5 py-2 text-[11.5px] text-muted-foreground">
+        <span>
+          تقرر <span className="num">{decided}</span> من <span className="num">{lines.length}</span> بنود
+          {decided === lines.length ? " · تتبعها حالة الاستثناء" : ""}
+        </span>
+        {canManage ? (
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 rounded-full text-[12px]"
+            disabled={saving || !dirty}
+            onClick={() =>
+              onUpdate(
+                itemDecisionsPatch(
+                  item,
+                  draft.map((entry) => ({ line: entry.line, status: entry.status, documentRef: entry.documentRef.trim() || null })),
+                ),
+              )
+            }
+          >
+            احفظ قرارات البنود
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }

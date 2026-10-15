@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { applyClassificationRules, disputeLetter, requiredEvidence, type ClassificationRule } from "./exception-recovery";
+import { applyClassificationRules, disputeLetter, itemDecisionsPatch, requiredEvidence, type ClassificationRule } from "./exception-recovery";
 import { claimableAmountFor, isOpenException, summarizeExceptions, type AuditException } from "./exceptions";
 import type { StoredPeriod } from "./periods";
 
@@ -26,6 +26,7 @@ const item = (over: Partial<AuditException>): AuditException =>
     status: "new",
     recoveredAmount: 0,
     attachments: [],
+    items: [],
     claimableAmount: 0,
     rollup: false,
     ...over,
@@ -138,5 +139,51 @@ describe("rules on the combined «unclassified charges» exception", () => {
   test("every line a legitimate charge: classified, nothing claimable", () => {
     const [result] = applyClassificationRules([combined], [rule("printers", false), rule("subscription", false), rule("free delivery", false)]);
     expect(result).toMatchObject({ status: "classified", claimableAmount: 0 });
+  });
+});
+
+describe("a status and a document reference for each charge (0060)", () => {
+  /** HungerStation Sept: the combined «بنود خصم غير مصنفة» exception, 2,287.83 SAR in three charges. */
+  const combined = item({
+    label: "بنود خصم غير مصنفة في خريطة الرسوم",
+    sourceLevel: "summary",
+    reviewAmount: 2287.83,
+    lines: [
+      { label: "الطابعات", amount: 1500 },
+      { label: "الاشتراك الشهري", amount: 200 },
+      { label: "رسوم حملات التوصيل المجاني", amount: 587.83 },
+    ],
+  });
+
+  test("only the decisions are saved while a charge is still pending", () => {
+    const decisions = [{ line: "الطابعات", status: "accepted" as const, documentRef: "اتفاقية الأجهزة 2026" }];
+    expect(itemDecisionsPatch(combined, decisions)).toEqual({ items: decisions });
+  });
+
+  test("once every charge is decided, the exception becomes claimable for the disputed charges", () => {
+    const decisions = [
+      { line: "الطابعات", status: "accepted" as const, documentRef: "INV-PRN-1" },
+      { line: "الاشتراك الشهري", status: "accepted" as const, documentRef: "SUB-2026" },
+      { line: "رسوم حملات التوصيل المجاني", status: "claimable" as const, documentRef: "لا توجد موافقة على الحملة" },
+    ];
+    expect(itemDecisionsPatch(combined, decisions)).toEqual({ items: decisions, status: "claimable", claimableAmount: 587.83 });
+  });
+
+  test("when every charge is a valid fee the exception closes", () => {
+    const decisions = combined.lines!.map((line) => ({ line: line.label, status: "accepted" as const, documentRef: "ref" }));
+    expect(itemDecisionsPatch(combined, decisions)).toMatchObject({ status: "closed", claimableAmount: null });
+  });
+
+  test("a claim already sent is not reset by the decisions", () => {
+    const decisions = combined.lines!.map((line) => ({ line: line.label, status: "claimable" as const }));
+    expect(itemDecisionsPatch({ ...combined, status: "disputed" }, decisions)).toEqual({ items: decisions });
+  });
+
+  test("a person's decisions win over the classification rules", () => {
+    const rules: ClassificationRule[] = [
+      { id: "r", platform: null, match_text: "الطابعات", classification: "أجهزة", commissionable: false, claimable: true, note: null },
+    ];
+    const decided = { ...combined, items: [{ line: "الطابعات", status: "accepted" as const }] };
+    expect(applyClassificationRules([decided], rules)[0]).toBe(decided);
   });
 });
