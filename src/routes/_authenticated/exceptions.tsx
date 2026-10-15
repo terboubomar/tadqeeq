@@ -21,14 +21,14 @@ import {
   Tags,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/AppShell";
 import { AI_UI_ENABLED } from "@/lib/ai/config";
 import { explainExceptionWithAi } from "@/lib/ai/exception-ai.functions";
 import type { ExceptionAiResult } from "@/lib/ai/exception-ai";
-import { ActionBar, ActionDivider, DetailPanel, ListDetail, PageHeader } from "@/components/workspace/PageKit";
+import { ActionBar, ActionDivider, DetailPanel, PageHeader } from "@/components/workspace/PageKit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -115,6 +115,7 @@ function ExceptionsPage() {
   const [severity, setSeverity] = useState("all");
   const [selectedException, setSelectedException] = useState<AuditException | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
 
   const updateWorkflow = useMutation({
     mutationFn: ({ periodId, exceptionId, patch }: WorkflowMutation) =>
@@ -177,14 +178,20 @@ function ExceptionsPage() {
   const active = filtered.find((item) => item.id === activeId) ?? filtered[0] ?? null;
   const update = (item: AuditException, patch: Partial<ExceptionWorkflowEntry>) =>
     updateWorkflow.mutate({ periodId: item.periodId, exceptionId: item.id, patch });
-  // From xl up the row fills the detail panel beside the list; on smaller screens it opens the sheet.
+  // From xl up the row fills the detail under the list and scrolls to it; on smaller screens it opens the sheet.
   const openItem = (item: AuditException) => {
     setActiveId(item.id);
-    if (typeof window !== "undefined" && !window.matchMedia("(min-width: 1280px)").matches) setSelectedException(item);
+    if (typeof window === "undefined") return;
+    if (!window.matchMedia("(min-width: 1280px)").matches) {
+      setSelectedException(item);
+      return;
+    }
+    const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" }));
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <PageHeader
         crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التدقيق" }, { label: PRODUCTS.radar.name }]}
         title={<ProductName product="radar" />}
@@ -246,12 +253,11 @@ function ExceptionsPage() {
             ))}
           </SelectContent>
         </Select>
+        <span className="hidden items-center gap-1.5 px-2 text-[12px] text-muted-foreground lg:inline-flex">
+          <Info className="size-3.5 shrink-0" aria-hidden />
+          الفروقات القابلة للإجراء في هذا الملف فقط.
+        </span>
       </ActionBar>
-
-      <p className="flex max-w-[90ch] items-start gap-2 text-[12px] leading-6 text-muted-foreground">
-        <Info className="mt-1 size-3.5 shrink-0" aria-hidden />
-        الفروقات القابلة للإجراء في هذا الملف فقط.
-      </p>
 
       {exceptions.length === 0 ? (
         <section className="rounded-2xl border border-border bg-card px-6 py-14 text-center">
@@ -262,16 +268,12 @@ function ExceptionsPage() {
           </p>
         </section>
       ) : (
-        <ListDetail
-          list={
-            <ExceptionList
-              items={filtered}
-              activeId={active?.id ?? null}
-              onOpen={openItem}
-            />
-          }
-          detail={
-            active ? (
+        // The list first; the selected exception opens full width under it from xl up (a sheet below xl), laid out in
+        // columns so a long detail does not leave the page empty beside a short list.
+        <div className="space-y-4">
+          <ExceptionList items={filtered} activeId={active?.id ?? null} onOpen={openItem} />
+          {active ? (
+            <div ref={detailRef} className="hidden scroll-mt-20 xl:block">
               <ExceptionDetail
                 key={active.id}
                 item={active}
@@ -281,9 +283,9 @@ function ExceptionsPage() {
                 onEvidence={() => setSelectedException(active)}
                 rules={rules}
               />
-            ) : null
-          }
-        />
+            </div>
+          ) : null}
+        </div>
       )}
 
       <EvidenceSheet
@@ -327,18 +329,18 @@ function RadarSummary({
   return (
     <section aria-label="ملخص الاستثناءات" className="overflow-hidden rounded-2xl border border-border bg-card">
       <div className="grid grid-cols-2 gap-px bg-border lg:grid-cols-[minmax(0,1.5fr)_repeat(4,minmax(0,1fr))]">
-        <div className="col-span-2 bg-card px-5 py-5 lg:col-span-1">
+        <div className="col-span-2 bg-card px-4 py-3 lg:col-span-1">
           <p className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
             <CircleDollarSign className="size-4 text-primary-text" aria-hidden />
             قابلية الاسترداد المحتملة
           </p>
-          <p className="mt-2 flex items-baseline gap-1.5">
-            <span className="num text-[30px] font-semibold leading-none tracking-[-0.02em] text-primary-text sm:text-[36px]">
+          <p className="mt-1.5 flex items-baseline gap-1.5">
+            <span className="num text-[26px] font-semibold leading-none tracking-[-0.02em] text-primary-text sm:text-[30px]">
               {money(summary.potentialRecovery)}
             </span>
             <span className="text-[13px] text-muted-foreground">ر.س</span>
           </p>
-          <p className="mt-2 text-[12px] leading-5 text-muted-foreground">الفروقات المستقلة ذات الاتجاه المالي الواضح</p>
+          <p className="mt-1.5 text-[11.5px] leading-5 text-muted-foreground">الفروقات المستقلة ذات الاتجاه المالي الواضح</p>
         </div>
         <SummaryStat
           label="الاستثناءات المفتوحة"
@@ -353,25 +355,12 @@ function RadarSummary({
           value={sar(summary.recovered)}
           hint="حسب المبالغ المسجلة في سير العمل"
           tone={summary.recovered > 0 ? "success" : undefined}
-          wide
         />
       </div>
       {open.length ? (
-        <div className="border-t border-border px-5 py-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-[12.5px] font-semibold">المفتوحة حسب الأهمية</p>
-            {severity !== "all" ? (
-              <button type="button" onClick={() => onSeverity("all")} className="text-[12px] font-semibold text-primary-text underline-offset-4 hover:underline">
-                كل المستويات
-              </button>
-            ) : null}
-          </div>
-          <div className="mt-2.5 flex h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
-            {bySeverity.map(({ level, count }) =>
-              count ? <span key={level} className={cn("h-full", SEVERITY_MARK[level])} style={{ width: `${(count / open.length) * 100}%` }} /> : null,
-            )}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="تصفية حسب الأهمية">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border px-4 py-2.5">
+          <p className="text-[12.5px] font-semibold">المفتوحة حسب الأهمية</p>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="تصفية حسب الأهمية">
             {bySeverity.map(({ level, count, amount }) => (
               <button
                 key={level}
@@ -380,7 +369,7 @@ function RadarSummary({
                 disabled={!count}
                 onClick={() => onSeverity(severity === level ? "all" : level)}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] transition-colors disabled:opacity-45",
+                  "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[12px] transition-colors disabled:opacity-45",
                   severity === level ? "border-foreground bg-foreground text-background" : "border-border bg-background hover:border-foreground/30",
                 )}
               >
@@ -391,6 +380,16 @@ function RadarSummary({
               </button>
             ))}
           </div>
+          <div className="flex h-1.5 min-w-24 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden>
+            {bySeverity.map(({ level, count }) =>
+              count ? <span key={level} className={cn("h-full", SEVERITY_MARK[level])} style={{ width: `${(count / open.length) * 100}%` }} /> : null,
+            )}
+          </div>
+          {severity !== "all" ? (
+            <button type="button" onClick={() => onSeverity("all")} className="text-[12px] font-semibold text-primary-text underline-offset-4 hover:underline">
+              كل المستويات
+            </button>
+          ) : null}
         </div>
       ) : null}
     </section>
@@ -402,28 +401,29 @@ function SummaryStat({
   value,
   hint,
   tone,
-  wide = false,
 }: {
   label: string;
   value: string;
   hint: string;
   tone?: "danger" | "success";
-  /** Spans both columns on phones (the odd one out of three). */
-  wide?: boolean;
 }) {
   return (
-    <div className={cn("min-w-0 bg-card px-5 py-5", wide && "col-span-2 lg:col-span-1")}>
-      <p className="text-[12.5px] text-muted-foreground">{label}</p>
+    // The explanation is a tooltip (and read out to screen readers), so the four figures stay one compact row.
+    <div className="min-w-0 bg-card px-4 py-3" title={hint}>
+      <p className="flex items-center gap-1 text-[12.5px] text-muted-foreground">
+        {label}
+        <Info className="size-3 shrink-0 opacity-60" aria-hidden />
+        <span className="sr-only">: {hint}</span>
+      </p>
       <p
         className={cn(
-          "num mt-2 truncate text-[19px] font-semibold tracking-[-0.01em] sm:text-[22px]",
+          "num mt-1 truncate text-[18px] font-semibold tracking-[-0.01em] sm:text-[20px]",
           tone === "danger" && "text-destructive",
           tone === "success" && "text-success",
         )}
       >
         {value}
       </p>
-      <p className="mt-1.5 text-[11.5px] leading-5 text-muted-foreground">{hint}</p>
     </div>
   );
 }
@@ -580,37 +580,47 @@ function ExceptionDetail({
       title={item.label}
       value={sar(item.reviewAmount)}
     >
-      <dl className="divide-y divide-border/70 rounded-xl border border-border text-[13px]">
-        {[
-          { label: "المحتسب حسب العقد", value: item.computed },
-          { label: "حسب المنصة", value: item.invoiced },
-          { label: "الفرق", value: item.difference, signed: true },
-        ].map((row) => (
-          <div key={row.label} className="flex items-center justify-between gap-3 px-3 py-2">
-            <dt className="text-muted-foreground">{row.label}</dt>
-            <dd
-              className={cn(
-                "num font-semibold",
-                row.signed && (row.value ?? 0) > 0 && "text-destructive",
-                row.signed && (row.value ?? 0) < 0 && "text-success",
-              )}
-            >
-              {row.value === undefined ? "—" : sar(row.value)}
-            </dd>
+      <div className="grid gap-4 xl:grid-cols-3 xl:gap-6">
+        <div className="min-w-0 space-y-3">
+          {item.computed !== undefined || item.invoiced !== undefined ? (
+            <dl className="divide-y divide-border/70 rounded-xl border border-border text-[13px]">
+              {[
+                { label: "المحتسب حسب العقد", value: item.computed },
+                { label: "حسب المنصة", value: item.invoiced },
+                { label: "الفرق", value: item.difference, signed: true },
+              ].map((row) => (
+                <div key={row.label} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <dt className="text-muted-foreground">{row.label}</dt>
+                  <dd
+                    className={cn(
+                      "num font-semibold",
+                      row.signed && (row.value ?? 0) > 0 && "text-destructive",
+                      row.signed && (row.value ?? 0) < 0 && "text-success",
+                    )}
+                  >
+                    {row.value === undefined ? "—" : sar(row.value)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+          <div>
+            <p className="text-[12px] font-semibold">طريقة الاحتساب</p>
+            <p className="mt-1.5 rounded-xl bg-surface-raised px-3 py-2.5 text-[12.5px] leading-6">{evidence.formula}</p>
           </div>
-        ))}
-      </dl>
-      <div>
-        <p className="text-[12px] font-semibold">طريقة الاحتساب</p>
-        <p className="mt-1.5 rounded-xl bg-surface-raised px-3 py-2.5 text-[12.5px] leading-6">{evidence.formula}</p>
+          {item.code === "JAHEZ_COMPENSATION_UNKNOWN_ORDER" ? <MissingOrderFile item={item} period={period} /> : null}
+        </div>
+        <div className="min-w-0">
+          <EvidenceRequest item={item} period={period} saving={saving} onUpdate={onUpdate} rules={rules} />
+        </div>
+        <div className="min-w-0 space-y-3">
+          <WorkflowFields item={item} saving={saving} onUpdate={onUpdate} />
+          <Button type="button" variant="outline" className="w-full gap-1.5" onClick={onEvidence}>
+            <Eye className="size-4" />
+            مسار الأدلة الكامل{AI_UI_ENABLED ? " وشرح Tadqeeq AI" : ""}
+          </Button>
+        </div>
       </div>
-      {item.code === "JAHEZ_COMPENSATION_UNKNOWN_ORDER" ? <MissingOrderFile item={item} period={period} /> : null}
-      <EvidenceRequest item={item} period={period} saving={saving} onUpdate={onUpdate} rules={rules} />
-      <WorkflowFields item={item} saving={saving} onUpdate={onUpdate} />
-      <Button type="button" variant="outline" className="w-full gap-1.5" onClick={onEvidence}>
-        <Eye className="size-4" />
-        مسار الأدلة الكامل{AI_UI_ENABLED ? " وشرح Tadqeeq AI" : ""}
-      </Button>
     </DetailPanel>
   );
 }
@@ -696,8 +706,8 @@ function WorkflowFields({
   const claimOpen = CLAIM_EXCEPTION_STATUSES.has(item.status);
 
   return (
-    <div className="space-y-2.5">
-      <label className="block space-y-1">
+    <div className="grid grid-cols-2 gap-2.5">
+      <label className="col-span-2 block space-y-1">
         <span className="text-[12px] text-muted-foreground">الحالة</span>
         <Select value={item.status} disabled={saving} onValueChange={(value) => onUpdate({ status: value as ExceptionStatus })}>
           <SelectTrigger className="h-9">
@@ -783,7 +793,7 @@ function WorkflowFields({
           className="h-9"
         />
       </label>
-      <label className="block space-y-1">
+      <label className={cn("block space-y-1", claimOpen && "col-span-2")}>
         <span className="text-[12px] text-muted-foreground">ملاحظة المتابعة</span>
         <Input
           disabled={saving}
@@ -1264,7 +1274,7 @@ function EvidenceRequest({
   }
 
   return (
-    <div className="rounded-xl border border-border px-3 py-3 text-[12.5px] leading-6">
+    <div className="text-[12.5px] leading-6">
       <p className="font-semibold">المستند المطلوب</p>
       <p className="mt-1">{needed.document}</p>
       <p className="mt-1 text-muted-foreground">
@@ -1354,7 +1364,7 @@ function ItemDecisions({
         {lines.map((line, index) => {
           const entry = draft[index]!;
           return (
-            <li key={line.label + index} className="space-y-1.5 px-2.5 py-2">
+            <li key={line.label + index} className="space-y-1.5 px-2.5 py-1.5">
               <div className="flex items-start justify-between gap-3">
                 <span>
                   {line.label}
@@ -1365,7 +1375,7 @@ function ItemDecisions({
                 <span className="num shrink-0">{sar(line.amount)}</span>
               </div>
               {canManage ? (
-                <div className="grid gap-1.5 sm:grid-cols-[9rem_1fr]">
+                <div className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-1.5">
                   <Select
                     value={entry.status}
                     disabled={saving}
@@ -1385,7 +1395,8 @@ function ItemDecisions({
                   <Input
                     aria-label={`مرجع مستند ${line.label}`}
                     className="h-8 text-[12px]"
-                    placeholder="مرجع المستند (رقم الفاتورة أو الاتفاقية)"
+                    placeholder="مرجع المستند"
+                    title="مرجع المستند: رقم الفاتورة أو الاتفاقية"
                     maxLength={200}
                     value={entry.documentRef}
                     disabled={saving}

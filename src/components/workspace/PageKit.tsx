@@ -135,20 +135,6 @@ export function NumberTiles({ items, className }: { items: NumberTile[]; classNa
   );
 }
 
-/**
- * List with a detail panel beside it from xl up. Below xl the panel is not shown; pages open the same detail in a
- * sheet instead, so nothing is reachable only on wide screens.
- */
-export function ListDetail({ list, detail, filters }: { list: ReactNode; detail?: ReactNode; filters?: ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-start gap-4">
-      {filters ? <aside className="w-full xl:w-56 xl:shrink-0">{filters}</aside> : null}
-      <div className="min-w-0 flex-[999_1_520px]">{list}</div>
-      {detail ? <aside className="hidden min-w-0 flex-[1_1_300px] xl:block xl:max-w-[380px]">{detail}</aside> : null}
-    </div>
-  );
-}
-
 /** Detail card with an ink header: an eyebrow line, a title and a headline amount. */
 export function DetailPanel({
   eyebrow,
@@ -165,10 +151,12 @@ export function DetailPanel({
 }) {
   return (
     <section className={cn("overflow-hidden rounded-2xl border border-border bg-card", className)}>
-      <div className="space-y-1 bg-ink px-4 py-3.5 text-ink-foreground">
-        {eyebrow ? <p className="text-[12px] text-ink-muted">{eyebrow}</p> : null}
-        <h2 className="font-display text-[15px] font-bold leading-7">{title}</h2>
-        {value ? <p className="num text-[24px] font-semibold leading-8 text-primary">{value}</p> : null}
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 bg-ink px-4 py-3 text-ink-foreground">
+        <div className="min-w-0 space-y-0.5">
+          {eyebrow ? <p className="text-[12px] text-ink-muted">{eyebrow}</p> : null}
+          <h2 className="font-display text-[15px] font-bold leading-7">{title}</h2>
+        </div>
+        {value ? <p className="num text-[22px] font-semibold leading-8 text-primary">{value}</p> : null}
       </div>
       {children ? <div className="space-y-3 p-4">{children}</div> : null}
     </section>
