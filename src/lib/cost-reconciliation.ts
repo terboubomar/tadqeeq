@@ -1,6 +1,6 @@
 import { keetaCostSplit } from "./keeta-cost";
 import type { StoredPeriod } from "./periods";
-import { totalPlatformCharges } from "./reporting-metrics";
+import { hungerStationAdvertisingExVat, periodPlatformCharges } from "./reporting-metrics";
 
 /**
  * From the platform charges behind platform cost % to the platform's invoice, line by line, so a reader can see why
@@ -24,7 +24,7 @@ const finite = (value: unknown): value is number => typeof value === "number" &&
 
 export function costReconciliation(period: Pick<StoredPeriod, "platform" | "summary" | "invoice">): CostReconciliation | null {
   const s = period.summary;
-  const headline = totalPlatformCharges(period.platform, s);
+  const headline = periodPlatformCharges(period);
   if (headline === null) return null;
   const start: ReconciliationLine = { label: "إجمالي رسوم المنصة (أساس نسبة التكلفة)", amount: round2(headline), kind: "start", note: "بدون الضريبة" };
 
@@ -54,9 +54,13 @@ export function costReconciliation(period: Pick<StoredPeriod, "platform" | "summ
   const invoice = period.invoice as { totalExVat?: number; vat?: number; totalIncVat?: number; cpc?: number } | null | undefined;
   if (!invoice || !finite(invoice.totalExVat)) return null;
   const invoiceExVat = round2(invoice.totalExVat);
-  const residual = round2(start.amount - invoiceExVat);
+  const advertising = round2(hungerStationAdvertisingExVat(period) ?? 0);
+  const residual = round2(start.amount - advertising - invoiceExVat);
   const lines: ReconciliationLine[] = [
     start,
+    ...(Math.abs(advertising) >= 0.01
+      ? [{ label: "إعلانات CPC بدون الضريبة", amount: advertising, kind: "less" as const, note: "فاتورة إعلانات منفصلة عن فاتورة المنصة" }]
+      : []),
     ...(Math.abs(residual) >= 0.01
       ? [{ label: "فرق بين رسوم التدقيق والفاتورة", amount: residual, kind: "residual" as const, note: "تفاصيله في دفتر المطابقة" }]
       : []),
@@ -69,7 +73,7 @@ export function costReconciliation(period: Pick<StoredPeriod, "platform" | "summ
     );
   }
   if (period.platform === "hungerstation" && finite(invoice.cpc)) {
-    lines.push({ label: "فاتورة الإعلانات CPC", amount: round2(invoice.cpc), kind: "info", note: "شاملة الضريبة · فاتورة منفصلة خارج نسبة التكلفة" });
+    lines.push({ label: "فاتورة الإعلانات CPC", amount: round2(invoice.cpc), kind: "info", note: "شاملة الضريبة · داخل نسبة التكلفة بدون ضريبتها" });
   }
   return { lines, residual };
 }

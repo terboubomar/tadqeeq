@@ -11,9 +11,9 @@ export const PLATFORM_COST_FORMULA = "total_platform_charges / gross_sales";
 export const PLATFORM_COST_FORMULA_AR = "إجمالي رسوم المنصة بدون الضريبة ÷ إجمالي المبيعات";
 /** What the % includes, stated wherever it is shown (reports, dashboard, weekly email, AI readouts). */
 export const PLATFORM_COST_DEFINITION_AR =
-  "تكلفة المنصة = إجمالي رسوم المنصة بدون الضريبة ÷ إجمالي المبيعات، بالتعريف نفسه لكل المنصات. لا تشمل الضريبة. تشمل إعلانات كيتا لأنها تُخصم من المستحقات، ولا تشمل إعلانات هنقرستيشن (CPC) لأنها فاتورة منفصلة.";
+  "تكلفة المنصة = إجمالي رسوم المنصة بدون الضريبة ÷ إجمالي المبيعات، بالتعريف نفسه لكل المنصات. لا تشمل الضريبة. تشمل الإعلانات على كل المنصات: إعلانات كيتا المخصومة من المستحقات، وفاتورة إعلانات هنقرستيشن (CPC) المنفصلة بدون ضريبتها.";
 export const PLATFORM_COST_DEFINITION =
-  "Platform cost % = total platform charges excluding VAT ÷ gross sales, the same on every platform. Excludes VAT. Includes Keeta advertising (deducted from the payout); excludes HungerStation CPC advertising (a separate invoice).";
+  "Platform cost % = total platform charges excluding VAT ÷ gross sales, the same on every platform. Excludes VAT. Includes advertising on every platform: Keeta advertising (deducted from the payout) and the HungerStation CPC advertising invoice (a separate invoice, taken without its VAT).";
 
 const VAT_RATE = 0.15;
 
@@ -24,6 +24,63 @@ export function totalPlatformCharges(platform: StoredPeriod["platform"], summary
   if (!summary) return null;
   const value = platform === "keeta" ? (summary.keetaTotalCostExVat ?? summary.totalCharges) : summary.totalCharges;
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/** What the platform-cost helpers read from a period: its totals, and the CPC invoice for HungerStation's advertising. */
+type CostPeriod = {
+  platform: StoredPeriod["platform"];
+  summary?: Partial<Summary> | null;
+  invoice?: Partial<Pick<StoredPeriod["invoice"], "cpc" | "cpcBranches">> | null;
+};
+
+const finiteNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+const nameKey = (name: string | null | undefined) => (name ?? "").replace(/\s+/g, " ").trim().toLocaleLowerCase();
+
+/**
+ * HungerStation's CPC advertising invoice excluding VAT: the sum of its branch lines without their VAT, or, when the
+ * lines were not read, the invoice total (which includes VAT) ÷ 1.15. Null when no CPC invoice was uploaded.
+ */
+export function hungerStationAdvertisingExVat(period: CostPeriod): number | null {
+  if (period.platform !== "hungerstation") return null;
+  const lines = period.invoice?.cpcBranches;
+  if (lines?.length) return lines.reduce((sum, line) => sum + line.amountExVat, 0);
+  const cpc = period.invoice?.cpc;
+  return finiteNumber(cpc) ? cpc / (1 + VAT_RATE) : null;
+}
+
+/** Advertising inside the period's platform charges, excluding VAT: Keeta's promotion fee or HungerStation's CPC. */
+export function advertisingExVat(period: CostPeriod): number {
+  const keetaAds = period.summary?.keetaMerchantAdExVat;
+  if (period.platform === "keeta") return finiteNumber(keetaAds) ? keetaAds : 0;
+  return hungerStationAdvertisingExVat(period) ?? 0;
+}
+
+/** The period's platform charges excluding VAT, advertising included: the base of platform cost %. */
+export function periodPlatformCharges(period: CostPeriod): number | null {
+  const charges = totalPlatformCharges(period.platform, period.summary);
+  if (charges === null) return null;
+  return charges + (hungerStationAdvertisingExVat(period) ?? 0);
+}
+
+/** The period's platform charges excluding VAT and excluding advertising, for a like-for-like view without it. */
+export function periodPlatformChargesExclAds(period: CostPeriod): number | null {
+  const charges = periodPlatformCharges(period);
+  return charges === null ? null : charges - advertisingExVat(period);
+}
+
+type BranchCharges = Pick<StoredPeriod["branches"][number], "branch" | "invoiceBranchName" | "totalCharges"> & {
+  keetaTotalCostExVat?: number;
+};
+
+/** One branch's platform charges excluding VAT, advertising included: its CPC invoice lines without VAT on HungerStation. */
+export function branchPlatformCharges(period: CostPeriod, branch: BranchCharges): number | null {
+  const charges = totalPlatformCharges(period.platform, branch as never);
+  if (charges === null || period.platform !== "hungerstation") return charges;
+  const keys = new Set([nameKey(branch.branch), nameKey(branch.invoiceBranchName)].filter(Boolean));
+  const advertising = (period.invoice?.cpcBranches ?? [])
+    .filter((line) => keys.has(nameKey(line.branch)))
+    .reduce((sum, line) => sum + line.amountExVat, 0);
+  return charges + advertising;
 }
 
 /** total platform charges ÷ gross sales; null when either is missing or sales are zero. */

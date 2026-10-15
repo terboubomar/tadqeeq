@@ -1,7 +1,7 @@
 import type { RegistryBranch } from "./branch-registry";
 import { BRANCH_PLATFORMS, type BranchPlatform } from "./branch-matching";
 import type { StoredPeriod } from "./periods";
-import { platformCostPct, totalPlatformCharges } from "./reporting-metrics";
+import { branchPlatformCharges, platformCostPct } from "./reporting-metrics";
 
 export interface PlatformFigures {
   periodLabel: string;
@@ -51,7 +51,7 @@ export function crossPlatformRows(registry: RegistryBranch[], periods: StoredPer
       const platformId = norm(branch.branchId) || norm(branch.branch);
       const index = registry.findIndex((row) => norm(row[key]) === platformId || (!branch.branchId && norm(row.name) === norm(branch.branch)));
       if (index < 0) continue;
-      const cost = totalPlatformCharges(period.platform, branch);
+      const cost = branchPlatformCharges(period, branch);
       rows[index]!.figures[platform] = {
         periodLabel: period.label,
         orders: branch.orders,

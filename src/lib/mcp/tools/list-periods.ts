@@ -21,14 +21,17 @@ export default defineTool({
     await requireMcpAccess(ctx);
     let query = supabaseForUser(ctx)
       .from("periods")
-      .select("id,label,platform,period_start,period_end,created_at,summary")
+      .select("id,label,platform,period_start,period_end,created_at,summary,cpc:invoice->cpc,cpcBranches:invoice->cpcBranches")
       .is("superseded_at", null)
       .order("created_at", { ascending: false })
       .limit(limit);
     if (platform) query = query.eq("platform", platform);
     const { data, error } = await query;
     if (error) throw new ToolError(error.message);
-    const periods = ((data ?? []) as unknown as StoredPeriod[]).map(periodHeadline);
+    // Only the CPC invoice is read from the invoice: it is HungerStation advertising, part of platform cost %.
+    const periods = ((data ?? []) as unknown as Array<StoredPeriod & Pick<StoredPeriod["invoice"], "cpc" | "cpcBranches">>).map(
+      ({ cpc, cpcBranches, ...period }) => periodHeadline({ ...period, invoice: { cpc, cpcBranches } }),
+    );
     return result({
       periods,
       ...(periods.length ? {} : { hint: "لا توجد فترات بعد. ابدأ تدقيقاً بـ start_audit. / No periods yet; use start_audit." }),

@@ -160,7 +160,7 @@ function BranchMappingPage() {
         ) : null}
       </Section>
 
-      <Section title="مقارنة الفرع بين المنصات" summary="آخر فترة لكل منصة · تكلفة المنصة = إجمالي الرسوم ÷ إجمالي المبيعات">
+      <Section title="مقارنة الفرع بين المنصات" summary="آخر فترة لكل منصة · تكلفة المنصة = إجمالي الرسوم بدون الضريبة شاملة الإعلانات ÷ إجمالي المبيعات">
         {comparison.length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-[13px]">

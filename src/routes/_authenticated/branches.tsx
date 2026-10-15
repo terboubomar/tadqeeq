@@ -13,7 +13,7 @@ import { costCenterKey } from "@/lib/journal-cost-centers";
 import { branchJournalEntry, type JournalEntry } from "@/lib/journal-entries";
 
 import { listBranchRegistry, resolveBranchName } from "@/lib/branch-registry";
-import { displayBranchName, platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
+import { branchPlatformCharges, displayBranchName, platformCostPct } from "@/lib/reporting-metrics";
 import { ALLOCATION_RULE_AR, invoiceOnlyAllocation } from "@/lib/invoice-only-allocation";
 import { money } from "@/lib/format";
 import type { StoredPeriod } from "@/lib/periods";
@@ -159,7 +159,7 @@ function BranchesPage() {
     ...b,
     journalIndex: index,
     branch: resolveBranchName(registry, selected.platform, b.branchId, b.branch) ?? displayBranchName(b.branch),
-    platformCostPctGross: platformCostPct(totalPlatformCharges(selected.platform, b), b.grossSales) ?? undefined,
+    platformCostPctGross: platformCostPct(branchPlatformCharges(selected, b), b.grossSales) ?? undefined,
     keetaOtherExclPosExVat:
       b.keetaOtherExpensesExVat === undefined ? undefined : b.keetaOtherExpensesExVat - (b.keetaPosFeesExVat ?? 0),
   }));

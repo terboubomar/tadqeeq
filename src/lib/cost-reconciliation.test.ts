@@ -31,7 +31,7 @@ describe("costReconciliation", () => {
     expect(result.residual).toBe(0);
   });
 
-  test("HungerStation: a named residual, VAT on top, and CPC advertising shown outside the %", () => {
+  test("HungerStation: CPC advertising without VAT inside the %, a named residual, VAT on top", () => {
     const result = costReconciliation(
       period({
         platform: "hungerstation",
@@ -40,7 +40,15 @@ describe("costReconciliation", () => {
       }),
     )!;
     expect(result.residual).toBe(10);
-    expect(result.lines.map((line) => line.kind)).toEqual(["start", "residual", "total", "plus", "total", "info"]);
+    expect(result.lines.map((line) => [line.kind, line.amount])).toEqual([
+      ["start", 62_412.48],
+      ["less", 61_412.48],
+      ["residual", 10],
+      ["total", 990],
+      ["plus", 148.5],
+      ["total", 1138.5],
+      ["info", 70_624.35],
+    ]);
   });
 
   test("nothing to reconcile without the invoice figures", () => {

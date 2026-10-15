@@ -3,8 +3,12 @@ import { describe, expect, test } from "bun:test";
 import type { StoredPeriod } from "@/lib/periods";
 
 import {
+  advertisingExVat,
+  branchPlatformCharges,
   displayBranchName,
   PLATFORM_COST_FORMULA,
+  periodPlatformCharges,
+  periodPlatformChargesExclAds,
   platformCostPct,
   totalPlatformCharges,
   vatBreakdown,
@@ -30,6 +34,45 @@ describe("platform cost %", () => {
     expect(platformCostPct(100, 0)).toBeNull();
     expect(platformCostPct(undefined, 100)).toBeNull();
     expect(totalPlatformCharges("hungerstation", null)).toBeNull();
+  });
+});
+
+describe("platform cost % includes advertising on every platform", () => {
+  const KEETA_WITH_ADS = { ...KEETA_SUMMARY, keetaMerchantAdExVat: 31229.18 };
+
+  test("HungerStation adds its CPC advertising invoice without VAT", () => {
+    const hs = period("hungerstation", HS_SUMMARY, { cpc: 70624.35 });
+    expect(advertisingExVat(hs)).toBeCloseTo(61412.48, 2);
+    expect(periodPlatformCharges(hs)).toBeCloseTo(379515.79, 2);
+    expect(Number(platformCostPct(periodPlatformCharges(hs), HS_SUMMARY.grossSales)!.toFixed(4))).toBe(0.286);
+    expect(Number(platformCostPct(periodPlatformChargesExclAds(hs), HS_SUMMARY.grossSales)!.toFixed(4))).toBe(0.2397);
+  });
+
+  test("HungerStation uses the CPC invoice's branch lines without VAT when they were read", () => {
+    const hs = period("hungerstation", HS_SUMMARY, {
+      cpc: 1150,
+      cpcBranches: [
+        { branch: "PAST - Uhud", amountExVat: 600, vat: 90 },
+        { branch: "Motto - Uhud", amountExVat: 400, vat: 60 },
+      ],
+    });
+    expect(advertisingExVat(hs)).toBe(1000);
+    const uhud = { branch: "PAST - Uhud", totalCharges: 35868.06 };
+    expect(branchPlatformCharges(hs, uhud as never)).toBeCloseTo(36468.06, 2);
+    expect(branchPlatformCharges(hs, { branch: "Other", totalCharges: 10 } as never)).toBe(10);
+  });
+
+  test("without a CPC invoice HungerStation has no advertising to add", () => {
+    const hs = period("hungerstation", HS_SUMMARY, null);
+    expect(advertisingExVat(hs)).toBe(0);
+    expect(periodPlatformCharges(hs)).toBe(HS_SUMMARY.totalCharges);
+  });
+
+  test("Keeta's advertising is already in its charges; the excl-ads view removes it", () => {
+    const keeta = period("keeta", KEETA_WITH_ADS, null);
+    expect(periodPlatformCharges(keeta)).toBe(KEETA_SUMMARY.keetaTotalCostExVat);
+    expect(advertisingExVat(keeta)).toBe(31229.18);
+    expect(Number(platformCostPct(periodPlatformChargesExclAds(keeta), KEETA_SUMMARY.grossSales)!.toFixed(4))).toBe(0.2992);
   });
 });
 
