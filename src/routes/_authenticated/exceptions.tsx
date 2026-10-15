@@ -184,7 +184,7 @@ function ExceptionsPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <PageHeader
         crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التدقيق" }, { label: PRODUCTS.radar.name }]}
         title={<ProductName product="radar" />}
@@ -246,12 +246,11 @@ function ExceptionsPage() {
             ))}
           </SelectContent>
         </Select>
+        <span className="hidden items-center gap-1.5 px-2 text-[12px] text-muted-foreground lg:inline-flex">
+          <Info className="size-3.5 shrink-0" aria-hidden />
+          الفروقات القابلة للإجراء في هذا الملف فقط.
+        </span>
       </ActionBar>
-
-      <p className="flex max-w-[90ch] items-start gap-2 text-[12px] leading-6 text-muted-foreground">
-        <Info className="mt-1 size-3.5 shrink-0" aria-hidden />
-        الفروقات القابلة للإجراء في هذا الملف فقط.
-      </p>
 
       {exceptions.length === 0 ? (
         <section className="rounded-2xl border border-border bg-card px-6 py-14 text-center">
@@ -327,18 +326,18 @@ function RadarSummary({
   return (
     <section aria-label="ملخص الاستثناءات" className="overflow-hidden rounded-2xl border border-border bg-card">
       <div className="grid grid-cols-2 gap-px bg-border lg:grid-cols-[minmax(0,1.5fr)_repeat(4,minmax(0,1fr))]">
-        <div className="col-span-2 bg-card px-5 py-5 lg:col-span-1">
+        <div className="col-span-2 bg-card px-4 py-3.5 lg:col-span-1">
           <p className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
             <CircleDollarSign className="size-4 text-primary-text" aria-hidden />
             قابلية الاسترداد المحتملة
           </p>
-          <p className="mt-2 flex items-baseline gap-1.5">
-            <span className="num text-[30px] font-semibold leading-none tracking-[-0.02em] text-primary-text sm:text-[36px]">
+          <p className="mt-1.5 flex items-baseline gap-1.5">
+            <span className="num text-[26px] font-semibold leading-none tracking-[-0.02em] text-primary-text sm:text-[30px]">
               {money(summary.potentialRecovery)}
             </span>
             <span className="text-[13px] text-muted-foreground">ر.س</span>
           </p>
-          <p className="mt-2 text-[12px] leading-5 text-muted-foreground">الفروقات المستقلة ذات الاتجاه المالي الواضح</p>
+          <p className="mt-1.5 text-[11.5px] leading-5 text-muted-foreground">الفروقات المستقلة ذات الاتجاه المالي الواضح</p>
         </div>
         <SummaryStat
           label="الاستثناءات المفتوحة"
@@ -353,25 +352,12 @@ function RadarSummary({
           value={sar(summary.recovered)}
           hint="حسب المبالغ المسجلة في سير العمل"
           tone={summary.recovered > 0 ? "success" : undefined}
-          wide
         />
       </div>
       {open.length ? (
-        <div className="border-t border-border px-5 py-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-[12.5px] font-semibold">المفتوحة حسب الأهمية</p>
-            {severity !== "all" ? (
-              <button type="button" onClick={() => onSeverity("all")} className="text-[12px] font-semibold text-primary-text underline-offset-4 hover:underline">
-                كل المستويات
-              </button>
-            ) : null}
-          </div>
-          <div className="mt-2.5 flex h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
-            {bySeverity.map(({ level, count }) =>
-              count ? <span key={level} className={cn("h-full", SEVERITY_MARK[level])} style={{ width: `${(count / open.length) * 100}%` }} /> : null,
-            )}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="تصفية حسب الأهمية">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-border px-4 py-2.5">
+          <p className="text-[12.5px] font-semibold">المفتوحة حسب الأهمية</p>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="تصفية حسب الأهمية">
             {bySeverity.map(({ level, count, amount }) => (
               <button
                 key={level}
@@ -380,7 +366,7 @@ function RadarSummary({
                 disabled={!count}
                 onClick={() => onSeverity(severity === level ? "all" : level)}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] transition-colors disabled:opacity-45",
+                  "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[12px] transition-colors disabled:opacity-45",
                   severity === level ? "border-foreground bg-foreground text-background" : "border-border bg-background hover:border-foreground/30",
                 )}
               >
@@ -391,6 +377,16 @@ function RadarSummary({
               </button>
             ))}
           </div>
+          <div className="flex h-1.5 min-w-24 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden>
+            {bySeverity.map(({ level, count }) =>
+              count ? <span key={level} className={cn("h-full", SEVERITY_MARK[level])} style={{ width: `${(count / open.length) * 100}%` }} /> : null,
+            )}
+          </div>
+          {severity !== "all" ? (
+            <button type="button" onClick={() => onSeverity("all")} className="text-[12px] font-semibold text-primary-text underline-offset-4 hover:underline">
+              كل المستويات
+            </button>
+          ) : null}
         </div>
       ) : null}
     </section>
@@ -402,28 +398,25 @@ function SummaryStat({
   value,
   hint,
   tone,
-  wide = false,
 }: {
   label: string;
   value: string;
   hint: string;
   tone?: "danger" | "success";
-  /** Spans both columns on phones (the odd one out of three). */
-  wide?: boolean;
 }) {
   return (
-    <div className={cn("min-w-0 bg-card px-5 py-5", wide && "col-span-2 lg:col-span-1")}>
+    <div className="min-w-0 bg-card px-4 py-3.5">
       <p className="text-[12.5px] text-muted-foreground">{label}</p>
       <p
         className={cn(
-          "num mt-2 truncate text-[19px] font-semibold tracking-[-0.01em] sm:text-[22px]",
+          "num mt-1.5 truncate text-[18px] font-semibold tracking-[-0.01em] sm:text-[20px]",
           tone === "danger" && "text-destructive",
           tone === "success" && "text-success",
         )}
       >
         {value}
       </p>
-      <p className="mt-1.5 text-[11.5px] leading-5 text-muted-foreground">{hint}</p>
+      <p className="mt-1 text-[11.5px] leading-5 text-muted-foreground">{hint}</p>
     </div>
   );
 }
@@ -580,6 +573,7 @@ function ExceptionDetail({
       title={item.label}
       value={sar(item.reviewAmount)}
     >
+      {item.computed !== undefined || item.invoiced !== undefined ? (
       <dl className="divide-y divide-border/70 rounded-xl border border-border text-[13px]">
         {[
           { label: "المحتسب حسب العقد", value: item.computed },
@@ -600,6 +594,7 @@ function ExceptionDetail({
           </div>
         ))}
       </dl>
+      ) : null}
       <div>
         <p className="text-[12px] font-semibold">طريقة الاحتساب</p>
         <p className="mt-1.5 rounded-xl bg-surface-raised px-3 py-2.5 text-[12.5px] leading-6">{evidence.formula}</p>
@@ -696,8 +691,8 @@ function WorkflowFields({
   const claimOpen = CLAIM_EXCEPTION_STATUSES.has(item.status);
 
   return (
-    <div className="space-y-2.5">
-      <label className="block space-y-1">
+    <div className="grid grid-cols-2 gap-2.5">
+      <label className="col-span-2 block space-y-1">
         <span className="text-[12px] text-muted-foreground">الحالة</span>
         <Select value={item.status} disabled={saving} onValueChange={(value) => onUpdate({ status: value as ExceptionStatus })}>
           <SelectTrigger className="h-9">
@@ -783,7 +778,7 @@ function WorkflowFields({
           className="h-9"
         />
       </label>
-      <label className="block space-y-1">
+      <label className="col-span-2 block space-y-1">
         <span className="text-[12px] text-muted-foreground">ملاحظة المتابعة</span>
         <Input
           disabled={saving}
@@ -1264,7 +1259,7 @@ function EvidenceRequest({
   }
 
   return (
-    <div className="rounded-xl border border-border px-3 py-3 text-[12.5px] leading-6">
+    <div className="border-t border-border/70 pt-3 text-[12.5px] leading-6">
       <p className="font-semibold">المستند المطلوب</p>
       <p className="mt-1">{needed.document}</p>
       <p className="mt-1 text-muted-foreground">
@@ -1354,7 +1349,7 @@ function ItemDecisions({
         {lines.map((line, index) => {
           const entry = draft[index]!;
           return (
-            <li key={line.label + index} className="space-y-1.5 px-2.5 py-2">
+            <li key={line.label + index} className="space-y-1.5 px-2.5 py-1.5">
               <div className="flex items-start justify-between gap-3">
                 <span>
                   {line.label}
@@ -1365,7 +1360,7 @@ function ItemDecisions({
                 <span className="num shrink-0">{sar(line.amount)}</span>
               </div>
               {canManage ? (
-                <div className="grid gap-1.5 sm:grid-cols-[9rem_1fr]">
+                <div className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-1.5">
                   <Select
                     value={entry.status}
                     disabled={saving}
@@ -1385,7 +1380,8 @@ function ItemDecisions({
                   <Input
                     aria-label={`مرجع مستند ${line.label}`}
                     className="h-8 text-[12px]"
-                    placeholder="مرجع المستند (رقم الفاتورة أو الاتفاقية)"
+                    placeholder="مرجع المستند"
+                    title="مرجع المستند: رقم الفاتورة أو الاتفاقية"
                     maxLength={200}
                     value={entry.documentRef}
                     disabled={saving}

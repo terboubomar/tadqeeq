@@ -144,7 +144,12 @@ export function ListDetail({ list, detail, filters }: { list: ReactNode; detail?
     <div className="flex flex-wrap items-start gap-4">
       {filters ? <aside className="w-full xl:w-56 xl:shrink-0">{filters}</aside> : null}
       <div className="min-w-0 flex-[999_1_520px]">{list}</div>
-      {detail ? <aside className="hidden min-w-0 flex-[1_1_300px] xl:block xl:max-w-[380px]">{detail}</aside> : null}
+      {detail ? (
+        // Pinned beside the list and scrolled on its own, so a long detail never stretches the page past the list.
+        <aside className="hidden min-w-0 flex-[1_1_360px] xl:sticky xl:top-20 xl:block xl:max-h-[calc(100dvh-6rem)] xl:max-w-[420px] xl:overflow-y-auto xl:overscroll-contain xl:rounded-2xl">
+          {detail}
+        </aside>
+      ) : null}
     </div>
   );
 }
