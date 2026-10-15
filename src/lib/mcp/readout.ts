@@ -145,7 +145,8 @@ function compensationComparison(period: StoredPeriod) {
   return {
     invoiced: round(invoiced),
     recalculated: round(recalculated),
-    recalculated_source: "Sum of the Compensated Orders sheet (incl. VAT) per branch ÷ 1.15",
+    recalculated_source: "Compensated Orders sheet (incl. VAT) per branch ÷ 1.15, each branch rounded to halalas before adding, as the invoice does",
+    tolerance_rule: "Within tolerance when |recalculated − invoiced| < 0.01 SAR",
     difference,
     // Strictly under one halala, on the unrounded figures (0.0139 is a real difference, not rounding).
     within_tolerance: Math.abs(recalculated - invoiced) < 0.01,
