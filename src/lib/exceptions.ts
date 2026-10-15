@@ -38,6 +38,17 @@ export interface ExceptionAttachment {
   uploadedAt?: string;
 }
 
+/** One charge inside a combined exception: pending, a valid fee (accepted), or disputed with the platform (claimable). */
+export type ExceptionItemStatus = "pending" | "accepted" | "claimable";
+
+/** The decision on one charge inside a combined exception, and the document it rests on (migration 0060). */
+export interface ExceptionItemDecision {
+  /** The charge's label, as the exception's lines name it. */
+  line: string;
+  status: ExceptionItemStatus;
+  documentRef?: string | null;
+}
+
 export type ExceptionSeverity = "critical" | "high" | "medium" | "low";
 
 export type ExceptionCategory = CheckCategory | "branch_match" | "data_missing";
@@ -59,6 +70,7 @@ export interface ExceptionWorkflowEntry {
   /** The amount claimed from the platform, when it differs from the review amount. */
   claimableAmount?: number | null;
   attachments?: ExceptionAttachment[] | null;
+  items?: ExceptionItemDecision[] | null;
   updatedAt?: string;
   history?: ExceptionWorkflowEvent[];
 }
@@ -109,6 +121,8 @@ export interface AuditException {
   owner?: string;
   classification?: string;
   attachments: ExceptionAttachment[];
+  /** Decisions on the charges inside a combined exception, one per line that has one. */
+  items: ExceptionItemDecision[];
   /**
    * What stands claimed against the platform: the entered claimable amount, else the potential recovery, else the
    * review amount, while the status is claimable, contacted or disputed; 0 otherwise.
@@ -332,13 +346,21 @@ function makeException(
     owner: workflow?.owner ?? undefined,
     classification: workflow?.classification ?? undefined,
     attachments: workflow?.attachments ?? [],
+    items: workflow?.items ?? [],
     claimableAmount: 0,
     ...(input.lines?.length ? { lines: input.lines } : {}),
+    ...claimedLines(input.lines, workflow?.items),
     rollup: false,
     hint: input.hint,
   };
   item.claimableAmount = claimableAmountFor(item, workflow?.claimableAmount);
   return item;
+}
+
+/** The lines a person marked claimable, which the dispute letter names. */
+function claimedLines(lines: ExceptionLine[] | undefined, decisions: ExceptionItemDecision[] | null | undefined) {
+  const claimed = (lines ?? []).filter((line) => decisions?.some((d) => d.line === line.label && d.status === "claimable"));
+  return claimed.length ? { claimLines: claimed } : {};
 }
 
 /** The amount standing claimed against the platform for an exception (see AuditException.claimableAmount). */

@@ -128,6 +128,8 @@ export function workflowPatchForRpc(
   if (patch.classification !== undefined) workflowPatch["classification"] = patch.classification;
   if (patch.claimableAmount !== undefined) workflowPatch["claimableAmount"] = patch.claimableAmount;
   if (patch.attachments !== undefined) workflowPatch["attachments"] = patch.attachments as unknown as Json;
+  // Per-charge decisions (migration 0060).
+  if (patch.items !== undefined) workflowPatch["items"] = patch.items as unknown as Json;
 
   return workflowPatch as Json;
 }
@@ -163,13 +165,14 @@ export async function updateExceptionWorkflow(
       throw new Error("تعذّر العثور على فترة التدقيق.");
     }
     if (error.message.includes("INVALID_WORKFLOW_PATCH_KEY")) {
-      throw new Error("حفظ هذه الحقول يحتاج تحديث قاعدة البيانات (الترحيل 0059).");
+      throw new Error("حفظ هذه الحقول يحتاج تحديث قاعدة البيانات (الترحيلان 0059 و0060).");
     }
     if (
       error.message.includes("INVALID_WORKFLOW") ||
       error.message.includes("INVALID_RECOVERED_AMOUNT") ||
       error.message.includes("INVALID_CLAIMABLE_AMOUNT") ||
       error.message.includes("INVALID_ATTACHMENTS") ||
+      error.message.includes("INVALID_WORKFLOW_ITEMS") ||
       error.message.includes("INVALID_EXCEPTION_ID")
     ) {
       throw new Error("تعذّر حفظ تحديث الاستثناء لأن بيانات التحديث غير صالحة.");
