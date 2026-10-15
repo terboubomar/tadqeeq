@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/AppShell";
 import { CostDefinitionNote } from "@/components/dash/CostDefinitionNote";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ActionBar, ActionDivider, PageHeader } from "@/components/workspace/PageKit";
 import { exportXlsx } from "@/lib/export";
 import { count, money, percent, sar } from "@/lib/format";
@@ -21,6 +22,7 @@ import {
   type TrendFigures,
   type TrendPlatform,
 } from "@/lib/report-trends";
+import { forecastPlatformCost, FORECAST_MONTHS, projectedCost, type CostForecast } from "@/lib/cost-forecast";
 import { usePeriods } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
 
@@ -235,6 +237,8 @@ function TrendsPage() {
         </section>
       ) : null}
 
+      <CostForecastSection months={all} platforms={chartPlatforms} />
+
       <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-[15px] font-bold">{METRICS[metric].label} شهرياً حسب المنصة</h2>
@@ -413,6 +417,117 @@ function TrendsPage() {
         .
       </p>
     </div>
+  );
+}
+
+/**
+ * Next month's platform cost per platform, estimated from its latest audited months (see cost-forecast), with the
+ * sales to apply it to as a what-if: it starts at the latest month's sales and can be changed.
+ */
+function CostForecastSection({ months, platforms }: { months: ReturnType<typeof buildTrendMonths>; platforms: TrendPlatform[] }) {
+  const forecasts = useMemo(
+    () => platforms.map((p) => forecastPlatformCost(months, p)).filter((f): f is CostForecast => f !== null),
+    [months, platforms],
+  );
+  const [sales, setSales] = useState<Partial<Record<TrendPlatform, string>>>({});
+  if (!forecasts.length) return null;
+
+  const salesFor = (f: CostForecast) => {
+    const typed = sales[f.platform];
+    return typed === undefined ? f.lastSales : Number(typed.replace(/,/g, ""));
+  };
+  const rows = forecasts.map((f) => ({ f, sales: salesFor(f), ...projectedCost(f, salesFor(f)) }));
+  const total = rows.reduce(
+    (sum, row) => ({
+      sales: sum.sales + (Number.isFinite(row.sales) && row.sales > 0 ? row.sales : 0),
+      cost: sum.cost + row.cost,
+      low: sum.low + row.low,
+      high: sum.high + row.high,
+    }),
+    { sales: 0, cost: 0, low: 0, high: 0 },
+  );
+  const forecastMonth = forecasts.map((f) => f.month).sort().at(-1)!;
+
+  return (
+    <section aria-label="توقع تكلفة المنصة" className="overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="px-4 pt-4 sm:px-5">
+        <h2 className="font-display text-[15px] font-bold">توقع تكلفة المنصة · {monthName(forecastMonth)}</h2>
+        <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
+          تقدير من آخر {FORECAST_MONTHS} أشهر مدققة لكل منصة، والأحدث أثقل وزناً. غيّر المبيعات المتوقعة لترى التكلفة. هذا
+          تقدير وليس رقماً من التدقيق.
+        </p>
+      </div>
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full min-w-[720px] text-[13px]">
+          <thead className="bg-surface-raised text-[11.5px] text-muted-foreground">
+            <tr>
+              <th className="px-4 py-2.5 text-start font-semibold">المنصة</th>
+              <th className="px-4 py-2.5 text-end font-semibold">تكلفة المنصة المتوقعة</th>
+              <th className="px-4 py-2.5 text-end font-semibold">المبيعات المتوقعة (ر.س)</th>
+              <th className="px-4 py-2.5 text-end font-semibold">التكلفة المتوقعة</th>
+              <th className="px-4 py-2.5 text-start font-semibold">مبني على</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ f, cost, low, high }) => (
+              <tr key={f.platform} className="border-t border-border/70 align-top">
+                <td className="px-4 py-2.5">
+                  <PlatformName platform={f.platform} className="text-[13px] font-semibold" iconClassName="size-4 rounded" />
+                </td>
+                <td className="px-4 py-2.5 text-end">
+                  <span className="num block font-semibold">{percent(f.costPct, 1)}</span>
+                  {f.basis.length > 1 ? (
+                    <span className="block whitespace-nowrap text-[11.5px] text-muted-foreground">
+                      من <span className="num">{percent(f.low, 1)}</span> إلى <span className="num">{percent(f.high, 1)}</span>
+                    </span>
+                  ) : null}
+                </td>
+                <td className="px-4 py-2 text-end">
+                  <Input
+                    inputMode="decimal"
+                    dir="ltr"
+                    aria-label={`المبيعات المتوقعة على ${PLATFORM_LABEL[f.platform]}`}
+                    className="num ms-auto h-8 w-36 text-end text-[13px]"
+                    value={sales[f.platform] ?? String(Math.round(f.lastSales))}
+                    onChange={(event) => setSales((prev) => ({ ...prev, [f.platform]: event.target.value }))}
+                  />
+                </td>
+                <td className="px-4 py-2.5 text-end">
+                  <span className="num block font-semibold">{sar(cost)}</span>
+                  {f.basis.length > 1 ? (
+                    <span className="block whitespace-nowrap text-[11.5px] text-muted-foreground">
+                      من <span className="num">{money(low)}</span> إلى <span className="num">{money(high)}</span>
+                    </span>
+                  ) : null}
+                </td>
+                <td className="px-4 py-2.5 text-[12px] text-muted-foreground">
+                  {f.basis.map((row) => monthName(row.month, false)).join("، ")}
+                  {f.basis.length < FORECAST_MONTHS ? <span className="block">تقدير أولي: {f.basis.length === 1 ? "شهر واحد" : "شهران"} فقط</span> : null}
+                </td>
+              </tr>
+            ))}
+            {rows.length > 1 ? (
+              <tr className="border-t border-border bg-surface-raised/60 font-semibold">
+                <td className="px-4 py-2.5">الإجمالي</td>
+                <td className="px-4 py-2.5 text-end">
+                  <span className="num">{total.sales > 0 ? percent(total.cost / total.sales, 1) : "—"}</span>
+                </td>
+                <td className="px-4 py-2.5 text-end">
+                  <span className="num">{money(total.sales)}</span>
+                </td>
+                <td className="px-4 py-2.5 text-end">
+                  <span className="num block">{sar(total.cost)}</span>
+                  <span className="block whitespace-nowrap text-[11.5px] font-normal text-muted-foreground">
+                    من <span className="num">{money(total.low)}</span> إلى <span className="num">{money(total.high)}</span>
+                  </span>
+                </td>
+                <td />
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
