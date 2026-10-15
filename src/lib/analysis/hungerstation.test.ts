@@ -378,6 +378,41 @@ describe("HungerStation audit rules", () => {
   });
 });
 
+describe("HungerStation customer compensation", () => {
+  function compensationWorkbook(): ArrayBuffer {
+    const workbook = XLSX.utils.book_new();
+    const order = (branch: string, id: number) => ({
+      Status: "Successful",
+      "Branch Name": branch,
+      "HS Branch ID": id,
+      "Payment Type": "Online payment",
+      "Commissionable GMV (VAT Excluded)": 100,
+      Commission: 15,
+      "CC Amount": 100,
+      "Operation Day": "2026-09-01",
+    });
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([order("Branch A", 1), order("Branch B", 2)]), "1 Commissionable GMV");
+    // 11.5046 incl. VAT is 10.004 ex VAT in each branch: 10.00 + 10.00 rounded per branch, 20.01 rounded as a total.
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet([
+        { "Branch Name": "Branch A", "HS Branch ID": 1, Compensation: 11.5046 },
+        { "Branch Name": "Branch B", "HS Branch ID": 2, Compensation: 11.5046 },
+      ]),
+      "Compensated Orders",
+    );
+    return XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+  }
+
+  test("rounds each branch to halalas before adding, as the invoice does; other commissions stay unrounded", () => {
+    const result = analyzeHungerStation(compensationWorkbook(), { manualBankRate: 0.025 });
+    expect(result.summary.compensation).toBe(20);
+    expect(result.branches.map((row) => row.compensation)).toEqual([expect.closeTo(10.004, 6), expect.closeTo(10.004, 6)]);
+    const others = result.checks.find((check) => check.label.startsWith("عمولات أخرى"));
+    expect(others?.computed).toBeCloseTo(20.008, 6);
+  });
+});
+
 describe("HungerStation branch identity matching", () => {
   test("matches Arabic branch names even when audited amounts are swapped", () => {
     const result = analyzeHungerStation(buildArabicBranchWorkbook(), {

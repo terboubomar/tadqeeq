@@ -10,7 +10,7 @@ import type {
   Summary,
 } from "./types";
 import { detectHungerStationFormat } from "./formats";
-import { ParseError, parseAmount, parseDate } from "./parse";
+import { ParseError, parseAmount, parseDate, roundMoney } from "./parse";
 import { findColumnIgnoringCase, objectRows, resolveSheetName, rowKeys, workbookSheetSource } from "./sheets";
 import { HUNGERSTATION_TOLERANCES } from "./tolerances";
 import type { ColumnProjection, SheetSource } from "./xlsx-stream";
@@ -697,7 +697,9 @@ export function analyzeHungerStationSheets(
     walletFeeBase: invoiceWalletFeeBase,
     walletFee: invoiceWalletFee,
     rdfCampaigns: sum((r) => r.rdfCampaigns),
-    compensation: sum((r) => r.compensation),
+    // The invoice rounds each branch's compensation to halalas before adding them (HS-2026/9-4871148: 2,612.16, not
+    // the 2,612.17 of the unrounded total), so the recalculation does the same.
+    compensation: sum((r) => roundMoney(r.compensation)),
     jokerFees: sum((r) => r.jokerFees),
     hsFoodDiscount: sum((r) => r.hsFoodDiscount),
     rewardsDiscount: sum((r) => r.rewardsDiscount),
@@ -863,9 +865,10 @@ export function analyzeHungerStationSheets(
 
   // Keep invoice-only charges separate from independently reconstructed charges.
   // This prevents Tadqeeq from "verifying" an invoice line with the same value read from that invoice.
+  // Other commissions keep the unrounded compensation: only the compensation line follows the invoice's rounding.
   const dataOnlyOthersComputed =
     summary.rdfCampaigns +
-    summary.compensation +
+    sum((r) => r.compensation) +
     summary.jokerFees +
     summary.waitingTimeFees;
   const cardPaymentFeesComputed =
