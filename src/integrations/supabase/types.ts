@@ -14,6 +14,94 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounting_connections: {
+        Row: {
+          connected_at: string
+          connected_by: string | null
+          id: string
+          provider: string
+          secret_ciphertext: string
+          secret_hint: string
+          site: string | null
+          workspace_id: string
+        }
+        Insert: {
+          connected_at?: string
+          connected_by?: string | null
+          id?: string
+          provider: string
+          secret_ciphertext: string
+          secret_hint: string
+          site?: string | null
+          workspace_id: string
+        }
+        Update: {
+          connected_at?: string
+          connected_by?: string | null
+          id?: string
+          provider?: string
+          secret_ciphertext?: string
+          secret_hint?: string
+          site?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounting_connections_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      accounting_sync_entries: {
+        Row: {
+          entry_key: string
+          external_id: string
+          id: string
+          period_key: string
+          provider: string
+          reference: string
+          sent_at: string
+          sent_by: string | null
+          total: number
+          workspace_id: string
+        }
+        Insert: {
+          entry_key: string
+          external_id: string
+          id?: string
+          period_key: string
+          provider: string
+          reference: string
+          sent_at?: string
+          sent_by?: string | null
+          total: number
+          workspace_id: string
+        }
+        Update: {
+          entry_key?: string
+          external_id?: string
+          id?: string
+          period_key?: string
+          provider?: string
+          reference?: string
+          sent_at?: string
+          sent_by?: string | null
+          total?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounting_sync_entries_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ads_roi_analyses: {
         Row: {
           created_at: string
