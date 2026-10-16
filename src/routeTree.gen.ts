@@ -36,6 +36,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
 import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
 import { Route as AuthenticatedBranchMappingRouteImport } from './routes/_authenticated/branch-mapping'
+import { Route as AuthenticatedIntegrationsRouteImport } from './routes/_authenticated/integrations'
 import { Route as AuthenticatedBranchesRouteImport } from './routes/_authenticated/branches'
 import { Route as AuthenticatedBreakdownRouteImport } from './routes/_authenticated/breakdown'
 import { Route as AuthenticatedChargesRouteImport } from './routes/_authenticated/charges'
@@ -227,6 +228,12 @@ const AuthenticatedBranchMappingRoute =
   AuthenticatedBranchMappingRouteImport.update({
     id: '/branch-mapping',
     path: '/branch-mapping',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedIntegrationsRoute =
+  AuthenticatedIntegrationsRouteImport.update({
+    id: '/integrations',
+    path: '/integrations',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedBranchesRoute = AuthenticatedBranchesRouteImport.update({
@@ -549,6 +556,7 @@ export interface FileRoutesByFullPath {
   '/ai': typeof AuthenticatedAiRoute
   '/ask': typeof AuthenticatedAskRoute
   '/branch-mapping': typeof AuthenticatedBranchMappingRoute
+  '/integrations': typeof AuthenticatedIntegrationsRoute
   '/branches': typeof AuthenticatedBranchesRoute
   '/breakdown': typeof AuthenticatedBreakdownRoute
   '/charges': typeof AuthenticatedChargesRoute
@@ -631,6 +639,7 @@ export interface FileRoutesByTo {
   '/ai': typeof AuthenticatedAiRoute
   '/ask': typeof AuthenticatedAskRoute
   '/branch-mapping': typeof AuthenticatedBranchMappingRoute
+  '/integrations': typeof AuthenticatedIntegrationsRoute
   '/branches': typeof AuthenticatedBranchesRoute
   '/breakdown': typeof AuthenticatedBreakdownRoute
   '/charges': typeof AuthenticatedChargesRoute
@@ -717,6 +726,7 @@ export interface FileRoutesById {
   '/_authenticated/ai': typeof AuthenticatedAiRoute
   '/_authenticated/ask': typeof AuthenticatedAskRoute
   '/_authenticated/branch-mapping': typeof AuthenticatedBranchMappingRoute
+  '/_authenticated/integrations': typeof AuthenticatedIntegrationsRoute
   '/_authenticated/branches': typeof AuthenticatedBranchesRoute
   '/_authenticated/breakdown': typeof AuthenticatedBreakdownRoute
   '/_authenticated/charges': typeof AuthenticatedChargesRoute
@@ -803,6 +813,7 @@ export interface FileRouteTypes {
     | '/ai'
     | '/ask'
     | '/branch-mapping'
+    | '/integrations'
     | '/branches'
     | '/breakdown'
     | '/charges'
@@ -885,6 +896,7 @@ export interface FileRouteTypes {
     | '/ai'
     | '/ask'
     | '/branch-mapping'
+    | '/integrations'
     | '/branches'
     | '/breakdown'
     | '/charges'
@@ -970,6 +982,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ai'
     | '/_authenticated/ask'
     | '/_authenticated/branch-mapping'
+    | '/_authenticated/integrations'
     | '/_authenticated/branches'
     | '/_authenticated/breakdown'
     | '/_authenticated/charges'
@@ -1264,6 +1277,13 @@ declare module '@tanstack/react-router' {
       path: '/branch-mapping'
       fullPath: '/branch-mapping'
       preLoaderRoute: typeof AuthenticatedBranchMappingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/integrations': {
+      id: '/_authenticated/integrations'
+      path: '/integrations'
+      fullPath: '/integrations'
+      preLoaderRoute: typeof AuthenticatedIntegrationsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/branches': {
@@ -1665,6 +1685,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAiRoute: typeof AuthenticatedAiRoute
   AuthenticatedAskRoute: typeof AuthenticatedAskRoute
   AuthenticatedBranchMappingRoute: typeof AuthenticatedBranchMappingRoute
+  AuthenticatedIntegrationsRoute: typeof AuthenticatedIntegrationsRoute
   AuthenticatedBranchesRoute: typeof AuthenticatedBranchesRoute
   AuthenticatedBreakdownRoute: typeof AuthenticatedBreakdownRoute
   AuthenticatedChargesRoute: typeof AuthenticatedChargesRoute
@@ -1690,6 +1711,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAiRoute: AuthenticatedAiRoute,
   AuthenticatedAskRoute: AuthenticatedAskRoute,
   AuthenticatedBranchMappingRoute: AuthenticatedBranchMappingRoute,
+  AuthenticatedIntegrationsRoute: AuthenticatedIntegrationsRoute,
   AuthenticatedBranchesRoute: AuthenticatedBranchesRoute,
   AuthenticatedBreakdownRoute: AuthenticatedBreakdownRoute,
   AuthenticatedChargesRoute: AuthenticatedChargesRoute,
