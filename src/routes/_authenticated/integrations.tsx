@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Copy, type LucideIcon, Mail, Search } from "lucide-react";
+import { Copy, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { copyText } from "@/components/compensation/queries";
@@ -19,9 +19,9 @@ export const Route = createFileRoute("/_authenticated/integrations")({
   component: IntegrationsPage,
 });
 
-type Category = "pos" | "accounting" | "messaging" | "ai";
-/** live: works today inside Tadqeeq · file: an import file today, a direct connection later · soon: not yet available. */
-type Status = "live" | "file" | "soon";
+type Category = "accounting" | "messaging" | "ai";
+/** live: works today inside Tadqeeq · file: an import file today, a direct connection later. */
+type Status = "live" | "file";
 
 interface Integration {
   key: string;
@@ -30,18 +30,19 @@ interface Integration {
   mark: string;
   /** Brand marks shown on the tile instead of the word. */
   logos?: IntegrationLogo[];
-  /** An icon instead, for Tadqeeq's own channels. */
-  icon?: LucideIcon;
+  /** The product's own logo file (public/integrations), shown on a tile of the logo's background colour. */
+  image?: { src: string; className: string };
   line: string;
   category: Category;
   status: Status;
-  /** Tile colour, close to the product's own. */
+  /** Tile colour, close to the product's own (white for logos on white). */
   color: string;
+  /** Dark text for the category label, on light tiles. */
+  light?: boolean;
   to?: string;
 }
 
 const CATEGORY_LABEL: Record<Category, string> = {
-  pos: "نقاط البيع",
   accounting: "المحاسبة",
   messaging: "التواصل",
   ai: "الذكاء الاصطناعي",
@@ -50,24 +51,22 @@ const CATEGORY_LABEL: Record<Category, string> = {
 const MCP_URL = "https://tadqeeq.app/mcp";
 
 const INTEGRATIONS: Integration[] = [
-  { key: "foodics", name: "Foodics", mark: "foodics", line: "مطابقة طلبات نقطة البيع مع المنصات", category: "pos", status: "soon", color: "#4B0EA1" },
-  { key: "qoyod", name: "قيود Qoyod", mark: "قيود", line: "إرسال القيود مباشرة كمسودة", category: "accounting", status: "file", color: "#0E7C86", to: "/journal" },
-  { key: "daftra", name: "دفترة Daftra", mark: "دفترة", line: "إرسال القيود مع مراكز التكلفة", category: "accounting", status: "file", color: "#1D5FD1", to: "/journal" },
-  { key: "zoho", name: "Zoho Books", mark: "Zoho Books", logos: ["zoho"], line: "إرسال القيود إلى دفاترك", category: "accounting", status: "file", color: "#E42527", to: "/journal" },
+  { key: "qoyod", name: "قيود Qoyod", mark: "قيود", image: { src: "/integrations/qoyod.webp", className: "w-[62%]" }, line: "إرسال القيود مباشرة كمسودة", category: "accounting", status: "file", color: "#162660", to: "/journal" },
+  { key: "daftra", name: "دفترة Daftra", mark: "دفترة", image: { src: "/integrations/daftra.webp", className: "w-[62%]" }, line: "إرسال القيود مع مراكز التكلفة", category: "accounting", status: "file", color: "#FFFFFF", light: true, to: "/journal" },
+  { key: "zoho", name: "Zoho Books", mark: "Zoho Books", image: { src: "/integrations/zoho-books.webp", className: "w-[66%]" }, line: "إرسال القيود إلى دفاترك", category: "accounting", status: "file", color: "#FFFFFF", light: true, to: "/journal" },
   { key: "odoo", name: "Odoo", mark: "odoo", logos: ["odoo"], line: "قيود مع الحسابات التحليلية", category: "accounting", status: "file", color: "#714B67", to: "/journal" },
   { key: "quickbooks", name: "QuickBooks Online", mark: "QuickBooks", logos: ["quickbooks"], line: "قيود مع الفئة لكل فرع", category: "accounting", status: "file", color: "#2CA01C", to: "/journal" },
-  { key: "telegram", name: "Telegram", mark: "Telegram", logos: ["telegram"], line: "أدلة الطلبات من قروبات الفروع", category: "messaging", status: "live", color: "#229ED9", to: "/compensation/branches" },
-  { key: "email", name: "البريد الإلكتروني", mark: "البريد", icon: Mail, line: "تقارير مجدولة إلى بريدك", category: "messaging", status: "live", color: "#3A4250", to: "/report-schedules" },
+  { key: "telegram", name: "Telegram", mark: "Telegram", image: { src: "/integrations/telegram.webp", className: "w-[30%]" }, line: "أدلة الطلبات من قروبات الفروع", category: "messaging", status: "live", color: "#FFFFFF", light: true, to: "/compensation/branches" },
+  { key: "email", name: "البريد الإلكتروني", mark: "البريد", image: { src: "/integrations/gmail.webp", className: "w-[34%]" }, line: "تقارير مجدولة إلى بريدك", category: "messaging", status: "live", color: "#FFFFFF", light: true, to: "/report-schedules" },
   { key: "assistant", name: "Claude و ChatGPT", mark: "AI", logos: ["claude", "openai"], line: "اسأل عن تدقيقك من مساعدك", category: "ai", status: "live", color: "#1E2A28" },
 ];
 
 /** Wordmarks that fill only a thin band of their square, so they are drawn larger. */
-const WIDE_LOGOS: ReadonlySet<IntegrationLogo> = new Set(["zoho", "odoo"]);
+const WIDE_LOGOS: ReadonlySet<IntegrationLogo> = new Set(["odoo"]);
 
 const STATUS_PILL: Record<Status, { label: string; className: string }> = {
   live: { label: "مفعّل", className: "bg-success-soft text-success" },
   file: { label: "ملف استيراد", className: "bg-secondary text-primary-text" },
-  soon: { label: "قريباً", className: "bg-muted text-muted-foreground" },
 };
 
 function IntegrationsPage() {
@@ -94,7 +93,7 @@ function IntegrationsPage() {
 
       <ActionBar>
         <div role="group" aria-label="الفئة" className="flex flex-wrap gap-1">
-          {(["all", "pos", "accounting", "messaging", "ai"] as const).map((key) => (
+          {(["all", "accounting", "messaging", "ai"] as const).map((key) => (
             <button
               key={key}
               type="button"
@@ -172,11 +171,14 @@ function IntegrationCard({ item, onOpenAssistant }: { item: Integration; onOpenA
   const body = (
     <>
       <span
-        className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl text-white"
+        className={cn(
+          "relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl text-white",
+          item.light && "ring-1 ring-inset ring-border",
+        )}
         style={{ backgroundColor: item.color }}
       >
-        {item.icon ? (
-          <item.icon className="size-11 sm:size-12" strokeWidth={1.75} aria-hidden />
+        {item.image ? (
+          <img src={item.image.src} alt={item.name} loading="lazy" decoding="async" className={cn("h-auto -translate-y-2 object-contain", item.image.className)} />
         ) : item.logos?.length ? (
           <span className="flex items-center gap-4">
             {item.logos.map((logo) => (
@@ -188,8 +190,9 @@ function IntegrationCard({ item, onOpenAssistant }: { item: Integration; onOpenA
             {item.mark}
           </span>
         )}
-        <span className="absolute inset-x-0 bottom-2 text-center text-[11px] font-semibold text-white/80">{CATEGORY_LABEL[item.category]}</span>
-        {item.status === "soon" ? <span className="absolute inset-0 bg-background/10" aria-hidden /> : null}
+        <span className={cn("absolute inset-x-0 bottom-2 text-center text-[11px] font-semibold", item.light ? "text-muted-foreground" : "text-white/80")}>
+          {CATEGORY_LABEL[item.category]}
+        </span>
       </span>
       <span className="mt-2.5 block px-0.5">
         <span className="block text-[14px] font-bold leading-6">{item.name}</span>
