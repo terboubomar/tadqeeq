@@ -1,5 +1,6 @@
 import {
   Activity,
+  Blocks,
   BookText,
   CalendarClock,
   CalendarDays,
@@ -41,5 +42,6 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   "/report-schedules": CalendarClock,
   "/import": Upload,
   "/branch-mapping": GitMerge,
+  "/integrations": Blocks,
   "/team": Users,
 };
