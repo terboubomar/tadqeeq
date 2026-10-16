@@ -12,6 +12,7 @@ import {
   EntryNotes,
   EntryTable,
 } from "@/components/journal/JournalEntryDialog";
+import { SendToQoyodButton } from "@/components/integrations/SendToQoyodButton";
 import { ExportJournalsMenu } from "@/components/journal/ExportJournalsMenu";
 import { isBalanced, TREATMENT_NOTE, type BranchJournal } from "@/components/journal/journal-export";
 import { useJournalAccounts } from "@/components/journal/use-journal-accounts";
@@ -73,18 +74,31 @@ function JournalPage() {
   if (!selected || !combined) {
     return <EmptyState title="لا توجد فترات محفوظة" body="ارفع ملفات الفترة لعرض القيود المحاسبية." />;
   }
-  return <JournalReport title={selected.label} platform={selected.platform} journals={journals} combined={combined} />;
+  return (
+    <JournalReport
+      title={selected.label}
+      platform={selected.platform}
+      periodKey={selected.lineage_id ?? selected.id}
+      periodEnd={selected.period_end}
+      journals={journals}
+      combined={combined}
+    />
+  );
 }
 
 /** The report body: tiles, a list of entries (combined + one per branch) and the chosen entry. */
 function JournalReport({
   title,
   platform,
+  periodKey,
+  periodEnd,
   journals,
   combined,
 }: {
   title: string;
   platform: JournalPlatform;
+  periodKey: string;
+  periodEnd: string | null;
   journals: BranchJournal[];
   combined: JournalEntry;
 }) {
@@ -110,6 +124,13 @@ function JournalReport({
           journals={current ? [current] : journals}
           firstNumber={current ? (selection as number) + 1 : 1}
           label={current ? "تصدير قيد الفرع" : "تصدير كل الفروع"}
+          className="w-full sm:w-auto"
+        />
+        <SendToQoyodButton
+          periodKey={periodKey}
+          periodEnd={periodEnd}
+          journals={current ? [current] : journals}
+          firstNumber={current ? (selection as number) + 1 : 1}
           className="w-full sm:w-auto"
         />
         <div className="grid w-full grid-cols-2 gap-1.5 empty:hidden sm:flex sm:w-auto">
