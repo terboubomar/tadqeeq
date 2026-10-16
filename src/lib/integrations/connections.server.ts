@@ -6,22 +6,23 @@ import { missingAccountCodes, round2, type AccountingProvider, type SendableEntr
 import { daftraAdapter } from "./daftra.server";
 import { SyncStop, type Connection, type ProviderAdapter } from "./http.server";
 import { qoyodAdapter } from "./qoyod.server";
+import { zohoAdapter } from "./zoho.server";
 import { openSecret, sealSecret } from "./secret-box.server";
 
 /**
- * Direct connections to accounting systems (migrations 0061, 0062). The workspace pastes an API key (and, for Daftra,
- * its site); the key is checked against the system, sealed and kept server-side. Entries are posted once per period
+ * Direct connections to accounting systems (migrations 0061-0063). The workspace pastes an API key (and, for Daftra,
+ * its site) or signs in (Zoho Books); the credentials are checked against the system, sealed and kept server-side. Entries are posted once per period
  * and branch (accounting_sync_entries).
  */
 export type { AccountingProvider };
 
-const ADAPTERS: Record<AccountingProvider, ProviderAdapter> = { qoyod: qoyodAdapter, daftra: daftraAdapter };
+const ADAPTERS: Record<AccountingProvider, ProviderAdapter> = { qoyod: qoyodAdapter, daftra: daftraAdapter, zoho: zohoAdapter };
 const MANAGE = "contracts.manage" as const;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the generated types predate migrations 0061 and 0062
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the generated types predate migrations 0061-0063
 const db = () => supabaseAdmin as unknown as { from: (table: string) => any };
 
-const TABLES_MISSING = "الربط المباشر يحتاج تحديث قاعدة البيانات (الترحيل 0061 و0062).";
+const TABLES_MISSING = "الربط المباشر يحتاج تحديث قاعدة البيانات (الترحيل 0061 إلى 0063).";
 function tableError(error: { code?: string; message: string }): Error {
   if (
     error.code === "42P01" ||
@@ -57,6 +58,7 @@ export interface ConnectionStatus {
 export interface IntegrationStatus {
   qoyod: ConnectionStatus | null;
   daftra: ConnectionStatus | null;
+  zoho: ConnectionStatus | null;
 }
 
 interface ConnectionRow {
@@ -75,7 +77,7 @@ export async function getIntegrationStatusOnServer(): Promise<IntegrationStatus>
   }
   if (result.error) {
     // Before 0061 nothing is connected.
-    if (tableError(result.error).message === TABLES_MISSING) return { qoyod: null, daftra: null };
+    if (tableError(result.error).message === TABLES_MISSING) return { qoyod: null, daftra: null, zoho: null };
     throw tableError(result.error);
   }
   const rows = (result.data ?? []) as ConnectionRow[];
@@ -83,7 +85,7 @@ export async function getIntegrationStatusOnServer(): Promise<IntegrationStatus>
     const row = rows.find((candidate) => candidate.provider === provider);
     return row ? { hint: row.secret_hint, connectedAt: row.connected_at, site: row.site ?? null } : null;
   };
-  return { qoyod: status("qoyod"), daftra: status("daftra") };
+  return { qoyod: status("qoyod"), daftra: status("daftra"), zoho: status("zoho") };
 }
 
 export async function connectOnServer(provider: AccountingProvider, apiKey: string, site: string | null): Promise<IntegrationStatus> {
@@ -92,22 +94,34 @@ export async function connectOnServer(provider: AccountingProvider, apiKey: stri
   const key = apiKey.trim();
   if (key.length < 8) throw new Error(`ألصق مفتاح API كاملاً من إعدادات ${adapter.name}.`);
   await adapter.accounts({ apiKey: key, site }); // proves the key works before anything is saved
+  return storeConnection({ workspaceId, actorUserId, provider, secret: key, hint: key.slice(-4), site });
+}
+
+/** Seals and saves (or replaces) a workspace's connection, once its credentials have been checked. */
+export async function storeConnection(input: {
+  workspaceId: string;
+  actorUserId: string;
+  provider: AccountingProvider;
+  secret: string;
+  hint: string;
+  site: string | null;
+}): Promise<IntegrationStatus> {
   const { error } = await db()
     .from("accounting_connections")
     .upsert(
       {
-        workspace_id: workspaceId,
-        provider,
-        secret_ciphertext: sealSecret(key),
-        secret_hint: key.slice(-4),
-        ...(site ? { site } : {}),
-        connected_by: actorUserId,
+        workspace_id: input.workspaceId,
+        provider: input.provider,
+        secret_ciphertext: sealSecret(input.secret),
+        secret_hint: input.hint,
+        ...(input.site ? { site: input.site } : {}),
+        connected_by: input.actorUserId,
         connected_at: new Date().toISOString(),
       },
       { onConflict: "workspace_id,provider" },
     );
   if (error) throw tableError(error);
-  logEvent("integration_connected", { provider, workspace_id: workspaceId, actor_user_id: actorUserId });
+  logEvent("integration_connected", { provider: input.provider, workspace_id: input.workspaceId, actor_user_id: input.actorUserId });
   return getIntegrationStatusOnServer();
 }
 

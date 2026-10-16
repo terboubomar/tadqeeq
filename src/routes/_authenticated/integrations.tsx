@@ -1,15 +1,18 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Copy, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { copyText } from "@/components/compensation/queries";
 import { IntegrationLogoMark, type IntegrationLogo } from "@/components/integrations/IntegrationLogo";
 import { AccountingDialog } from "@/components/integrations/AccountingDialog";
 import { ACCOUNTING_PROVIDER_KEYS } from "@/components/integrations/providers";
-import { useIntegrationStatus } from "@/components/integrations/use-integration-status";
+import { INTEGRATION_STATUS_KEY, useIntegrationStatus } from "@/components/integrations/use-integration-status";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ActionBar, ActionDivider, PageHeader } from "@/components/workspace/PageKit";
+import { finishZohoConnect } from "@/lib/integrations/connections.functions";
 import type { AccountingProvider } from "@/lib/integrations/sendable";
 import { cn } from "@/lib/utils";
 
@@ -57,7 +60,7 @@ const MCP_URL = "https://tadqeeq.app/mcp";
 const INTEGRATIONS: Integration[] = [
   { key: "qoyod", name: "قيود Qoyod", mark: "قيود", image: { src: "/integrations/qoyod.webp", className: "w-[62%]" }, line: "إرسال القيود مباشرة", category: "accounting", status: "file", color: "#162660", to: "/journal" },
   { key: "daftra", name: "دفترة Daftra", mark: "دفترة", image: { src: "/integrations/daftra.webp", className: "w-[62%]" }, line: "إرسال القيود مباشرة", category: "accounting", status: "file", color: "#FFFFFF", light: true, to: "/journal" },
-  { key: "zoho", name: "Zoho Books", mark: "Zoho Books", image: { src: "/integrations/zoho-books.webp", className: "w-[66%]" }, line: "إرسال القيود إلى دفاترك", category: "accounting", status: "file", color: "#FFFFFF", light: true, to: "/journal" },
+  { key: "zoho", name: "Zoho Books", mark: "Zoho Books", image: { src: "/integrations/zoho-books.webp", className: "w-[66%]" }, line: "إرسال القيود مباشرة", category: "accounting", status: "file", color: "#FFFFFF", light: true, to: "/journal" },
   { key: "odoo", name: "Odoo", mark: "odoo", logos: ["odoo"], line: "قيود مع الحسابات التحليلية", category: "accounting", status: "file", color: "#714B67", to: "/journal" },
   { key: "quickbooks", name: "QuickBooks Online", mark: "QuickBooks", logos: ["quickbooks"], line: "قيود مع الفئة لكل فرع", category: "accounting", status: "file", color: "#2CA01C", to: "/journal" },
   { key: "telegram", name: "Telegram", mark: "Telegram", image: { src: "/integrations/telegram.webp", className: "w-[30%]" }, line: "أدلة الطلبات من قروبات الفروع", category: "messaging", status: "live", color: "#FFFFFF", light: true, to: "/compensation/branches" },
@@ -87,7 +90,9 @@ function IntegrationsPage() {
     assistant: () => setAssistantOpen(true),
     qoyod: () => setAccountingOpen("qoyod"),
     daftra: () => setAccountingOpen("daftra"),
+    zoho: () => setAccountingOpen("zoho"),
   };
+  useZohoReturn(() => setAccountingOpen("zoho"));
 
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -182,6 +187,39 @@ function IntegrationsPage() {
       </Dialog>
     </div>
   );
+}
+
+/**
+ * Zoho sends people back here after they approve (or refuse) Tadqeeq, with ?code, ?state and their data center.
+ * Finishes the connection once, then removes those values from the address bar.
+ */
+function useZohoReturn(onDone: () => void) {
+  const queryClient = useQueryClient();
+  const started = useRef(false);
+  const finish = useMutation({
+    mutationFn: (data: { code: string; state: string; accountsServer?: string }) => finishZohoConnect({ data }),
+    onSuccess: (status) => {
+      queryClient.setQueryData(INTEGRATION_STATUS_KEY, status);
+      toast.success("رُبط Zoho Books.");
+      onDone();
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "تعذّر ربط Zoho Books."),
+  });
+  useEffect(() => {
+    if (started.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const state = params.get("state");
+    const refused = params.get("error");
+    if (!state || (!code && !refused)) return;
+    started.current = true;
+    window.history.replaceState(null, "", window.location.pathname);
+    if (refused || !code) {
+      toast.error("لم يكتمل ربط Zoho Books.");
+      return;
+    }
+    finish.mutate({ code, state, accountsServer: params.get("accounts-server") ?? undefined });
+  }, [finish]);
 }
 
 /** A coloured tile with the product's name and category (as on POS app marketplaces), then one line and its status. */
