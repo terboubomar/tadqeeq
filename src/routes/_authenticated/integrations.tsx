@@ -12,7 +12,7 @@ import { INTEGRATION_STATUS_KEY, useIntegrationStatus } from "@/components/integ
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ActionBar, ActionDivider, PageHeader } from "@/components/workspace/PageKit";
-import { finishZohoConnect } from "@/lib/integrations/connections.functions";
+import { finishSignInConnect } from "@/lib/integrations/connections.functions";
 import type { AccountingProvider } from "@/lib/integrations/sendable";
 import { cn } from "@/lib/utils";
 
@@ -62,7 +62,7 @@ const INTEGRATIONS: Integration[] = [
   { key: "daftra", name: "دفترة Daftra", mark: "دفترة", image: { src: "/integrations/daftra.webp", className: "w-[62%]" }, line: "إرسال القيود مباشرة", category: "accounting", status: "file", color: "#FFFFFF", light: true, to: "/journal" },
   { key: "zoho", name: "Zoho Books", mark: "Zoho Books", image: { src: "/integrations/zoho-books.webp", className: "w-[66%]" }, line: "إرسال القيود مباشرة", category: "accounting", status: "file", color: "#FFFFFF", light: true, to: "/journal" },
   { key: "odoo", name: "Odoo", mark: "odoo", logos: ["odoo"], line: "إرسال القيود مع الحسابات التحليلية", category: "accounting", status: "file", color: "#714B67", to: "/journal" },
-  { key: "quickbooks", name: "QuickBooks Online", mark: "QuickBooks", logos: ["quickbooks"], line: "قيود مع الفئة لكل فرع", category: "accounting", status: "file", color: "#2CA01C", to: "/journal" },
+  { key: "quickbooks", name: "QuickBooks Online", mark: "QuickBooks", logos: ["quickbooks"], line: "إرسال القيود مع الفئة لكل فرع", category: "accounting", status: "file", color: "#2CA01C", to: "/journal" },
   { key: "telegram", name: "Telegram", mark: "Telegram", image: { src: "/integrations/telegram.webp", className: "w-[30%]" }, line: "أدلة الطلبات من قروبات الفروع", category: "messaging", status: "live", color: "#FFFFFF", light: true, to: "/compensation/branches" },
   { key: "email", name: "البريد الإلكتروني", mark: "البريد", image: { src: "/integrations/gmail.webp", className: "w-[34%]" }, line: "تقارير مجدولة إلى بريدك", category: "messaging", status: "live", color: "#FFFFFF", light: true, to: "/report-schedules" },
   { key: "assistant", name: "Claude و ChatGPT", mark: "AI", logos: ["claude", "openai"], line: "اسأل عن تدقيقك من مساعدك", category: "ai", status: "live", color: "#1E2A28" },
@@ -92,8 +92,9 @@ function IntegrationsPage() {
     daftra: () => setAccountingOpen("daftra"),
     zoho: () => setAccountingOpen("zoho"),
     odoo: () => setAccountingOpen("odoo"),
+    quickbooks: () => setAccountingOpen("quickbooks"),
   };
-  useZohoReturn(() => setAccountingOpen("zoho"));
+  useSignInReturn(setAccountingOpen);
 
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -191,20 +192,20 @@ function IntegrationsPage() {
 }
 
 /**
- * Zoho sends people back here after they approve (or refuse) Tadqeeq, with ?code, ?state and their data center.
- * Finishes the connection once, then removes those values from the address bar.
+ * Zoho and Intuit send people back here after they approve (or refuse) Tadqeeq, with ?code and ?state (plus Zoho's data
+ * center or QuickBooks' company). Finishes the connection once, then removes those values from the address bar.
  */
-function useZohoReturn(onDone: () => void) {
+function useSignInReturn(open: (provider: AccountingProvider) => void) {
   const queryClient = useQueryClient();
   const started = useRef(false);
   const finish = useMutation({
-    mutationFn: (data: { code: string; state: string; accountsServer?: string }) => finishZohoConnect({ data }),
-    onSuccess: (status) => {
+    mutationFn: (data: { code: string; state: string; accountsServer?: string; realmId?: string }) => finishSignInConnect({ data }),
+    onSuccess: (status, data) => {
       queryClient.setQueryData(INTEGRATION_STATUS_KEY, status);
-      toast.success("رُبط Zoho Books.");
-      onDone();
+      toast.success(data.realmId ? "رُبط QuickBooks." : "رُبط Zoho Books.");
+      open(data.realmId ? "quickbooks" : "zoho");
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "تعذّر ربط Zoho Books."),
+    onError: (error) => toast.error(error instanceof Error ? error.message : "تعذّر إكمال الربط."),
   });
   useEffect(() => {
     if (started.current) return;
@@ -216,10 +217,10 @@ function useZohoReturn(onDone: () => void) {
     started.current = true;
     window.history.replaceState(null, "", window.location.pathname);
     if (refused || !code) {
-      toast.error("لم يكتمل ربط Zoho Books.");
+      toast.error("لم يكتمل الربط.");
       return;
     }
-    finish.mutate({ code, state, accountsServer: params.get("accounts-server") ?? undefined });
+    finish.mutate({ code, state, accountsServer: params.get("accounts-server") ?? undefined, realmId: params.get("realmId") ?? undefined });
   }, [finish]);
 }
 

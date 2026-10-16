@@ -5,25 +5,26 @@ import { requireWorkspacePermission } from "../server-auth.server";
 import { missingAccountCodes, round2, type AccountingProvider, type SendableEntry } from "./sendable";
 import { daftraAdapter } from "./daftra.server";
 import { odooAdapter } from "./odoo.server";
+import { quickBooksAdapter } from "./quickbooks.server";
 import { SyncStop, type Connection, type ProviderAdapter } from "./http.server";
 import { qoyodAdapter } from "./qoyod.server";
 import { zohoAdapter } from "./zoho.server";
 import { openSecret, sealSecret } from "./secret-box.server";
 
 /**
- * Direct connections to accounting systems (migrations 0061-0064). The workspace pastes an API key (and, for Daftra,
+ * Direct connections to accounting systems (migrations 0061-0065). The workspace pastes an API key (and, for Daftra,
  * its site) or signs in (Zoho Books); the credentials are checked against the system, sealed and kept server-side. Entries are posted once per period
  * and branch (accounting_sync_entries).
  */
 export type { AccountingProvider };
 
-const ADAPTERS: Record<AccountingProvider, ProviderAdapter> = { qoyod: qoyodAdapter, daftra: daftraAdapter, zoho: zohoAdapter, odoo: odooAdapter };
+const ADAPTERS: Record<AccountingProvider, ProviderAdapter> = { qoyod: qoyodAdapter, daftra: daftraAdapter, zoho: zohoAdapter, odoo: odooAdapter, quickbooks: quickBooksAdapter };
 const MANAGE = "contracts.manage" as const;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the generated types predate migrations 0061-0064
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the generated types predate migrations 0061-0065
 const db = () => supabaseAdmin as unknown as { from: (table: string) => any };
 
-const TABLES_MISSING = "الربط المباشر يحتاج تحديث قاعدة البيانات (الترحيل 0061 إلى 0064).";
+const TABLES_MISSING = "الربط المباشر يحتاج تحديث قاعدة البيانات (الترحيل 0061 إلى 0065).";
 function tableError(error: { code?: string; message: string }): Error {
   if (
     error.code === "42P01" ||
@@ -47,7 +48,18 @@ async function readConnection(workspaceId: string, provider: AccountingProvider,
     .maybeSingle();
   if (error) throw tableError(error);
   if (!data) throw new Error(`${name} غير مربوط. اربطه من صفحة التكاملات.`);
-  return { apiKey: openSecret(data.secret_ciphertext as string), site: (data.site as string | undefined) ?? null };
+  return {
+    apiKey: openSecret(data.secret_ciphertext as string),
+    site: (data.site as string | undefined) ?? null,
+    saveSecret: async (secret) => {
+      const { error: saveError } = await db()
+        .from("accounting_connections")
+        .update({ secret_ciphertext: sealSecret(secret) })
+        .eq("workspace_id", workspaceId)
+        .eq("provider", provider);
+      if (saveError) throw new SyncStop(`تعذّر حفظ صلاحية ${name} الجديدة. حاول مرة أخرى.`);
+    },
+  };
 }
 
 export interface ConnectionStatus {
@@ -61,6 +73,7 @@ export interface IntegrationStatus {
   daftra: ConnectionStatus | null;
   zoho: ConnectionStatus | null;
   odoo: ConnectionStatus | null;
+  quickbooks: ConnectionStatus | null;
 }
 
 interface ConnectionRow {
@@ -79,7 +92,7 @@ export async function getIntegrationStatusOnServer(): Promise<IntegrationStatus>
   }
   if (result.error) {
     // Before 0061 nothing is connected.
-    if (tableError(result.error).message === TABLES_MISSING) return { qoyod: null, daftra: null, zoho: null, odoo: null };
+    if (tableError(result.error).message === TABLES_MISSING) return { qoyod: null, daftra: null, zoho: null, odoo: null, quickbooks: null };
     throw tableError(result.error);
   }
   const rows = (result.data ?? []) as ConnectionRow[];
@@ -87,7 +100,7 @@ export async function getIntegrationStatusOnServer(): Promise<IntegrationStatus>
     const row = rows.find((candidate) => candidate.provider === provider);
     return row ? { hint: row.secret_hint, connectedAt: row.connected_at, site: row.site ?? null } : null;
   };
-  return { qoyod: status("qoyod"), daftra: status("daftra"), zoho: status("zoho"), odoo: status("odoo") };
+  return { qoyod: status("qoyod"), daftra: status("daftra"), zoho: status("zoho"), odoo: status("odoo"), quickbooks: status("quickbooks") };
 }
 
 /**
@@ -144,8 +157,9 @@ export interface SendResult {
   failed: Array<{ key: string; message: string }>;
 }
 
-export async function sendJournalsOnServer(provider: AccountingProvider, periodKey: string, entries: SendableEntry[]): Promise<SendResult> {
+export async function sendJournalsOnServer(provider: AccountingProvider, periodKey: string, received: SendableEntry[]): Promise<SendResult> {
   const adapter = ADAPTERS[provider];
+  const entries = adapter.prepare ? adapter.prepare(received) : received;
   const { workspaceId, actorUserId } = await requireWorkspacePermission(MANAGE);
   const connection = await readConnection(workspaceId, provider, adapter.name);
 

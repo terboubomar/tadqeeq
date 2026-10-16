@@ -4,9 +4,10 @@ import { z } from "zod";
 import { connectOnServer, disconnectOnServer, getIntegrationStatusOnServer, sendJournalsOnServer } from "./connections.server";
 import { daftraSite } from "./daftra";
 import { odooDatabase, odooSite } from "./odoo";
+import { finishQuickBooksConnectOnServer, startQuickBooksConnectOnServer } from "./quickbooks-connect.server";
 import { finishZohoConnectOnServer, startZohoConnectOnServer } from "./zoho-connect.server";
 
-const provider = z.enum(["qoyod", "daftra", "zoho", "odoo"]);
+const provider = z.enum(["qoyod", "daftra", "zoho", "odoo", "quickbooks"]);
 const keyProvider = z.enum(["qoyod", "daftra", "odoo"]);
 
 export const getIntegrationStatus = createServerFn({ method: "POST" })
@@ -67,11 +68,21 @@ export const sendJournals = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => sendJournalsOnServer(data.provider, data.periodKey, data.entries));
 
-/** Zoho Books signs in instead of pasting a key: start returns Zoho's approval page, finish takes the code it sends back. */
-export const startZohoConnect = createServerFn({ method: "POST" })
-  .validator(z.object({}))
-  .handler(async () => startZohoConnectOnServer());
+/**
+ * Zoho Books and QuickBooks sign in instead of pasting a key: start returns the system's approval page, finish takes
+ * the code it sends back to /integrations (the signed state says which system it was).
+ */
+export const startSignInConnect = createServerFn({ method: "POST" })
+  .validator(z.object({ provider: z.enum(["zoho", "quickbooks"]) }))
+  .handler(async ({ data }) => (data.provider === "quickbooks" ? startQuickBooksConnectOnServer() : startZohoConnectOnServer()));
 
-export const finishZohoConnect = createServerFn({ method: "POST" })
-  .validator(z.object({ code: z.string().min(10).max(500), state: z.string().min(10).max(1000), accountsServer: z.string().max(100).optional() }))
-  .handler(async ({ data }) => finishZohoConnectOnServer(data));
+export const finishSignInConnect = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      code: z.string().min(10).max(1000),
+      state: z.string().min(10).max(1000),
+      accountsServer: z.string().max(100).optional(),
+      realmId: z.string().max(40).optional(),
+    }),
+  )
+  .handler(async ({ data }) => (data.realmId ? finishQuickBooksConnectOnServer(data) : finishZohoConnectOnServer(data)));

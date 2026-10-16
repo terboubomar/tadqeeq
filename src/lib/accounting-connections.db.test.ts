@@ -3,7 +3,7 @@ import type { PGlite } from "@electric-sql/pglite";
 
 import { activateAllWorkspaces, asUser, createMigratedDatabase } from "../test-support/database";
 
-/** Migrations 0061-0064: the accounting key and the sent-entry log are server-only; Daftra and Zoho keep their host. */
+/** Migrations 0061-0065: the accounting key and the sent-entry log are server-only; Daftra and Zoho keep their host. */
 const OWNER = "00000000-0000-4000-8000-0000000061a1";
 let db: PGlite;
 let ws: string;
@@ -70,5 +70,13 @@ describe("accounting connections (0061)", () => {
     }
     await db.query(insert, [ws, "odoo", sealed, "erp.mycompany.sa"]);
     await db.query("insert into public.accounting_sync_entries (workspace_id, provider, period_key, entry_key, reference, external_id, total) values ($1, 'odoo', 'p1', 'uhud', 'TDQ-1', '42', 10)", [ws]);
+  });
+
+  test("QuickBooks keeps no site", async () => {
+    const insert = "insert into public.accounting_connections (workspace_id, provider, secret_ciphertext, secret_hint, site) values ($1, $2, $3, '1', $4)";
+    const sealed = "v1." + "a".repeat(40);
+    await expect(db.query(insert, [ws, "quickbooks", sealed, "quickbooks.api.intuit.com"])).rejects.toThrow();
+    await db.query(insert, [ws, "quickbooks", sealed, null]);
+    await db.query("insert into public.accounting_sync_entries (workspace_id, provider, period_key, entry_key, reference, external_id, total) values ($1, 'quickbooks', 'p1', 'uhud', 'TDQ-1', '146', 10)", [ws]);
   });
 });

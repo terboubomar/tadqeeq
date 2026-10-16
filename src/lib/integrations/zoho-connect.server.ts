@@ -13,7 +13,7 @@ const STATE_TTL_SECONDS = 15 * 60;
 export async function startZohoConnectOnServer(): Promise<{ url: string }> {
   const { workspaceId, actorUserId } = await requireWorkspacePermission(MANAGE);
   const { clientId, redirectUri } = zohoClient();
-  const state = signState({ w: workspaceId, u: actorUserId, e: Math.floor(Date.now() / 1000) + STATE_TTL_SECONDS });
+  const state = signState({ p: "zoho", w: workspaceId, u: actorUserId, e: Math.floor(Date.now() / 1000) + STATE_TTL_SECONDS });
   const params = new URLSearchParams({
     scope: ZOHO_SCOPES,
     client_id: clientId,
@@ -29,7 +29,7 @@ export async function startZohoConnectOnServer(): Promise<{ url: string }> {
 export async function finishZohoConnectOnServer(input: { code: string; state: string; accountsServer?: string }): Promise<IntegrationStatus> {
   const { workspaceId, actorUserId } = await requireWorkspacePermission(MANAGE);
   const state = verifyState(input.state);
-  if (!state || state["w"] !== workspaceId || state["u"] !== actorUserId || Number(state["e"]) < Date.now() / 1000) {
+  if (!state || (state["p"] ?? "zoho") !== "zoho" || state["w"] !== workspaceId || state["u"] !== actorUserId || Number(state["e"]) < Date.now() / 1000) {
     throw new Error("انتهت صلاحية طلب الربط. اضغط «اربط» من جديد.");
   }
   const accountsServer = zohoAccountsServer(input.accountsServer ?? "https://accounts.zoho.com");
