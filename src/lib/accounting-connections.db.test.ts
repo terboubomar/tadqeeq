@@ -3,7 +3,7 @@ import type { PGlite } from "@electric-sql/pglite";
 
 import { activateAllWorkspaces, asUser, createMigratedDatabase } from "../test-support/database";
 
-/** Migration 0061: the accounting key and the sent-entry log are server-only. */
+/** Migrations 0061 and 0062: the accounting key and the sent-entry log are server-only; Daftra keeps its site. */
 const OWNER = "00000000-0000-4000-8000-0000000061a1";
 let db: PGlite;
 let ws: string;
@@ -39,9 +39,14 @@ describe("accounting connections (0061)", () => {
     await expect(db.query(insert, [ws])).rejects.toThrow();
   });
 
-  test("only Qoyod for now", async () => {
-    await expect(
-      db.query("insert into public.accounting_connections (workspace_id, provider, secret_ciphertext, secret_hint) values ($1, 'xero', $2, '1')", [ws, "v1." + "a".repeat(40)]),
-    ).rejects.toThrow();
+  test("Qoyod and Daftra only, and Daftra only with a Daftra site", async () => {
+    const insert = "insert into public.accounting_connections (workspace_id, provider, secret_ciphertext, secret_hint, site) values ($1, $2, $3, '1', $4)";
+    const sealed = "v1." + "a".repeat(40);
+    await expect(db.query(insert, [ws, "xero", sealed, null])).rejects.toThrow();
+    await expect(db.query(insert, [ws, "daftra", sealed, null])).rejects.toThrow();
+    await expect(db.query(insert, [ws, "daftra", sealed, "evil.com"])).rejects.toThrow();
+    await expect(db.query(insert, [ws, "daftra", sealed, "mystore.daftra.com.evil.com"])).rejects.toThrow();
+    await db.query(insert, [ws, "daftra", sealed, "mystore.daftra.com"]);
+    await db.query("insert into public.accounting_sync_entries (workspace_id, provider, period_key, entry_key, reference, external_id, total) values ($1, 'daftra', 'p1', 'uhud', 'TDQ-1', '2415', 10)", [ws]);
   });
 });

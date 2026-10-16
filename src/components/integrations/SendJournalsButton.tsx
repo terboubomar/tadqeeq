@@ -17,27 +17,44 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import type { SendableEntry } from "@/lib/integrations/qoyod";
-import { sendJournalsToQoyod } from "@/lib/integrations/qoyod.functions";
+import { sendJournals } from "@/lib/integrations/connections.functions";
+import type { AccountingProvider, SendableEntry } from "@/lib/integrations/sendable";
 
+import { ACCOUNTING_PROVIDER_KEYS, ACCOUNTING_PROVIDERS } from "./providers";
 import { useIntegrationStatus } from "./use-integration-status";
 
-/** Shown on the journal page once Qoyod is connected: posts the chosen entries (or all branches) to Qoyod. */
-export function SendToQoyodButton({
-  periodKey,
-  periodEnd,
-  journals,
-  firstNumber,
-  className,
-}: {
+interface SendProps {
   periodKey: string;
   periodEnd: string | null;
   journals: BranchJournal[];
   firstNumber: number;
   className?: string;
-}) {
+}
+
+/** One send button per connected accounting system, for people who may send entries. */
+export function SendJournalsButtons(props: SendProps) {
   const { can } = useWorkspaceAccess();
   const { data: status } = useIntegrationStatus();
+  if (!can("contracts.manage") || !props.journals.length) return null;
+  return (
+    <>
+      {ACCOUNTING_PROVIDER_KEYS.filter((provider) => status?.[provider]).map((provider) => (
+        <SendJournalsButton key={provider} provider={provider} {...props} />
+      ))}
+    </>
+  );
+}
+
+/** Posts the chosen entries (or all branches) to one connected system, after a confirm. */
+function SendJournalsButton({
+  provider,
+  periodKey,
+  periodEnd,
+  journals,
+  firstNumber,
+  className,
+}: SendProps & { provider: AccountingProvider }) {
+  const { name } = ACCOUNTING_PROVIDERS[provider];
   const [confirming, setConfirming] = useState(false);
 
   const send = useMutation({
@@ -55,7 +72,7 @@ export function SendToQoyodButton({
           memo: line.memo,
         })),
       }));
-      return sendJournalsToQoyod({ data: { periodKey, entries } });
+      return sendJournals({ data: { provider, periodKey, entries } });
     },
     onSuccess: (result) => {
       const parts = [
@@ -67,24 +84,23 @@ export function SendToQoyodButton({
       if (result.failed.length) toast.error(summary, { description: result.failed[0]?.message });
       else toast.success(summary);
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "تعذّر الإرسال إلى قيود."),
+    onError: (error) => toast.error(error instanceof Error ? error.message : `تعذّر الإرسال إلى ${name}.`),
   });
 
-  if (!status?.qoyod || !can("contracts.manage") || !journals.length) return null;
   const dated = journals.every((journal) => journal.entry.date ?? periodEnd);
 
   return (
     <>
       <Button type="button" variant="outline" className={className} disabled={send.isPending || !dated} onClick={() => setConfirming(true)}>
         <Send className="size-4" />
-        {send.isPending ? "جارٍ الإرسال…" : "إرسال إلى قيود"}
+        {send.isPending ? "جارٍ الإرسال…" : `إرسال إلى ${name}`}
       </Button>
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
-            <AlertDialogTitle>إرسال إلى قيود</AlertDialogTitle>
+            <AlertDialogTitle>إرسال إلى {name}</AlertDialogTitle>
             <AlertDialogDescription>
-              سيُرسل <span className="num">{journals.length}</span> {journals.length === 1 ? "قيد" : "قيود"} إلى قيود مباشرة. المُرسل سابقاً لا يتكرر.
+              سيُرسل <span className="num">{journals.length}</span> {journals.length === 1 ? "قيد" : "قيود"} إلى {name} مباشرة. المُرسل سابقاً لا يتكرر.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

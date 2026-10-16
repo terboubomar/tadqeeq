@@ -12,7 +12,7 @@ import {
   EntryNotes,
   EntryTable,
 } from "@/components/journal/JournalEntryDialog";
-import { SendToQoyodButton } from "@/components/integrations/SendToQoyodButton";
+import { SendJournalsButtons } from "@/components/integrations/SendJournalsButton";
 import { ExportJournalsMenu } from "@/components/journal/ExportJournalsMenu";
 import { isBalanced, TREATMENT_NOTE, type BranchJournal } from "@/components/journal/journal-export";
 import { useJournalAccounts } from "@/components/journal/use-journal-accounts";
@@ -126,7 +126,7 @@ function JournalReport({
           label={current ? "تصدير قيد الفرع" : "تصدير كل الفروع"}
           className="w-full sm:w-auto"
         />
-        <SendToQoyodButton
+        <SendJournalsButtons
           periodKey={periodKey}
           periodEnd={periodEnd}
           journals={current ? [current] : journals}
