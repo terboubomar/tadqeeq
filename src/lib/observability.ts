@@ -24,7 +24,10 @@ export type LogEvent =
   | "csp_violation"
   | "contact_message_received"
   | "contact_message_failed"
-  | "contact_message_email_failed";
+  | "contact_message_email_failed"
+  | "integration_connected"
+  | "integration_disconnected"
+  | "integration_journals_sent";
 
 /** What kind of failure happened, so logs and support can tell them apart. */
 export type ErrorKind =

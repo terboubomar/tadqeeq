@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 
 import { copyText } from "@/components/compensation/queries";
 import { IntegrationLogoMark, type IntegrationLogo } from "@/components/integrations/IntegrationLogo";
+import { QoyodDialog } from "@/components/integrations/QoyodDialog";
+import { useIntegrationStatus } from "@/components/integrations/use-integration-status";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ActionBar, ActionDivider, PageHeader } from "@/components/workspace/PageKit";
@@ -51,7 +53,7 @@ const CATEGORY_LABEL: Record<Category, string> = {
 const MCP_URL = "https://tadqeeq.app/mcp";
 
 const INTEGRATIONS: Integration[] = [
-  { key: "qoyod", name: "قيود Qoyod", mark: "قيود", image: { src: "/integrations/qoyod.webp", className: "w-[62%]" }, line: "إرسال القيود مباشرة كمسودة", category: "accounting", status: "file", color: "#162660", to: "/journal" },
+  { key: "qoyod", name: "قيود Qoyod", mark: "قيود", image: { src: "/integrations/qoyod.webp", className: "w-[62%]" }, line: "إرسال القيود مباشرة", category: "accounting", status: "file", color: "#162660", to: "/journal" },
   { key: "daftra", name: "دفترة Daftra", mark: "دفترة", image: { src: "/integrations/daftra.webp", className: "w-[62%]" }, line: "إرسال القيود مع مراكز التكلفة", category: "accounting", status: "file", color: "#FFFFFF", light: true, to: "/journal" },
   { key: "zoho", name: "Zoho Books", mark: "Zoho Books", image: { src: "/integrations/zoho-books.webp", className: "w-[66%]" }, line: "إرسال القيود إلى دفاترك", category: "accounting", status: "file", color: "#FFFFFF", light: true, to: "/journal" },
   { key: "odoo", name: "Odoo", mark: "odoo", logos: ["odoo"], line: "قيود مع الحسابات التحليلية", category: "accounting", status: "file", color: "#714B67", to: "/journal" },
@@ -64,6 +66,8 @@ const INTEGRATIONS: Integration[] = [
 /** Wordmarks that fill only a thin band of their square, so they are drawn larger. */
 const WIDE_LOGOS: ReadonlySet<IntegrationLogo> = new Set(["odoo"]);
 
+const CONNECTED_PILL = { label: "متصل", className: "bg-success-soft text-success" };
+
 const STATUS_PILL: Record<Status, { label: string; className: string }> = {
   live: { label: "مفعّل", className: "bg-success-soft text-success" },
   file: { label: "ملف استيراد", className: "bg-secondary text-primary-text" },
@@ -73,6 +77,9 @@ function IntegrationsPage() {
   const [category, setCategory] = useState<Category | "all">("all");
   const [query, setQuery] = useState("");
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [qoyodOpen, setQoyodOpen] = useState(false);
+  const { data: status } = useIntegrationStatus();
+  const dialogs: Partial<Record<string, () => void>> = { assistant: () => setAssistantOpen(true), qoyod: () => setQoyodOpen(true) };
 
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -125,7 +132,7 @@ function IntegrationsPage() {
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
           {shown.map((item) => (
             <li key={item.key}>
-              <IntegrationCard item={item} onOpenAssistant={() => setAssistantOpen(true)} />
+              <IntegrationCard item={item} onOpen={dialogs[item.key]} connected={item.key === "qoyod" && Boolean(status?.qoyod)} />
             </li>
           ))}
         </ul>
@@ -139,6 +146,8 @@ function IntegrationsPage() {
           اطلبه منا
         </Link>
       </p>
+
+      <QoyodDialog open={qoyodOpen} onOpenChange={setQoyodOpen} />
 
       <Dialog open={assistantOpen} onOpenChange={setAssistantOpen}>
         <DialogContent dir="rtl" className="sm:max-w-md">
@@ -166,8 +175,8 @@ function IntegrationsPage() {
 }
 
 /** A coloured tile with the product's name and category (as on POS app marketplaces), then one line and its status. */
-function IntegrationCard({ item, onOpenAssistant }: { item: Integration; onOpenAssistant: () => void }) {
-  const pill = STATUS_PILL[item.status];
+function IntegrationCard({ item, onOpen, connected = false }: { item: Integration; onOpen?: () => void; connected?: boolean }) {
+  const pill = connected ? CONNECTED_PILL : STATUS_PILL[item.status];
   const body = (
     <>
       <span
@@ -204,9 +213,9 @@ function IntegrationCard({ item, onOpenAssistant }: { item: Integration; onOpenA
   const frame = "block h-full rounded-2xl border border-border bg-card p-2.5 text-start transition-[transform,border-color] duration-200";
   const interactive = "hover:-translate-y-0.5 hover:border-foreground/25 active:translate-y-0";
 
-  if (item.key === "assistant") {
+  if (onOpen) {
     return (
-      <button type="button" onClick={onOpenAssistant} className={cn(frame, interactive, "w-full")}>
+      <button type="button" onClick={onOpen} className={cn(frame, interactive, "w-full")}>
         {body}
       </button>
     );

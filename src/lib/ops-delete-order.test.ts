@@ -9,6 +9,8 @@ const root = process.cwd();
  * so deleting the workspace row removes them without an explicit delete.
  */
 const CASCADES_WITH_WORKSPACE = [
+  "accounting_connections",
+  "accounting_sync_entries",
   "client_notes",
   "exception_classification_rules",
   "journal_account_settings",
