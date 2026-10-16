@@ -61,7 +61,7 @@ const INTEGRATIONS: Integration[] = [
   { key: "qoyod", name: "قيود Qoyod", mark: "قيود", image: { src: "/integrations/qoyod.webp", className: "w-[62%]" }, line: "إرسال القيود مباشرة", category: "accounting", status: "file", color: "#162660", to: "/journal" },
   { key: "daftra", name: "دفترة Daftra", mark: "دفترة", image: { src: "/integrations/daftra.webp", className: "w-[62%]" }, line: "إرسال القيود مباشرة", category: "accounting", status: "file", color: "#FFFFFF", light: true, to: "/journal" },
   { key: "zoho", name: "Zoho Books", mark: "Zoho Books", image: { src: "/integrations/zoho-books.webp", className: "w-[66%]" }, line: "إرسال القيود مباشرة", category: "accounting", status: "file", color: "#FFFFFF", light: true, to: "/journal" },
-  { key: "odoo", name: "Odoo", mark: "odoo", logos: ["odoo"], line: "قيود مع الحسابات التحليلية", category: "accounting", status: "file", color: "#714B67", to: "/journal" },
+  { key: "odoo", name: "Odoo", mark: "odoo", logos: ["odoo"], line: "إرسال القيود مع الحسابات التحليلية", category: "accounting", status: "file", color: "#714B67", to: "/journal" },
   { key: "quickbooks", name: "QuickBooks Online", mark: "QuickBooks", logos: ["quickbooks"], line: "قيود مع الفئة لكل فرع", category: "accounting", status: "file", color: "#2CA01C", to: "/journal" },
   { key: "telegram", name: "Telegram", mark: "Telegram", image: { src: "/integrations/telegram.webp", className: "w-[30%]" }, line: "أدلة الطلبات من قروبات الفروع", category: "messaging", status: "live", color: "#FFFFFF", light: true, to: "/compensation/branches" },
   { key: "email", name: "البريد الإلكتروني", mark: "البريد", image: { src: "/integrations/gmail.webp", className: "w-[34%]" }, line: "تقارير مجدولة إلى بريدك", category: "messaging", status: "live", color: "#FFFFFF", light: true, to: "/report-schedules" },
@@ -91,6 +91,7 @@ function IntegrationsPage() {
     qoyod: () => setAccountingOpen("qoyod"),
     daftra: () => setAccountingOpen("daftra"),
     zoho: () => setAccountingOpen("zoho"),
+    odoo: () => setAccountingOpen("odoo"),
   };
   useZohoReturn(() => setAccountingOpen("zoho"));
 

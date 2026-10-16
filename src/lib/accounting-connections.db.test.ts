@@ -3,7 +3,7 @@ import type { PGlite } from "@electric-sql/pglite";
 
 import { activateAllWorkspaces, asUser, createMigratedDatabase } from "../test-support/database";
 
-/** Migrations 0061-0063: the accounting key and the sent-entry log are server-only; Daftra and Zoho keep their host. */
+/** Migrations 0061-0064: the accounting key and the sent-entry log are server-only; Daftra and Zoho keep their host. */
 const OWNER = "00000000-0000-4000-8000-0000000061a1";
 let db: PGlite;
 let ws: string;
@@ -60,5 +60,15 @@ describe("accounting connections (0061)", () => {
     await expect(db.query(insert, [ws, "daftra", sealed, "www.zohoapis.sa"])).rejects.toThrow();
     await db.query(insert, [ws, "zoho", sealed, "www.zohoapis.sa"]);
     await db.query("insert into public.accounting_sync_entries (workspace_id, provider, period_key, entry_key, reference, external_id, total) values ($1, 'zoho', 'p1', 'uhud', 'TDQ-1', '460000000038001', 10)", [ws]);
+  });
+
+  test("Odoo only with a plain host name", async () => {
+    const insert = "insert into public.accounting_connections (workspace_id, provider, secret_ciphertext, secret_hint, site) values ($1, $2, $3, '1', $4)";
+    const sealed = "v1." + "a".repeat(40);
+    for (const bad of [null, "127.0.0.1", "intranet", "erp.local", "erp.example.com:8069", "ERP.example.com"]) {
+      await expect(db.query(insert, [ws, "odoo", sealed, bad])).rejects.toThrow();
+    }
+    await db.query(insert, [ws, "odoo", sealed, "erp.mycompany.sa"]);
+    await db.query("insert into public.accounting_sync_entries (workspace_id, provider, period_key, entry_key, reference, external_id, total) values ($1, 'odoo', 'p1', 'uhud', 'TDQ-1', '42', 10)", [ws]);
   });
 });
