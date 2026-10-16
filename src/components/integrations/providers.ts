@@ -37,6 +37,14 @@ export const ACCOUNTING_PROVIDERS: Record<
     sitePlaceholder: "mycompany.odoo.com",
     needsLogin: true,
   },
+  quickbooks: {
+    title: "QuickBooks Online",
+    name: "QuickBooks",
+    keyHelp: "سجّل الدخول إلى Intuit واختر شركتك ووافق على الربط.",
+    needsSite: false,
+    signIn: true,
+    hintLabel: "الشركة رقم …",
+  },
 };
 
 export const ACCOUNTING_PROVIDER_KEYS = Object.keys(ACCOUNTING_PROVIDERS) as AccountingProvider[];

@@ -3,6 +3,8 @@ import type { ChartAccount, SendableEntry } from "./sendable";
 export interface Connection {
   apiKey: string;
   site: string | null;
+  /** Replaces the saved secret, for systems whose refresh token changes each time it is used (QuickBooks). */
+  saveSecret?: (secret: string) => Promise<void>;
 }
 
 /** What each system needs: its chart of accounts, and posting one entry (returning the new journal's id). */
@@ -12,6 +14,8 @@ export interface ProviderAdapter {
   post(connection: Connection, entry: SendableEntry, accounts: ChartAccount[]): Promise<{ externalId: string; total: number }>;
   /** Checks that apply to the whole send (e.g. cost centers the system does not have); throws to stop before posting. */
   precheck?(connection: Connection, entries: SendableEntry[]): Promise<void>;
+  /** Adjusts the entries before accounts are matched (QuickBooks names accounts without a number by their name). */
+  prepare?(entries: SendableEntry[]): SendableEntry[];
 }
 
 /** An error that will fail every remaining entry the same way (bad key, system unreachable, rate limit). */

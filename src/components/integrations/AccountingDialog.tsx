@@ -7,7 +7,7 @@ import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { connectAccounting, disconnectAccounting, startZohoConnect } from "@/lib/integrations/connections.functions";
+import { connectAccounting, disconnectAccounting, startSignInConnect } from "@/lib/integrations/connections.functions";
 import type { AccountingProvider } from "@/lib/integrations/sendable";
 
 import { ACCOUNTING_PROVIDERS } from "./providers";
@@ -36,13 +36,16 @@ export function AccountingDialog({
   const ready = Boolean(apiKey.trim()) && (!config.needsSite || Boolean(site.trim())) && (!config.needsLogin || Boolean(login.trim()));
 
   const signIn = useMutation({
-    mutationFn: () => startZohoConnect({ data: {} }),
+    mutationFn: () => {
+      if (provider !== "zoho" && provider !== "quickbooks") throw new Error("هذا النظام يُربط بمفتاح API.");
+      return startSignInConnect({ data: { provider } });
+    },
     onSuccess: ({ url }) => window.location.assign(url),
     onError: (error) => toast.error(error instanceof Error ? error.message : "تعذّر بدء الربط."),
   });
   const connect = useMutation({
     mutationFn: () => {
-      if (provider === "zoho") throw new Error("Zoho Books يُربط بتسجيل الدخول.");
+      if (provider === "zoho" || provider === "quickbooks") throw new Error(`${config.name} يُربط بتسجيل الدخول.`);
       return connectAccounting({
         data: { provider, apiKey, ...(config.needsSite ? { site } : {}), ...(config.needsLogin ? { database, login } : {}) },
       });
@@ -98,7 +101,7 @@ export function AccountingDialog({
           </div>
         ) : canManage && config.signIn ? (
           <Button type="button" className="w-full rounded-full" disabled={signIn.isPending} onClick={() => signIn.mutate()}>
-            {signIn.isPending ? "جارٍ التحويل إلى Zoho…" : "اربط عبر Zoho"}
+            {signIn.isPending ? "جارٍ التحويل…" : provider === "quickbooks" ? "اربط عبر Intuit" : "اربط عبر Zoho"}
           </Button>
         ) : canManage ? (
           <form

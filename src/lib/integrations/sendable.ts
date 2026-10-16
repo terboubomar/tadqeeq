@@ -4,7 +4,7 @@
  */
 
 /** The accounting systems Tadqeeq can send entries to directly. */
-export type AccountingProvider = "qoyod" | "daftra" | "zoho" | "odoo";
+export type AccountingProvider = "qoyod" | "daftra" | "zoho" | "odoo" | "quickbooks";
 
 export interface SendableLine {
   /** The account code as saved in «حساباتي». */
