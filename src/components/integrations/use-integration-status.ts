@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { getIntegrationStatus } from "@/lib/integrations/qoyod.functions";
+import { getIntegrationStatus } from "@/lib/integrations/connections.functions";
 
 export const INTEGRATION_STATUS_KEY = ["integration-status"];
 

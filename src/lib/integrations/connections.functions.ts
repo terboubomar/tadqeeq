@@ -1,25 +1,31 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { connectQoyodOnServer, disconnectQoyodOnServer, getIntegrationStatusOnServer, sendJournalsToQoyodOnServer } from "./qoyod.server";
+import { connectOnServer, disconnectOnServer, getIntegrationStatusOnServer, sendJournalsOnServer } from "./connections.server";
+import { daftraSite } from "./daftra";
+
+const provider = z.enum(["qoyod", "daftra"]);
 
 export const getIntegrationStatus = createServerFn({ method: "POST" })
   .validator(z.object({}))
   .handler(async () => getIntegrationStatusOnServer());
 
-export const connectQoyod = createServerFn({ method: "POST" })
-  .validator(z.object({ apiKey: z.string().min(8).max(500) }))
-  .handler(async ({ data }) => connectQoyodOnServer(data.apiKey));
+export const connectAccounting = createServerFn({ method: "POST" })
+  .validator(z.object({ provider, apiKey: z.string().min(8).max(500), site: z.string().max(300).optional() }))
+  .handler(async ({ data }) =>
+    connectOnServer(data.provider, data.apiKey, data.provider === "daftra" ? daftraSite(data.site ?? "") : null),
+  );
 
-export const disconnectQoyod = createServerFn({ method: "POST" })
-  .validator(z.object({}))
-  .handler(async () => disconnectQoyodOnServer());
+export const disconnectAccounting = createServerFn({ method: "POST" })
+  .validator(z.object({ provider }))
+  .handler(async ({ data }) => disconnectOnServer(data.provider));
 
 const amount = z.number().finite().min(0).max(1e10);
 
-export const sendJournalsToQoyod = createServerFn({ method: "POST" })
+export const sendJournals = createServerFn({ method: "POST" })
   .validator(
     z.object({
+      provider,
       periodKey: z.string().min(1).max(64),
       entries: z
         .array(
@@ -38,4 +44,4 @@ export const sendJournalsToQoyod = createServerFn({ method: "POST" })
         .max(200),
     }),
   )
-  .handler(async ({ data }) => sendJournalsToQoyodOnServer(data.periodKey, data.entries));
+  .handler(async ({ data }) => sendJournalsOnServer(data.provider, data.periodKey, data.entries));

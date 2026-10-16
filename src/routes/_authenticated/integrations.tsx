@@ -4,11 +4,13 @@ import { useMemo, useState } from "react";
 
 import { copyText } from "@/components/compensation/queries";
 import { IntegrationLogoMark, type IntegrationLogo } from "@/components/integrations/IntegrationLogo";
-import { QoyodDialog } from "@/components/integrations/QoyodDialog";
+import { AccountingDialog } from "@/components/integrations/AccountingDialog";
+import { ACCOUNTING_PROVIDER_KEYS } from "@/components/integrations/providers";
 import { useIntegrationStatus } from "@/components/integrations/use-integration-status";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ActionBar, ActionDivider, PageHeader } from "@/components/workspace/PageKit";
+import type { AccountingProvider } from "@/lib/integrations/sendable";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/integrations")({
@@ -54,7 +56,7 @@ const MCP_URL = "https://tadqeeq.app/mcp";
 
 const INTEGRATIONS: Integration[] = [
   { key: "qoyod", name: "قيود Qoyod", mark: "قيود", image: { src: "/integrations/qoyod.webp", className: "w-[62%]" }, line: "إرسال القيود مباشرة", category: "accounting", status: "file", color: "#162660", to: "/journal" },
-  { key: "daftra", name: "دفترة Daftra", mark: "دفترة", image: { src: "/integrations/daftra.webp", className: "w-[62%]" }, line: "إرسال القيود مع مراكز التكلفة", category: "accounting", status: "file", color: "#FFFFFF", light: true, to: "/journal" },
+  { key: "daftra", name: "دفترة Daftra", mark: "دفترة", image: { src: "/integrations/daftra.webp", className: "w-[62%]" }, line: "إرسال القيود مباشرة", category: "accounting", status: "file", color: "#FFFFFF", light: true, to: "/journal" },
   { key: "zoho", name: "Zoho Books", mark: "Zoho Books", image: { src: "/integrations/zoho-books.webp", className: "w-[66%]" }, line: "إرسال القيود إلى دفاترك", category: "accounting", status: "file", color: "#FFFFFF", light: true, to: "/journal" },
   { key: "odoo", name: "Odoo", mark: "odoo", logos: ["odoo"], line: "قيود مع الحسابات التحليلية", category: "accounting", status: "file", color: "#714B67", to: "/journal" },
   { key: "quickbooks", name: "QuickBooks Online", mark: "QuickBooks", logos: ["quickbooks"], line: "قيود مع الفئة لكل فرع", category: "accounting", status: "file", color: "#2CA01C", to: "/journal" },
@@ -62,6 +64,8 @@ const INTEGRATIONS: Integration[] = [
   { key: "email", name: "البريد الإلكتروني", mark: "البريد", image: { src: "/integrations/gmail.webp", className: "w-[34%]" }, line: "تقارير مجدولة إلى بريدك", category: "messaging", status: "live", color: "#FFFFFF", light: true, to: "/report-schedules" },
   { key: "assistant", name: "Claude و ChatGPT", mark: "AI", logos: ["claude", "openai"], line: "اسأل عن تدقيقك من مساعدك", category: "ai", status: "live", color: "#1E2A28" },
 ];
+
+const isAccountingProvider = (key: string): key is AccountingProvider => (ACCOUNTING_PROVIDER_KEYS as string[]).includes(key);
 
 /** Wordmarks that fill only a thin band of their square, so they are drawn larger. */
 const WIDE_LOGOS: ReadonlySet<IntegrationLogo> = new Set(["odoo"]);
@@ -77,9 +81,13 @@ function IntegrationsPage() {
   const [category, setCategory] = useState<Category | "all">("all");
   const [query, setQuery] = useState("");
   const [assistantOpen, setAssistantOpen] = useState(false);
-  const [qoyodOpen, setQoyodOpen] = useState(false);
+  const [accountingOpen, setAccountingOpen] = useState<AccountingProvider | null>(null);
   const { data: status } = useIntegrationStatus();
-  const dialogs: Partial<Record<string, () => void>> = { assistant: () => setAssistantOpen(true), qoyod: () => setQoyodOpen(true) };
+  const dialogs: Partial<Record<string, () => void>> = {
+    assistant: () => setAssistantOpen(true),
+    qoyod: () => setAccountingOpen("qoyod"),
+    daftra: () => setAccountingOpen("daftra"),
+  };
 
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -132,7 +140,7 @@ function IntegrationsPage() {
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
           {shown.map((item) => (
             <li key={item.key}>
-              <IntegrationCard item={item} onOpen={dialogs[item.key]} connected={item.key === "qoyod" && Boolean(status?.qoyod)} />
+              <IntegrationCard item={item} onOpen={dialogs[item.key]} connected={isAccountingProvider(item.key) && Boolean(status?.[item.key])} />
             </li>
           ))}
         </ul>
@@ -147,7 +155,9 @@ function IntegrationsPage() {
         </Link>
       </p>
 
-      <QoyodDialog open={qoyodOpen} onOpenChange={setQoyodOpen} />
+      {ACCOUNTING_PROVIDER_KEYS.map((provider) => (
+        <AccountingDialog key={provider} provider={provider} open={accountingOpen === provider} onOpenChange={(open) => setAccountingOpen(open ? provider : null)} />
+      ))}
 
       <Dialog open={assistantOpen} onOpenChange={setAssistantOpen}>
         <DialogContent dir="rtl" className="sm:max-w-md">
