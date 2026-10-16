@@ -12,7 +12,7 @@ export interface DaftraJournal {
     description: string;
     currency_code: "SAR";
     draft: 0;
-    JournalTransaction: Array<{ journal_account_id: number; currency_debit: number; currency_credit: number; description?: string }>;
+    JournalTransaction: Array<{ journal_account_id: number | string; currency_debit: number; currency_credit: number; description?: string }>;
   };
 }
 

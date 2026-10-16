@@ -4,7 +4,7 @@
  */
 
 /** The accounting systems Tadqeeq can send entries to directly. */
-export type AccountingProvider = "qoyod" | "daftra";
+export type AccountingProvider = "qoyod" | "daftra" | "zoho";
 
 export interface SendableLine {
   /** The account code as saved in «حساباتي». */
@@ -26,7 +26,7 @@ export interface SendableEntry {
 
 /** An account in the connected system's chart: its own id and the code people see. */
 export interface ChartAccount {
-  id: number;
+  id: number | string;
   code: string;
 }
 
@@ -47,13 +47,13 @@ export function missingAccountCodes(entries: SendableEntry[], accounts: ChartAcc
 }
 
 /** The account id for a line's code; throws when the chart has no such code. */
-export function accountIdFor(line: SendableLine, idByCode: Map<string, number>, systemName: string): number {
+export function accountIdFor(line: SendableLine, idByCode: Map<string, number | string>, systemName: string): number | string {
   const id = idByCode.get(line.code.trim());
   if (id === undefined) throw new Error(`لا يوجد حساب برمز ${line.code || line.name} في ${systemName}.`);
   return id;
 }
 
-export function idsByCode(accounts: ChartAccount[]): Map<string, number> {
+export function idsByCode(accounts: ChartAccount[]): Map<string, number | string> {
   return new Map(accounts.map((account) => [account.code.trim(), account.id]));
 }
 

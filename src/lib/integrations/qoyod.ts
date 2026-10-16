@@ -11,8 +11,8 @@ export type QoyodAccount = ChartAccount;
 export interface QoyodJournalEntry {
   description: string;
   date: string;
-  debit_amounts: Array<{ account_id: number; amount: number; comment?: string }>;
-  credit_amounts: Array<{ account_id: number; amount: number; comment?: string }>;
+  debit_amounts: Array<{ account_id: number | string; amount: number; comment?: string }>;
+  credit_amounts: Array<{ account_id: number | string; amount: number; comment?: string }>;
 }
 
 /** The Qoyod payload for one entry; throws when its debits and credits do not match to the halala. */

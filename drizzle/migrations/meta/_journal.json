@@ -442,6 +442,13 @@
       "when": 1792806400000,
       "tag": "0062_daftra_connection",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1792892800000,
+      "tag": "0063_zoho_connection",
+      "breakpoints": true
     }
   ]
 }

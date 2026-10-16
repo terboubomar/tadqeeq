@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 /**
  * Encrypts third-party API keys before they are stored (AES-256-GCM). The key comes from the
@@ -28,4 +28,27 @@ export function openSecret(sealed: string, secret?: string): string {
   const decipher = createDecipheriv("aes-256-gcm", encryptionKey(secret), Buffer.from(iv, "base64url"));
   decipher.setAuthTag(Buffer.from(tag, "base64url"));
   return Buffer.concat([decipher.update(Buffer.from(body, "base64url")), decipher.final()]).toString("utf8");
+}
+
+/**
+ * A short-lived signed value (HMAC-SHA256 with the same server secret), used as the OAuth "state" so the code Zoho
+ * sends back can only finish a connection that this workspace and person started.
+ */
+export function signState(payload: Record<string, string | number>, secret?: string): string {
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const mac = createHmac("sha256", encryptionKey(secret)).update(body).digest("base64url");
+  return `${body}.${mac}`;
+}
+
+export function verifyState(state: string, secret?: string): Record<string, string | number> | null {
+  const [body, mac] = state.split(".");
+  if (!body || !mac) return null;
+  const expected = createHmac("sha256", encryptionKey(secret)).update(body).digest();
+  const given = Buffer.from(mac, "base64url");
+  if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
+  try {
+    return JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as Record<string, string | number>;
+  } catch {
+    return null;
+  }
 }

@@ -7,7 +7,7 @@ import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { connectAccounting, disconnectAccounting } from "@/lib/integrations/connections.functions";
+import { connectAccounting, disconnectAccounting, startZohoConnect } from "@/lib/integrations/connections.functions";
 import type { AccountingProvider } from "@/lib/integrations/sendable";
 
 import { ACCOUNTING_PROVIDERS } from "./providers";
@@ -33,8 +33,16 @@ export function AccountingDialog({
   const [site, setSite] = useState("");
   const ready = Boolean(apiKey.trim()) && (!config.needsSite || Boolean(site.trim()));
 
+  const signIn = useMutation({
+    mutationFn: () => startZohoConnect({ data: {} }),
+    onSuccess: ({ url }) => window.location.assign(url),
+    onError: (error) => toast.error(error instanceof Error ? error.message : "تعذّر بدء الربط."),
+  });
   const connect = useMutation({
-    mutationFn: () => connectAccounting({ data: { provider, apiKey, ...(config.needsSite ? { site } : {}) } }),
+    mutationFn: () => {
+      if (provider === "zoho") throw new Error("Zoho Books يُربط بتسجيل الدخول.");
+      return connectAccounting({ data: { provider, apiKey, ...(config.needsSite ? { site } : {}) } });
+    },
     onSuccess: (status) => {
       queryClient.setQueryData(INTEGRATION_STATUS_KEY, status);
       setApiKey("");
@@ -63,8 +71,8 @@ export function AccountingDialog({
         {connection ? (
           <div className="space-y-3">
             <p className="rounded-xl border border-border bg-surface-raised px-3 py-2.5 text-[13px]">
-              متصل · المفتاح ينتهي بـ <span className="num font-semibold">{connection.hint}</span>
-              {connection.site ? (
+              متصل · {config.hintLabel} <span className="num font-semibold">{connection.hint}</span>
+              {connection.site && !config.signIn ? (
                 <>
                   {" "}
                   · <span dir="ltr" className="num">{connection.site}</span>
@@ -82,6 +90,10 @@ export function AccountingDialog({
               ) : null}
             </div>
           </div>
+        ) : canManage && config.signIn ? (
+          <Button type="button" className="w-full rounded-full" disabled={signIn.isPending} onClick={() => signIn.mutate()}>
+            {signIn.isPending ? "جارٍ التحويل إلى Zoho…" : "اربط عبر Zoho"}
+          </Button>
         ) : canManage ? (
           <form
             className="space-y-3"
