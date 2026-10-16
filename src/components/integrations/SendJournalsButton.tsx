@@ -61,6 +61,7 @@ function SendJournalsButton({
     mutationFn: () => {
       const entries: SendableEntry[] = journals.map((journal, index) => ({
         key: journal.costCenterKey ?? journal.branch,
+        ...(journal.costCenter?.trim() ? { costCenter: journal.costCenter.trim() } : {}),
         reference: entryReference(journal.entry, firstNumber + index),
         description: journal.entry.description,
         date: (journal.entry.date ?? periodEnd ?? "").slice(0, 10),

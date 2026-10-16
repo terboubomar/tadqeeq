@@ -4,7 +4,7 @@
  */
 
 /** The accounting systems Tadqeeq can send entries to directly. */
-export type AccountingProvider = "qoyod" | "daftra" | "zoho";
+export type AccountingProvider = "qoyod" | "daftra" | "zoho" | "odoo";
 
 export interface SendableLine {
   /** The account code as saved in «حساباتي». */
@@ -22,6 +22,8 @@ export interface SendableEntry {
   description: string;
   date: string;
   lines: SendableLine[];
+  /** The branch's cost center, where the system can take it (Odoo's analytic account). */
+  costCenter?: string;
 }
 
 /** An account in the connected system's chart: its own id and the code people see. */

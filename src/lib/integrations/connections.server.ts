@@ -4,25 +4,26 @@ import { logEvent } from "../observability";
 import { requireWorkspacePermission } from "../server-auth.server";
 import { missingAccountCodes, round2, type AccountingProvider, type SendableEntry } from "./sendable";
 import { daftraAdapter } from "./daftra.server";
+import { odooAdapter } from "./odoo.server";
 import { SyncStop, type Connection, type ProviderAdapter } from "./http.server";
 import { qoyodAdapter } from "./qoyod.server";
 import { zohoAdapter } from "./zoho.server";
 import { openSecret, sealSecret } from "./secret-box.server";
 
 /**
- * Direct connections to accounting systems (migrations 0061-0063). The workspace pastes an API key (and, for Daftra,
+ * Direct connections to accounting systems (migrations 0061-0064). The workspace pastes an API key (and, for Daftra,
  * its site) or signs in (Zoho Books); the credentials are checked against the system, sealed and kept server-side. Entries are posted once per period
  * and branch (accounting_sync_entries).
  */
 export type { AccountingProvider };
 
-const ADAPTERS: Record<AccountingProvider, ProviderAdapter> = { qoyod: qoyodAdapter, daftra: daftraAdapter, zoho: zohoAdapter };
+const ADAPTERS: Record<AccountingProvider, ProviderAdapter> = { qoyod: qoyodAdapter, daftra: daftraAdapter, zoho: zohoAdapter, odoo: odooAdapter };
 const MANAGE = "contracts.manage" as const;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the generated types predate migrations 0061-0063
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the generated types predate migrations 0061-0064
 const db = () => supabaseAdmin as unknown as { from: (table: string) => any };
 
-const TABLES_MISSING = "الربط المباشر يحتاج تحديث قاعدة البيانات (الترحيل 0061 إلى 0063).";
+const TABLES_MISSING = "الربط المباشر يحتاج تحديث قاعدة البيانات (الترحيل 0061 إلى 0064).";
 function tableError(error: { code?: string; message: string }): Error {
   if (
     error.code === "42P01" ||
@@ -59,6 +60,7 @@ export interface IntegrationStatus {
   qoyod: ConnectionStatus | null;
   daftra: ConnectionStatus | null;
   zoho: ConnectionStatus | null;
+  odoo: ConnectionStatus | null;
 }
 
 interface ConnectionRow {
@@ -77,7 +79,7 @@ export async function getIntegrationStatusOnServer(): Promise<IntegrationStatus>
   }
   if (result.error) {
     // Before 0061 nothing is connected.
-    if (tableError(result.error).message === TABLES_MISSING) return { qoyod: null, daftra: null, zoho: null };
+    if (tableError(result.error).message === TABLES_MISSING) return { qoyod: null, daftra: null, zoho: null, odoo: null };
     throw tableError(result.error);
   }
   const rows = (result.data ?? []) as ConnectionRow[];
@@ -85,16 +87,18 @@ export async function getIntegrationStatusOnServer(): Promise<IntegrationStatus>
     const row = rows.find((candidate) => candidate.provider === provider);
     return row ? { hint: row.secret_hint, connectedAt: row.connected_at, site: row.site ?? null } : null;
   };
-  return { qoyod: status("qoyod"), daftra: status("daftra"), zoho: status("zoho") };
+  return { qoyod: status("qoyod"), daftra: status("daftra"), zoho: status("zoho"), odoo: status("odoo") };
 }
 
-export async function connectOnServer(provider: AccountingProvider, apiKey: string, site: string | null): Promise<IntegrationStatus> {
+/**
+ * Checks pasted credentials against the system, then saves them. `secret` is what the adapter reads back (the key, or
+ * a JSON of the key and its companions for Odoo); `hint` is the key's last characters.
+ */
+export async function connectOnServer(provider: AccountingProvider, secret: string, hint: string, site: string | null): Promise<IntegrationStatus> {
   const adapter = ADAPTERS[provider];
   const { workspaceId, actorUserId } = await requireWorkspacePermission(MANAGE);
-  const key = apiKey.trim();
-  if (key.length < 8) throw new Error(`ألصق مفتاح API كاملاً من إعدادات ${adapter.name}.`);
-  await adapter.accounts({ apiKey: key, site }); // proves the key works before anything is saved
-  return storeConnection({ workspaceId, actorUserId, provider, secret: key, hint: key.slice(-4), site });
+  await adapter.accounts({ apiKey: secret, site }); // proves the credentials work before anything is saved
+  return storeConnection({ workspaceId, actorUserId, provider, secret, hint, site });
 }
 
 /** Seals and saves (or replaces) a workspace's connection, once its credentials have been checked. */
@@ -162,6 +166,7 @@ export async function sendJournalsOnServer(provider: AccountingProvider, periodK
   if (missing.length) {
     throw new Error(`هذه الحسابات بلا رمز مطابق في ${adapter.name}: ${missing.slice(0, 6).join("، ")}. صحّح الرموز من «حساباتي» ثم أرسل.`);
   }
+  await adapter.precheck?.(connection, pending);
 
   for (const entry of pending) {
     try {

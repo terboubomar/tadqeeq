@@ -10,6 +10,8 @@ export interface ProviderAdapter {
   name: string;
   accounts(connection: Connection): Promise<ChartAccount[]>;
   post(connection: Connection, entry: SendableEntry, accounts: ChartAccount[]): Promise<{ externalId: string; total: number }>;
+  /** Checks that apply to the whole send (e.g. cost centers the system does not have); throws to stop before posting. */
+  precheck?(connection: Connection, entries: SendableEntry[]): Promise<void>;
 }
 
 /** An error that will fail every remaining entry the same way (bad key, system unreachable, rate limit). */

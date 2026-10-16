@@ -31,7 +31,9 @@ export function AccountingDialog({
   const connection = data?.[provider] ?? null;
   const [apiKey, setApiKey] = useState("");
   const [site, setSite] = useState("");
-  const ready = Boolean(apiKey.trim()) && (!config.needsSite || Boolean(site.trim()));
+  const [database, setDatabase] = useState("");
+  const [login, setLogin] = useState("");
+  const ready = Boolean(apiKey.trim()) && (!config.needsSite || Boolean(site.trim())) && (!config.needsLogin || Boolean(login.trim()));
 
   const signIn = useMutation({
     mutationFn: () => startZohoConnect({ data: {} }),
@@ -41,12 +43,16 @@ export function AccountingDialog({
   const connect = useMutation({
     mutationFn: () => {
       if (provider === "zoho") throw new Error("Zoho Books يُربط بتسجيل الدخول.");
-      return connectAccounting({ data: { provider, apiKey, ...(config.needsSite ? { site } : {}) } });
+      return connectAccounting({
+        data: { provider, apiKey, ...(config.needsSite ? { site } : {}), ...(config.needsLogin ? { database, login } : {}) },
+      });
     },
     onSuccess: (status) => {
       queryClient.setQueryData(INTEGRATION_STATUS_KEY, status);
       setApiKey("");
       setSite("");
+      setDatabase("");
+      setLogin("");
       toast.success(`رُبط ${config.name}.`);
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "تعذّر الربط."),
@@ -108,10 +114,30 @@ export function AccountingDialog({
                 autoComplete="off"
                 inputMode="url"
                 aria-label={`عنوان موقعك في ${config.name}`}
-                placeholder="mystore.daftra.com"
+                placeholder={config.sitePlaceholder}
                 value={site}
                 onChange={(event) => setSite(event.target.value)}
               />
+            ) : null}
+            {config.needsLogin ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  dir="ltr"
+                  autoComplete="off"
+                  aria-label={`اسم الدخول إلى ${config.name}`}
+                  placeholder="البريد أو اسم الدخول"
+                  value={login}
+                  onChange={(event) => setLogin(event.target.value)}
+                />
+                <Input
+                  dir="ltr"
+                  autoComplete="off"
+                  aria-label={`قاعدة بيانات ${config.name}`}
+                  placeholder="قاعدة البيانات (اختياري)"
+                  value={database}
+                  onChange={(event) => setDatabase(event.target.value)}
+                />
+              </div>
             ) : null}
             <Input
               type="password"

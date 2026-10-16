@@ -3,20 +3,38 @@ import { z } from "zod";
 
 import { connectOnServer, disconnectOnServer, getIntegrationStatusOnServer, sendJournalsOnServer } from "./connections.server";
 import { daftraSite } from "./daftra";
+import { odooDatabase, odooSite } from "./odoo";
 import { finishZohoConnectOnServer, startZohoConnectOnServer } from "./zoho-connect.server";
 
-const provider = z.enum(["qoyod", "daftra", "zoho"]);
-const keyProvider = z.enum(["qoyod", "daftra"]);
+const provider = z.enum(["qoyod", "daftra", "zoho", "odoo"]);
+const keyProvider = z.enum(["qoyod", "daftra", "odoo"]);
 
 export const getIntegrationStatus = createServerFn({ method: "POST" })
   .validator(z.object({}))
   .handler(async () => getIntegrationStatusOnServer());
 
 export const connectAccounting = createServerFn({ method: "POST" })
-  .validator(z.object({ provider: keyProvider, apiKey: z.string().min(8).max(500), site: z.string().max(300).optional() }))
-  .handler(async ({ data }) =>
-    connectOnServer(data.provider, data.apiKey, data.provider === "daftra" ? daftraSite(data.site ?? "") : null),
-  );
+  .validator(
+    z.object({
+      provider: keyProvider,
+      apiKey: z.string().min(8).max(500),
+      site: z.string().max(300).optional(),
+      database: z.string().max(100).optional(),
+      login: z.string().max(200).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const key = data.apiKey.trim();
+    if (key.length < 8) throw new Error("ألصق مفتاح API كاملاً.");
+    if (data.provider === "odoo") {
+      const site = odooSite(data.site ?? "");
+      const login = (data.login ?? "").trim();
+      if (!login) throw new Error("اكتب اسم الدخول إلى Odoo (عادة بريدك).");
+      const secret = JSON.stringify({ apiKey: key, database: odooDatabase(site, data.database), login });
+      return connectOnServer("odoo", secret, key.slice(-4), site);
+    }
+    return connectOnServer(data.provider, key, key.slice(-4), data.provider === "daftra" ? daftraSite(data.site ?? "") : null);
+  });
 
 export const disconnectAccounting = createServerFn({ method: "POST" })
   .validator(z.object({ provider }))
@@ -36,6 +54,7 @@ export const sendJournals = createServerFn({ method: "POST" })
             reference: z.string().min(1).max(80),
             description: z.string().min(1).max(300),
             date: z.string().regex(/^\d{4}-\d{2}-\d{2}/),
+            costCenter: z.string().max(100).optional(),
             lines: z
               .array(z.object({ code: z.string().max(40), name: z.string().max(160), debit: amount, credit: amount, memo: z.string().max(500) }))
               .min(2)
