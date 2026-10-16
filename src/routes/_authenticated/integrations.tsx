@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Copy, Search } from "lucide-react";
+import { Copy, type LucideIcon, Mail, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { copyText } from "@/components/compensation/queries";
+import { IntegrationLogoMark, type IntegrationLogo } from "@/components/integrations/IntegrationLogo";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ActionBar, ActionDivider, PageHeader } from "@/components/workspace/PageKit";
@@ -25,8 +26,12 @@ type Status = "live" | "file" | "soon";
 interface Integration {
   key: string;
   name: string;
-  /** The word shown on the tile: the product's name in plain text, no logo artwork. */
+  /** The word shown on the tile when there is no logo. */
   mark: string;
+  /** Brand marks shown on the tile instead of the word. */
+  logos?: IntegrationLogo[];
+  /** An icon instead, for Tadqeeq's own channels. */
+  icon?: LucideIcon;
   line: string;
   category: Category;
   status: Status;
@@ -48,13 +53,16 @@ const INTEGRATIONS: Integration[] = [
   { key: "foodics", name: "Foodics", mark: "foodics", line: "مطابقة طلبات نقطة البيع مع المنصات", category: "pos", status: "soon", color: "#4B0EA1" },
   { key: "qoyod", name: "قيود Qoyod", mark: "قيود", line: "إرسال القيود مباشرة كمسودة", category: "accounting", status: "file", color: "#0E7C86", to: "/journal" },
   { key: "daftra", name: "دفترة Daftra", mark: "دفترة", line: "إرسال القيود مع مراكز التكلفة", category: "accounting", status: "file", color: "#1D5FD1", to: "/journal" },
-  { key: "zoho", name: "Zoho Books", mark: "Zoho Books", line: "إرسال القيود إلى دفاترك", category: "accounting", status: "file", color: "#D6342B", to: "/journal" },
-  { key: "odoo", name: "Odoo", mark: "odoo", line: "قيود مع الحسابات التحليلية", category: "accounting", status: "file", color: "#714B67", to: "/journal" },
-  { key: "quickbooks", name: "QuickBooks Online", mark: "QuickBooks", line: "قيود مع الفئة لكل فرع", category: "accounting", status: "file", color: "#2C8A1C", to: "/journal" },
-  { key: "telegram", name: "Telegram", mark: "Telegram", line: "أدلة الطلبات من قروبات الفروع", category: "messaging", status: "live", color: "#1F8FCB", to: "/compensation/branches" },
-  { key: "email", name: "البريد الإلكتروني", mark: "البريد", line: "تقارير مجدولة إلى بريدك", category: "messaging", status: "live", color: "#3A4250", to: "/report-schedules" },
-  { key: "assistant", name: "Claude و ChatGPT", mark: "AI", line: "اسأل عن تدقيقك من مساعدك", category: "ai", status: "live", color: "#1E2A28" },
+  { key: "zoho", name: "Zoho Books", mark: "Zoho Books", logos: ["zoho"], line: "إرسال القيود إلى دفاترك", category: "accounting", status: "file", color: "#E42527", to: "/journal" },
+  { key: "odoo", name: "Odoo", mark: "odoo", logos: ["odoo"], line: "قيود مع الحسابات التحليلية", category: "accounting", status: "file", color: "#714B67", to: "/journal" },
+  { key: "quickbooks", name: "QuickBooks Online", mark: "QuickBooks", logos: ["quickbooks"], line: "قيود مع الفئة لكل فرع", category: "accounting", status: "file", color: "#2CA01C", to: "/journal" },
+  { key: "telegram", name: "Telegram", mark: "Telegram", logos: ["telegram"], line: "أدلة الطلبات من قروبات الفروع", category: "messaging", status: "live", color: "#229ED9", to: "/compensation/branches" },
+  { key: "email", name: "البريد الإلكتروني", mark: "البريد", icon: Mail, line: "تقارير مجدولة إلى بريدك", category: "messaging", status: "live", color: "#3A4250", to: "/report-schedules" },
+  { key: "assistant", name: "Claude و ChatGPT", mark: "AI", logos: ["claude", "openai"], line: "اسأل عن تدقيقك من مساعدك", category: "ai", status: "live", color: "#1E2A28" },
 ];
+
+/** Wordmarks that fill only a thin band of their square, so they are drawn larger. */
+const WIDE_LOGOS: ReadonlySet<IntegrationLogo> = new Set(["zoho", "odoo"]);
 
 const STATUS_PILL: Record<Status, { label: string; className: string }> = {
   live: { label: "مفعّل", className: "bg-success-soft text-success" },
@@ -167,9 +175,19 @@ function IntegrationCard({ item, onOpenAssistant }: { item: Integration; onOpenA
         className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl text-white"
         style={{ backgroundColor: item.color }}
       >
-        <span className="font-display text-[22px] font-extrabold tracking-[-0.01em] sm:text-[26px]" dir="auto">
-          {item.mark}
-        </span>
+        {item.icon ? (
+          <item.icon className="size-11 sm:size-12" strokeWidth={1.75} aria-hidden />
+        ) : item.logos?.length ? (
+          <span className="flex items-center gap-4">
+            {item.logos.map((logo) => (
+              <IntegrationLogoMark key={logo} logo={logo} className={WIDE_LOGOS.has(logo) ? "size-24 sm:size-28" : "size-11 sm:size-12"} />
+            ))}
+          </span>
+        ) : (
+          <span className="font-display text-[22px] font-extrabold tracking-[-0.01em] sm:text-[26px]" dir="auto">
+            {item.mark}
+          </span>
+        )}
         <span className="absolute inset-x-0 bottom-2 text-center text-[11px] font-semibold text-white/80">{CATEGORY_LABEL[item.category]}</span>
         {item.status === "soon" ? <span className="absolute inset-0 bg-background/10" aria-hidden /> : null}
       </span>
