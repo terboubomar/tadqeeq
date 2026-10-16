@@ -36,7 +36,6 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as AuthenticatedAiRouteImport } from './routes/_authenticated/ai'
 import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
 import { Route as AuthenticatedBranchMappingRouteImport } from './routes/_authenticated/branch-mapping'
-import { Route as AuthenticatedIntegrationsRouteImport } from './routes/_authenticated/integrations'
 import { Route as AuthenticatedBranchesRouteImport } from './routes/_authenticated/branches'
 import { Route as AuthenticatedBreakdownRouteImport } from './routes/_authenticated/breakdown'
 import { Route as AuthenticatedChargesRouteImport } from './routes/_authenticated/charges'
@@ -45,6 +44,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedExceptionsRouteImport } from './routes/_authenticated/exceptions'
 import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
+import { Route as AuthenticatedIntegrationsRouteImport } from './routes/_authenticated/integrations'
 import { Route as AuthenticatedInvoiceCheckRouteImport } from './routes/_authenticated/invoice-check'
 import { Route as AuthenticatedJournalRouteImport } from './routes/_authenticated/journal'
 import { Route as AuthenticatedOperationsRouteImport } from './routes/_authenticated/operations'
@@ -230,12 +230,6 @@ const AuthenticatedBranchMappingRoute =
     path: '/branch-mapping',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedIntegrationsRoute =
-  AuthenticatedIntegrationsRouteImport.update({
-    id: '/integrations',
-    path: '/integrations',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedBranchesRoute = AuthenticatedBranchesRouteImport.update({
   id: '/branches',
   path: '/branches',
@@ -276,6 +270,12 @@ const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
   path: '/import',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedIntegrationsRoute =
+  AuthenticatedIntegrationsRouteImport.update({
+    id: '/integrations',
+    path: '/integrations',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedInvoiceCheckRoute =
   AuthenticatedInvoiceCheckRouteImport.update({
     id: '/invoice-check',
@@ -556,7 +556,6 @@ export interface FileRoutesByFullPath {
   '/ai': typeof AuthenticatedAiRoute
   '/ask': typeof AuthenticatedAskRoute
   '/branch-mapping': typeof AuthenticatedBranchMappingRoute
-  '/integrations': typeof AuthenticatedIntegrationsRoute
   '/branches': typeof AuthenticatedBranchesRoute
   '/breakdown': typeof AuthenticatedBreakdownRoute
   '/charges': typeof AuthenticatedChargesRoute
@@ -565,6 +564,7 @@ export interface FileRoutesByFullPath {
   '/exceptions': typeof AuthenticatedExceptionsRoute
   '/history': typeof AuthenticatedHistoryRoute
   '/import': typeof AuthenticatedImportRoute
+  '/integrations': typeof AuthenticatedIntegrationsRoute
   '/invoice-check': typeof AuthenticatedInvoiceCheckRoute
   '/journal': typeof AuthenticatedJournalRoute
   '/operations': typeof AuthenticatedOperationsRoute
@@ -639,7 +639,6 @@ export interface FileRoutesByTo {
   '/ai': typeof AuthenticatedAiRoute
   '/ask': typeof AuthenticatedAskRoute
   '/branch-mapping': typeof AuthenticatedBranchMappingRoute
-  '/integrations': typeof AuthenticatedIntegrationsRoute
   '/branches': typeof AuthenticatedBranchesRoute
   '/breakdown': typeof AuthenticatedBreakdownRoute
   '/charges': typeof AuthenticatedChargesRoute
@@ -648,6 +647,7 @@ export interface FileRoutesByTo {
   '/exceptions': typeof AuthenticatedExceptionsRoute
   '/history': typeof AuthenticatedHistoryRoute
   '/import': typeof AuthenticatedImportRoute
+  '/integrations': typeof AuthenticatedIntegrationsRoute
   '/invoice-check': typeof AuthenticatedInvoiceCheckRoute
   '/journal': typeof AuthenticatedJournalRoute
   '/operations': typeof AuthenticatedOperationsRoute
@@ -726,7 +726,6 @@ export interface FileRoutesById {
   '/_authenticated/ai': typeof AuthenticatedAiRoute
   '/_authenticated/ask': typeof AuthenticatedAskRoute
   '/_authenticated/branch-mapping': typeof AuthenticatedBranchMappingRoute
-  '/_authenticated/integrations': typeof AuthenticatedIntegrationsRoute
   '/_authenticated/branches': typeof AuthenticatedBranchesRoute
   '/_authenticated/breakdown': typeof AuthenticatedBreakdownRoute
   '/_authenticated/charges': typeof AuthenticatedChargesRoute
@@ -735,6 +734,7 @@ export interface FileRoutesById {
   '/_authenticated/exceptions': typeof AuthenticatedExceptionsRoute
   '/_authenticated/history': typeof AuthenticatedHistoryRoute
   '/_authenticated/import': typeof AuthenticatedImportRoute
+  '/_authenticated/integrations': typeof AuthenticatedIntegrationsRoute
   '/_authenticated/invoice-check': typeof AuthenticatedInvoiceCheckRoute
   '/_authenticated/journal': typeof AuthenticatedJournalRoute
   '/_authenticated/operations': typeof AuthenticatedOperationsRoute
@@ -813,7 +813,6 @@ export interface FileRouteTypes {
     | '/ai'
     | '/ask'
     | '/branch-mapping'
-    | '/integrations'
     | '/branches'
     | '/breakdown'
     | '/charges'
@@ -822,6 +821,7 @@ export interface FileRouteTypes {
     | '/exceptions'
     | '/history'
     | '/import'
+    | '/integrations'
     | '/invoice-check'
     | '/journal'
     | '/operations'
@@ -896,7 +896,6 @@ export interface FileRouteTypes {
     | '/ai'
     | '/ask'
     | '/branch-mapping'
-    | '/integrations'
     | '/branches'
     | '/breakdown'
     | '/charges'
@@ -905,6 +904,7 @@ export interface FileRouteTypes {
     | '/exceptions'
     | '/history'
     | '/import'
+    | '/integrations'
     | '/invoice-check'
     | '/journal'
     | '/operations'
@@ -982,7 +982,6 @@ export interface FileRouteTypes {
     | '/_authenticated/ai'
     | '/_authenticated/ask'
     | '/_authenticated/branch-mapping'
-    | '/_authenticated/integrations'
     | '/_authenticated/branches'
     | '/_authenticated/breakdown'
     | '/_authenticated/charges'
@@ -991,6 +990,7 @@ export interface FileRouteTypes {
     | '/_authenticated/exceptions'
     | '/_authenticated/history'
     | '/_authenticated/import'
+    | '/_authenticated/integrations'
     | '/_authenticated/invoice-check'
     | '/_authenticated/journal'
     | '/_authenticated/operations'
@@ -1279,13 +1279,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBranchMappingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/integrations': {
-      id: '/_authenticated/integrations'
-      path: '/integrations'
-      fullPath: '/integrations'
-      preLoaderRoute: typeof AuthenticatedIntegrationsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/branches': {
       id: '/_authenticated/branches'
       path: '/branches'
@@ -1340,6 +1333,13 @@ declare module '@tanstack/react-router' {
       path: '/import'
       fullPath: '/import'
       preLoaderRoute: typeof AuthenticatedImportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/integrations': {
+      id: '/_authenticated/integrations'
+      path: '/integrations'
+      fullPath: '/integrations'
+      preLoaderRoute: typeof AuthenticatedIntegrationsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/invoice-check': {
@@ -1685,7 +1685,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAiRoute: typeof AuthenticatedAiRoute
   AuthenticatedAskRoute: typeof AuthenticatedAskRoute
   AuthenticatedBranchMappingRoute: typeof AuthenticatedBranchMappingRoute
-  AuthenticatedIntegrationsRoute: typeof AuthenticatedIntegrationsRoute
   AuthenticatedBranchesRoute: typeof AuthenticatedBranchesRoute
   AuthenticatedBreakdownRoute: typeof AuthenticatedBreakdownRoute
   AuthenticatedChargesRoute: typeof AuthenticatedChargesRoute
@@ -1694,6 +1693,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedExceptionsRoute: typeof AuthenticatedExceptionsRoute
   AuthenticatedHistoryRoute: typeof AuthenticatedHistoryRoute
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
+  AuthenticatedIntegrationsRoute: typeof AuthenticatedIntegrationsRoute
   AuthenticatedInvoiceCheckRoute: typeof AuthenticatedInvoiceCheckRoute
   AuthenticatedJournalRoute: typeof AuthenticatedJournalRoute
   AuthenticatedOperationsRoute: typeof AuthenticatedOperationsRoute
@@ -1711,7 +1711,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAiRoute: AuthenticatedAiRoute,
   AuthenticatedAskRoute: AuthenticatedAskRoute,
   AuthenticatedBranchMappingRoute: AuthenticatedBranchMappingRoute,
-  AuthenticatedIntegrationsRoute: AuthenticatedIntegrationsRoute,
   AuthenticatedBranchesRoute: AuthenticatedBranchesRoute,
   AuthenticatedBreakdownRoute: AuthenticatedBreakdownRoute,
   AuthenticatedChargesRoute: AuthenticatedChargesRoute,
@@ -1720,6 +1719,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedExceptionsRoute: AuthenticatedExceptionsRoute,
   AuthenticatedHistoryRoute: AuthenticatedHistoryRoute,
   AuthenticatedImportRoute: AuthenticatedImportRoute,
+  AuthenticatedIntegrationsRoute: AuthenticatedIntegrationsRoute,
   AuthenticatedInvoiceCheckRoute: AuthenticatedInvoiceCheckRoute,
   AuthenticatedJournalRoute: AuthenticatedJournalRoute,
   AuthenticatedOperationsRoute: AuthenticatedOperationsRoute,
