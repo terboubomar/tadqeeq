@@ -43,7 +43,7 @@ export type PublicPage = {
 
 /** Every page that should be indexed. Adding a public page here adds it to sitemap.xml and llms.txt. */
 export const PUBLIC_PAGES: PublicPage[] = [
-  { path: "/", title: "Home", lastmod: "2026-10-14", changefreq: "weekly", priority: 1 },
+  { path: "/", title: "Home", lastmod: "2026-10-17", changefreq: "weekly", priority: 1 },
   { path: "/guides", title: "أدلة مراجعة فواتير تطبيقات التوصيل", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.7 },
   { path: "/guides/keeta-invoice", title: "كيف تراجع فاتورة كيتا؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
   { path: "/guides/hungerstation-compensation", title: "كيف تعترض على تعويضات هنقرستيشن؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
@@ -57,6 +57,15 @@ export const PUBLIC_PAGES: PublicPage[] = [
   { path: "/products/promotions-roi", title: "عائد · عائد العروض والإعلانات", lastmod: "2026-10-05", changefreq: "monthly", priority: 0.7 },
   { path: "/products/smart-alerts", title: "رقيب · المراقب الذكي", lastmod: "2026-10-05", changefreq: "monthly", priority: 0.7 },
   { path: "/products/daily-tracking", title: "نَبْض · المتابعة اليومية", lastmod: "2026-10-14", changefreq: "monthly", priority: 0.7 },
+  { path: "/marketplace", title: "سوق التكاملات", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.7 },
+  { path: "/marketplace/qoyod", title: "ربط تدقيق مع قيود", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.6 },
+  { path: "/marketplace/daftra", title: "ربط تدقيق مع دفترة", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.6 },
+  { path: "/marketplace/zoho-books", title: "ربط تدقيق مع Zoho Books", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.6 },
+  { path: "/marketplace/odoo", title: "ربط تدقيق مع Odoo", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.6 },
+  { path: "/marketplace/quickbooks", title: "ربط تدقيق مع QuickBooks Online", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.6 },
+  { path: "/marketplace/telegram", title: "ربط تيليجرام بتدقيق", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.6 },
+  { path: "/marketplace/email-reports", title: "تقارير تدقيق بالبريد الإلكتروني", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.6 },
+  { path: "/marketplace/claude-chatgpt", title: "ربط Claude وChatGPT بتدقيق", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.6 },
   { path: "/pricing", title: "الخطط والأسعار", lastmod: "2026-10-14", changefreq: "monthly", priority: 0.8 },
   { path: "/contact", title: "تواصل معنا", lastmod: "2026-10-05", changefreq: "yearly", priority: 0.5 },
   { path: "/privacy", title: "سياسة الخصوصية", lastmod: "2026-10-17", changefreq: "yearly", priority: 0.3 },
