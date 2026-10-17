@@ -120,6 +120,7 @@ const FOOTER_GROUPS = [
       ["/guides/keeta-invoice", "مراجعة فاتورة كيتا"],
       ["/guides/hungerstation-compensation", "تعويضات هنقرستيشن"],
       ["/guides/jahez-commission", "عمولة جاهز"],
+      ["/guides/accounting-integrations", "ربط نظامك المحاسبي"],
       ["/guides", "كل الأدلة"],
     ],
   },
