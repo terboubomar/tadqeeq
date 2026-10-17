@@ -7,8 +7,8 @@ from each card on «التكاملات».
 | System | How a client connects | Cost center | Tadqeeq reference goes to |
 |---|---|---|---|
 | Qoyod | Pastes an API key | Not sent | End of the description |
-| Daftra | Pastes site address + API key | Not sent | End of the description |
-| Zoho Books | Signs in with Zoho (OAuth) | Not sent | `reference_number` |
+| Daftra | Pastes site address + API key | Not sent (Daftra's journal API has no cost center field) | End of the description |
+| Zoho Books | Signs in with Zoho (OAuth) | Reporting tag option with the same name (any active tag) | `reference_number` |
 | Odoo (16+) | Pastes address, login, database (optional on Odoo Online), API key | Analytic account (code or id) | `ref` |
 | QuickBooks Online | Signs in with Intuit (OAuth) | Class | `DocNumber` |
 
@@ -51,6 +51,10 @@ All are additive and re-runnable. Files are in `drizzle/migrations/`.
 
 Scopes requested: `ZohoBooks.accountants.READ`, `ZohoBooks.accountants.CREATE`, `ZohoBooks.settings.READ`. The
 client's **default** Zoho Books organization is used.
+
+Cost centers: Zoho Books has no cost center field, so a branch's cost center is matched (case-insensitive) to an option
+name of any active reporting tag (`GET /reportingtags`, `GET /reportingtags/options`, settings.READ scope) and sent as
+`tags` on every journal line. The tag must be enabled for Journals in Zoho Books.
 
 ### QuickBooks Online
 1. https://developer.intuit.com → app → scope **Accounting** (`com.intuit.quickbooks.accounting`).
@@ -96,7 +100,7 @@ Notes worth knowing:
 | «ربط Zoho Books غير مفعّل بعد…» / «ربط QuickBooks غير مفعّل بعد…» | Client ID/Secret secrets missing | Add them, refresh |
 | «الربط المباشر يحتاج تحديث قاعدة البيانات…» | A migration above was not run | Run the missing migration |
 | «هذه الحسابات بلا رمز مطابق في …: 1، 2…» | «دليل الحسابات» codes not in the client's chart | Match the codes (QuickBooks: enable account numbers, or leave the code empty to match by name) |
-| «مراكز التكلفة هذه بلا …» | Branch cost center has no analytic account (Odoo) or Class (QuickBooks) | Create it, or clear the branch's cost center |
+| «مراكز التكلفة هذه بلا …» | Branch cost center has no analytic account (Odoo), Class (QuickBooks) or reporting tag option (Zoho Books) | Create it, or clear the branch's cost center |
 | «لا توجد مؤسسة في Zoho Books لهذا الحساب» | Signed in with a Zoho login that has no Books organization | Sign in with the login that owns the books |
 | «مفتاح QuickBooks غير صالح…» right after Intuit sign-in | Keys and environment don't match (e.g. Development keys without `QUICKBOOKS_ENVIRONMENT=sandbox`) | Fix the secrets |
 | Intuit page: "redirect_uri … not valid" | Redirect URI not on the tab (Development/Production) of the keys in use | Add `https://tadqeeq.app/integrations` there |
