@@ -257,6 +257,43 @@ describe("daily Operations parsers", () => {
     expect(first.adjustments[0]?.fingerprint).toBe(second.adjustments[0]?.fingerprint);
   });
 
+  test("Jahez compensations: month-first dates with direction marks, read inside the file's period", async () => {
+    const rlm = "\u200f";
+    const file = (period: string, created: string) =>
+      new File(
+        [
+          // Jahez's CSV starts with a UTF-8 byte order mark.
+          "\ufeff" +
+          [
+            "Restaurant,Date,Transaction_Type,ReasonId,OrderId,BranchId,Sequence_Number,Restaurant_Total_Transactions,Restaurant_Total_Debit_Amount,Restaurant_Total_Credit_Amount",
+            `Past - باست,${period},All,All,All,All,0,1,4,0`,
+            ",,,,,,,,,",
+            ",,,,,,,,,",
+            ",,,,,,,,,",
+            "#,Branch,Order #,Transaction Type,Reason,Creation Date,Amount,Free,Comments,Missing Item Name",
+            `1,Ar Rayyan,7649400097,debit,Missing Item(s),${created},4,false,On restaurant Wrong itmes,كوكا كولا`,
+          ].join("\n"),
+        ],
+        "Restaurant_Past_20261017.csv",
+        { type: "text/csv" },
+      );
+    const day16 = await parseOperationFile(
+      file(`16${rlm}/10${rlm}/2026 - 16${rlm}/10${rlm}/2026`, `10${rlm}/16${rlm}/2026 0:28`),
+      "jahez_adjustments",
+    );
+    expect(day16.businessDate).toBe("2026-10-16");
+    expect(day16.adjustments[0]?.businessDate).toBe("2026-10-16");
+    // 10/5 could be 10 May or 5 October; the file's period says 5 October.
+    const day5 = await parseOperationFile(
+      file(`5${rlm}/10${rlm}/2026 - 5${rlm}/10${rlm}/2026`, `10${rlm}/5${rlm}/2026 13:12`),
+      "jahez_adjustments",
+    );
+    expect(day5.adjustments[0]?.businessDate).toBe("2026-10-05");
+    // Without a period, Jahez's month-first order wins.
+    const noPeriod = await parseOperationFile(file("All", `10${rlm}/5${rlm}/2026 13:12`), "jahez_adjustments");
+    expect(noPeriod.adjustments[0]?.businessDate).toBe("2026-10-05");
+  });
+
   test("HungerStation: cancelled orders are not sales; the payout is Estimated earnings", async () => {
     const file = new File(
       [
