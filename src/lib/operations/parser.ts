@@ -56,6 +56,9 @@ function round(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
+/** Invisible direction marks some exports put inside dates (Jahez writes 10‏/16‏/2026 with a right-to-left mark before each slash). */
+const BIDI_MARKS = /[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+
 function isoDate(value: Cell): string {
   if (value instanceof Date && !Number.isNaN(value.valueOf())) {
     const year = value.getFullYear();
@@ -63,7 +66,7 @@ function isoDate(value: Cell): string {
     const day = String(value.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
-  const text = clean(value);
+  const text = clean(value).replace(BIDI_MARKS, "");
   const compact = text.match(/^(\d{4})([01]\d)([0-3]\d)(?:\s|$)/);
   if (compact) return `${compact[1]}-${compact[2]}-${compact[3]}`;
   const iso = text.match(/^(\d{4})[-/]([01]?\d)[-/]([0-3]?\d)/);
@@ -550,7 +553,45 @@ function parseJahezOrders(matrix: Matrix): ParsedOperationImport {
   };
 }
 
+const validYmd = (year: number, month: number, day: number): string | null => {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+};
+
+/** The period in a Jahez compensations file's summary row ("16/10/2026 - 16/10/2026", day first); null when absent. */
+function jahezPeriod(matrix: Matrix): { from: string; to: string } | null {
+  const headerIndex = matrix.findIndex((row) => clean(row[0]) === "Restaurant" && row.map(clean).includes("Date"));
+  if (headerIndex < 0) return null;
+  const column = matrix[headerIndex]!.map(clean).indexOf("Date");
+  const text = clean(matrix[headerIndex + 1]?.[column]).replace(BIDI_MARKS, "");
+  const match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!match) return null;
+  const [d1, m1, y1, d2, m2, y2] = match.slice(1).map(Number) as [number, number, number, number, number, number];
+  const from = validYmd(y1, m1, d1);
+  const to = validYmd(y2, m2, d2);
+  return from && to && from <= to ? { from, to } : null;
+}
+
+/**
+ * A Jahez «Creation Date». Jahez writes it month first (10/16/2026 0:28); when the cell is text, the file's own period
+ * decides which way round an ambiguous date like 10/5/2026 is, and without a period month-first wins.
+ */
+function jahezCreationDate(value: Cell, period: { from: string; to: string } | null): string {
+  if (value instanceof Date) return isoDate(value);
+  const text = clean(value).replace(BIDI_MARKS, "");
+  const match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s|$)/);
+  if (!match) return isoDate(text);
+  const [first, second, year] = match.slice(1).map(Number) as [number, number, number];
+  const candidates = [validYmd(year, first, second), validYmd(year, second, first)].filter((date): date is string => date !== null);
+  const inPeriod = period ? candidates.find((date) => date >= period.from && date <= period.to) : undefined;
+  const chosen = inPeriod ?? candidates[0];
+  if (!chosen) throw new Error(`تاريخ غير صالح في ملف العمليات: ${text || "فارغ"}`);
+  return chosen;
+}
+
 function parseJahezAdjustments(matrix: Matrix): ParsedOperationImport {
+  const period = jahezPeriod(matrix);
   const { records } = headerTable(matrix, [
     "#",
     "Order #",
@@ -564,7 +605,7 @@ function parseJahezAdjustments(matrix: Matrix): ParsedOperationImport {
     if (!orderId) throw new Error("يوجد تعويض جاهز بدون Order #.");
     if (transactionType !== "debit" && transactionType !== "credit")
       throw new Error(`نوع حركة جاهز غير مدعوم: ${transactionType}`);
-    const businessDate = isoDate(row["Creation Date"]);
+    const businessDate = jahezCreationDate(row["Creation Date"], period);
     const amountValue = Math.abs(money(row["Amount"]));
     const reason = clean(row["Reason"]) || null;
     const fingerprint = createHash("sha256")
