@@ -24,12 +24,16 @@ export interface SendableEntry {
   lines: SendableLine[];
   /** The branch's cost center, where the system can take it (Odoo's analytic account). */
   costCenter?: string;
+  /** The delivery platform the entry is for; QuickBooks names it on receivable and payable lines. */
+  platform?: "hungerstation" | "keeta" | "jahez";
 }
 
 /** An account in the connected system's chart: its own id and the code people see. */
 export interface ChartAccount {
   id: number | string;
   code: string;
+  /** The system's own account type, where it matters (QuickBooks: "Accounts Receivable", "Accounts Payable"). */
+  type?: string;
 }
 
 export const round2 = (value: number) => Math.round(value * 100) / 100;

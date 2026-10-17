@@ -25,6 +25,7 @@ import { useIntegrationStatus } from "./use-integration-status";
 
 interface SendProps {
   periodKey: string;
+  platform: "hungerstation" | "keeta" | "jahez";
   periodEnd: string | null;
   journals: BranchJournal[];
   firstNumber: number;
@@ -49,6 +50,7 @@ export function SendJournalsButtons(props: SendProps) {
 function SendJournalsButton({
   provider,
   periodKey,
+  platform,
   periodEnd,
   journals,
   firstNumber,
@@ -61,6 +63,7 @@ function SendJournalsButton({
     mutationFn: () => {
       const entries: SendableEntry[] = journals.map((journal, index) => ({
         key: journal.costCenterKey ?? journal.branch,
+        platform,
         ...(journal.costCenter?.trim() ? { costCenter: journal.costCenter.trim() } : {}),
         reference: entryReference(journal.entry, firstNumber + index),
         description: journal.entry.description,

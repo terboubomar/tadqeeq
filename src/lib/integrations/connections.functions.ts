@@ -56,6 +56,7 @@ export const sendJournals = createServerFn({ method: "POST" })
             description: z.string().min(1).max(300),
             date: z.string().regex(/^\d{4}-\d{2}-\d{2}/),
             costCenter: z.string().max(100).optional(),
+            platform: z.enum(["hungerstation", "keeta", "jahez"]).optional(),
             lines: z
               .array(z.object({ code: z.string().max(40), name: z.string().max(160), debit: amount, credit: amount, memo: z.string().max(500) }))
               .min(2)
