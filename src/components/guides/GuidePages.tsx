@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, BookOpenCheck, Check } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { LogoWordmark } from "@/components/brand/Logo";
@@ -7,6 +7,7 @@ import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
 import { ProductsMenu } from "@/components/products/ProductsMenu";
 import { GUIDES, type Guide, type GuideSection } from "@/lib/guides";
 import { formatArabicDate } from "@/lib/site-content";
+import { cn } from "@/lib/utils";
 
 /**
  * Header, main column and footer shared by the guides, the product pages and their indexes. `wide` hands the page
@@ -73,7 +74,7 @@ export function GuideShell({ children, wide = false }: { children: ReactNode; wi
 
 export function Section({ section }: { section: GuideSection }) {
   return (
-    <section className="mt-10">
+    <section id={section.id} className="mt-10 scroll-mt-24">
       <h2 className="font-display text-2xl font-extrabold leading-[1.5]">{section.heading}</h2>
       {section.paragraphs?.map((paragraph) => (
         <p key={paragraph} className="mt-4 text-[16px] leading-8 text-foreground/85">
@@ -137,6 +138,16 @@ export function Section({ section }: { section: GuideSection }) {
   );
 }
 
+/** The delivery app's icon, or a ledger mark for guides about Tadqeeq itself. */
+export function GuideIcon({ platform, className }: { platform: Guide["platform"]; className: string }) {
+  if (platform) return <PlatformIcon platform={platform} className={cn(className, "shrink-0 rounded-full")} />;
+  return (
+    <span className={cn(className, "grid shrink-0 place-items-center rounded-full bg-secondary text-primary-text")} aria-hidden>
+      <BookOpenCheck className="size-1/2" />
+    </span>
+  );
+}
+
 export function GuidePage({ guide }: { guide: Guide }) {
   const others = GUIDES.filter((other) => other.slug !== guide.slug);
   return (
@@ -152,9 +163,11 @@ export function GuidePage({ guide }: { guide: Guide }) {
       </nav>
       <article className="mt-6">
         <header>
-          <p className="flex items-center gap-2 text-sm font-semibold text-primary-text">
-            <PlatformName platform={guide.platform} iconClassName="size-6 rounded-full" />
-          </p>
+          {guide.platform ? (
+            <p className="flex items-center gap-2 text-sm font-semibold text-primary-text">
+              <PlatformName platform={guide.platform} iconClassName="size-6 rounded-full" />
+            </p>
+          ) : null}
           <h1 className="mt-3 font-display text-3xl font-extrabold leading-[1.45] sm:text-4xl">{guide.title}</h1>
           <p className="mt-3 text-sm text-muted-foreground">
             فريق تدقيق · آخر تحديث: <time dateTime={guide.updated}>{formatArabicDate(guide.updated)}</time>
@@ -192,7 +205,7 @@ export function GuidePage({ guide }: { guide: Guide }) {
           {others.map((other) => (
             <li key={other.slug}>
               <a href={other.path} className="flex h-full items-start gap-3 rounded-2xl border border-border bg-card p-4 hover:border-primary">
-                <PlatformIcon platform={other.platform} className="size-8 shrink-0 rounded-full" />
+                <GuideIcon platform={other.platform} className="size-8" />
                 <span className="font-semibold leading-7">{other.title}</span>
               </a>
             </li>
@@ -214,7 +227,7 @@ export function GuidesIndexPage() {
         {GUIDES.map((guide) => (
           <li key={guide.slug}>
             <a href={guide.path} className="flex items-start gap-4 rounded-2xl border border-border bg-card p-5 hover:border-primary">
-              <PlatformIcon platform={guide.platform} className="size-10 shrink-0 rounded-full" />
+              <GuideIcon platform={guide.platform} className="size-10" />
               <div>
                 <h2 className="font-display text-lg font-bold leading-8">{guide.title}</h2>
                 <p className="mt-1 text-sm leading-7 text-muted-foreground">{guide.description}</p>

@@ -44,10 +44,11 @@ export type PublicPage = {
 /** Every page that should be indexed. Adding a public page here adds it to sitemap.xml and llms.txt. */
 export const PUBLIC_PAGES: PublicPage[] = [
   { path: "/", title: "Home", lastmod: "2026-10-14", changefreq: "weekly", priority: 1 },
-  { path: "/guides", title: "أدلة مراجعة فواتير تطبيقات التوصيل", lastmod: "2026-10-05", changefreq: "monthly", priority: 0.7 },
+  { path: "/guides", title: "أدلة مراجعة فواتير تطبيقات التوصيل", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.7 },
   { path: "/guides/keeta-invoice", title: "كيف تراجع فاتورة كيتا؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
   { path: "/guides/hungerstation-compensation", title: "كيف تعترض على تعويضات هنقرستيشن؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
   { path: "/guides/jahez-commission", title: "كيف تتأكد من عمولة جاهز وصافي المطعم؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
+  { path: "/guides/accounting-integrations", title: "ربط تدقيق بنظامك المحاسبي وإرسال القيود مباشرة", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.7 },
   { path: "/products", title: "منتجات تدقيق", lastmod: "2026-10-14", changefreq: "monthly", priority: 0.8 },
   { path: "/products/invoice-reconciliation", title: "مُطابِق · مطابقة الفاتورة", lastmod: "2026-10-14", changefreq: "monthly", priority: 0.8 },
   { path: "/products/delivery-fees-map", title: "كاشِف · خريطة الرسوم", lastmod: "2026-10-05", changefreq: "monthly", priority: 0.7 },
@@ -58,8 +59,8 @@ export const PUBLIC_PAGES: PublicPage[] = [
   { path: "/products/daily-tracking", title: "نَبْض · المتابعة اليومية", lastmod: "2026-10-14", changefreq: "monthly", priority: 0.7 },
   { path: "/pricing", title: "الخطط والأسعار", lastmod: "2026-10-14", changefreq: "monthly", priority: 0.8 },
   { path: "/contact", title: "تواصل معنا", lastmod: "2026-10-05", changefreq: "yearly", priority: 0.5 },
-  { path: "/privacy", title: "سياسة الخصوصية", lastmod: "2026-10-05", changefreq: "yearly", priority: 0.3 },
-  { path: "/terms", title: "الشروط والأحكام", lastmod: "2026-10-14", changefreq: "yearly", priority: 0.3 },
+  { path: "/privacy", title: "سياسة الخصوصية", lastmod: "2026-10-17", changefreq: "yearly", priority: 0.3 },
+  { path: "/terms", title: "الشروط والأحكام", lastmod: "2026-10-17", changefreq: "yearly", priority: 0.3 },
   { path: "/refund-policy", title: "سياسة الإلغاء والاسترداد", lastmod: "2026-10-05", changefreq: "yearly", priority: 0.3 },
   { path: "/cookies", title: "سياسة ملفات تعريف الارتباط", lastmod: "2026-10-05", changefreq: "yearly", priority: 0.2 },
 ];

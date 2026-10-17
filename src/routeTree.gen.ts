@@ -61,6 +61,7 @@ import { Route as CompensationEvidenceRouteImport } from './routes/compensation/
 import { Route as CompensationScannerRouteImport } from './routes/compensation/scanner'
 import { Route as GuidesIndexRouteImport } from './routes/guides/index'
 import { Route as GuidesHungerstationCompensationRouteImport } from './routes/guides/hungerstation-compensation'
+import { Route as GuidesAccountingIntegrationsRouteImport } from './routes/guides/accounting-integrations'
 import { Route as GuidesJahezCommissionRouteImport } from './routes/guides/jahez-commission'
 import { Route as GuidesKeetaInvoiceRouteImport } from './routes/guides/keeta-invoice'
 import { Route as OpsIndexRouteImport } from './routes/ops/index'
@@ -359,6 +360,11 @@ const GuidesHungerstationCompensationRoute =
     path: '/guides/hungerstation-compensation',
     getParentRoute: () => rootRouteImport,
   } as any)
+const GuidesAccountingIntegrationsRoute = GuidesAccountingIntegrationsRouteImport.update({
+  id: '/guides/accounting-integrations',
+  path: '/guides/accounting-integrations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GuidesJahezCommissionRoute = GuidesJahezCommissionRouteImport.update({
   id: '/guides/jahez-commission',
   path: '/guides/jahez-commission',
@@ -579,6 +585,7 @@ export interface FileRoutesByFullPath {
   '/compensation/evidence': typeof CompensationEvidenceRoute
   '/compensation/scanner': typeof CompensationScannerRoute
   '/guides/hungerstation-compensation': typeof GuidesHungerstationCompensationRoute
+  '/guides/accounting-integrations': typeof GuidesAccountingIntegrationsRoute
   '/guides/jahez-commission': typeof GuidesJahezCommissionRoute
   '/guides/keeta-invoice': typeof GuidesKeetaInvoiceRoute
   '/ops/archive': typeof OpsArchiveRoute
@@ -662,6 +669,7 @@ export interface FileRoutesByTo {
   '/compensation/evidence': typeof CompensationEvidenceRoute
   '/compensation/scanner': typeof CompensationScannerRoute
   '/guides/hungerstation-compensation': typeof GuidesHungerstationCompensationRoute
+  '/guides/accounting-integrations': typeof GuidesAccountingIntegrationsRoute
   '/guides/jahez-commission': typeof GuidesJahezCommissionRoute
   '/guides/keeta-invoice': typeof GuidesKeetaInvoiceRoute
   '/ops/archive': typeof OpsArchiveRoute
@@ -749,6 +757,7 @@ export interface FileRoutesById {
   '/compensation/evidence': typeof CompensationEvidenceRoute
   '/compensation/scanner': typeof CompensationScannerRoute
   '/guides/hungerstation-compensation': typeof GuidesHungerstationCompensationRoute
+  '/guides/accounting-integrations': typeof GuidesAccountingIntegrationsRoute
   '/guides/jahez-commission': typeof GuidesJahezCommissionRoute
   '/guides/keeta-invoice': typeof GuidesKeetaInvoiceRoute
   '/ops/archive': typeof OpsArchiveRoute
@@ -836,6 +845,7 @@ export interface FileRouteTypes {
     | '/compensation/evidence'
     | '/compensation/scanner'
     | '/guides/hungerstation-compensation'
+    | '/guides/accounting-integrations'
     | '/guides/jahez-commission'
     | '/guides/keeta-invoice'
     | '/ops/archive'
@@ -919,6 +929,7 @@ export interface FileRouteTypes {
     | '/compensation/evidence'
     | '/compensation/scanner'
     | '/guides/hungerstation-compensation'
+    | '/guides/accounting-integrations'
     | '/guides/jahez-commission'
     | '/guides/keeta-invoice'
     | '/ops/archive'
@@ -1005,6 +1016,7 @@ export interface FileRouteTypes {
     | '/compensation/evidence'
     | '/compensation/scanner'
     | '/guides/hungerstation-compensation'
+    | '/guides/accounting-integrations'
     | '/guides/jahez-commission'
     | '/guides/keeta-invoice'
     | '/ops/archive'
@@ -1067,6 +1079,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   GuidesHungerstationCompensationRoute: typeof GuidesHungerstationCompensationRoute
+  GuidesAccountingIntegrationsRoute: typeof GuidesAccountingIntegrationsRoute
   GuidesJahezCommissionRoute: typeof GuidesJahezCommissionRoute
   GuidesKeetaInvoiceRoute: typeof GuidesKeetaInvoiceRoute
   ProductsCompensationClaimsRoute: typeof ProductsCompensationClaimsRoute
@@ -1454,6 +1467,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GuidesHungerstationCompensationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/guides/accounting-integrations': {
+      id: '/guides/accounting-integrations'
+      path: '/guides/accounting-integrations'
+      fullPath: '/guides/accounting-integrations'
+      preLoaderRoute: typeof GuidesAccountingIntegrationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/guides/jahez-commission': {
       id: '/guides/jahez-commission'
       path: '/guides/jahez-commission'
@@ -1816,6 +1836,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   GuidesHungerstationCompensationRoute: GuidesHungerstationCompensationRoute,
+  GuidesAccountingIntegrationsRoute: GuidesAccountingIntegrationsRoute,
   GuidesJahezCommissionRoute: GuidesJahezCommissionRoute,
   GuidesKeetaInvoiceRoute: GuidesKeetaInvoiceRoute,
   ProductsCompensationClaimsRoute: ProductsCompensationClaimsRoute,

@@ -2,8 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Check, ChevronDown, FileSpreadsheet, FileText, Info } from "lucide-react";
 import type { ComponentType, CSSProperties, ReactNode } from "react";
 
-import { GuideShell, Section } from "@/components/guides/GuidePages";
-import { PlatformIcon, PlatformName } from "@/components/brand/PlatformLogo";
+import { GuideIcon, GuideShell, Section } from "@/components/guides/GuidePages";
+import { PlatformName } from "@/components/brand/PlatformLogo";
 import { NabdWorkflow } from "@/components/products/NabdWorkflow";
 import { ProductIcon } from "@/components/products/ProductIcon";
 import { guideBySlug, type GuideSection } from "@/lib/guides";
@@ -138,7 +138,7 @@ export function ProductFeaturePage({ page }: { page: ProductPage }) {
               {guides.map((guide) => (
                 <li key={guide.slug}>
                   <a href={guide.path} className="flex h-full items-start gap-3 rounded-2xl border border-border bg-card p-5 transition-colors hover:border-primary">
-                    <PlatformIcon platform={guide.platform} className="size-8 shrink-0 rounded-full" />
+                    <GuideIcon platform={guide.platform} className="size-8" />
                     <span className="font-semibold leading-7">{guide.title}</span>
                   </a>
                 </li>

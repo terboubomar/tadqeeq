@@ -74,7 +74,17 @@ export function AccountingDialog({
       <DialogContent dir="rtl" className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{config.title}</DialogTitle>
-          <DialogDescription>{connection ? "أرسل القيود من صفحة القيود المحاسبية." : config.keyHelp}</DialogDescription>
+          <DialogDescription>
+            {connection ? "أرسل القيود من صفحة القيود المحاسبية." : config.keyHelp}{" "}
+            <a
+              href={`/guides/accounting-integrations#${provider}`}
+              target="_blank"
+              rel="noopener"
+              className="font-semibold text-primary-text underline-offset-4 hover:underline"
+            >
+              طريقة الربط
+            </a>
+          </DialogDescription>
         </DialogHeader>
 
         {connection ? (

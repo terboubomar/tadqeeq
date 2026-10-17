@@ -38,6 +38,7 @@ Already good: server-side rendered Arabic HTML (`lang="ar" dir="rtl"`), single H
 | Net per order | كم يوصل المطعم من الطلب، صافي المطعم بعد العمولة | Tool | `/حاسبة-صافي-المطعم` (free calculator) |
 | English (secondary) | HungerStation commission, Jahez invoice reconciliation, Keeta restaurant fees | Mixed | English versions later (`/en/...`) |
 | Competitor | Flowwtics، بديل فلوتيكس | Comparison | `/مقارنة/فلوتيكس` (after launch, factual) |
+| Accounting integrations | ربط قيود مع تطبيقات التوصيل، قيود هنقرستيشن في دفترة، Zoho Books / Odoo / QuickBooks journal entries | Commercial | `/guides/accounting-integrations` (done 2026-10-17; one hub guide, section per system) |
 
 ## 4. Site architecture to build (in order)
 
