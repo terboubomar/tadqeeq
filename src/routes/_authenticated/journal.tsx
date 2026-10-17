@@ -128,6 +128,7 @@ function JournalReport({
         />
         <SendJournalsButtons
           periodKey={periodKey}
+          platform={platform}
           periodEnd={periodEnd}
           journals={current ? [current] : journals}
           firstNumber={current ? (selection as number) + 1 : 1}

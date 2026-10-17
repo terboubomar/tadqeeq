@@ -1,4 +1,5 @@
 import { requestJson, SyncStop, type Connection, type ProviderAdapter } from "./http.server";
+import type { ChartAccount, SendableEntry } from "./sendable";
 import {
   classFor,
   parseQuickBooksCredentials,
@@ -7,6 +8,9 @@ import {
   quickBooksApiBase,
   quickBooksChart,
   quickBooksJournal,
+  quickBooksPartiesNeeded,
+  quickBooksPlatformName,
+  quickBooksQueryValue,
   type QuickBooksCredentials,
   type QuickBooksEnvironment,
 } from "./quickbooks";
@@ -67,6 +71,8 @@ interface Session {
   credentials: QuickBooksCredentials;
   token: string;
   classes?: Array<{ Id: string; Name?: string; FullyQualifiedName?: string }>;
+  /** Customer and vendor ids by "Customer:HungerStation" / "Vendor:HungerStation", for this send. */
+  parties: Map<string, Promise<string>>;
 }
 
 const sessions = new WeakMap<Connection, Promise<Session>>();
@@ -83,9 +89,9 @@ function session(connection: Connection): Promise<Session> {
         const next = { ...credentials, refreshToken };
         await connection.saveSecret?.(JSON.stringify(next));
         connection.apiKey = JSON.stringify(next);
-        return { credentials: next, token: String(data["access_token"]) };
+        return { credentials: next, token: String(data["access_token"]), parties: new Map() };
       }
-      return { credentials, token: String(data["access_token"]) };
+      return { credentials, token: String(data["access_token"]), parties: new Map() };
     })();
     sessions.set(connection, current);
   }
@@ -110,6 +116,51 @@ async function classes(current: Session) {
   return current.classes;
 }
 
+/** The id of the customer or vendor with this display name, created when the company does not have one yet. */
+async function partyId(current: Session, kind: "Customer" | "Vendor", name: string): Promise<string> {
+  const key = `${kind}:${name}`;
+  let pending = current.parties.get(key);
+  if (!pending) {
+    pending = (async () => {
+      const query = encodeURIComponent(`select * from ${kind} where DisplayName = '${quickBooksQueryValue(name)}'`);
+      const found = await requestJson<{ QueryResponse?: Record<string, Array<{ Id?: string }> | undefined> }>(
+        NAME,
+        quickBooksCompanyUrl(current.credentials, `query?query=${query}`),
+        quickBooksAuthHeader(current.token),
+      );
+      const existing = found.QueryResponse?.[kind]?.[0]?.Id;
+      if (existing) return existing;
+      const created = await requestJson<Record<string, { Id?: string } | undefined>>(
+        NAME,
+        quickBooksCompanyUrl(current.credentials, kind.toLowerCase()),
+        quickBooksAuthHeader(current.token),
+        { method: "POST", body: { DisplayName: name } },
+      );
+      const id = created[kind]?.Id;
+      if (!id) throw new Error(`تعذّر إنشاء «${name}» في ${NAME}.`);
+      return id;
+    })();
+    current.parties.set(key, pending);
+    pending.catch(() => current.parties.delete(key));
+  }
+  return pending;
+}
+
+/**
+ * The platform as a customer (Accounts Receivable lines) and a vendor (Accounts Payable lines). QuickBooks keeps one
+ * name across customers and vendors, so the vendor is "<platform> (Vendor)" when the plain name is already taken.
+ */
+async function partiesFor(current: Session, entry: SendableEntry, accounts: ChartAccount[]): Promise<{ customerId?: string; vendorId?: string }> {
+  const needed = quickBooksPartiesNeeded(entry, accounts);
+  const name = quickBooksPlatformName(entry.platform);
+  const parties: { customerId?: string; vendorId?: string } = {};
+  if (needed.customer) parties.customerId = await partyId(current, "Customer", name);
+  if (needed.vendor) {
+    parties.vendorId = await partyId(current, "Vendor", name).catch(() => partyId(current, "Vendor", `${name} (Vendor)`));
+  }
+  return parties;
+}
+
 export const quickBooksAdapter: ProviderAdapter = {
   name: NAME,
   prepare: quickBooksAccountKeys,
@@ -129,7 +180,7 @@ export const quickBooksAdapter: ProviderAdapter = {
   async post(connection, entry, accounts) {
     const current = await session(connection);
     const classId = entry.costCenter?.trim() ? (classFor(entry.costCenter, await classes(current)) ?? null) : null;
-    const payload = quickBooksJournal(entry, accounts, classId);
+    const payload = quickBooksJournal(entry, accounts, classId, await partiesFor(current, entry, accounts));
     const created = await requestJson<{ JournalEntry?: { Id?: string } }>(NAME, quickBooksCompanyUrl(current.credentials, "journalentry"), quickBooksAuthHeader(current.token), {
       method: "POST",
       body: payload,
