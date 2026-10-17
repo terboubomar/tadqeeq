@@ -57,7 +57,7 @@ export const PUBLIC_PAGES: PublicPage[] = [
   { path: "/products/promotions-roi", title: "عائد · عائد العروض والإعلانات", lastmod: "2026-10-05", changefreq: "monthly", priority: 0.7 },
   { path: "/products/smart-alerts", title: "رقيب · المراقب الذكي", lastmod: "2026-10-05", changefreq: "monthly", priority: 0.7 },
   { path: "/products/daily-tracking", title: "نَبْض · المتابعة اليومية", lastmod: "2026-10-14", changefreq: "monthly", priority: 0.7 },
-  { path: "/marketplace", title: "سوق التكاملات", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.7 },
+  { path: "/marketplace", title: "متجر التطبيقات", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.7 },
   { path: "/marketplace/qoyod", title: "ربط تدقيق مع قيود", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.6 },
   { path: "/marketplace/daftra", title: "ربط تدقيق مع دفترة", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.6 },
   { path: "/marketplace/zoho-books", title: "ربط تدقيق مع Zoho Books", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.6 },

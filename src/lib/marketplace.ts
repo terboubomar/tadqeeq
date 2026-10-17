@@ -41,8 +41,8 @@ export const MARKETPLACE_UPDATED = "2026-10-17";
 
 export const MARKETPLACE_INDEX = {
   path: "/marketplace",
-  title: "سوق التكاملات",
-  metaTitle: "سوق تكاملات تدقيق: الأنظمة المحاسبية والتواصل والذكاء الاصطناعي | تدقيق",
+  title: "متجر التطبيقات",
+  metaTitle: "متجر تطبيقات تدقيق: الأنظمة المحاسبية والتواصل والذكاء الاصطناعي | تدقيق",
   description: "اربط تدقيق بقيود ودفترة وZoho Books وOdoo وQuickBooks وتيليجرام والبريد وClaude وChatGPT، وأرسل قيود تطبيقات التوصيل لكل فرع مباشرة.",
 };
 

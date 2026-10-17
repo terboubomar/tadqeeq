@@ -112,7 +112,7 @@ const FOOTER_GROUPS = [
       ["/products/compensation-claims", productTitle("istirdad")],
       ["/products/promotions-roi", productTitle("aaid")],
       ["/products", "كل المنتجات"],
-      ["/marketplace", "سوق التكاملات"],
+      ["/marketplace", "متجر التطبيقات"],
       ["#checks", "ما الذي نراجعه"],
     ],
   },

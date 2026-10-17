@@ -54,7 +54,7 @@ export function GuideShell({ children, wide = false }: { children: ReactNode; wi
               المنتجات
             </Link>
             <Link to="/marketplace" className="hover:text-foreground">
-              سوق التكاملات
+              متجر التطبيقات
             </Link>
             <Link to="/guides" className="hover:text-foreground">
               كل الأدلة
