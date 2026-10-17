@@ -1,6 +1,6 @@
 import { requestJson, SyncStop, type Connection, type ProviderAdapter } from "./http.server";
 import type { ChartAccount } from "./sendable";
-import { parseZohoCredentials, zohoJournal, type ZohoCredentials } from "./zoho";
+import { parseZohoCredentials, zohoJournal, zohoTagFor, zohoTagOptions, type ZohoCredentials, type ZohoTagOption } from "./zoho";
 
 /**
  * Zoho Books: the connection keeps a refresh token (sealed), which is exchanged for an hour-long access token at the
@@ -66,6 +66,37 @@ interface AccountsPage {
   page_context?: { has_more_page?: boolean };
 }
 
+const tagCache = new WeakMap<Connection, Promise<ZohoTagOption[]>>();
+
+/** Every active reporting tag's active options, read once per send (the cost centers are matched against them). */
+function tagOptions(connection: Connection): Promise<ZohoTagOption[]> {
+  let current = tagCache.get(connection);
+  if (!current) {
+    current = (async () => {
+      const { credentials, token } = await session(connection);
+      const org = `organization_id=${encodeURIComponent(credentials.organizationId)}`;
+      const list = await requestJson<{ reporting_tags?: Array<{ tag_id?: string; is_active?: boolean; is_draft?: boolean }> }>(
+        NAME,
+        `${credentials.apiDomain}/books/v3/reportingtags?${org}`,
+        zohoAuthHeader(token),
+      );
+      const options: ZohoTagOption[] = [];
+      for (const tag of list.reporting_tags ?? []) {
+        if (!tag.tag_id || tag.is_active === false || tag.is_draft) continue;
+        const data = await requestJson<{ options?: Parameters<typeof zohoTagOptions>[1] }>(
+          NAME,
+          `${credentials.apiDomain}/books/v3/reportingtags/options?${org}&tag_id=${encodeURIComponent(tag.tag_id)}`,
+          zohoAuthHeader(token),
+        );
+        options.push(...zohoTagOptions(String(tag.tag_id), data.options));
+      }
+      return options;
+    })();
+    tagCache.set(connection, current);
+  }
+  return current;
+}
+
 export const zohoAdapter: ProviderAdapter = {
   name: NAME,
   async accounts(connection) {
@@ -83,9 +114,20 @@ export const zohoAdapter: ProviderAdapter = {
     }
     return [...byId.values()];
   },
+  async precheck(connection, entries) {
+    if (!entries.some((entry) => entry.costCenter?.trim())) return;
+    const known = await tagOptions(connection);
+    const missing = [...new Set(entries.filter((entry) => zohoTagFor(entry.costCenter, known) === undefined).map((entry) => entry.costCenter!.trim()))];
+    if (missing.length) {
+      throw new Error(
+        `مراكز التكلفة هذه بلا خيار وسم تقارير في ${NAME}: ${missing.slice(0, 6).join("، ")}. أضفها خيارات لوسم تقارير مفعّل للقيود في Zoho Books أو صحّح «مراكز التكلفة» ثم أرسل.`,
+      );
+    }
+  },
   async post(connection, entry, accounts) {
     const { credentials, token } = await session(connection);
-    const payload = zohoJournal(entry, accounts);
+    const tag = entry.costCenter?.trim() ? (zohoTagFor(entry.costCenter, await tagOptions(connection)) ?? null) : null;
+    const payload = zohoJournal(entry, accounts, tag);
     const created = await requestJson<{ code?: number; message?: string; journal?: { journal_id?: string } }>(
       NAME,
       `${credentials.apiDomain}/books/v3/journals?organization_id=${encodeURIComponent(credentials.organizationId)}`,

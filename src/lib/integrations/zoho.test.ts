@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { signState, verifyState } from "./secret-box.server";
 import type { SendableEntry } from "./sendable";
-import { parseZohoCredentials, zohoAccountsServer, zohoApiDomain, zohoJournal } from "./zoho";
+import { parseZohoCredentials, zohoAccountsServer, zohoApiDomain, zohoJournal, zohoTagFor, zohoTagOptions } from "./zoho";
 
 const accounts = [
   { id: "460000000000361", code: "1101" },
@@ -38,8 +38,38 @@ describe("Zoho Books journals", () => {
     });
   });
 
+  test("the branch's cost center goes as its reporting tag option on every line", () => {
+    const tag = { tagId: "4600001", optionId: "4600011", name: "Uhud" };
+    const lines = zohoJournal(entry, accounts, tag).line_items;
+    expect(lines).toHaveLength(3);
+    for (const line of lines) expect(line.tags).toEqual([{ tag_id: "4600001", tag_option_id: "4600011" }]);
+    expect(zohoJournal(entry, accounts).line_items[0]).not.toHaveProperty("tags");
+  });
+
   test("refuses an unbalanced entry", () => {
     expect(() => zohoJournal({ ...entry, lines: [entry.lines[0]!, entry.lines[1]!] }, accounts)).toThrow("غير متوازن");
+  });
+});
+
+describe("Zoho reporting tags as cost centers", () => {
+  const options = zohoTagOptions("4600001", [
+    { option_id: "11", option_name: "Uhud ", is_active: true, children: [{ option_id: "12", option_name: "Uhud - Drive", is_active: true }] },
+    { option_id: "13", option_name: "Olaya", is_active: false },
+  ]);
+
+  test("reads active options, children included", () => {
+    expect(options).toEqual([
+      { tagId: "4600001", optionId: "11", name: "Uhud" },
+      { tagId: "4600001", optionId: "12", name: "Uhud - Drive" },
+    ]);
+  });
+
+  test("matches the cost center by option name, ignoring case", () => {
+    expect(zohoTagFor(" uhud", options)?.optionId).toBe("11");
+    expect(zohoTagFor("Uhud - Drive", options)?.optionId).toBe("12");
+    expect(zohoTagFor("Olaya", options)).toBeUndefined();
+    expect(zohoTagFor("", options)).toBeNull();
+    expect(zohoTagFor(undefined, options)).toBeNull();
   });
 });
 
