@@ -55,6 +55,7 @@ import { SectionIntro } from "@/components/home/SectionIntro";
 import { LEGAL_COMPANY, LEGAL_DOCS } from "@/lib/legal";
 import { productPageFor } from "@/lib/product-pages";
 import { ProductsMenu, ProductsMenuList } from "@/components/products/ProductsMenu";
+import { IntegrationsSection } from "@/components/home/IntegrationsSection";
 import { PRODUCTS, productTitle, type ProductKey } from "@/lib/products";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { OG_IMAGE, SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
@@ -111,6 +112,7 @@ const FOOTER_GROUPS = [
       ["/products/compensation-claims", productTitle("istirdad")],
       ["/products/promotions-roi", productTitle("aaid")],
       ["/products", "كل المنتجات"],
+      ["/marketplace", "متجر التطبيقات"],
       ["#checks", "ما الذي نراجعه"],
     ],
   },
@@ -612,6 +614,8 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
         <ChecksGrid />
 
         <AssistantSection />
+
+        <IntegrationsSection />
 
         <Audiences />
 

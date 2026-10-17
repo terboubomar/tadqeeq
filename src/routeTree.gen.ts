@@ -76,6 +76,7 @@ import { Route as OpsSubscriptionsRouteImport } from './routes/ops/subscriptions
 import { Route as OpsTasksRouteImport } from './routes/ops/tasks'
 import { Route as OpsUsageRouteImport } from './routes/ops/usage'
 import { Route as ProductsIndexRouteImport } from './routes/products/index'
+import { Route as MarketplaceIndexRouteImport } from './routes/marketplace/index'
 import { Route as ProductsCompensationClaimsRouteImport } from './routes/products/compensation-claims'
 import { Route as ProductsDailyTrackingRouteImport } from './routes/products/daily-tracking'
 import { Route as ProductsDeliveryFeesMapRouteImport } from './routes/products/delivery-fees-map'
@@ -83,6 +84,14 @@ import { Route as ProductsExceptionsCenterRouteImport } from './routes/products/
 import { Route as ProductsInvoiceReconciliationRouteImport } from './routes/products/invoice-reconciliation'
 import { Route as ProductsPromotionsRoiRouteImport } from './routes/products/promotions-roi'
 import { Route as ProductsSmartAlertsRouteImport } from './routes/products/smart-alerts'
+import { Route as MarketplaceQoyodRouteImport } from './routes/marketplace/qoyod'
+import { Route as MarketplaceDaftraRouteImport } from './routes/marketplace/daftra'
+import { Route as MarketplaceZohoBooksRouteImport } from './routes/marketplace/zoho-books'
+import { Route as MarketplaceOdooRouteImport } from './routes/marketplace/odoo'
+import { Route as MarketplaceQuickbooksRouteImport } from './routes/marketplace/quickbooks'
+import { Route as MarketplaceTelegramRouteImport } from './routes/marketplace/telegram'
+import { Route as MarketplaceEmailReportsRouteImport } from './routes/marketplace/email-reports'
+import { Route as MarketplaceClaudeChatgptRouteImport } from './routes/marketplace/claude-chatgpt'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedOperationsPlatformRouteImport } from './routes/_authenticated/operations_.$platform'
 import { Route as ApiPublicCspReportRouteImport } from './routes/api/public/csp-report'
@@ -435,6 +444,11 @@ const ProductsIndexRoute = ProductsIndexRouteImport.update({
   path: '/products/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MarketplaceIndexRoute = MarketplaceIndexRouteImport.update({
+  id: '/marketplace/',
+  path: '/marketplace/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductsCompensationClaimsRoute =
   ProductsCompensationClaimsRouteImport.update({
     id: '/products/compensation-claims',
@@ -471,6 +485,46 @@ const ProductsPromotionsRoiRoute = ProductsPromotionsRoiRouteImport.update({
 const ProductsSmartAlertsRoute = ProductsSmartAlertsRouteImport.update({
   id: '/products/smart-alerts',
   path: '/products/smart-alerts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketplaceQoyodRoute = MarketplaceQoyodRouteImport.update({
+  id: '/marketplace/qoyod',
+  path: '/marketplace/qoyod',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketplaceDaftraRoute = MarketplaceDaftraRouteImport.update({
+  id: '/marketplace/daftra',
+  path: '/marketplace/daftra',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketplaceZohoBooksRoute = MarketplaceZohoBooksRouteImport.update({
+  id: '/marketplace/zoho-books',
+  path: '/marketplace/zoho-books',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketplaceOdooRoute = MarketplaceOdooRouteImport.update({
+  id: '/marketplace/odoo',
+  path: '/marketplace/odoo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketplaceQuickbooksRoute = MarketplaceQuickbooksRouteImport.update({
+  id: '/marketplace/quickbooks',
+  path: '/marketplace/quickbooks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketplaceTelegramRoute = MarketplaceTelegramRouteImport.update({
+  id: '/marketplace/telegram',
+  path: '/marketplace/telegram',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketplaceEmailReportsRoute = MarketplaceEmailReportsRouteImport.update({
+  id: '/marketplace/email-reports',
+  path: '/marketplace/email-reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketplaceClaudeChatgptRoute = MarketplaceClaudeChatgptRouteImport.update({
+  id: '/marketplace/claude-chatgpt',
+  path: '/marketplace/claude-chatgpt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
@@ -605,10 +659,19 @@ export interface FileRoutesByFullPath {
   '/products/invoice-reconciliation': typeof ProductsInvoiceReconciliationRoute
   '/products/promotions-roi': typeof ProductsPromotionsRoiRoute
   '/products/smart-alerts': typeof ProductsSmartAlertsRoute
+  '/marketplace/qoyod': typeof MarketplaceQoyodRoute
+  '/marketplace/daftra': typeof MarketplaceDaftraRoute
+  '/marketplace/zoho-books': typeof MarketplaceZohoBooksRoute
+  '/marketplace/odoo': typeof MarketplaceOdooRoute
+  '/marketplace/quickbooks': typeof MarketplaceQuickbooksRoute
+  '/marketplace/telegram': typeof MarketplaceTelegramRoute
+  '/marketplace/email-reports': typeof MarketplaceEmailReportsRoute
+  '/marketplace/claude-chatgpt': typeof MarketplaceClaudeChatgptRoute
   '/compensation/': typeof CompensationIndexRoute
   '/guides/': typeof GuidesIndexRoute
   '/ops/': typeof OpsIndexRoute
   '/products/': typeof ProductsIndexRoute
+  '/marketplace/': typeof MarketplaceIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/operations/$platform': typeof AuthenticatedOperationsPlatformRoute
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
@@ -689,10 +752,19 @@ export interface FileRoutesByTo {
   '/products/invoice-reconciliation': typeof ProductsInvoiceReconciliationRoute
   '/products/promotions-roi': typeof ProductsPromotionsRoiRoute
   '/products/smart-alerts': typeof ProductsSmartAlertsRoute
+  '/marketplace/qoyod': typeof MarketplaceQoyodRoute
+  '/marketplace/daftra': typeof MarketplaceDaftraRoute
+  '/marketplace/zoho-books': typeof MarketplaceZohoBooksRoute
+  '/marketplace/odoo': typeof MarketplaceOdooRoute
+  '/marketplace/quickbooks': typeof MarketplaceQuickbooksRoute
+  '/marketplace/telegram': typeof MarketplaceTelegramRoute
+  '/marketplace/email-reports': typeof MarketplaceEmailReportsRoute
+  '/marketplace/claude-chatgpt': typeof MarketplaceClaudeChatgptRoute
   '/compensation': typeof CompensationIndexRoute
   '/guides': typeof GuidesIndexRoute
   '/ops': typeof OpsIndexRoute
   '/products': typeof ProductsIndexRoute
+  '/marketplace': typeof MarketplaceIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/operations/$platform': typeof AuthenticatedOperationsPlatformRoute
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
@@ -777,10 +849,19 @@ export interface FileRoutesById {
   '/products/invoice-reconciliation': typeof ProductsInvoiceReconciliationRoute
   '/products/promotions-roi': typeof ProductsPromotionsRoiRoute
   '/products/smart-alerts': typeof ProductsSmartAlertsRoute
+  '/marketplace/qoyod': typeof MarketplaceQoyodRoute
+  '/marketplace/daftra': typeof MarketplaceDaftraRoute
+  '/marketplace/zoho-books': typeof MarketplaceZohoBooksRoute
+  '/marketplace/odoo': typeof MarketplaceOdooRoute
+  '/marketplace/quickbooks': typeof MarketplaceQuickbooksRoute
+  '/marketplace/telegram': typeof MarketplaceTelegramRoute
+  '/marketplace/email-reports': typeof MarketplaceEmailReportsRoute
+  '/marketplace/claude-chatgpt': typeof MarketplaceClaudeChatgptRoute
   '/compensation/': typeof CompensationIndexRoute
   '/guides/': typeof GuidesIndexRoute
   '/ops/': typeof OpsIndexRoute
   '/products/': typeof ProductsIndexRoute
+  '/marketplace/': typeof MarketplaceIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/_authenticated/operations_/$platform': typeof AuthenticatedOperationsPlatformRoute
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
@@ -865,10 +946,19 @@ export interface FileRouteTypes {
     | '/products/invoice-reconciliation'
     | '/products/promotions-roi'
     | '/products/smart-alerts'
+    | '/marketplace/qoyod'
+    | '/marketplace/daftra'
+    | '/marketplace/zoho-books'
+    | '/marketplace/odoo'
+    | '/marketplace/quickbooks'
+    | '/marketplace/telegram'
+    | '/marketplace/email-reports'
+    | '/marketplace/claude-chatgpt'
     | '/compensation/'
     | '/guides/'
     | '/ops/'
     | '/products/'
+    | '/marketplace/'
     | '/.lovable/oauth/consent'
     | '/operations/$platform'
     | '/api/public/csp-report'
@@ -949,10 +1039,19 @@ export interface FileRouteTypes {
     | '/products/invoice-reconciliation'
     | '/products/promotions-roi'
     | '/products/smart-alerts'
+    | '/marketplace/qoyod'
+    | '/marketplace/daftra'
+    | '/marketplace/zoho-books'
+    | '/marketplace/odoo'
+    | '/marketplace/quickbooks'
+    | '/marketplace/telegram'
+    | '/marketplace/email-reports'
+    | '/marketplace/claude-chatgpt'
     | '/compensation'
     | '/guides'
     | '/ops'
     | '/products'
+    | '/marketplace'
     | '/.lovable/oauth/consent'
     | '/operations/$platform'
     | '/api/public/csp-report'
@@ -1036,10 +1135,19 @@ export interface FileRouteTypes {
     | '/products/invoice-reconciliation'
     | '/products/promotions-roi'
     | '/products/smart-alerts'
+    | '/marketplace/qoyod'
+    | '/marketplace/daftra'
+    | '/marketplace/zoho-books'
+    | '/marketplace/odoo'
+    | '/marketplace/quickbooks'
+    | '/marketplace/telegram'
+    | '/marketplace/email-reports'
+    | '/marketplace/claude-chatgpt'
     | '/compensation/'
     | '/guides/'
     | '/ops/'
     | '/products/'
+    | '/marketplace/'
     | '/.lovable/oauth/consent'
     | '/_authenticated/operations_/$platform'
     | '/api/public/csp-report'
@@ -1089,8 +1197,17 @@ export interface RootRouteChildren {
   ProductsInvoiceReconciliationRoute: typeof ProductsInvoiceReconciliationRoute
   ProductsPromotionsRoiRoute: typeof ProductsPromotionsRoiRoute
   ProductsSmartAlertsRoute: typeof ProductsSmartAlertsRoute
+  MarketplaceQoyodRoute: typeof MarketplaceQoyodRoute
+  MarketplaceDaftraRoute: typeof MarketplaceDaftraRoute
+  MarketplaceZohoBooksRoute: typeof MarketplaceZohoBooksRoute
+  MarketplaceOdooRoute: typeof MarketplaceOdooRoute
+  MarketplaceQuickbooksRoute: typeof MarketplaceQuickbooksRoute
+  MarketplaceTelegramRoute: typeof MarketplaceTelegramRoute
+  MarketplaceEmailReportsRoute: typeof MarketplaceEmailReportsRoute
+  MarketplaceClaudeChatgptRoute: typeof MarketplaceClaudeChatgptRoute
   GuidesIndexRoute: typeof GuidesIndexRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
+  MarketplaceIndexRoute: typeof MarketplaceIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiPublicCspReportRoute: typeof ApiPublicCspReportRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
@@ -1572,6 +1689,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/marketplace/': {
+      id: '/marketplace/'
+      path: '/marketplace'
+      fullPath: '/marketplace/'
+      preLoaderRoute: typeof MarketplaceIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/products/compensation-claims': {
       id: '/products/compensation-claims'
       path: '/products/compensation-claims'
@@ -1619,6 +1743,62 @@ declare module '@tanstack/react-router' {
       path: '/products/smart-alerts'
       fullPath: '/products/smart-alerts'
       preLoaderRoute: typeof ProductsSmartAlertsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketplace/qoyod': {
+      id: '/marketplace/qoyod'
+      path: '/marketplace/qoyod'
+      fullPath: '/marketplace/qoyod'
+      preLoaderRoute: typeof MarketplaceQoyodRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketplace/daftra': {
+      id: '/marketplace/daftra'
+      path: '/marketplace/daftra'
+      fullPath: '/marketplace/daftra'
+      preLoaderRoute: typeof MarketplaceDaftraRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketplace/zoho-books': {
+      id: '/marketplace/zoho-books'
+      path: '/marketplace/zoho-books'
+      fullPath: '/marketplace/zoho-books'
+      preLoaderRoute: typeof MarketplaceZohoBooksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketplace/odoo': {
+      id: '/marketplace/odoo'
+      path: '/marketplace/odoo'
+      fullPath: '/marketplace/odoo'
+      preLoaderRoute: typeof MarketplaceOdooRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketplace/quickbooks': {
+      id: '/marketplace/quickbooks'
+      path: '/marketplace/quickbooks'
+      fullPath: '/marketplace/quickbooks'
+      preLoaderRoute: typeof MarketplaceQuickbooksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketplace/telegram': {
+      id: '/marketplace/telegram'
+      path: '/marketplace/telegram'
+      fullPath: '/marketplace/telegram'
+      preLoaderRoute: typeof MarketplaceTelegramRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketplace/email-reports': {
+      id: '/marketplace/email-reports'
+      path: '/marketplace/email-reports'
+      fullPath: '/marketplace/email-reports'
+      preLoaderRoute: typeof MarketplaceEmailReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketplace/claude-chatgpt': {
+      id: '/marketplace/claude-chatgpt'
+      path: '/marketplace/claude-chatgpt'
+      fullPath: '/marketplace/claude-chatgpt'
+      preLoaderRoute: typeof MarketplaceClaudeChatgptRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.lovable/oauth/consent': {
@@ -1846,8 +2026,17 @@ const rootRouteChildren: RootRouteChildren = {
   ProductsInvoiceReconciliationRoute: ProductsInvoiceReconciliationRoute,
   ProductsPromotionsRoiRoute: ProductsPromotionsRoiRoute,
   ProductsSmartAlertsRoute: ProductsSmartAlertsRoute,
+  MarketplaceQoyodRoute: MarketplaceQoyodRoute,
+  MarketplaceDaftraRoute: MarketplaceDaftraRoute,
+  MarketplaceZohoBooksRoute: MarketplaceZohoBooksRoute,
+  MarketplaceOdooRoute: MarketplaceOdooRoute,
+  MarketplaceQuickbooksRoute: MarketplaceQuickbooksRoute,
+  MarketplaceTelegramRoute: MarketplaceTelegramRoute,
+  MarketplaceEmailReportsRoute: MarketplaceEmailReportsRoute,
+  MarketplaceClaudeChatgptRoute: MarketplaceClaudeChatgptRoute,
   GuidesIndexRoute: GuidesIndexRoute,
   ProductsIndexRoute: ProductsIndexRoute,
+  MarketplaceIndexRoute: MarketplaceIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiPublicCspReportRoute: ApiPublicCspReportRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
