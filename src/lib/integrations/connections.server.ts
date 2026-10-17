@@ -2,7 +2,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 import { logEvent } from "../observability";
 import { requireWorkspacePermission } from "../server-auth.server";
-import { missingAccountCodes, round2, type AccountingProvider, type SendableEntry } from "./sendable";
+import { missingAccountCodes, round2, type AccountingProvider, type SendableEntry, type SentJournal } from "./sendable";
 import { daftraAdapter } from "./daftra.server";
 import { odooAdapter } from "./odoo.server";
 import { quickBooksAdapter } from "./quickbooks.server";
@@ -16,7 +16,7 @@ import { openSecret, sealSecret } from "./secret-box.server";
  * its site) or signs in (Zoho Books); the credentials are checked against the system, sealed and kept server-side. Entries are posted once per period
  * and branch (accounting_sync_entries).
  */
-export type { AccountingProvider };
+export type { AccountingProvider, SentJournal };
 
 const ADAPTERS: Record<AccountingProvider, ProviderAdapter> = { qoyod: qoyodAdapter, daftra: daftraAdapter, zoho: zohoAdapter, odoo: odooAdapter, quickbooks: quickBooksAdapter };
 const MANAGE = "contracts.manage" as const;
@@ -148,6 +148,48 @@ export async function disconnectOnServer(provider: AccountingProvider): Promise<
   if (error) throw tableError(error);
   logEvent("integration_disconnected", { provider, workspace_id: workspaceId, actor_user_id: actorUserId });
   return getIntegrationStatusOnServer();
+}
+
+/** What this period has already sent, newest first, with who sent it. */
+export async function getSentJournalsOnServer(periodKey: string): Promise<SentJournal[]> {
+  const { workspaceId } = await requireWorkspacePermission("reports.read");
+  const { data, error } = await db()
+    .from("accounting_sync_entries")
+    .select("provider,entry_key,reference,external_id,total,sent_at,sent_by")
+    .eq("workspace_id", workspaceId)
+    .eq("period_key", periodKey)
+    .order("sent_at", { ascending: false });
+  if (error) {
+    // Before migration 0061 nothing has been sent.
+    if (tableError(error).message === TABLES_MISSING) return [];
+    throw tableError(error);
+  }
+  const rows = (data ?? []) as Array<{
+    provider: AccountingProvider;
+    entry_key: string;
+    reference: string;
+    external_id: string;
+    total: number | string;
+    sent_at: string;
+    sent_by: string | null;
+  }>;
+  const senderIds = [...new Set(rows.map((row) => row.sent_by).filter((id): id is string => Boolean(id)))];
+  const names = new Map<string, string>();
+  if (senderIds.length) {
+    const { data: profiles } = await db().from("profiles").select("id,full_name,email").in("id", senderIds);
+    for (const profile of (profiles ?? []) as Array<{ id: string; full_name: string | null; email: string | null }>) {
+      names.set(profile.id, profile.full_name?.trim() || profile.email || "");
+    }
+  }
+  return rows.map((row) => ({
+    provider: row.provider,
+    entryKey: row.entry_key,
+    reference: row.reference,
+    externalId: row.external_id,
+    total: Number(row.total),
+    sentAt: row.sent_at,
+    sentBy: (row.sent_by && names.get(row.sent_by)) || null,
+  }));
 }
 
 export interface SendResult {

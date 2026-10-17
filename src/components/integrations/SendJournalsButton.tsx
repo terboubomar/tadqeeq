@@ -1,5 +1,5 @@
-import { useMutation } from "@tanstack/react-query";
-import { Send } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Check, Send } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -21,6 +21,7 @@ import { sendJournals } from "@/lib/integrations/connections.functions";
 import type { AccountingProvider, SendableEntry } from "@/lib/integrations/sendable";
 
 import { ACCOUNTING_PROVIDER_KEYS, ACCOUNTING_PROVIDERS } from "./providers";
+import { journalEntryKey, sentJournalsKey, useSentJournals } from "./sent-status";
 import { useIntegrationStatus } from "./use-integration-status";
 
 interface SendProps {
@@ -58,11 +59,15 @@ function SendJournalsButton({
 }: SendProps & { provider: AccountingProvider }) {
   const { name } = ACCOUNTING_PROVIDERS[provider];
   const [confirming, setConfirming] = useState(false);
+  const queryClient = useQueryClient();
+  const { data: sent = [] } = useSentJournals(periodKey);
+  const sentKeys = new Set(sent.filter((row) => row.provider === provider).map((row) => row.entryKey));
+  const pending = journals.filter((journal) => !sentKeys.has(journalEntryKey(journal))).length;
 
   const send = useMutation({
     mutationFn: () => {
       const entries: SendableEntry[] = journals.map((journal, index) => ({
-        key: journal.costCenterKey ?? journal.branch,
+        key: journalEntryKey(journal),
         platform,
         ...(journal.costCenter?.trim() ? { costCenter: journal.costCenter.trim() } : {}),
         reference: entryReference(journal.entry, firstNumber + index),
@@ -87,6 +92,7 @@ function SendJournalsButton({
       const summary = parts.join(" · ") || "لا شيء للإرسال";
       if (result.failed.length) toast.error(summary, { description: result.failed[0]?.message });
       else toast.success(summary);
+      void queryClient.invalidateQueries({ queryKey: sentJournalsKey(periodKey) });
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : `تعذّر الإرسال إلى ${name}.`),
   });
@@ -95,16 +101,28 @@ function SendJournalsButton({
 
   return (
     <>
-      <Button type="button" variant="outline" className={className} disabled={send.isPending || !dated} onClick={() => setConfirming(true)}>
-        <Send className="size-4" />
-        {send.isPending ? "جارٍ الإرسال…" : `إرسال إلى ${name}`}
+      <Button
+        type="button"
+        variant="outline"
+        className={className}
+        disabled={send.isPending || !dated || pending === 0}
+        onClick={() => setConfirming(true)}
+      >
+        {pending === 0 ? <Check className="size-4 text-success" /> : <Send className="size-4" />}
+        {send.isPending ? "جارٍ الإرسال…" : pending === 0 ? `أُرسل إلى ${name}` : `إرسال إلى ${name}`}
       </Button>
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
             <AlertDialogTitle>إرسال إلى {name}</AlertDialogTitle>
             <AlertDialogDescription>
-              سيُرسل <span className="num">{journals.length}</span> {journals.length === 1 ? "قيد" : "قيود"} إلى {name} مباشرة. المُرسل سابقاً لا يتكرر.
+              سيُرسل <span className="num">{pending}</span> {pending === 1 ? "قيد" : "قيود"} إلى {name} مباشرة.
+              {journals.length > pending ? (
+                <>
+                  {" "}
+                  <span className="num">{journals.length - pending}</span> أُرسلت سابقاً ولن تتكرر.
+                </>
+              ) : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

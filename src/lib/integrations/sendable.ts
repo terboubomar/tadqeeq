@@ -36,6 +36,17 @@ export interface ChartAccount {
   type?: string;
 }
 
+/** One journal entry already sent to an accounting system, as the journal page shows it. */
+export interface SentJournal {
+  provider: AccountingProvider;
+  entryKey: string;
+  reference: string;
+  externalId: string;
+  total: number;
+  sentAt: string;
+  sentBy: string | null;
+}
+
 export const round2 = (value: number) => Math.round(value * 100) / 100;
 
 /** Account codes the entries use that the connected chart of accounts does not have (or that are empty). */

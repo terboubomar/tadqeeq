@@ -13,6 +13,8 @@ import {
   EntryTable,
 } from "@/components/journal/JournalEntryDialog";
 import { SendJournalsButtons } from "@/components/integrations/SendJournalsButton";
+import { ACCOUNTING_PROVIDERS } from "@/components/integrations/providers";
+import { journalEntryKey, sentForEntry, useSentJournals, type SentJournal } from "@/components/integrations/sent-status";
 import { ExportJournalsMenu } from "@/components/journal/ExportJournalsMenu";
 import { isBalanced, TREATMENT_NOTE, type BranchJournal } from "@/components/journal/journal-export";
 import { useJournalAccounts } from "@/components/journal/use-journal-accounts";
@@ -107,6 +109,9 @@ function JournalReport({
   const [editingCenters, setEditingCenters] = useState(false);
   const current = selection === "all" ? null : journals[selection];
   const shown = current?.entry ?? combined;
+  const { data: sent = [] } = useSentJournals(periodKey);
+  const currentSent = current ? sentForEntry(sent, journalEntryKey(current)) : [];
+  const sentCounts = sentSummary(sent, journals);
   const unbalanced = journals.filter((journal) => !isBalanced(journal.entry)).length;
 
   return (
@@ -118,7 +123,7 @@ function JournalReport({
       />
 
       <ActionBar>
-        <BranchPicker journals={journals} combined={combined} selection={selection} onSelect={setSelection} />
+        <BranchPicker journals={journals} combined={combined} selection={selection} onSelect={setSelection} sent={sent} />
         <ExportJournalsMenu
           title={current ? title + " · " + current.branch : title}
           journals={current ? [current] : journals}
@@ -173,7 +178,7 @@ function JournalReport({
                 ) : null}
               </h2>
               <p className="text-[12.5px] text-muted-foreground">{shown.description}</p>
-              {shown.date || current?.costCenter ? (
+              {shown.date || current?.costCenter || currentSent.length || (!current && sentCounts.length) ? (
                 <p className="flex flex-wrap gap-1.5 pt-1.5 text-[11.5px]">
                   {shown.date ? (
                     <span className="rounded-full border border-border px-2.5 py-0.5 text-muted-foreground">
@@ -185,6 +190,18 @@ function JournalReport({
                       مركز التكلفة <span className="num text-foreground">{current.costCenter}</span>
                     </span>
                   ) : null}
+                  {currentSent.map((row) => (
+                    <SentPill key={row.provider} row={row} />
+                  ))}
+                  {current
+                    ? null
+                    : sentCounts.map(({ provider, count }) => (
+                        <span key={provider} className="inline-flex items-center gap-1 rounded-full bg-success-soft px-2.5 py-0.5 text-success">
+                          <Check className="size-3.5" />
+                          أُرسل إلى {ACCOUNTING_PROVIDERS[provider].name} <span className="num">{count}</span> من{" "}
+                          <span className="num">{journals.length}</span>
+                        </span>
+                      ))}
                 </p>
               ) : null}
             </div>
@@ -211,11 +228,13 @@ function BranchPicker({
   combined,
   selection,
   onSelect,
+  sent,
 }: {
   journals: BranchJournal[];
   combined: JournalEntry;
   selection: Selection;
   onSelect: (selection: Selection) => void;
+  sent: SentJournal[];
 }) {
   const [open, setOpen] = useState(false);
   const current = selection === "all" ? null : journals[selection];
@@ -269,6 +288,7 @@ function BranchPicker({
                   title={journal.branch}
                   amount={lineAmount(journal.entry, "platform_receivable", "debit")}
                   balanced={isBalanced(journal.entry)}
+                  sentTo={sentForEntry(sent, journalEntryKey(journal)).map((row) => ACCOUNTING_PROVIDERS[row.provider].name)}
                 />
               ))}
             </CommandGroup>
@@ -287,6 +307,7 @@ function PickerItem({
   title,
   amount,
   balanced,
+  sentTo = [],
 }: {
   value: string;
   active: boolean;
@@ -295,6 +316,8 @@ function PickerItem({
   title: string;
   amount: number;
   balanced: boolean;
+  /** Systems this entry was already sent to. */
+  sentTo?: string[];
 }) {
   return (
     <CommandItem value={value} onSelect={onSelect} className="gap-2.5 py-2">
@@ -303,6 +326,12 @@ function PickerItem({
         <span className="flex items-center gap-1.5">
           {number ? <span className="num text-[11px] text-muted-foreground">{number}</span> : null}
           <span className="truncate text-[13px] font-medium">{title}</span>
+          {sentTo.length ? (
+            <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-success" title={`أُرسل إلى ${sentTo.join("، ")}`}>
+              <Check className="size-3.5" />
+              أُرسل
+            </span>
+          ) : null}
         </span>
         <span className={cn("block text-[11.5px]", balanced ? "text-muted-foreground" : "text-destructive")}>
           {balanced ? "مستحق " : "غير متوازن · "}
@@ -311,4 +340,28 @@ function PickerItem({
       </span>
     </CommandItem>
   );
+}
+
+/** One system the entry was sent to: when, with the reference, the entry's number there and who sent it on hover. */
+function SentPill({ row }: { row: SentJournal }) {
+  const details = [`المرجع ${row.reference}`, `رقم القيد ${row.externalId}`, row.sentBy ? `أرسله ${row.sentBy}` : ""].filter(Boolean).join(" · ");
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-success-soft px-2.5 py-0.5 text-success" title={details}>
+      <Check className="size-3.5" />
+      أُرسل إلى {ACCOUNTING_PROVIDERS[row.provider].name} · {arabicDate(row.sentAt)}
+    </span>
+  );
+}
+
+/** How many of the period's branches each system has received, for the combined view. */
+function sentSummary(sent: SentJournal[], journals: BranchJournal[]): Array<{ provider: SentJournal["provider"]; count: number }> {
+  const keys = new Set(journals.map(journalEntryKey));
+  const byProvider = new Map<SentJournal["provider"], Set<string>>();
+  for (const row of sent) {
+    if (!keys.has(row.entryKey)) continue;
+    const set = byProvider.get(row.provider) ?? new Set<string>();
+    set.add(row.entryKey);
+    byProvider.set(row.provider, set);
+  }
+  return [...byProvider].map(([provider, set]) => ({ provider, count: set.size }));
 }

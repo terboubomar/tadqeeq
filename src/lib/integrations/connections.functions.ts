@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { connectOnServer, disconnectOnServer, getIntegrationStatusOnServer, sendJournalsOnServer } from "./connections.server";
+import { connectOnServer, disconnectOnServer, getIntegrationStatusOnServer, getSentJournalsOnServer, sendJournalsOnServer } from "./connections.server";
 import { daftraSite } from "./daftra";
 import { odooDatabase, odooSite } from "./odoo";
 import { finishQuickBooksConnectOnServer, startQuickBooksConnectOnServer } from "./quickbooks-connect.server";
@@ -13,6 +13,11 @@ const keyProvider = z.enum(["qoyod", "daftra", "odoo"]);
 export const getIntegrationStatus = createServerFn({ method: "POST" })
   .validator(z.object({}))
   .handler(async () => getIntegrationStatusOnServer());
+
+/** The entries this period has already sent to accounting systems. */
+export const getSentJournals = createServerFn({ method: "POST" })
+  .validator(z.object({ periodKey: z.string().min(1).max(64) }))
+  .handler(async ({ data }) => getSentJournalsOnServer(data.periodKey));
 
 export const connectAccounting = createServerFn({ method: "POST" })
   .validator(
