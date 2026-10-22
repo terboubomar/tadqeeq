@@ -655,6 +655,10 @@ function InvoiceLinesSection({ period }: { period: StoredPeriod }) {
   const recalculated = period.platform === "hungerstation" ? period.summary.compensation : undefined;
   const compensationDiff =
     compensation && typeof recalculated === "number" ? Math.round((recalculated - compensation.amount) * 100) / 100 : null;
+  const flashDeals = lines.find((line) => line.key === "flash_deals");
+  const flashRecalculated = period.platform === "hungerstation" ? period.summary.jokerFees : undefined;
+  const flashDiff =
+    flashDeals && typeof flashRecalculated === "number" ? Math.round((flashRecalculated - flashDeals.amount) * 100) / 100 : null;
 
   return (
     <Section title="سطور الفاتورة كما وردت" summary={lines.length + " سطر · الكمية والمعدل والمبلغ"} defaultOpen={false}>
@@ -704,6 +708,13 @@ function InvoiceLinesSection({ period }: { period: StoredPeriod }) {
             (شامل الضريبة ÷ 1.15) <span className="num">{money(recalculated ?? 0)}</span> · الفرق{" "}
             <span className="num">{compensationDiff.toFixed(2)}</span>
             {Math.abs(compensationDiff) <= 0.01 ? " (ضمن هامش التقريب)" : ""}
+          </p>
+        ) : null}
+        {flashDeals && flashDiff !== null ? (
+          <p>
+            رسوم العروض السريعة: الفاتورة <span className="num">{money(flashDeals.amount)}</span> · المحتسب من عمود Flash Deals Fee في ملف
+            الطلبات <span className="num">{money(flashRecalculated ?? 0)}</span> · الفرق <span className="num">{flashDiff.toFixed(2)}</span>
+            {Math.abs(flashDiff) <= 0.01 ? " (ضمن هامش التقريب)" : ""}
           </p>
         ) : null}
       </div>

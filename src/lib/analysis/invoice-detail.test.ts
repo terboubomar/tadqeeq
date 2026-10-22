@@ -183,3 +183,31 @@ describe("CPC invoice lines per branch", () => {
     expect(parseCpcInvoice(cpc("")).cpcBranches).toBeUndefined();
   });
 });
+
+describe("flash deals invoice line", () => {
+  // Laid out like HS-2026/9-4899067: the Flash deals row sits between compensation and wait time.
+  const flashDetails = DETAILS.replace(
+    "Monthly subscription fees",
+    "Flash deals Fees ÿ þ 6 ÿ 36.0 22.38% 805.78 Monthly subscription fees",
+  );
+  const withFlash = parseHungerInvoice([SUMMARY, flashDetails, ONLINE].join("\n"));
+  const without = parseHungerInvoice([SUMMARY, DETAILS, ONLINE].join("\n"));
+
+  test("reads the row as the invoice prints it, after customer compensation", () => {
+    expect(withFlash.lineDetails?.find((row) => row.key === "flash_deals")).toMatchObject({
+      label: "رسوم العروض السريعة",
+      quantity: 36,
+      unit: "orders",
+      avgRate: 22.38,
+      amount: 805.78,
+    });
+    const keys = withFlash.lineDetails?.map((row) => row.key) ?? [];
+    expect(keys.indexOf("flash_deals")).toBe(keys.indexOf("customer_compensation") + 1);
+  });
+
+  test("changes nothing but the printed lines", () => {
+    const strip = (value: typeof withFlash) =>
+      JSON.parse(JSON.stringify(value, (key, field) => (key === "lineDetails" ? undefined : field)));
+    expect(strip(withFlash)).toEqual(strip(without));
+  });
+});

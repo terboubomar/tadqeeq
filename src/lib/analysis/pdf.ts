@@ -134,6 +134,7 @@ const LINE_DETAILS: Array<{ key: string; label: string; unit: NonNullable<Invoic
   { key: "rdf_campaigns", label: "حملات التوصيل المدعوم (RDF)", unit: "orders", keys: ["RDF campaigns"] },
   { key: "printers", label: "الطابعات", unit: "count", keys: ["Printers"] },
   { key: "customer_compensation", label: "تعويضات العملاء", unit: "sar_base", keys: ["Customer Compensation"] },
+  { key: "flash_deals", label: "رسوم العروض السريعة", unit: "orders", keys: ["Flash deals Fees", "Flash Deals Fees", "Flash deals Fee", "Flash Deals Fee"] },
   { key: "monthly_subscription", label: "الاشتراك الشهري", unit: "count", keys: ["Monthly subscription fees", "Monthly Subscription"] },
   { key: "waiting_time", label: "رسوم وقت الانتظار", unit: "sar_base", keys: ["Avoidable wait time fees", "Avoidable Waiting Time Fee"] },
 ];
