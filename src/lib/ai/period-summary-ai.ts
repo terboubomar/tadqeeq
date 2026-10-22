@@ -93,7 +93,7 @@ function platformSpecificMetrics(period: StoredPeriod): Record<string, number> {
             deliveryCampaignExVat: finite(s.keetaDeliveryCampaignExVat),
             settlementVariance: finite(s.keetaExcelPayableVariance ?? s.keetaSettlementVariance),
             officialPayable: finite(s.keetaExcelPayable ?? s.keetaSourcePayable),
-            // Charges ÷ sales excluding VAT; the shared platform_cost_pct (÷ gross sales) is in the headline.
+            // Charges ÷ sales excluding VAT, the same base as the shared platform_cost_pct in the headline.
             platformCostPctOfNet: finite(s.keetaPlatformCostPct),
           }
         : {

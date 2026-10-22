@@ -42,7 +42,7 @@ import { PRODUCTS } from "@/lib/products";
 import { cn } from "@/lib/utils";
 import { keetaCostSplit, keetaOutsideInvoice } from "@/lib/keeta-cost";
 import { CostDefinitionNote } from "@/components/dash/CostDefinitionNote";
-import { PLATFORM_COST_FORMULA_AR, periodPlatformCharges, platformCostPct, totalPlatformCharges } from "@/lib/reporting-metrics";
+import { PLATFORM_COST_FORMULA_AR, hungerStationAdvertisingExVat, periodPlatformCharges, platformCostPct, salesExVat, totalPlatformCharges } from "@/lib/reporting-metrics";
 import { useBranchLabel } from "@/lib/use-branch-label";
 
 type DashboardSearch = { company?: string; platform?: PlatformScope; month?: string };
@@ -201,13 +201,14 @@ function Dashboard() {
     .sort((a, b) => (b.period_end ?? "").localeCompare(a.period_end ?? ""))
     .slice(0, 3);
 
-  // Platform cost %: total platform charges ÷ gross sales, with the previous period of the same platform.
-  const costPct = platformCostPct(periodPlatformCharges(selected), s.grossSales);
+  // Platform cost %: total platform charges ÷ sales without VAT, with the previous period of the same platform.
+  const costPct = platformCostPct(periodPlatformCharges(selected), salesExVat(selected.platform, s));
+  const hsAdsExVat = hungerStationAdvertisingExVat(selected);
   const previous = periods
     .filter((p) => p.platform === selected.platform && !p.superseded_by && p.id !== selected.id)
     .filter((p) => (p.period_end ?? "") < (selected.period_start ?? selected.period_end ?? ""))
     .sort((a, b) => (b.period_end ?? "").localeCompare(a.period_end ?? ""))[0];
-  const previousCostPct = previous ? platformCostPct(periodPlatformCharges(previous), previous.summary.grossSales) : null;
+  const previousCostPct = previous ? platformCostPct(periodPlatformCharges(previous), salesExVat(previous.platform, previous.summary)) : null;
   const costPctChange = costPct !== null && previousCostPct !== null ? (costPct - previousCostPct) * 100 : null;
   const costPctTile = {
     label: "نسبة تكلفة المنصة",
@@ -365,12 +366,14 @@ function Dashboard() {
                 : [
                     {
                       label: isHunger ? "إجمالي ما خصمته المنصة" : isJahez ? "فاتورة جاهز المحتسبة (بدون الضريبة)" : "إجمالي تكلفة كيتا (بدون الضريبة)",
-                      value: sar(s.totalCharges),
+                      value: sar(isHunger ? (periodPlatformCharges(selected) ?? s.totalCharges) : s.totalCharges),
                       hint: isHunger
-                        ? "عمولة + رسوم دفع + حملات + تعويضات"
+                        ? hsAdsExVat
+                          ? `عمولة + رسوم دفع + حملات + تعويضات + إعلانات ${sar(hsAdsExVat)} · بدون الضريبة`
+                          : "عمولة + رسوم دفع + حملات + تعويضات · بدون الضريبة"
                         : isJahez
                           ? "عمولة + رسوم مدفوعات + عروض توصيل"
-                          : `${percent(platformCostPct(totalPlatformCharges("keeta", s), s.grossSales) ?? 0)} من إجمالي المبيعات · ${percent(s.keetaPlatformCostPct ?? 0)} من المبيعات بدون الضريبة`,
+                          : `${percent(platformCostPct(totalPlatformCharges("keeta", s), salesExVat("keeta", s)) ?? 0)} من المبيعات بدون الضريبة`,
                       icon: Receipt,
                       tone: "negative" as const,
                     },

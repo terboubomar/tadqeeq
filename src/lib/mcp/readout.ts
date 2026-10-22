@@ -12,6 +12,7 @@ import {
   periodPlatformCharges,
   periodPlatformChargesExclAds,
   platformCostPct,
+  salesExVat,
   vatBreakdown,
 } from "@/lib/reporting-metrics";
 
@@ -51,9 +52,9 @@ export function periodHeadline(
     commission_sar: round(s.commission),
     commission_pct: round(s.commissionPct),
     total_platform_charges_sar: round(periodPlatformCharges(period)),
-    platform_cost_pct: ratio(platformCostPct(periodPlatformCharges(period), s.grossSales)),
+    platform_cost_pct: ratio(platformCostPct(periodPlatformCharges(period), salesExVat(period.platform, s))),
     advertising_ex_vat_sar: round(advertisingExVat(period)),
-    platform_cost_pct_excl_ads: ratio(platformCostPct(periodPlatformChargesExclAds(period), s.grossSales)),
+    platform_cost_pct_excl_ads: ratio(platformCostPct(periodPlatformChargesExclAds(period), salesExVat(period.platform, s))),
     platform_cost_pct_formula: PLATFORM_COST_FORMULA,
     platform_cost_pct_definition: PLATFORM_COST_DEFINITION,
     ...(period.platform === "keeta" ? { platform_cost_pct_of_net: ratio(s.keetaPlatformCostPct) } : {}),
@@ -237,7 +238,7 @@ export function branchPerformance(period: StoredPeriod) {
         commission_sar: round(b.commission),
         commission_pct: round(b.commissionPct),
         platform_cost_sar: round(cost),
-        platform_cost_pct: ratio(platformCostPct(cost, b.grossSales)),
+        platform_cost_pct: ratio(platformCostPct(cost, salesExVat(period.platform, b))),
         ...(period.platform === "keeta" ? { platform_cost_pct_of_net: ratio(b.keetaPlatformCostPct) } : {}),
         compensation_sar: round(b.compensation),
         invoice_only_charges: (b.invoiceBranchName ? (itemsByInvoiceName.get(b.invoiceBranchName) ?? []) : []).map((item) => ({

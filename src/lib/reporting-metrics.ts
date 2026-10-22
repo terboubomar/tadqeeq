@@ -7,13 +7,13 @@ import type { StoredPeriod } from "@/lib/periods";
  */
 
 /** The one definition of platform cost %, the same on every platform. */
-export const PLATFORM_COST_FORMULA = "total_platform_charges / gross_sales";
-export const PLATFORM_COST_FORMULA_AR = "إجمالي رسوم المنصة بدون الضريبة ÷ إجمالي المبيعات";
+export const PLATFORM_COST_FORMULA = "total_platform_charges / sales_ex_vat";
+export const PLATFORM_COST_FORMULA_AR = "إجمالي رسوم المنصة بدون الضريبة ÷ المبيعات بدون الضريبة";
 /** What the % includes, stated wherever it is shown (reports, dashboard, weekly email, AI readouts). */
 export const PLATFORM_COST_DEFINITION_AR =
-  "تكلفة المنصة = إجمالي رسوم المنصة بدون الضريبة ÷ إجمالي المبيعات، بالتعريف نفسه لكل المنصات. لا تشمل الضريبة. تشمل الإعلانات على كل المنصات: إعلانات كيتا المخصومة من المستحقات، وفاتورة إعلانات هنقرستيشن (CPC) المنفصلة بدون ضريبتها.";
+  "تكلفة المنصة = إجمالي رسوم المنصة بدون الضريبة ÷ المبيعات بدون الضريبة، بالتعريف نفسه لكل المنصات، فهي النسبة الفعلية التي تأخذها المنصة من مبيعاتك. لا تشمل الضريبة في الطرفين. تشمل الإعلانات على كل المنصات: إعلانات كيتا المخصومة من المستحقات، وفاتورة إعلانات هنقرستيشن (CPC) المنفصلة بدون ضريبتها.";
 export const PLATFORM_COST_DEFINITION =
-  "Platform cost % = total platform charges excluding VAT ÷ gross sales, the same on every platform. Excludes VAT. Includes advertising on every platform: Keeta advertising (deducted from the payout) and the HungerStation CPC advertising invoice (a separate invoice, taken without its VAT).";
+  "Platform cost % = total platform charges excluding VAT ÷ sales excluding VAT, the same on every platform: the real share of sales the platform takes. VAT is excluded on both sides. Includes advertising on every platform: Keeta advertising (deducted from the payout) and the HungerStation CPC advertising invoice (a separate invoice, taken without its VAT).";
 
 const VAT_RATE = 0.15;
 
@@ -83,11 +83,24 @@ export function branchPlatformCharges(period: CostPeriod, branch: BranchCharges)
   return charges + advertising;
 }
 
-/** total platform charges ÷ gross sales; null when either is missing or sales are zero. */
-export function platformCostPct(totalCharges: number | null | undefined, grossSales: number | null | undefined): number | null {
-  if (typeof totalCharges !== "number" || typeof grossSales !== "number") return null;
-  if (!Number.isFinite(totalCharges) || !Number.isFinite(grossSales) || grossSales === 0) return null;
-  return totalCharges / grossSales;
+type SalesFigures = { grossSales?: number | null; netSales?: number | null; keetaSalesExVat?: number | null };
+
+/**
+ * Sales excluding VAT, the base of platform cost %: HungerStation's commissionable sales (netSales, already without
+ * VAT), Keeta's sales without VAT, and Jahez's order amount (which includes VAT) ÷ 1.15. Null when unknown.
+ */
+export function salesExVat(platform: StoredPeriod["platform"], figures: SalesFigures | null | undefined): number | null {
+  if (!figures) return null;
+  if (platform === "hungerstation") return finiteNumber(figures.netSales) ? figures.netSales : null;
+  if (platform === "keeta" && finiteNumber(figures.keetaSalesExVat) && figures.keetaSalesExVat > 0) return figures.keetaSalesExVat;
+  return finiteNumber(figures.grossSales) ? figures.grossSales / (1 + VAT_RATE) : null;
+}
+
+/** total platform charges (without VAT) ÷ sales without VAT; null when either is missing or sales are zero. */
+export function platformCostPct(totalCharges: number | null | undefined, sales: number | null | undefined): number | null {
+  if (typeof totalCharges !== "number" || typeof sales !== "number") return null;
+  if (!Number.isFinite(totalCharges) || !Number.isFinite(sales) || sales === 0) return null;
+  return totalCharges / sales;
 }
 
 export interface VatBreakdown {

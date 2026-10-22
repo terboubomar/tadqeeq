@@ -13,7 +13,7 @@ import {
 import type { BranchRow } from "@/lib/analysis/types";
 import { normalizeCheckMetadata } from "@/lib/analysis/check-metadata";
 import type { StoredPeriod } from "@/lib/periods";
-import { PLATFORM_COST_FORMULA_AR, branchPlatformCharges, periodPlatformCharges, platformCostPct } from "@/lib/reporting-metrics";
+import { PLATFORM_COST_FORMULA_AR, branchPlatformCharges, periodPlatformCharges, platformCostPct, salesExVat } from "@/lib/reporting-metrics";
 
 import { APP_KNOWLEDGE, normalizeAppRoute } from "./app-knowledge";
 
@@ -179,7 +179,7 @@ class FactBuilder {
 function addPeriodFacts(builder: FactBuilder, period: StoredPeriod, exceptions: AuditException[]) {
   const s = period.summary;
   const platformCharges = periodPlatformCharges(period) ?? s.totalCharges;
-  const platformCostRate = platformCostPct(platformCharges, s.grossSales) ?? 0;
+  const platformCostRate = platformCostPct(platformCharges, salesExVat(period.platform, s)) ?? 0;
   const exceptionSummary = summarizeExceptions(exceptions);
 
   builder.add("period", "عدد الطلبات", String(s.orders), {
@@ -210,7 +210,7 @@ function addPeriodFacts(builder: FactBuilder, period: StoredPeriod, exceptions: 
     value: platformCharges,
     unit: "sar",
   });
-  builder.add("period", "نسبة تكلفة المنصة من إجمالي المبيعات", pct(platformCostRate), {
+  builder.add("period", "نسبة تكلفة المنصة من المبيعات بدون الضريبة", pct(platformCostRate), {
     valuePct: platformCostRate * 100,
     unit: "percent",
     formula: PLATFORM_COST_FORMULA_AR,

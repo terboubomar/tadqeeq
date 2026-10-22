@@ -61,20 +61,21 @@ describe("reporting clarity (cost %, VAT, branch names)", () => {
   const hungerstation = {
     ...period,
     platform: "hungerstation",
-    summary: { ...period.summary, grossSales: 1327130.543999998, totalCharges: 318103.3101630429 },
+    summary: { ...period.summary, grossSales: 1327130.543999998, netSales: 1327130.543999998 / 1.15, totalCharges: 318103.3101630429 },
     invoice: { checks: [], totalExVat: 318103.4, vat: 47715.51, totalIncVat: 365818.91 },
   } as unknown as StoredPeriod;
   const keeta = {
     ...period,
     platform: "keeta",
-    summary: { ...period.summary, grossSales: 1860493.84, totalCharges: 587849.58, keetaTotalCostExVat: 587849.58, keetaPlatformCostPct: 0.36335891 },
+    summary: { ...period.summary, grossSales: 1860493.84, keetaSalesExVat: 1860493.84 / 1.15, totalCharges: 587849.58, keetaTotalCostExVat: 587849.58, keetaPlatformCostPct: 0.36335891 },
     branches: [{ branch: "Past Al Malqa Riyadh (🔥Free Delivery 🔥)", branchId: "k1", orders: 10, grossSales: 1000, netSales: 800, commission: 100, commissionPct: 0.1, totalCharges: 300, keetaTotalCostExVat: 300, keetaPlatformCostPct: 0.35 }],
     invoice: null,
   } as unknown as StoredPeriod;
 
-  test("platform cost % is charges ÷ gross sales and states its formula", () => {
-    expect(periodHeadline(hungerstation)).toMatchObject({ platform_cost_pct: 0.2397, platform_cost_pct_formula: "total_platform_charges / gross_sales" });
-    expect(periodHeadline(keeta)).toMatchObject({ platform_cost_pct: 0.316, platform_cost_pct_of_net: 0.3634 });
+  test("platform cost % is charges ÷ sales without VAT and states its formula", () => {
+    expect(periodHeadline(hungerstation)).toMatchObject({ platform_cost_pct: 0.2756, platform_cost_pct_formula: "total_platform_charges / sales_ex_vat" });
+    // Keeta's own net-of-VAT figure and the shared one now agree.
+    expect(periodHeadline(keeta)).toMatchObject({ platform_cost_pct: 0.3634, platform_cost_pct_of_net: 0.3634 });
     expect(periodHeadline(hungerstation)).not.toHaveProperty("platform_cost_pct_of_net");
   });
 
@@ -82,14 +83,14 @@ describe("reporting clarity (cost %, VAT, branch names)", () => {
     const withCpc = { ...hungerstation, invoice: { ...hungerstation.invoice, cpc: 70624.35 } } as StoredPeriod;
     expect(periodHeadline(withCpc)).toMatchObject({
       total_platform_charges_sar: 379515.79,
-      platform_cost_pct: 0.286,
+      platform_cost_pct: 0.3289,
       advertising_ex_vat_sar: 61412.48,
-      platform_cost_pct_excl_ads: 0.2397,
+      platform_cost_pct_excl_ads: 0.2756,
     });
     expect(periodHeadline({ ...keeta, summary: { ...keeta.summary, keetaMerchantAdExVat: 31229.18 } } as StoredPeriod)).toMatchObject({
-      platform_cost_pct: 0.316,
+      platform_cost_pct: 0.3634,
       advertising_ex_vat_sar: 31229.18,
-      platform_cost_pct_excl_ads: 0.2992,
+      platform_cost_pct_excl_ads: 0.3441,
     });
   });
 
@@ -108,7 +109,7 @@ describe("reporting clarity (cost %, VAT, branch names)", () => {
     expect(branch).toMatchObject({
       branch: "Past Al Malqa Riyadh (🔥Free Delivery 🔥)",
       display_name: "Past Al Malqa Riyadh",
-      platform_cost_pct: 0.3,
+      platform_cost_pct: 0.345,
       platform_cost_pct_of_net: 0.35,
     });
   });

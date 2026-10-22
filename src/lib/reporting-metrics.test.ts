@@ -10,24 +10,49 @@ import {
   periodPlatformCharges,
   periodPlatformChargesExclAds,
   platformCostPct,
+  salesExVat,
   totalPlatformCharges,
   vatBreakdown,
 } from "./reporting-metrics";
 
 /** Figures from the HungerStation (HS-2026/9-4871148) and Keeta September 2026 audits. */
-const HS_SUMMARY = { totalCharges: 318103.3101630429, grossSales: 1327130.543999998 };
-const KEETA_SUMMARY = { totalCharges: 587849.582608695, keetaTotalCostExVat: 587849.582608695, grossSales: 1860493.8399999999 };
+const HS_SUMMARY = { totalCharges: 318103.3101630429, grossSales: 1327130.543999998, netSales: 1327130.543999998 / 1.15 };
+const KEETA_SUMMARY = {
+  totalCharges: 587849.582608695,
+  keetaTotalCostExVat: 587849.582608695,
+  grossSales: 1860493.8399999999,
+  keetaSalesExVat: 1860493.8399999999 / 1.15,
+};
+const HS_SALES = salesExVat("hungerstation", HS_SUMMARY);
+const KEETA_SALES = salesExVat("keeta", KEETA_SUMMARY);
 
 const period = (platform: StoredPeriod["platform"], summary: object, invoice: object | null) =>
   ({ platform, summary, invoice }) as unknown as StoredPeriod;
 
 describe("platform cost %", () => {
-  test("is total platform charges ÷ gross sales on every platform", () => {
-    expect(PLATFORM_COST_FORMULA).toBe("total_platform_charges / gross_sales");
-    const hs = platformCostPct(totalPlatformCharges("hungerstation", HS_SUMMARY as never), HS_SUMMARY.grossSales);
-    const keeta = platformCostPct(totalPlatformCharges("keeta", KEETA_SUMMARY as never), KEETA_SUMMARY.grossSales);
-    expect(Number(hs!.toFixed(4))).toBe(0.2397);
-    expect(Number(keeta!.toFixed(4))).toBe(0.316);
+  test("is total platform charges ÷ sales without VAT on every platform", () => {
+    expect(PLATFORM_COST_FORMULA).toBe("total_platform_charges / sales_ex_vat");
+    const hs = platformCostPct(totalPlatformCharges("hungerstation", HS_SUMMARY as never), HS_SALES);
+    const keeta = platformCostPct(totalPlatformCharges("keeta", KEETA_SUMMARY as never), KEETA_SALES);
+    expect(Number(hs!.toFixed(4))).toBe(0.2756);
+    expect(Number(keeta!.toFixed(4))).toBe(0.3634);
+  });
+
+  test("sales without VAT come from each platform's own figure", () => {
+    expect(salesExVat("hungerstation", { grossSales: 232741.58, netSales: 202383.99 })).toBe(202383.99);
+    expect(salesExVat("keeta", { grossSales: 1150, keetaSalesExVat: 990 })).toBe(990);
+    expect(salesExVat("keeta", { grossSales: 1150 })).toBeCloseTo(1000, 6);
+    expect(salesExVat("jahez", { grossSales: 1150, netSales: 700 })).toBeCloseTo(1000, 6);
+    expect(salesExVat("hungerstation", { grossSales: 1150 })).toBeNull();
+  });
+
+  test("HungerStation HS-2026/9-4899067: charges and ads without VAT ÷ sales without VAT", () => {
+    const waqf = period("hungerstation", { totalCharges: 81541.13860869566, grossSales: 232741.5839, netSales: 202383.986 }, {
+      cpc: 19204.99,
+      cpcBranches: [{ branch: "Burger Waqf - Al Mansorah", amountExVat: 16699.99, vat: 2505 }],
+    });
+    expect(periodPlatformCharges(waqf)).toBeCloseTo(98241.13, 2);
+    expect(Number(platformCostPct(periodPlatformCharges(waqf), salesExVat("hungerstation", waqf.summary))!.toFixed(4))).toBe(0.4854);
   });
 
   test("is null rather than a guess when sales are missing or zero", () => {
@@ -44,8 +69,8 @@ describe("platform cost % includes advertising on every platform", () => {
     const hs = period("hungerstation", HS_SUMMARY, { cpc: 70624.35 });
     expect(advertisingExVat(hs)).toBeCloseTo(61412.48, 2);
     expect(periodPlatformCharges(hs)).toBeCloseTo(379515.79, 2);
-    expect(Number(platformCostPct(periodPlatformCharges(hs), HS_SUMMARY.grossSales)!.toFixed(4))).toBe(0.286);
-    expect(Number(platformCostPct(periodPlatformChargesExclAds(hs), HS_SUMMARY.grossSales)!.toFixed(4))).toBe(0.2397);
+    expect(Number(platformCostPct(periodPlatformCharges(hs), HS_SALES)!.toFixed(4))).toBe(0.3289);
+    expect(Number(platformCostPct(periodPlatformChargesExclAds(hs), HS_SALES)!.toFixed(4))).toBe(0.2756);
   });
 
   test("HungerStation uses the CPC invoice's branch lines without VAT when they were read", () => {
@@ -72,7 +97,7 @@ describe("platform cost % includes advertising on every platform", () => {
     const keeta = period("keeta", KEETA_WITH_ADS, null);
     expect(periodPlatformCharges(keeta)).toBe(KEETA_SUMMARY.keetaTotalCostExVat);
     expect(advertisingExVat(keeta)).toBe(31229.18);
-    expect(Number(platformCostPct(periodPlatformChargesExclAds(keeta), KEETA_SUMMARY.grossSales)!.toFixed(4))).toBe(0.2992);
+    expect(Number(platformCostPct(periodPlatformChargesExclAds(keeta), KEETA_SALES)!.toFixed(4))).toBe(0.3441);
   });
 });
 
