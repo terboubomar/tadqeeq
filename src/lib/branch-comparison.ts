@@ -1,14 +1,14 @@
 import type { RegistryBranch } from "./branch-registry";
 import { BRANCH_PLATFORMS, type BranchPlatform } from "./branch-matching";
 import type { StoredPeriod } from "./periods";
-import { branchPlatformCharges, platformCostPct } from "./reporting-metrics";
+import { branchPlatformCharges, platformCostPct, salesExVat } from "./reporting-metrics";
 
 export interface PlatformFigures {
   periodLabel: string;
   orders: number;
   grossSales: number;
   platformCost: number | null;
-  /** total platform charges ÷ gross sales, the same definition everywhere. */
+  /** total platform charges ÷ sales without VAT, the same definition everywhere. */
   platformCostPct: number | null;
 }
 
@@ -57,7 +57,7 @@ export function crossPlatformRows(registry: RegistryBranch[], periods: StoredPer
         orders: branch.orders,
         grossSales: branch.grossSales,
         platformCost: cost,
-        platformCostPct: platformCostPct(cost, branch.grossSales),
+        platformCostPct: platformCostPct(cost, salesExVat(platform, branch)),
       };
     }
   }

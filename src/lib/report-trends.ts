@@ -6,7 +6,7 @@
  * end date falls in; several periods of one platform in a month are added together.
  */
 import type { StoredPeriod } from "./periods";
-import { periodPlatformCharges } from "./reporting-metrics";
+import { periodPlatformCharges, salesExVat } from "./reporting-metrics";
 
 export type TrendPlatform = StoredPeriod["platform"];
 
@@ -14,6 +14,8 @@ export interface TrendFigures {
   periods: number;
   orders: number;
   grossSales: number;
+  /** Sales without VAT, the base of platform cost %. */
+  salesExVat: number;
   commission: number;
   /** Sum of each period's commission base (commission ÷ its commission %), so the % can be re-weighted. */
   commissionBase: number;
@@ -31,6 +33,7 @@ const empty = (): TrendFigures => ({
   periods: 0,
   orders: 0,
   grossSales: 0,
+  salesExVat: 0,
   commission: 0,
   commissionBase: 0,
   platformCharges: 0,
@@ -45,6 +48,7 @@ function add(target: TrendFigures, period: StoredPeriod) {
   target.periods += 1;
   target.orders += finite(s?.orders);
   target.grossSales += finite(s?.grossSales);
+  target.salesExVat += finite(salesExVat(period.platform, s));
   target.commission += commission;
   if (pct > 0) target.commissionBase += commission / pct;
   target.platformCharges += finite(periodPlatformCharges(period));
@@ -82,6 +86,7 @@ export function sumFigures(list: (TrendFigures | undefined)[]): TrendFigures {
     out.periods += f.periods;
     out.orders += f.orders;
     out.grossSales += f.grossSales;
+    out.salesExVat += f.salesExVat;
     out.commission += f.commission;
     out.commissionBase += f.commissionBase;
     out.platformCharges += f.platformCharges;
@@ -90,7 +95,7 @@ export function sumFigures(list: (TrendFigures | undefined)[]): TrendFigures {
 }
 
 export const commissionPct = (f: TrendFigures): number | null => (f.commissionBase > 0 ? f.commission / f.commissionBase : null);
-export const platformCostPct = (f: TrendFigures): number | null => (f.grossSales > 0 ? f.platformCharges / f.grossSales : null);
+export const platformCostPct = (f: TrendFigures): number | null => (f.salesExVat > 0 ? f.platformCharges / f.salesExVat : null);
 export const averageOrder = (f: TrendFigures): number | null => (f.orders > 0 ? f.grossSales / f.orders : null);
 
 export interface TrendChange {

@@ -3,6 +3,9 @@ import { describe, expect, test } from "bun:test";
 import type { StoredPeriod } from "./periods";
 import { averageOrder, buildTrendMonths, commissionPct, compareFigures, periodMonth, platformCostPct, sumFigures } from "./report-trends";
 
+// HungerStation's netSales is its sales without VAT.
+const withNet = (s: Record<string, number>) => ({ netSales: s.grossSales! / 1.15, ...s });
+
 const period = (over: Partial<StoredPeriod> & { summary?: Record<string, number> }): StoredPeriod =>
   ({
     id: Math.random().toString(36),
@@ -17,7 +20,7 @@ const period = (over: Partial<StoredPeriod> & { summary?: Record<string, number>
     daily: [],
     invoice: {},
     ...over,
-    summary: { orders: 100, grossSales: 10000, commission: 1800, commissionPct: 0.2, totalCharges: 2500, ...(over.summary ?? {}) },
+    summary: withNet({ orders: 100, grossSales: 10000, commission: 1800, commissionPct: 0.2, totalCharges: 2500, ...(over.summary ?? {}) }),
   }) as unknown as StoredPeriod;
 
 describe("report trends", () => {
@@ -52,7 +55,7 @@ describe("report trends", () => {
     );
     // bases 10,000 + 30,000; commission 5,000 → 12.5%, not the 15% simple average.
     expect(commissionPct(total)).toBeCloseTo(0.125);
-    expect(platformCostPct(total)).toBeCloseTo(5500 / 40000);
+    expect(platformCostPct(total)).toBeCloseTo(5500 / (40000 / 1.15));
     expect(averageOrder(total)).toBe(200);
   });
 
@@ -70,7 +73,7 @@ describe("report trends", () => {
     const change = compareFigures(now!.total, before!.total);
     expect(change.salesChange).toBeCloseTo(0.2);
     expect(change.ordersChange).toBeCloseTo(-0.1);
-    expect(change.costPctChange).toBeCloseTo(0.22 - 0.2);
+    expect(change.costPctChange).toBeCloseTo((0.22 - 0.2) * 1.15);
     expect(change.commissionPctChange).toBeCloseTo(0.02);
     expect(compareFigures(now!.total, null).salesChange).toBeNull();
   });

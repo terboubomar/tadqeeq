@@ -13,7 +13,7 @@ import { costCenterKey } from "@/lib/journal-cost-centers";
 import { branchJournalEntry, type JournalEntry } from "@/lib/journal-entries";
 
 import { listBranchRegistry, resolveBranchName } from "@/lib/branch-registry";
-import { branchPlatformCharges, displayBranchName, platformCostPct } from "@/lib/reporting-metrics";
+import { branchPlatformCharges, displayBranchName, platformCostPct, salesExVat } from "@/lib/reporting-metrics";
 import { ALLOCATION_RULE_AR, invoiceOnlyAllocation } from "@/lib/invoice-only-allocation";
 import { money } from "@/lib/format";
 import type { StoredPeriod } from "@/lib/periods";
@@ -64,7 +64,7 @@ const HUNGER_COLUMNS: Column<BranchRow>[] = [
   { key: "waitingTimeFees", header: "وقت الانتظار (بدون الضريبة)" },
   { key: "invoiceOnlyBranchCharges", header: "بنود الفرع من الفاتورة فقط (بدون الضريبة)" },
   { key: "totalCharges", header: "إجمالي الخصومات (بدون الضريبة)" },
-  { key: "platformCostPctGross", header: "تكلفة المنصة % من إجمالي المبيعات", type: "percent" },
+  { key: "platformCostPctGross", header: "تكلفة المنصة % من المبيعات بدون الضريبة", type: "percent" },
   { key: "totalCollections", header: "التحصيلات المحتسبة" },
   { key: "invoiceCollections", header: "تحصيلات الفاتورة" },
   { key: "collectionsVariance", header: "فرق التحصيلات" },
@@ -106,7 +106,7 @@ const KEETA_COLUMNS: Column<BranchRow>[] = [
   { key: "keetaTotalCostExVat", header: "كل ما خصمته كيتا بدون الضريبة" },
   { key: "keetaInputVat", header: "ضريبة المدخلات" },
   { key: "keetaTotalCostInclVat", header: "كل ما خصمته كيتا شامل الضريبة" },
-  { key: "platformCostPctGross", header: "تكلفة المنصة % من إجمالي المبيعات", type: "percent" },
+  { key: "platformCostPctGross", header: "تكلفة المنصة % من المبيعات بدون الضريبة", type: "percent" },
   { key: "keetaPlatformCostPct", header: "تكلفة كيتا % من المبيعات بدون الضريبة", type: "percent" },
   { key: "keetaAvgOrderValueInclVat", header: "متوسط الطلب شامل الضريبة" },
 ];
@@ -136,7 +136,7 @@ const JAHEZ_COLUMNS: Column<BranchRow>[] = [
   { key: "jahezCompensationDuplicateAmount", header: "تكرار مشتبه" },
   { key: "jahezCompensationUnknownAmount", header: "تعويضات بدون طلب مصدر" },
   { key: "totalCharges", header: "تكلفة الفاتورة المحتسبة بدون الضريبة" },
-  { key: "platformCostPctGross", header: "تكلفة المنصة % من إجمالي المبيعات", type: "percent" },
+  { key: "platformCostPctGross", header: "تكلفة المنصة % من المبيعات بدون الضريبة", type: "percent" },
 ];
 
 function BranchesPage() {
@@ -159,7 +159,7 @@ function BranchesPage() {
     ...b,
     journalIndex: index,
     branch: resolveBranchName(registry, selected.platform, b.branchId, b.branch) ?? displayBranchName(b.branch),
-    platformCostPctGross: platformCostPct(branchPlatformCharges(selected, b), b.grossSales) ?? undefined,
+    platformCostPctGross: platformCostPct(branchPlatformCharges(selected, b), salesExVat(selected.platform, b)) ?? undefined,
     keetaOtherExclPosExVat:
       b.keetaOtherExpensesExVat === undefined ? undefined : b.keetaOtherExpensesExVat - (b.keetaPosFeesExVat ?? 0),
   }));

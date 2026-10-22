@@ -68,17 +68,17 @@ describe("buildReportDigest", () => {
   test("latest month against the month before, with each platform", () => {
     const digest = buildReportDigest(
       [
-        period("2026-08-31", "hungerstation", { grossSales: 10000, orders: 100, totalCharges: 2000, commission: 1500, commissionPct: 0.15 }),
-        period("2026-09-30", "hungerstation", { grossSales: 11000, orders: 110, totalCharges: 2420, commission: 1650, commissionPct: 0.15 }),
-        period("2026-09-30", "keeta", { grossSales: 1000, orders: 10, totalCharges: 100, commission: 80, commissionPct: 0.08 }),
+        period("2026-08-31", "hungerstation", { grossSales: 10000, netSales: 8000, orders: 100, totalCharges: 2000, commission: 1500, commissionPct: 0.15 }),
+        period("2026-09-30", "hungerstation", { grossSales: 11000, netSales: 9000, orders: 110, totalCharges: 2420, commission: 1650, commissionPct: 0.15 }),
+        period("2026-09-30", "keeta", { grossSales: 1000, keetaSalesExVat: 1000, orders: 10, totalCharges: 100, commission: 80, commissionPct: 0.08 }),
       ],
       { label: "keeta 2026-09-30" },
     )!;
     expect(digest.monthLabel).toContain("سبتمبر");
     expect(digest.previousMonthLabel).toContain("أغسطس");
     expect(digest.figures[0]).toEqual({ label: "المبيعات", value: "12,000.00 ر.س", change: "+20.0%", good: true });
-    // 2,520 / 12,000 = 21% against 20% → +1.0 point, which is bad news.
-    expect(digest.figures[2]).toEqual({ label: "تكلفة المنصة", value: "21.0%", change: "+1.0 نقطة", good: false });
+    // Sales without VAT: 2,520 / 10,000 = 25.2% against 2,000 / 8,000 = 25% → +0.2 point, which is bad news.
+    expect(digest.figures[2]).toEqual({ label: "تكلفة المنصة", value: "25.2%", change: "+0.2 نقطة", good: false });
     expect(digest.platforms.map((p) => p.name)).toEqual(["هنقرستيشن", "كيتا"]);
     expect(digest.newPeriodLabel).toBe("keeta 2026-09-30");
   });

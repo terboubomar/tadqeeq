@@ -15,7 +15,7 @@ import { exportXlsx } from "@/lib/export";
 import { periodLabelMismatch } from "@/lib/period-label-check";
 import { listPeriodRenames, renamePeriod } from "@/lib/period-rename.functions";
 import { deletePeriod, type StoredPeriod } from "@/lib/periods";
-import { periodPlatformCharges, platformCostPct } from "@/lib/reporting-metrics";
+import { periodPlatformCharges, platformCostPct, salesExVat } from "@/lib/reporting-metrics";
 import { setSelectedPeriodId, useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
 import { PlatformName } from "@/components/brand/PlatformLogo";
@@ -87,7 +87,7 @@ function HistoryPage() {
                       commission: period.summary?.commission ?? 0,
                       commissionPct: period.summary?.commissionPct ?? 0,
                       charges: periodPlatformCharges(period) ?? 0,
-                      costPct: platformCostPct(periodPlatformCharges(period), period.summary?.grossSales) ?? 0,
+                      costPct: platformCostPct(periodPlatformCharges(period), salesExVat(period.platform, period.summary)) ?? 0,
                     })),
                     columns: [
                       { key: "label", header: "الفترة" },
