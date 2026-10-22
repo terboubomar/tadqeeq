@@ -56,6 +56,8 @@ import { LEGAL_COMPANY, LEGAL_DOCS } from "@/lib/legal";
 import { productPageFor } from "@/lib/product-pages";
 import { ProductsMenu, ProductsMenuList } from "@/components/products/ProductsMenu";
 import { IntegrationsSection } from "@/components/home/IntegrationsSection";
+import { ProductGrid } from "@/components/home/ProductGrid";
+import { BeforeAfterSwitch } from "@/components/home/BeforeAfterSwitch";
 import { PRODUCTS, productTitle, type ProductKey } from "@/lib/products";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { OG_IMAGE, SITE_NAME, SITE_NAME_EN, SITE_URL, canonical, jsonLd, socialMeta } from "@/lib/seo";
@@ -403,6 +405,8 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const hasSection = (href: string) => href !== "#pricing" || plans.length > 0;
   const navItems = NAV.filter(([href]) => hasSection(href));
+  const prices = publicPrices(plans).filter((plan) => plan.cycle === "monthly").map((plan) => plan.price);
+  const fromPrice = prices.length ? Math.min(...prices) : null;
 
   return (
     <div ref={rootRef} id="top" className="lp-root min-h-screen bg-background" dir="rtl">
@@ -476,7 +480,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
 
       <main>
         <section className="overflow-hidden">
-          <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:py-20">
+          <div className="mx-auto grid max-w-7xl items-center gap-12 px-4 pb-10 pt-14 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:pb-14 lg:pt-20">
             <div className="lp-stagger flex flex-col gap-6">
               <p className="flex items-center gap-2.5 text-[13px] font-semibold text-primary-text">
                 <span aria-hidden="true" className="flex">
@@ -506,6 +510,15 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
                   شاهد كيف يعمل
                 </a>
               </div>
+              {fromPrice !== null ? (
+                <a href="#pricing" className="group flex w-fit flex-wrap items-baseline gap-x-1.5 text-[14px] text-muted-foreground">
+                  الباقات من
+                  <span className="num text-2xl font-extrabold text-foreground">{fromPrice.toLocaleString("en-US")}</span>
+                  <span className="font-semibold text-foreground">ر.س شهرياً</span>
+                  <span>بدون الضريبة · تجربة مجانية بدون بطاقة</span>
+                  <ArrowLeft className="size-3.5 self-center transition-transform group-hover:-translate-x-0.5" aria-hidden />
+                </a>
+              ) : null}
               <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-muted-foreground">
                 {["Excel وCSV وPDF", "بيانات كل شركة منفصلة", "الذكاء الاصطناعي لا يغيّر الأرقام"].map((item) => (
                   <li key={item} className="flex items-center gap-1.5">
@@ -517,6 +530,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
             </div>
             <HeroDashboard />
           </div>
+          <ProductGrid />
         </section>
 
         <section className="border-y border-border">
@@ -558,34 +572,7 @@ function Landing({ plans }: { plans: PublicPlan[] }) {
           <SectionIntro eyebrow="المشكلة" title="ثلاث منصات، ثلاث صيغ، وفاتورة لا تُراجع.">
             كل منصة تكتب خصوماتها بطريقتها. ومن دون إعادة احتساب، تُدفع الفاتورة كما وصلت — بعمولتها ورسومها وتعويضاتها.
           </SectionIntro>
-          <div data-reveal className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[18px] border border-border bg-card p-6">
-              <p className="text-xs font-semibold text-destructive">من دون تدقيق</p>
-              <ul className="mt-4 space-y-3 text-[15px] text-foreground/80">
-                {BEFORE.map((item) => (
-                  <li key={item} className="flex items-center gap-2.5">
-                    <span className="grid size-5 place-items-center rounded-full bg-destructive/12 text-destructive">
-                      <X className="size-3" />
-                    </span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="lp-float rounded-[18px] bg-ink p-6 text-ink-foreground shadow-[0_30px_60px_-30px_rgb(19_35_43/0.45)]">
-              <p className="text-xs font-semibold text-primary">مع تدقيق</p>
-              <ul className="mt-4 space-y-3 text-[15px]">
-                {AFTER.map((item, index) => (
-                  <li key={item} className="lp-in flex items-center gap-2.5" style={{ animationDelay: `${0.4 + index * 0.15}s` }}>
-                    <span className="grid size-5 place-items-center rounded-full bg-primary text-primary-foreground">
-                      <Check className="size-3" />
-                    </span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          <BeforeAfterSwitch before={BEFORE} after={AFTER} />
         </section>
 
         <HowItWorks />
