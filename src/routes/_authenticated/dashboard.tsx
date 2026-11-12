@@ -166,7 +166,7 @@ function Dashboard() {
   }
 
   const branchCost = (branch: (typeof selected.branches)[number]) =>
-    isHunger ? branch.commission : isKeeta ? (branch.keetaTotalCostExVat ?? branch.totalCharges) : branch.totalCharges;
+    isHunger ? branch.commission : isKeeta ? (totalPlatformCharges("keeta", branch) ?? branch.totalCharges) : branch.totalCharges;
   const branchSales = (branch: (typeof selected.branches)[number]) => (isHunger ? branch.netSales : branch.grossSales);
   const topBranches = [...selected.branches].sort((a, b) => branchCost(b) - branchCost(a)).slice(0, 8);
   const branchRate = (branch: (typeof selected.branches)[number]) => {

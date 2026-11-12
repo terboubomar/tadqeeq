@@ -260,9 +260,10 @@ function addPeriodFacts(builder: FactBuilder, period: StoredPeriod, exceptions: 
       unit: "sar",
     });
   } else if (period.platform === "keeta") {
-    if (finite(s.keetaPlatformCostPct) !== null) {
-      builder.add("period", "نسبة تكلفة كيتا من المبيعات بدون الضريبة", pct(s.keetaPlatformCostPct ?? 0), {
-        valuePct: (s.keetaPlatformCostPct ?? 0) * 100,
+    const keetaCostPct = platformCostPct(periodPlatformCharges(period), salesExVat("keeta", s));
+    if (keetaCostPct !== null) {
+      builder.add("period", "نسبة تكلفة كيتا من المبيعات بدون الضريبة", pct(keetaCostPct), {
+        valuePct: keetaCostPct * 100,
         unit: "percent",
       });
     }

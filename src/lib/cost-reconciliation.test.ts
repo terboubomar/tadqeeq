@@ -6,7 +6,7 @@ import type { StoredPeriod } from "./periods";
 const period = (input: Partial<StoredPeriod>) => ({ summary: {}, invoice: {}, ...input }) as StoredPeriod;
 
 describe("costReconciliation", () => {
-  test("Keeta: the charges in the % come down to the commission invoice with nothing left over", () => {
+  test("Keeta: the charges in the % come down to the commission invoice with nothing left over; item discounts the restaurant funds are shown, not counted", () => {
     // September 2026 PAST figures (excluding VAT).
     const result = costReconciliation(
       period({
@@ -22,11 +22,11 @@ describe("costReconciliation", () => {
       }),
     )!;
     expect(result.lines.map((line) => [line.kind, line.amount])).toEqual([
-      ["start", 587_849.58],
+      ["start", 586_151.5],
       ["less", 31_229.18],
-      ["less", 1_698.08],
       ["less", 3_043.48],
       ["total", 551_878.84],
+      ["info", 1_698.08],
     ]);
     expect(result.residual).toBe(0);
   });

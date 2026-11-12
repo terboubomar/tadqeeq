@@ -9,7 +9,11 @@ import {
   PLATFORM_COST_FORMULA,
   advertisingExVat,
   branchCostReconciliation,
+  MERCHANT_FUNDED_DISCOUNTS,
+  MERCHANT_FUNDED_DISCOUNTS_LABEL_AR,
+  branchInvoiceOnlyItems,
   branchPlatformCost,
+  merchantFundedDiscounts,
   unallocatedPlatformCharges,
   periodPlatformCharges,
   periodPlatformChargesExclAds,
@@ -59,8 +63,20 @@ export function periodHeadline(
     platform_cost_pct_excl_ads: ratio(platformCostPct(periodPlatformChargesExclAds(period), salesExVat(period.platform, s))),
     platform_cost_pct_formula: PLATFORM_COST_FORMULA,
     platform_cost_pct_definition: PLATFORM_COST_DEFINITION,
-    ...(period.platform === "keeta" ? { platform_cost_pct_of_net: ratio(s.keetaPlatformCostPct) } : {}),
+    // Kept for older clients: the same shared ratio as platform_cost_pct.
+    ...(period.platform === "keeta" ? { platform_cost_pct_of_net: ratio(platformCostPct(periodPlatformCharges(period), salesExVat(period.platform, s))) } : {}),
+    ...merchantFunded(period.platform, s),
     branches: round(s.branchCount),
+  };
+}
+
+/** «خصومات ممولة من المطعم»: discounts the restaurant funded itself, shown apart because they are not platform cost. */
+function merchantFunded(platform: StoredPeriod["platform"], figures: Parameters<typeof merchantFundedDiscounts>[1]) {
+  if (!MERCHANT_FUNDED_DISCOUNTS[platform].length) return {};
+  return {
+    merchant_funded_discounts_sar: round(merchantFundedDiscounts(platform, figures)),
+    merchant_funded_discounts_label: MERCHANT_FUNDED_DISCOUNTS_LABEL_AR,
+    merchant_funded_discounts_note: "Discounts the restaurant funded itself; not a platform fee and not part of total_platform_charges_sar or platform_cost_sar.",
   };
 }
 
@@ -120,12 +136,19 @@ export function unallocatedCharges(period: StoredPeriod) {
           raw_branch_name: item.rawBranchName,
           allocation_rule: "Names a branch that is not in this period's orders file; on no branch until the name is linked",
         }
-      : {
-          line: item.label,
-          amount_sar: round(item.amount),
-          allocation: "unallocated" as const,
-          allocation_rule: ALLOCATION_RULE_EN.platform_level,
-        },
+      : item.allocation === "advertising_unattributed"
+        ? {
+            line: item.label,
+            amount_sar: round(item.amount),
+            allocation: "advertising_unattributed" as const,
+            allocation_rule: "Advertising known for the period that no branch carries; not spread across branches",
+          }
+        : {
+            line: item.label,
+            amount_sar: round(item.amount),
+            allocation: "unallocated" as const,
+            allocation_rule: ALLOCATION_RULE_EN.platform_level,
+          },
   );
 }
 
@@ -248,9 +271,6 @@ export function periodReadout(period: StoredPeriod, appUrl: string) {
 
 /** Every branch in a period, largest platform cost first. */
 export function branchPerformance(period: StoredPeriod) {
-  const itemsByInvoiceName = new Map(
-    (period.invoice?.branches ?? []).map((branch) => [branch.branch ?? "", branch.invoiceOnlyItems ?? []]),
-  );
   return (period.branches ?? [])
     .map((b) => {
       const breakdown = branchPlatformCost(period, b);
@@ -267,9 +287,11 @@ export function branchPerformance(period: StoredPeriod) {
         advertising_ex_vat_sar: round(breakdown?.advertisingExVat),
         platform_cost_excl_ads_sar: round(breakdown?.platformCostExclAds),
         platform_cost_pct: ratio(platformCostPct(cost, salesExVat(period.platform, b))),
-        ...(period.platform === "keeta" ? { platform_cost_pct_of_net: ratio(b.keetaPlatformCostPct) } : {}),
+        ...(period.platform === "keeta" ? { platform_cost_pct_of_net: ratio(platformCostPct(cost, salesExVat(period.platform, b))) } : {}),
+        ...merchantFunded(period.platform, b),
         compensation_sar: round(b.compensation),
-        invoice_only_charges: (b.invoiceBranchName ? (itemsByInvoiceName.get(b.invoiceBranchName) ?? []) : []).map((item) => ({
+        // Inside platform_cost_sar: the charges this branch's invoice section prints.
+        invoice_only_charges: branchInvoiceOnlyItems(period, b).map((item) => ({
           line: item.label,
           amount_sar: round(item.amount),
           allocation_rule: ALLOCATION_RULE_EN.direct,

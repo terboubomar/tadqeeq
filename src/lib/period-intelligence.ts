@@ -7,6 +7,7 @@ import {
 } from "./exceptions";
 import type { BranchRow } from "./analysis/types";
 import type { StoredPeriod } from "./periods";
+import { platformCostPct, salesExVat, totalPlatformCharges } from "@/lib/reporting-metrics";
 
 export type ComparisonUnit = "sar" | "count" | "ratio";
 
@@ -130,7 +131,7 @@ function platformCostRate(totalCharges: number, grossSales: number): number {
 
 function branchPlatformCost(period: StoredPeriod, branch: BranchRow): number {
   if (period.platform === "keeta") {
-    return branch.keetaTotalCostExVat ?? branch.totalCharges;
+    return totalPlatformCharges("keeta", branch) ?? branch.totalCharges;
   }
   return branch.totalCharges;
 }
@@ -334,8 +335,8 @@ function buildPlatformMetrics(
         "keeta_platform_cost_rate",
         "نسبة تكلفة كيتا من المبيعات بدون الضريبة",
         "ratio",
-        c.keetaPlatformCostPct,
-        p.keetaPlatformCostPct,
+        platformCostPct(totalPlatformCharges("keeta", c), salesExVat("keeta", c)) ?? undefined,
+        platformCostPct(totalPlatformCharges("keeta", p), salesExVat("keeta", p)) ?? undefined,
       ),
       optionalMetric(
         "keeta_settlement_variance",

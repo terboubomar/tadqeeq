@@ -110,7 +110,8 @@ describe("reporting clarity (cost %, VAT, branch names)", () => {
       branch: "Past Al Malqa Riyadh (🔥Free Delivery 🔥)",
       display_name: "Past Al Malqa Riyadh",
       platform_cost_pct: 0.345,
-      platform_cost_pct_of_net: 0.35,
+      // The shared ratio (charges ÷ sales without VAT), the same as platform_cost_pct.
+      platform_cost_pct_of_net: 0.345,
     });
   });
 });
@@ -154,6 +155,13 @@ describe("invoice detail (lines, branch charges, statement of account, compensat
         amount_sar: 587.83,
         allocation: "unallocated",
         allocation_rule: "platform_level: printed only in the consolidated summary, not allocated",
+      },
+      // A CPC invoice without branch lines: its total (without VAT) is on no branch, and listed, not spread.
+      {
+        line: "إعلانات غير منسوبة إلى فرع",
+        amount_sar: 61412.48,
+        allocation: "advertising_unattributed",
+        allocation_rule: "Advertising known for the period that no branch carries; not spread across branches",
       },
     ]);
     // Branch charges plus platform-level ones add up to the invoice-only total.
