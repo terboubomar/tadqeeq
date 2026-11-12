@@ -1,6 +1,7 @@
 import type { BranchRow } from "./analysis/types";
 import type { MarketplaceChargeLine } from "./charges-mapper";
 import type { StoredPeriod } from "./periods";
+import { cpcLineAllocation } from "./reporting-metrics";
 
 /**
  * Where each «كاشِف» line comes from: the file, the sheet, the exact column names the engine reads, and how the
@@ -312,15 +313,9 @@ export function branchBreakdown(
 
   if (line.id === "hs-cpc" && period.invoice?.cpcBranches?.length) {
     // Each line of the CPC invoice names its branch; match it to the order branch by name.
-    const key = (name: string | undefined) => (name ?? "").replace(/\s+/g, " ").trim().toLocaleLowerCase();
-    const byName = new Map<string, string>();
-    for (const b of period.branches) {
-      byName.set(key(b.branch), b.branch);
-      if (b.invoiceBranchName) byName.set(key(b.invoiceBranchName), b.branch);
-    }
     const values = new Map(period.branches.map((b) => [b.branch, 0]));
-    for (const charge of period.invoice.cpcBranches) {
-      const name = byName.get(key(charge.branch)) ?? charge.branch;
+    for (const { line: charge, branch } of cpcLineAllocation(period)) {
+      const name = branch?.branch ?? charge.branch;
       values.set(name, (values.get(name) ?? 0) + charge.amountExVat + charge.vat);
     }
     const rows = sortedRows([...values.entries()].map(([name, value]) => ({ name, value })));

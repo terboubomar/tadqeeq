@@ -150,8 +150,7 @@ function branchPlatformCost(period: StoredPeriod, branch: BranchRow): number {
 }
 
 function branchPlatformCostRate(period: StoredPeriod, branch: BranchRow): number {
-  const cost = branchPlatformCost(period, branch);
-  return branch.grossSales > 0 ? cost / branch.grossSales : 0;
+  return platformCostPct(branchPlatformCost(period, branch), salesExVat(period.platform, branch)) ?? 0;
 }
 
 class FactBuilder {
@@ -673,7 +672,7 @@ function addHistoryFacts(
     const exceptions = buildPeriodExceptions(period);
     const exceptionSummary = summarizeExceptions(exceptions);
     const platformCost = periodPlatformCharges(period) ?? period.summary.totalCharges;
-    const costRate = period.summary.grossSales > 0 ? platformCost / period.summary.grossSales : 0;
+    const costRate = platformCostPct(platformCost, salesExVat(period.platform, period.summary)) ?? 0;
 
     builder.add(
       "history",

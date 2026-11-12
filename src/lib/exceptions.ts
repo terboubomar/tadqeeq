@@ -9,6 +9,7 @@ import {
 } from "./analysis/tolerances";
 import { buildMarketplaceChargeMap } from "./charges-mapper";
 import type { StoredPeriod } from "./periods";
+import { BRANCH_COST_RECONCILIATION_TOLERANCE, branchCostReconciliation, unallocatedPlatformCharges } from "./reporting-metrics";
 
 export type ExceptionStatus =
   | "new"
@@ -994,10 +995,71 @@ function marketplaceChargeExceptions(period: StoredPeriod): AuditException[] {
   ];
 }
 
+/**
+ * Charges that reached the period total but not a branch: invoice lines naming a branch that is not in the period,
+ * and any gap left between the branch costs plus unallocated charges and the total platform charges.
+ */
+function branchCostExceptions(period: StoredPeriod): AuditException[] {
+  const result: AuditException[] = [];
+  const unmatched = unallocatedPlatformCharges(period).filter((item) => item.allocation === "unmatched_branch");
+  if (unmatched.length) {
+    const amount = unmatched.reduce((sum, item) => sum + item.amount, 0);
+    result.push(
+      makeException(period, {
+        code: "HS_CPC_UNMATCHED_BRANCH",
+        sourceLevel: "summary",
+        category: "branch_match",
+        label: "إعلانات CPC لفرع غير موجود في ملف الطلبات",
+        tolerance: BRANCH_COST_RECONCILIATION_TOLERANCE,
+        evidence: "invoice_only",
+        hint:
+          "فاتورة CPC تسمّي " +
+          unmatched.map((item) => "«" + (item.rawBranchName ?? item.label) + "»").join("، ") +
+          " ولا يوجد فرع بهذا الاسم في ملف الطلبات. المبلغ " +
+          amount.toFixed(2) +
+          " ر.س (بدون الضريبة) محسوب في تكلفة المنصة للفترة وغير موزَّع على أي فرع حتى يُربط الاسم.",
+        forceReviewAmount: amount,
+        forcePotentialRecovery: 0,
+        lines: unmatched.map((item) => ({ label: item.rawBranchName ?? item.label, amount: item.amount })),
+      }),
+    );
+  }
+
+  const check = branchCostReconciliation(period);
+  if (check && !check.reconciled) {
+    result.push(
+      makeException(period, {
+        code: "BRANCH_COST_ALLOCATION_GAP",
+        sourceLevel: "summary",
+        category: "other",
+        label: "فرق توزيع التكاليف على الفروع",
+        computed: check.branches + check.unallocated,
+        invoiced: check.total,
+        tolerance: BRANCH_COST_RECONCILIATION_TOLERANCE,
+        evidence: "mixed",
+        hint:
+          "مجموع تكلفة المنصة للفروع " +
+          check.branches.toFixed(2) +
+          " + البنود غير الموزعة " +
+          check.unallocated.toFixed(2) +
+          " لا يساوي إجمالي رسوم المنصة " +
+          check.total.toFixed(2) +
+          " ر.س. الفرق " +
+          Math.abs(check.residual).toFixed(2) +
+          " ر.س رسم لم يُنسب إلى فرع ولم يُدرج ضمن غير الموزَّع.",
+        forceReviewAmount: Math.abs(check.residual),
+        forcePotentialRecovery: 0,
+      }),
+    );
+  }
+  return result;
+}
+
 export function buildPeriodExceptions(period: StoredPeriod): AuditException[] {
   const result = [
     ...summaryExceptions(period),
     ...marketplaceChargeExceptions(period),
+    ...branchCostExceptions(period),
     ...(period.platform === "hungerstation"
       ? hungerBranchExceptions(period)
       : period.platform === "keeta"
