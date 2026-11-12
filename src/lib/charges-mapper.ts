@@ -201,7 +201,7 @@ function hungerStationLines(period: StoredPeriod): MarketplaceChargeLine[] {
       fundingSource: "unknown",
       mapped: false,
       note:
-        "البند موجود في الفاتورة فقط ولا توجد في snapshot الحالية بيانات مستقلة تكفي لتصنيفه بأمان.",
+        "البند موجود في الفاتورة فقط، ولا يوجد في ملف الطلبات ما يكفي لتصنيفه بأمان.",
     });
   }
 
@@ -232,7 +232,7 @@ function hungerStationLines(period: StoredPeriod): MarketplaceChargeLine[] {
     evidence: "invoice",
     fundingSource: "merchant",
     mapped: true,
-    note: "يعرض منفصلاً لأنه ليس جزءاً من summary.totalCharges الحالي.",
+    note: "فاتورة إعلانات منفصلة عن فاتورة العمولة.",
   });
 
   addLine(lines, {
@@ -272,7 +272,7 @@ function hungerStationLines(period: StoredPeriod): MarketplaceChargeLine[] {
     evidence: "data",
     fundingSource: "unknown",
     mapped: true,
-    note: "تعرض خارج إجمالي رسوم المنصة حتى لا تتغير معادلات المحرك الحالية.",
+    note: "مبالغ أُعيدت للعملاء، وليست رسوماً تأخذها المنصة.",
   });
 
   return lines;
@@ -374,7 +374,7 @@ function keetaLines(period: StoredPeriod): MarketplaceChargeLine[] {
     fundingSource: "unknown",
     mapped: false,
     note:
-      "الـ snapshot الحالية تجمع عدة أعمدة في Other Expenses. لا يفترض Tadqeeq نوعها أو جهة تمويلها بدون تفصيل مستقل.",
+      "نتيجة التدقيق المحفوظة تجمع عدة أعمدة في Other Expenses. لا يفترض Tadqeeq نوعها أو جهة تمويلها بدون تفصيل مستقل.",
   });
 
   addLine(lines, {
@@ -387,7 +387,7 @@ function keetaLines(period: StoredPeriod): MarketplaceChargeLine[] {
     evidence: "data",
     fundingSource: "merchant",
     mapped: true,
-    note: "تعرض منفصلة لأن summary.totalCharges في كيتا محفوظ بدون الضريبة.",
+    note: "الضريبة تُعرض منفصلة لأن تكلفة المنصة بدون الضريبة.",
   });
 
   return lines;
@@ -441,7 +441,7 @@ function jahezLines(period: StoredPeriod): MarketplaceChargeLine[] {
     evidence: "data",
     fundingSource: "merchant",
     mapped: true,
-    note: "يؤثر على صافي المطعم لكنه ليس جزءاً من summary.totalCharges الحالي.",
+    note: "يؤثر على صافي المطعم، لكنه ليس رسماً تأخذه المنصة.",
   });
   addLine(lines, {
     id: "jahez-delivery-coupon",
@@ -474,7 +474,7 @@ function jahezLines(period: StoredPeriod): MarketplaceChargeLine[] {
     evidence: "data",
     fundingSource: "merchant",
     mapped: true,
-    note: "تعرض منفصلة لأن summary.totalCharges في جاهز محفوظ بدون الضريبة.",
+    note: "الضريبة تُعرض منفصلة لأن تكلفة المنصة بدون الضريبة.",
   });
 
   addLine(lines, {
@@ -515,12 +515,12 @@ export function buildMarketplaceChargeMap(
       label: "فرق غير مصنف لإقفال إجمالي الرسوم",
       amount: firstPassVariance,
       scope: "audit_total",
-      source: "مقارنة خريطة الرسوم مع summary.totalCharges",
+      source: "مقارنة البنود المصنفة بإجمالي رسوم المنصة",
       evidence: "mixed",
       fundingSource: "unknown",
       mapped: false,
       note:
-        "Tadqeeq لم يخمّن تصنيف هذا الرصيد. قد ينتج من snapshot قديمة أو حقل لم تتم إضافته بعد إلى خريطة الرسوم.",
+        "Tadqeeq لم يخمّن تصنيف هذا الرصيد. قد ينتج من نتيجة تدقيق قديمة أو حقل لم تتم إضافته بعد إلى خريطة الرسوم.",
     });
   }
 
