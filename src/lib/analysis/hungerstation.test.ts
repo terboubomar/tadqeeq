@@ -932,3 +932,98 @@ describe("HungerStation CPC parser", () => {
     expect(figures.invoiceNo).toBe("HS-CPC-2026/7-4617261");
   });
 });
+
+describe("HungerStation HS-funded rewards discounts", () => {
+  // Mashkuk Bahab, October 2026 (HS-2026/10-4958727): HS Rewards Discount on successful orders per branch.
+  const MASHKUK_REWARDS: Array<[string, number]> = [
+    ["Mashkuk Bahab - Sudayr", 2200],
+    ["Mashkuk Bahab - Jalmudah", 2055],
+    ["Mashkuk Bahab - Az Zuhur", 1415],
+    ["Mashkuk Bahab - An Nur", 1105],
+    ["Mashkuk Bahab - Ash Shulah (Fakhriyah)", 940],
+    ["Mashkuk Bahab   As Safa", 795],
+    ["Mashkuk Bahab - al mazrua", 730],
+    ["Mashkuk Bahab Saihat   An Nur", 520],
+    ["Mashkuk Bahab   Al Khubar Ash Shamaliyah", 460],
+  ];
+
+  function order(id: number, branch: string, branchId: number, status: string, hsRewards: number, vendorRewards: number) {
+    return {
+      "Order ID": id,
+      Status: status,
+      "Branch Name": branch,
+      "HS Branch ID": branchId,
+      "Commissionable GMV (VAT Excluded)": 100,
+      Commission: 15,
+      "Payment Type": "Online payment",
+      "CC Amount": 0,
+      "Wallet Amount": 0,
+      "Transmitter Amount": 0,
+      "Restaurant delivery Discount": 0,
+      "HS Food Discount": 0,
+      "HS Rewards Discount": hsRewards,
+      "Vendor Rewards Discount": vendorRewards,
+      "Restaurant Food discount": 0,
+      "Operation Day": "2026-10-01",
+    };
+  }
+
+  function workbook(rows: Record<string, unknown>[]): ArrayBuffer {
+    const book = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(rows), "1 Commissionable GMV");
+    return XLSX.write(book, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+  }
+
+  test("adds HS-funded rewards to collections per branch and in total; failed-before-pickup rewards stay out", () => {
+    const rows = MASHKUK_REWARDS.map(([branch, amount], index) => order(index + 1, branch, 100 + index, "Successful", amount, 0));
+    // Failed rows carry 465 SAR of rewards that the invoice does not pay back.
+    rows.push(order(90, MASHKUK_REWARDS[0]![0], 100, "Failed Before Pick Up", 410, 0));
+    rows.push(order(91, MASHKUK_REWARDS[1]![0], 101, "Failed", 55, 0));
+
+    const invoice = {
+      branches: MASHKUK_REWARDS.map(([branch, amount]) => ({ branch, rewardsDiscount: amount, restaurantRewardsDiscount: 0 })),
+    };
+    const result = analyzeHungerStation(workbook(rows), { invoice });
+
+    expect(result.summary.rewardsDiscount).toBeCloseTo(10220, 2);
+    expect(result.summary.totalCollections).toBeCloseTo(10220, 2);
+    for (const [index, [, amount]] of MASHKUK_REWARDS.entries()) {
+      const row = result.branches.find((item) => item.branchId === String(100 + index))!;
+      expect(row.rewardsDiscount).toBeCloseTo(amount, 2);
+      expect(row.totalCollections).toBeCloseTo(amount, 2);
+    }
+
+    const check = result.checks.find((item) => item.code === "HS_REWARDS_DISCOUNT_FUNDED")!;
+    expect(check.label).toBe("خصومات المكافآت على حساب المنصة");
+    expect(check.computed).toBeCloseTo(10220, 2);
+    expect(check.invoiced).toBeCloseTo(10220, 2);
+    expect(check.controlOnly).toBe(true);
+  });
+
+  test("does not add vendor-funded rewards to collections", () => {
+    const rows = [
+      order(1, "Branch A", 100, "Successful", 10, 10),
+      order(2, "Branch A", 100, "Successful", 10, 4),
+      order(3, "Branch A", 100, "Failed After Pick Up", 5, 0),
+    ];
+    const result = analyzeHungerStation(workbook(rows));
+
+    expect(result.summary.rewardsDiscount).toBeCloseTo(11, 2);
+    expect(result.summary.totalCollections).toBeCloseTo(11, 2);
+  });
+
+  test("a file without any rewards column counts 0 and says so on the line instead of failing", () => {
+    const rows = [order(1, "Branch A", 100, "Successful", 0, 0)].map((row) => {
+      const { "HS Rewards Discount": _hs, "Vendor Rewards Discount": _vendor, ...rest } = row;
+      return rest;
+    });
+    const invoice = { branches: [{ branch: "Branch A", rewardsDiscount: 10, restaurantRewardsDiscount: 0 }] };
+    const result = analyzeHungerStation(workbook(rows), { invoice });
+
+    expect(result.summary.rewardsDiscount).toBe(0);
+    const check = result.checks.find((item) => item.code === "HS_REWARDS_DISCOUNT_FUNDED")!;
+    expect(check.computed).toBe(0);
+    expect(check.invoiced).toBeCloseTo(10, 2);
+    expect(check.hint).toContain("لا يحتوي عمود HS Rewards Discount");
+  });
+});

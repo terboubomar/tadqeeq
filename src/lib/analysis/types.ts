@@ -278,6 +278,8 @@ export interface HungerInvoiceBranch {
   totalFoodDiscount?: number;
   restaurantFoodDiscount?: number;
   rewardsDiscount?: number;
+  /** "Restaurant Rewards Discounts": the restaurant-funded part of the rewards discounts. */
+  restaurantRewardsDiscount?: number;
   netMarketingDiscount?: number;
   approvedRefunds?: number;
   totalCollections?: number;
