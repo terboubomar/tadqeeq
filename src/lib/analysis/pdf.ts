@@ -305,6 +305,7 @@ function parseHungerBranch(detailPage: string, onlinePage: string): HungerInvoic
     totalFoodDiscount: -(amountAfter(onlinePage, "Total food discounts") ?? 0),
     restaurantFoodDiscount: amountAfter(onlinePage, "Restaurant food discounts") ?? 0,
     rewardsDiscount: -(amountAfter(onlinePage, "Rewards Discounts") ?? 0),
+    restaurantRewardsDiscount: amountAfter(onlinePage, "Restaurant Rewards Discounts") ?? 0,
     netMarketingDiscount: -(amountAfter(onlinePage, "Net Marketing Discounts") ?? 0),
     approvedRefunds: -(amountAfter(onlinePage, "Total Approved Claims") ?? 0),
     totalCollections: -(amountAfter(onlinePage, "Total Collections") ?? 0),

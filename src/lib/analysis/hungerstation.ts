@@ -41,6 +41,8 @@ export const HUNGERSTATION_COLUMNS = [
   "HS Food Discount",
   "Rewards Discount",
   "Rewards Discounts",
+  "HS Rewards Discount",
+  "Vendor Rewards Discount",
   "Restaurant Food discount",
   "Restaurant delivery Discount",
   "Flash Deals Fee Excluding Vat",
@@ -397,6 +399,14 @@ export function analyzeHungerStationSheets(
     throw new Error("لم يتم العثور على ورقة الطلبات (Commissionable GMV) في الملف.");
   }
   assertRequiredOrderColumns(orders[0]!);
+  // Rewards discounts. Newer exports split them into HS Rewards Discount (HungerStation-funded, paid
+  // back inside collections) and Vendor Rewards Discount (restaurant-funded). Only the HS-funded part
+  // is counted, on the same orders as collections. Older exports have a single Rewards Discount column.
+  const rewardsSource: "split" | "legacy" | "missing" = hasColumn(orders[0]!, "HS Rewards Discount")
+    ? "split"
+    : hasColumn(orders[0]!, "Rewards Discounts", "Rewards Discount")
+      ? "legacy"
+      : "missing";
 
   const branches = new Map<string, BranchRow>();
   const dailyMap = new Map<string, DailyRow>();
@@ -486,7 +496,9 @@ export function analyzeHungerStationSheets(
       row.rdfCampaigns += optionalAmount(col(order, "Restaurant delivery Discount"), "Restaurant delivery Discount");
       row.jokerFees += optionalAmount(col(order, "Flash Deals Fee Excluding Vat"), "Flash Deals Fee Excluding Vat");
       row.hsFoodDiscount += optionalAmount(col(order, "HS Food Discount"), "HS Food Discount");
-      row.rewardsDiscount += optionalAmount(col(order, "Rewards Discounts", "Rewards Discount"), "Rewards Discounts");
+      if (rewardsSource === "legacy") {
+        row.rewardsDiscount += optionalAmount(col(order, "Rewards Discounts", "Rewards Discount"), "Rewards Discounts");
+      }
       row.restaurantFoodDiscount += optionalAmount(col(order, "Restaurant Food discount"), "Restaurant Food discount");
 
       if (isOnline) {
@@ -525,6 +537,14 @@ export function analyzeHungerStationSheets(
       rejectedSales += gmv;
       row.rejectedOrders = (row.rejectedOrders ?? 0) + 1;
       row.rejectedSales = (row.rejectedSales ?? 0) + gmv;
+    }
+
+    // HS-funded rewards: successful + failed after pickup, as collections. Failed-before-pickup rows
+    // also carry rewards, but HungerStation does not pay those back.
+    if (rewardsSource === "split" && isCollectionOrder(cls)) {
+      row.rewardsDiscount +=
+        optionalAmount(col(order, "HS Rewards Discount"), "HS Rewards Discount") -
+        optionalAmount(col(order, "Vendor Rewards Discount"), "Vendor Rewards Discount");
     }
 
     // Refunded bank fee base: rejected + failed before pickup + failed
@@ -1002,6 +1022,35 @@ export function analyzeHungerStationSheets(
     });
   }
 
+  // The invoice prints rewards on each branch's online-payments page.
+  const invoiceRewardBranches = (invoice.branches ?? []).filter((branch) => branch.rewardsDiscount !== undefined);
+  const invoiceRewards = invoiceRewardBranches.length
+    ? invoiceRewardBranches.reduce(
+        (sum, branch) => sum + (branch.rewardsDiscount ?? 0) - (branch.restaurantRewardsDiscount ?? 0),
+        0,
+      )
+    : undefined;
+  if (rewardsSource === "split" || (invoiceRewards ?? 0) !== 0) {
+    const rewardsHint =
+      rewardsSource === "split"
+        ? "HS Rewards Discount − Vendor Rewards Discount للطلبات الناجحة والفاشلة بعد الاستلام، وتُضاف إلى التحصيلات لأن المنصة تعيدها للمطعم. الفاتورة: Total Rewards Discounts − Restaurant Rewards Discounts."
+        : rewardsSource === "legacy"
+          ? "عمود Rewards Discount في ملف الطلبات، ويُضاف إلى التحصيلات. الفاتورة: Total Rewards Discounts − Restaurant Rewards Discounts."
+          : "تنبيه: ملف الطلبات لا يحتوي عمود HS Rewards Discount أو Rewards Discount، فاحتُسبت 0. أعد تصدير الملف من بوابة هنقرستيشن.";
+    checks.push({
+      code: "HS_REWARDS_DISCOUNT_FUNDED",
+      category: "collections",
+      // A component of total collections; the branch collections check owns any discrepancy.
+      controlOnly: true,
+      label: "خصومات المكافآت على حساب المنصة",
+      computed: summary.rewardsDiscount,
+      ...(invoiceRewards !== undefined ? { invoiced: invoiceRewards } : {}),
+      evidence: "data",
+      tolerance: HUNGERSTATION_TOLERANCES.collections,
+      hint: rewardsHint,
+    });
+  }
+
   if (invoice.totalOnlineSales !== undefined) {
     checks.push({
       code: "HS_TOTAL_COLLECTIONS",
@@ -1012,7 +1061,7 @@ export function analyzeHungerStationSheets(
       invoiced: Math.abs(invoice.totalOnlineSales),
       evidence: "data",
       hint:
-        "صافي مدفوعات البطاقات + محافظ العملاء + محافظ المندوبين + صافي الخصومات التسويقية + الاعتراضات المعتمدة.",
+        "صافي مدفوعات البطاقات + محافظ العملاء + محافظ المندوبين + صافي الخصومات التسويقية (خصومات الأطعمة والمكافآت على حساب المنصة) + الاعتراضات المعتمدة.",
     });
   }
 
