@@ -3,20 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PRODUCTS, productPageTitle } from "@/lib/products";
 import { ProductName } from "@/components/ProductName";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  ChevronLeft,
-  CircleDollarSign,
-  Columns3,
-  FileSpreadsheet,
-  Layers3,
-  Sigma,
-} from "lucide-react";
+import { AlertTriangle, ChevronLeft, Columns3, FileSpreadsheet, Sigma } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { EmptyState } from "@/components/AppShell";
-import { Callout, ChartCard, SegmentBar, StatTiles } from "@/components/dash/DashKit";
+import { ChartCard } from "@/components/dash/DashKit";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   branchBreakdown,
@@ -35,6 +26,9 @@ import {
 } from "@/lib/charges-mapper";
 import { money, percent, sar } from "@/lib/format";
 import { useSelectedPeriod } from "@/lib/use-period";
+import { platformCostMap, previousPeriod } from "@/lib/platform-cost-map";
+import { MERCHANT_FUNDED_DISCOUNTS_LABEL_AR, periodPlatformCharges, platformCostPct, salesExVat } from "@/lib/reporting-metrics";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/charges")({
   head: () => ({
@@ -43,7 +37,7 @@ export const Route = createFileRoute("/_authenticated/charges")({
       {
         name: "description",
         content:
-          "تصنيف رسوم وخصومات منصات التوصيل مع كشف أي مبالغ غير مصنفة بدون تخمين.",
+          "أين يذهب كل ريال تخصمه منصات التوصيل: تكلفة المنصة حسب النوع والبند، ونسبتها من المبيعات.",
       },
     ],
   }),
@@ -66,171 +60,169 @@ const EVIDENCE_LABELS: Record<MarketplaceChargeLine["evidence"], string> = {
 type SourceFocus = { title: string; lines: MarketplaceChargeLine[] };
 
 function MarketplaceChargesPage() {
-  const { selected, isLoading } = useSelectedPeriod();
+  const { selected, periods, isLoading } = useSelectedPeriod();
   const [focus, setFocus] = useState<SourceFocus | null>(null);
 
-  const map = useMemo(
-    () => (selected ? buildMarketplaceChargeMap(selected) : null),
-    [selected],
-  );
+  const cost = useMemo(() => (selected ? platformCostMap(selected) : null), [selected]);
+  const allLines = useMemo(() => (selected ? buildMarketplaceChargeMap(selected).lines : []), [selected]);
 
   if (isLoading) {
-    return (
-      <p className="py-20 text-center text-sm text-muted-foreground">
-        جارٍ التحميل…
-      </p>
-    );
+    return <p className="py-20 text-center text-sm text-muted-foreground">جارٍ التحميل…</p>;
+  }
+  if (!selected || !cost) {
+    return <EmptyState title="لا توجد فترة تدقيق" body="ارفع بيانات منصة أولاً حتى يبني «كاشِف» خريطة الرسوم." />;
   }
 
-  if (!selected || !map) {
-    return (
-      <EmptyState
-        title="لا توجد فترة تدقيق"
-        body="ارفع بيانات منصة أولاً حتى يبني «كاشِف» خريطة الرسوم."
-      />
-    );
-  }
+  const sales = salesExVat(selected.platform, selected.summary);
+  const previous = previousPeriod(selected, periods);
+  const previousPct = previous ? platformCostPct(periodPlatformCharges(previous), salesExVat(previous.platform, previous.summary)) : null;
+  const deltaPoints = cost.costPct !== null && previousPct !== null ? (cost.costPct - previousPct) * 100 : null;
 
-  const auditLines = map.lines.filter((line) => line.scope === "audit_total");
-  const outsideLines = map.lines.filter(
-    (line) => line.scope === "outside_audit_total",
-  );
-
-  const byCategory = new Map<string, number>();
-  for (const line of auditLines) byCategory.set(line.category, (byCategory.get(line.category) ?? 0) + line.amount);
-  const categories = [...byCategory.entries()].sort((x, y) => y[1] - x[1]);
-  const maxCategory = Math.max(...categories.map(([, amount]) => Math.abs(amount)), 1);
-  const closed = Math.abs(map.reconciliationVariance) <= 0.05;
+  const byCategory = new Map<MarketplaceChargeLine["category"], MarketplaceChargeLine[]>();
+  for (const line of cost.lines) byCategory.set(line.category, [...(byCategory.get(line.category) ?? []), line]);
+  const categories = [...byCategory.entries()]
+    .map(([category, lines]) => ({ category, lines, amount: lines.reduce((sum, line) => sum + line.amount, 0) }))
+    .sort((left, right) => Math.abs(right.amount) - Math.abs(left.amount));
+  const maxCategory = Math.max(...categories.map((item) => Math.abs(item.amount)), 1);
+  const ofSales = (amount: number) => (sales ? percent(amount / sales, 1) : null);
 
   return (
     <div className="space-y-5">
       <PageHeader
         crumbs={[{ label: "الرئيسية", to: "/dashboard" }, { label: "التدقيق" }, { label: PRODUCTS.kashif.name }]}
         title={<ProductName product="kashif" />}
-        subtitle={selected.label + " · تصنيف حتمي للبنود الموجودة في نتيجة التدقيق بدون تغيير معادلات المحرك."}
+        subtitle={selected.label + " · أين يذهب كل ريال تخصمه المنصة"}
       />
 
-      <StatTiles
-        cols={4}
-        items={[
-          { label: "إجمالي رسوم التدقيق", value: sar(map.auditTotalCharges), icon: CircleDollarSign, tone: "gold" },
-          { label: "مصنف بثقة", value: sar(map.mappedAuditAmount), hint: String(map.mappedLineCount) + " بند مصنف", icon: CheckCircle2, tone: "positive" },
-          {
-            label: "غير مصنف",
-            value: sar(map.unmappedAuditAmount),
-            hint: String(map.unmappedLineCount) + " بند يحتاج تصنيف",
-            icon: AlertTriangle,
-            tone: map.unmappedAuditAmount > 0.05 ? "negative" : "positive",
-          },
-          { label: "تغطية التصنيف", value: percent(map.coveragePct), hint: closed ? "الخريطة مقفلة على إجمالي الرسوم" : "يوجد فرق في الإقفال", icon: Layers3 },
-        ]}
-      />
+      <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+        <div className="grid grid-cols-2 gap-x-5 gap-y-4 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] sm:items-end">
+          <div className="col-span-2 sm:col-span-1">
+            <p className="text-[12.5px] text-muted-foreground">تكلفة المنصة بدون الضريبة</p>
+            <p className="num mt-1 text-[2rem] font-bold leading-tight text-primary-text">{sar(cost.total)}</p>
+            {deltaPoints !== null && previous ? (
+              <p className={cn("mt-1 text-[12.5px] font-medium", Math.abs(deltaPoints) < 0.05 ? "text-muted-foreground" : deltaPoints > 0 ? "text-destructive" : "text-success")}>
+                {Math.abs(deltaPoints) < 0.05 ? "مثل" : deltaPoints > 0 ? "أعلى بـ" : "أقل بـ"}{" "}
+                {Math.abs(deltaPoints) < 0.05 ? null : <span className="num">{Math.abs(deltaPoints).toFixed(1)} نقطة</span>} عن {previous.label}
+              </p>
+            ) : null}
+          </div>
+          <div className="border-t border-border/70 pt-4 sm:border-s sm:border-t-0 sm:ps-5 sm:pt-0">
+            <p className="text-[12.5px] text-muted-foreground">من المبيعات</p>
+            <p className="num mt-1 text-xl font-bold">{cost.costPct === null ? "—" : percent(cost.costPct, 1)}</p>
+          </div>
+          <div className="border-t border-border/70 pt-4 sm:border-s sm:border-t-0 sm:ps-5 sm:pt-0">
+            <p className="text-[12.5px] text-muted-foreground">لكل طلب</p>
+            <p className="num mt-1 text-xl font-bold">{cost.costPerOrder === null ? "—" : sar(cost.costPerOrder)}</p>
+          </div>
+        </div>
+        {cost.unmapped.count > 0 ? (
+          <Link
+            to="/exceptions"
+            className="mt-5 flex items-center gap-2 rounded-xl bg-warning/10 px-3.5 py-2.5 text-[12.5px] font-medium text-warning hover:bg-warning/15"
+          >
+            <AlertTriangle className="size-4 shrink-0" />
+            <span>
+              {cost.unmapped.count === 1 ? "بند واحد غير مصنف" : `${cost.unmapped.count} بنود غير مصنفة`} ·{" "}
+              <span className="num">{money(cost.unmapped.amount)}</span> ر.س · راجعه في «{PRODUCTS.radar.name}»
+            </span>
+            <ChevronLeft className="ms-auto size-4 shrink-0" />
+          </Link>
+        ) : null}
+        {Math.abs(cost.residual) > 0.05 ? (
+          <p className="mt-3 text-[12px] text-muted-foreground">
+            مجموع البنود يختلف عن تكلفة المنصة بـ <span className="num">{money(cost.residual)}</span> ر.س.
+          </p>
+        ) : null}
+      </section>
 
-      {map.unmappedAuditAmount > 0.05 ? (
-        <Callout tone="danger" icon={AlertTriangle} title="يوجد مبلغ غير مصنف يحتاج مراجعة">
-          لم يضع Tadqeeq هذا المبلغ تلقائياً تحت “أخرى”. سيظهر أيضاً في «رادار» كبند رقابي، لكن لن يُعامل كاسترداد محتمل حتى
-          توجد قاعدة أو مستند يثبت التصنيف والحق المالي.
-        </Callout>
-      ) : (
-        <Callout tone="success" icon={CheckCircle2} title="كل رسوم أساس التدقيق مصنفة">
-          مجموع البنود المصنفة يطابق إجمالي الرسوم ضمن هامش الإقفال.
-        </Callout>
-      )}
-
-      <div className="grid gap-5 xl:grid-cols-12">
-        <ChartCard
-          className="xl:col-span-7"
-          title="الرسوم حسب التصنيف"
-          totals={[
-            { label: "إجمالي رسوم التدقيق", value: sar(map.auditTotalCharges) },
-            ...(map.outsideAuditAmount ? [{ label: "بنود خارج الإجمالي", value: sar(map.outsideAuditAmount) }] : []),
-          ]}
-        >
-          <p className="-mt-1 mb-3 text-[11.5px] text-muted-foreground">اضغط على أي تصنيف لترى من أين نأخذ أرقامه.</p>
-          <ul className="space-y-1.5">
-            {categories.map(([category, amount]) => {
-              const label = MARKETPLACE_CHARGE_CATEGORY_LABELS[category as MarketplaceChargeLine["category"]];
-              const size = Math.abs(amount) / maxCategory;
-              return (
-                <li key={category}>
-                  <button
-                    type="button"
-                    onClick={() => setFocus({ title: label, lines: auditLines.filter((line) => line.category === category) })}
-                    className="group -mx-2 block w-[calc(100%+1rem)] rounded-lg px-2 py-2 text-start transition-colors hover:bg-muted/60"
-                  >
-                    <span className="flex items-baseline justify-between gap-3">
-                      <span className="flex min-w-0 items-center gap-1 truncate text-[13px] font-medium">
-                        {label}
-                        <ChevronLeft className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                      </span>
-                      <span className="flex shrink-0 items-baseline gap-2">
-                        {map.auditTotalCharges ? (
-                          <span className="num text-[11.5px] text-muted-foreground">{percent(amount / map.auditTotalCharges, 1)}</span>
-                        ) : null}
-                        <span className="num text-[13px] font-semibold">{money(amount)}</span>
-                      </span>
+      <ChartCard title="الرسوم حسب النوع" bodyClassName="p-0">
+        <ul className="divide-y divide-border/60">
+          {categories.map((item) => {
+            const label = MARKETPLACE_CHARGE_CATEGORY_LABELS[item.category];
+            const size = Math.abs(item.amount) / maxCategory;
+            return (
+              <li key={item.category}>
+                <button
+                  type="button"
+                  onClick={() => setFocus({ title: label, lines: item.lines })}
+                  className="group block w-full px-5 py-3 text-start transition-colors hover:bg-muted/50"
+                >
+                  <span className="flex items-baseline justify-between gap-3">
+                    <span className="flex min-w-0 items-center gap-1.5 text-[13.5px] font-semibold">
+                      {label}
+                      {item.category === "unmapped" ? (
+                        <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10.5px] font-medium text-warning">غير مصنف</span>
+                      ) : null}
                     </span>
-                    <span className="mt-1.5 block h-2 overflow-hidden rounded-full bg-muted">
+                    <span className="flex shrink-0 items-baseline gap-3">
+                      {ofSales(item.amount) ? (
+                        <span className="hidden text-[11.5px] text-muted-foreground sm:inline">
+                          <span className="num">{ofSales(item.amount)}</span> من المبيعات
+                        </span>
+                      ) : null}
+                      <span className="num text-[14px] font-bold">{money(item.amount)}</span>
+                      <ChevronLeft className="size-4 self-center text-muted-foreground transition-transform group-hover:-translate-x-0.5" />
+                    </span>
+                  </span>
+                  <span className="mt-2 flex items-center gap-3">
+                    <span className="block h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
                       <span
                         className="block h-full rounded-full"
                         style={{
                           width: `${Math.max(size * 100, size > 0 ? 1.5 : 0)}%`,
-                          background: category === "unmapped" ? "var(--color-destructive)" : "var(--color-primary)",
+                          background: item.category === "unmapped" ? "var(--color-warning)" : "var(--color-primary)",
                         }}
                       />
                     </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </ChartCard>
-        <ChartCard className="xl:col-span-5" title="تغطية التصنيف" totals={[{ label: "من إجمالي الرسوم مصنف", value: percent(map.coveragePct), tone: closed ? "positive" : "negative" }]}>
-          <SegmentBar
-            segments={[
-              { key: "mapped", label: "مصنف", value: map.mappedAuditAmount, display: money(map.mappedAuditAmount), color: "var(--color-success)" },
-              { key: "unmapped", label: "غير مصنف", value: map.unmappedAuditAmount, display: money(map.unmappedAuditAmount), color: "var(--color-destructive)" },
-            ]}
-          />
-          <dl className="mt-5 space-y-2 text-[12.5px]">
-            <div className="flex justify-between gap-3 border-b border-border/60 pb-2">
-              <dt className="text-muted-foreground">بنود مصنفة</dt>
-              <dd className="num font-semibold">{map.mappedLineCount}</dd>
-            </div>
-            <div className="flex justify-between gap-3 border-b border-border/60 pb-2">
-              <dt className="text-muted-foreground">بنود غير مصنفة</dt>
-              <dd className="num font-semibold">{map.unmappedLineCount}</dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">فرق الإقفال</dt>
-              <dd className={"num font-semibold " + (closed ? "text-success" : "text-destructive")}>{money(map.reconciliationVariance)}</dd>
-            </div>
-          </dl>
-        </ChartCard>
-      </div>
+                    <span className="num w-12 shrink-0 text-end text-[11.5px] text-muted-foreground">
+                      {cost.total ? percent(item.amount / cost.total, 1) : ""}
+                    </span>
+                  </span>
+                  {ofSales(item.amount) ? (
+                    <span className="mt-1 block text-[11px] text-muted-foreground sm:hidden">
+                      <span className="num">{ofSales(item.amount)}</span> من المبيعات
+                    </span>
+                  ) : null}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="border-t border-border/70 px-5 py-2.5 text-[11.5px] text-muted-foreground">
+          اضغط أي نوع لترى من أين نأخذ أرقامه وتوزيعه على الفروع. النسبة يساراً من إجمالي تكلفة المنصة.
+        </p>
+      </ChartCard>
 
-      <ChargeTable
-        title="البنود الداخلة في إجمالي رسوم التدقيق"
-        subtitle="هذه البنود فقط هي التي تُستخدم لإقفال summary.totalCharges."
-        lines={auditLines}
-        onOpen={(line) => setFocus({ title: line.label, lines: [line] })}
-      />
+      <ChartCard title="كل البنود" bodyClassName="p-0">
+        <ChargeList lines={cost.lines} sales={sales} onOpen={(line) => setFocus({ title: line.label, lines: [line] })} />
+      </ChartCard>
 
-      {outsideLines.length ? (
-        <ChargeTable
-          title="بنود مالية إضافية خارج إجمالي الرسوم"
-          subtitle="تظهر للشفافية والتحليل القادم مثل True ROI، لكنها لا تغيّر إجمالي الرسوم الحالي ولا معادلات المنصة."
-          lines={outsideLines}
-          onOpen={(line) => setFocus({ title: line.label, lines: [line] })}
-        />
+      {cost.merchantFunded.length ? (
+        <ChartCard title={MERCHANT_FUNDED_DISCOUNTS_LABEL_AR} bodyClassName="p-0">
+          <p className="border-b border-border/70 px-5 py-2.5 text-[11.5px] leading-5 text-muted-foreground">
+            خصومات موّلتها أنت لعملائك، وليست رسوماً تأخذها المنصة؛ لذلك لا تدخل في تكلفة المنصة.
+          </p>
+          <ChargeList lines={cost.merchantFunded} sales={sales} onOpen={(line) => setFocus({ title: line.label, lines: [line] })} />
+        </ChartCard>
       ) : null}
 
-      <SourceSheet focus={focus} period={selected} allLines={map.lines} onClose={() => setFocus(null)} />
+      {cost.other.length ? (
+        <details className="group rounded-2xl border border-border bg-card">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-3.5 text-[13.5px] font-semibold">
+            بنود أخرى لا تدخل في تكلفة المنصة
+            <ChevronLeft className="size-4 text-muted-foreground transition-transform group-open:-rotate-90" />
+          </summary>
+          <div className="border-t border-border/70">
+            <ChargeList lines={cost.other} sales={null} onOpen={(line) => setFocus({ title: line.label, lines: [line] })} />
+          </div>
+        </details>
+      ) : null}
+
+      <SourceSheet focus={focus} period={selected} allLines={allLines} onClose={() => setFocus(null)} />
     </div>
   );
 }
 
-/** Side panel: for each line, the file, sheet and columns it is read from, how it is computed, and its branches. */
 function SourceSheet({
   focus,
   period,
@@ -442,78 +434,47 @@ function CategoryBranches({
   );
 }
 
-function ChargeTable({
-  title,
-  subtitle,
+/** One row per charge: what it is, how much, its share of sales, and where the number comes from. Stacks on phones. */
+function ChargeList({
   lines,
+  sales,
   onOpen,
 }: {
-  title: string;
-  subtitle: string;
   lines: MarketplaceChargeLine[];
+  sales: number | null;
   onOpen: (line: MarketplaceChargeLine) => void;
 }) {
   return (
-    <ChartCard title={title} bodyClassName="p-0">
-      <p className="border-b border-border/70 px-5 py-2 text-[11.5px] leading-5 text-muted-foreground">{subtitle}</p>
-
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] text-sm">
-          <thead className="bg-muted/40 text-[11px] text-muted-foreground">
-            <tr>
-              <th className="px-4 py-2.5 text-start font-semibold">البند</th>
-              <th className="px-4 py-2.5 text-start font-semibold">التصنيف</th>
-              <th className="px-4 py-2.5 text-start font-semibold">المصدر (اضغط البند للتفاصيل)</th>
-              <th className="px-4 py-2.5 text-start font-semibold">التمويل</th>
-              <th className="px-4 py-2.5 text-start font-semibold">الحالة</th>
-              <th className="px-4 py-2.5 text-end font-semibold">المبلغ</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((line) => (
-              <tr key={line.id} className="border-t border-border/70 align-top">
-                <td className="px-4 py-3">
-                  <button
-                    type="button"
-                    onClick={() => onOpen(line)}
-                    className="font-medium text-start text-foreground underline decoration-border decoration-dashed underline-offset-4 hover:text-primary-text hover:decoration-primary"
-                  >
-                    {line.label}
-                  </button>
-                  {line.note ? (
-                    <p className="mt-1 max-w-xl text-[11px] leading-5 text-muted-foreground">
-                      {line.note}
-                    </p>
-                  ) : null}
-                </td>
-                <td className="px-4 py-3 text-xs">
-                  {MARKETPLACE_CHARGE_CATEGORY_LABELS[line.category]}
-                </td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">
-                  <p>{line.source}</p>
-                  <p className="mt-1">{EVIDENCE_LABELS[line.evidence]}</p>
-                </td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">
-                  {FUNDING_LABELS[line.fundingSource]}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={
-                      "whitespace-nowrap rounded-full px-2 py-1 text-[11px] font-semibold " +
-                      (line.mapped ? "bg-success/10 text-success" : "bg-destructive-soft text-destructive")
-                    }
-                  >
-                    {line.mapped ? "مصنف" : "غير مصنف"}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-end font-semibold">
-                  <span className="num whitespace-nowrap">{sar(line.amount)}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </ChartCard>
+    <ul className="divide-y divide-border/60">
+      {lines.map((line) => (
+        <li key={line.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
+          <div className="min-w-0 basis-full sm:basis-auto sm:flex-1">
+            <p className="flex flex-wrap items-center gap-1.5 text-[13.5px] font-medium">
+              {cleanLabel(line.label)}
+              {!line.mapped ? (
+                <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10.5px] font-medium text-warning">غير مصنف</span>
+              ) : null}
+            </p>
+            <p className="mt-0.5 text-[11.5px] text-muted-foreground">{MARKETPLACE_CHARGE_CATEGORY_LABELS[line.category]}</p>
+          </div>
+          <div className="flex flex-1 flex-col items-start sm:flex-none sm:items-end">
+            <span className="num text-[13.5px] font-semibold">{money(line.amount)}</span>
+            {sales ? <span className="text-[11px] text-muted-foreground"><span className="num">{percent(line.amount / sales, 1)}</span> من المبيعات</span> : null}
+          </div>
+          <button
+            type="button"
+            onClick={() => onOpen(line)}
+            className="shrink-0 rounded-full border border-border px-3 py-1 text-[12px] font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+          >
+            من أين؟
+          </button>
+        </li>
+      ))}
+    </ul>
   );
+}
+
+/** Fee-map labels written for the audit trail, in the words a restaurant owner uses. */
+function cleanLabel(label: string): string {
+  return label === "بنود فاتورة فقط غير مفصلة في snapshot" ? "بنود في الفاتورة فقط" : label;
 }

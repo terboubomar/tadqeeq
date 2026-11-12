@@ -86,8 +86,8 @@ const SOURCES: Record<string, (period: StoredPeriod) => ChargeLineSource> = {
     file: "فاتورة إعلانات هنقرستيشن CPC (PDF)",
     columns: [],
     formula: period.invoice?.cpcBranches?.length
-      ? "إجمالي فاتورة الإعلانات كما ورد فيها، شامل الضريبة. وتوزيعه على الفروع من سطر كل فرع في الفاتورة: المبلغ + ضريبته."
-      : "إجمالي فاتورة الإعلانات كما ورد فيها، شامل الضريبة.",
+      ? "فاتورة الإعلانات بدون الضريبة، من سطر كل فرع في الفاتورة."
+      : "إجمالي فاتورة الإعلانات ÷ 1.15، أي بدون الضريبة.",
   }),
   "hs-restaurant-food-discount": () => ({
     file: HS_ORDERS,
@@ -316,20 +316,11 @@ export function branchBreakdown(
     const values = new Map(period.branches.map((b) => [b.branch, 0]));
     for (const { line: charge, branch } of cpcLineAllocation(period)) {
       const name = branch?.branch ?? charge.branch;
-      values.set(name, (values.get(name) ?? 0) + charge.amountExVat + charge.vat);
+      values.set(name, (values.get(name) ?? 0) + charge.amountExVat);
     }
     const rows = sortedRows([...values.entries()].map(([name, value]) => ({ name, value })));
     const total = rowsTotal(rows);
-    const rounding = Math.round((line.amount - total) * 100) / 100;
-    return {
-      rows,
-      total,
-      caption:
-        "من فاتورة CPC: سطر كل فرع كما ورد فيها، المبلغ + ضريبته." +
-        (Math.abs(rounding) >= 0.01
-          ? ` مجموع السطور ${total.toFixed(2)} مقابل إجمالي الفاتورة ${line.amount.toFixed(2)} ر.س؛ الفرق ${Math.abs(rounding).toFixed(2)} تقريب لأن الفاتورة تقرّب ضريبة كل سطر على حدة.`
-          : ""),
-    };
+    return { rows, total, caption: "من فاتورة CPC: سطر كل فرع كما ورد فيها، بدون الضريبة." };
   }
 
   if (line.id.startsWith("hs-unmapped-invoice-extra-")) {

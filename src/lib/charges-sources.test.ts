@@ -132,17 +132,17 @@ describe("CPC by branch from the CPC invoice", () => {
     },
   } as unknown as StoredPeriod;
 
-  test("each invoice line goes to its branch by name, VAT included, every branch listed", () => {
-    const split = branchBreakdown(cpcLine, p, [cpcLine]);
+  test("each invoice line goes to its branch by name, without VAT, every branch listed", () => {
+    const split = branchBreakdown({ ...cpcLine, amount: 200.01 }, p, [cpcLine]);
     expect(split.rows).toEqual([
-      { name: "Brand -  North", value: 115 },
-      { name: "Brand - South", value: 57.52 },
-      { name: "Brand - West", value: 57.5 },
+      { name: "Brand -  North", value: 100 },
+      { name: "Brand - South", value: 50.01 },
+      { name: "Brand - West", value: 50 },
       { name: "Brand - East", value: 0 },
     ]);
-    expect(split.total).toBe(230.02);
+    expect(split.total).toBe(200.01);
     expect(split.unavailable).toBeUndefined();
-    expect(split.caption).toContain("0.01");
+    expect(split.caption).toContain("بدون الضريبة");
   });
 
   test("the source says where the split comes from", () => {
