@@ -93,6 +93,8 @@ export function exportXlsx<T>(
     ws["!cols"] = sheet.columns.map((column) => ({ wch: Math.max(14, column.header.length + 4) }));
     XLSX.utils.book_append_sheet(wb, ws, safeSheetName(sheet.name, taken));
   }
+  // Arabic headers and branch names read right to left.
+  wb.Workbook = { ...wb.Workbook, Views: [{ RTL: true }] };
   const data = XLSX.write(wb, { type: "array", bookType: "xlsx", compression: true }) as ArrayBuffer;
   download(
     new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
