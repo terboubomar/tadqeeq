@@ -19,11 +19,52 @@ const VAT_RATE = 0.15;
 
 type Summary = StoredPeriod["summary"];
 
-/** Total platform charges excluding VAT, as the engine reports them for the platform. */
+/**
+ * Discounts the restaurant funds itself, per platform: money it gave its customers, not a fee the platform charges.
+ * The one place this is decided. The rule: a discount the platform bills on its tax invoice as a commission line is a
+ * platform charge (HungerStation's restaurant delivery discount "RDF", Keeta's delivery support, Jahez's delivery
+ * offer); a discount that is only netted from the payout is merchant-funded and stays out of platform cost.
+ * `inEngineTotal` marks the ones the engine's "everything deducted" total contains, which platform cost subtracts;
+ * the others were never in the total and are listed so they show on the same line.
+ */
+export const MERCHANT_FUNDED_DISCOUNTS: Record<
+  StoredPeriod["platform"],
+  ReadonlyArray<{ field: "keetaProductCampaignExVat" | "restaurantFoodDiscount"; label: string; inEngineTotal: boolean }>
+> = {
+  // "Product campaign expenses by merchant": «إعانة التاجر على الأصناف» on the Keeta credit page.
+  keeta: [{ field: "keetaProductCampaignExVat", label: "إعانة التاجر على الأصناف", inEngineTotal: true }],
+  hungerstation: [{ field: "restaurantFoodDiscount", label: "خصومات الأطعمة على حساب المطعم", inEngineTotal: false }],
+  // Jahez's report carries no merchant-funded discount apart from the invoiced delivery offer.
+  jahez: [],
+};
+export const MERCHANT_FUNDED_DISCOUNTS_LABEL_AR = "خصومات ممولة من المطعم";
+
+type DiscountFigures = Partial<Record<"keetaProductCampaignExVat" | "restaurantFoodDiscount", number | null>>;
+
+/** Merchant-funded discounts for a period or a branch; `inEngineTotalOnly` keeps those inside the engine's total. */
+export function merchantFundedDiscounts(
+  platform: StoredPeriod["platform"],
+  figures: DiscountFigures | null | undefined,
+  inEngineTotalOnly = false,
+): number {
+  if (!figures) return 0;
+  return MERCHANT_FUNDED_DISCOUNTS[platform]
+    .filter((item) => !inEngineTotalOnly || item.inEngineTotal)
+    .reduce((sum, item) => {
+      const value = figures[item.field];
+      return sum + (typeof value === "number" && Number.isFinite(value) ? value : 0);
+    }, 0);
+}
+
+/**
+ * Total platform charges excluding VAT: what the engine reports for the platform, less the merchant-funded
+ * discounts its total contains (MERCHANT_FUNDED_DISCOUNTS). Works on a period summary or a branch row.
+ */
 export function totalPlatformCharges(platform: StoredPeriod["platform"], summary: Partial<Summary> | null | undefined): number | null {
   if (!summary) return null;
   const value = platform === "keeta" ? (summary.keetaTotalCostExVat ?? summary.totalCharges) : summary.totalCharges;
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return value - merchantFundedDiscounts(platform, summary, true);
 }
 
 /** What the platform-cost helpers read from a period: its totals, and the CPC invoice for HungerStation's advertising. */
@@ -118,25 +159,65 @@ export function periodPlatformChargesExclAds(period: CostPeriod): number | null 
 
 type BranchCharges = Pick<StoredPeriod["branches"][number], "branch" | "invoiceBranchName" | "totalCharges"> & {
   keetaTotalCostExVat?: number;
+  keetaMerchantAdExVat?: number;
+  keetaProductCampaignExVat?: number;
+  restaurantFoodDiscount?: number;
+  invoiceOnlyBranchCharges?: number;
 };
-type BranchCostPeriod = CostPeriod & { branches?: readonly NamedBranch[] | null };
+type InvoiceBranchItems = NonNullable<StoredPeriod["invoice"]["branches"]>[number];
+type BranchCostPeriod = Omit<CostPeriod, "invoice"> & {
+  invoice?: (Partial<Pick<StoredPeriod["invoice"], "cpc" | "cpcBranches">> & { branches?: InvoiceBranchItems[] }) | null;
+  branches?: readonly NamedBranch[] | null;
+};
+
+/**
+ * The invoice-only charges a HungerStation branch's invoice section prints (direct to that branch): its items when
+ * the invoice kept them apart, else one line with their total. A single unnamed invoice section belongs to the
+ * period's single branch. Empty on other platforms.
+ */
+export function branchInvoiceOnlyItems(period: BranchCostPeriod, branch: BranchCharges): Array<{ label: string; amount: number }> {
+  if (period.platform !== "hungerstation") return [];
+  const sections = period.invoice?.branches ?? [];
+  const section =
+    (branch.invoiceBranchName ? sections.find((item) => item.branch === branch.invoiceBranchName) : undefined) ??
+    (sections.length === 1 && (period.branches?.length ?? 1) === 1 ? sections[0] : undefined);
+  if (section?.invoiceOnlyItems?.length) return section.invoiceOnlyItems.map((item) => ({ label: item.label, amount: item.amount }));
+  const total = finiteNumber(branch.invoiceOnlyBranchCharges) ? branch.invoiceOnlyBranchCharges : (section?.invoiceOnlyCharges ?? 0);
+  return Math.abs(total) > 0.005 ? [{ label: "بنود الفاتورة فقط", amount: total }] : [];
+}
 
 export interface BranchPlatformCost {
-  /** Platform charges excluding VAT, advertising included. */
+  /** Platform charges excluding VAT, advertising included, merchant-funded discounts excluded. */
   platformCost: number;
-  /** The branch's CPC invoice lines without VAT (HungerStation); 0 elsewhere. */
+  /** HungerStation: the branch's CPC invoice lines without VAT. Keeta: its ad spend from its billing rows. */
   advertisingExVat: number;
   platformCostExclAds: number;
+  /** HungerStation: charges its invoice section prints that the order data cannot recompute; inside platformCost. */
+  invoiceOnlyCharges: number;
+  /** Discounts the restaurant funded itself (MERCHANT_FUNDED_DISCOUNTS); not part of platformCost. */
+  merchantFundedDiscounts: number;
 }
 
 /**
- * The one definition of a branch's platform cost: its commission-invoice charges excluding VAT plus its CPC
- * advertising excluding VAT. Every screen, export and readout takes the branch cost from here.
+ * The one definition of a branch's platform cost, excluding VAT: the charges the engine recomputed for it, the
+ * invoice-only charges its invoice section prints, and its advertising; without the discounts it funded itself.
+ * Every screen, export and readout takes the branch cost from here.
  */
 export function branchPlatformCost(period: BranchCostPeriod, branch: BranchCharges): BranchPlatformCost | null {
-  const charges = totalPlatformCharges(period.platform, branch as never);
-  if (charges === null) return null;
-  if (period.platform !== "hungerstation") return { platformCost: charges, advertisingExVat: 0, platformCostExclAds: charges };
+  const base = totalPlatformCharges(period.platform, branch as never);
+  if (base === null) return null;
+  const discounts = merchantFundedDiscounts(period.platform, branch);
+  if (period.platform === "keeta") {
+    // Keeta's total already contains the branch's ad spend; it is only split out here.
+    const ads = finiteNumber(branch.keetaMerchantAdExVat) ? branch.keetaMerchantAdExVat : 0;
+    return { platformCost: base, advertisingExVat: ads, platformCostExclAds: base - ads, invoiceOnlyCharges: 0, merchantFundedDiscounts: discounts };
+  }
+  if (period.platform !== "hungerstation") {
+    return { platformCost: base, advertisingExVat: 0, platformCostExclAds: base, invoiceOnlyCharges: 0, merchantFundedDiscounts: discounts };
+  }
+  // The engine keeps the branch's invoice-only charges apart from its recomputed charges; the period total has both.
+  const invoiceOnlyCharges = branchInvoiceOnlyItems(period, branch).reduce((sum, item) => sum + item.amount, 0);
+  const charges = base + invoiceOnlyCharges;
   // With the period's branches at hand a CPC line goes to one branch only; without them, to the branch it names.
   const lines = period.branches
     ? cpcLineAllocation(period)
@@ -144,7 +225,7 @@ export function branchPlatformCost(period: BranchCostPeriod, branch: BranchCharg
         .map((item) => item.line)
     : (period.invoice?.cpcBranches ?? []).filter((line) => sameBranchName(line.branch, branch));
   const advertisingExVat = lines.reduce((sum, line) => sum + line.amountExVat, 0);
-  return { platformCost: charges + advertisingExVat, advertisingExVat, platformCostExclAds: charges };
+  return { platformCost: charges + advertisingExVat, advertisingExVat, platformCostExclAds: charges, invoiceOnlyCharges, merchantFundedDiscounts: discounts };
 }
 
 /** One branch's platform charges excluding VAT, advertising included (branchPlatformCost().platformCost). */
@@ -155,34 +236,53 @@ export function branchPlatformCharges(period: BranchCostPeriod, branch: BranchCh
 export interface UnallocatedCharge {
   label: string;
   amount: number;
-  /** "platform_level": printed only in the invoice summary. "unmatched_branch": names a branch not in the period. */
-  allocation: "platform_level" | "unmatched_branch";
+  /**
+   * "platform_level": printed only in the invoice summary. "unmatched_branch": names a branch not in the period.
+   * "advertising_unattributed": advertising known for the period that no branch carries.
+   */
+  allocation: "platform_level" | "unmatched_branch" | "advertising_unattributed";
   /** The branch name as the invoice prints it, for unmatched lines. */
   rawBranchName?: string;
 }
 
 type ReconciliationPeriod = Omit<CostPeriod, "invoice"> & {
-  invoice?: Partial<Pick<StoredPeriod["invoice"], "cpc" | "cpcBranches" | "unallocatedCharges">> | null;
+  invoice?: (Partial<Pick<StoredPeriod["invoice"], "cpc" | "cpcBranches" | "unallocatedCharges">> & { branches?: InvoiceBranchItems[] }) | null;
   branches?: ReadonlyArray<BranchCharges> | null;
 };
 
-/** Charges excluding VAT that no branch carries: invoice-summary-only items, and CPC lines whose branch is not in the period. */
+/** Advertising excluding VAT on the branches against the period's advertising; the remainder is on no branch. */
+export function advertisingAllocation(period: ReconciliationPeriod): { branches: number; total: number; unattributed: number } {
+  const total = advertisingExVat(period);
+  const branches = (period.branches ?? []).reduce((sum, row) => sum + (branchPlatformCost(period, row)?.advertisingExVat ?? 0), 0);
+  const unmatched =
+    period.platform === "hungerstation"
+      ? cpcLineAllocation(period)
+          .filter((item) => item.branch === null)
+          .reduce((sum, item) => sum + item.line.amountExVat, 0)
+      : 0;
+  const unattributed = Math.round((total - branches - unmatched) * 100) / 100 + 0;
+  return { branches, total, unattributed };
+}
+
+/**
+ * Charges excluding VAT that no branch carries: invoice-summary-only items, CPC lines whose branch is not in the
+ * period, and advertising known only as a period total. Nothing is spread across branches.
+ */
 export function unallocatedPlatformCharges(period: ReconciliationPeriod): UnallocatedCharge[] {
-  const platformLevel = (period.invoice?.unallocatedCharges ?? []).map(
+  const result = (period.invoice?.unallocatedCharges ?? []).map(
     (item): UnallocatedCharge => ({ label: item.label, amount: item.amount, allocation: "platform_level" }),
   );
-  if (period.platform !== "hungerstation") return platformLevel;
-  const unmatched = cpcLineAllocation(period)
-    .filter((item) => item.branch === null)
-    .map(
-      (item): UnallocatedCharge => ({
-        label: "إعلانات CPC · " + item.line.branch,
-        amount: item.line.amountExVat,
-        allocation: "unmatched_branch",
-        rawBranchName: item.line.branch,
-      }),
-    );
-  return [...platformLevel, ...unmatched];
+  if (period.platform === "hungerstation") {
+    for (const item of cpcLineAllocation(period)) {
+      if (item.branch !== null) continue;
+      result.push({ label: "إعلانات CPC · " + item.line.branch, amount: item.line.amountExVat, allocation: "unmatched_branch", rawBranchName: item.line.branch });
+    }
+  }
+  const { unattributed } = advertisingAllocation(period);
+  if (Math.abs(unattributed) > BRANCH_COST_RECONCILIATION_TOLERANCE) {
+    result.push({ label: "إعلانات غير منسوبة إلى فرع", amount: unattributed, allocation: "advertising_unattributed" });
+  }
+  return result;
 }
 
 /** Allowed gap between the branch costs plus unallocated charges and the period's platform charges, in SAR. */
@@ -203,10 +303,8 @@ export function branchCostReconciliation(period: ReconciliationPeriod): {
   const total = periodPlatformCharges(period);
   const rows = period.branches ?? [];
   if (total === null || rows.length === 0) return null;
-  // Without CPC lines the advertising is known only as a period total, so it cannot be split by branch.
-  const adsWithoutLines = period.invoice?.cpcBranches?.length ? 0 : (hungerStationAdvertisingExVat(period) ?? 0);
   const branches = rows.reduce((sum, row) => sum + (branchPlatformCost(period, row)?.platformCost ?? 0), 0);
-  const unallocated = unallocatedPlatformCharges(period).reduce((sum, item) => sum + item.amount, 0) + adsWithoutLines;
+  const unallocated = unallocatedPlatformCharges(period).reduce((sum, item) => sum + item.amount, 0);
   // "+ 0" turns a rounded -0 into 0.
   const residual = Math.round((total - branches - unallocated) * 100) / 100 + 0;
   return { branches, unallocated, total, residual, reconciled: Math.abs(residual) <= BRANCH_COST_RECONCILIATION_TOLERANCE };

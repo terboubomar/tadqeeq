@@ -1,5 +1,6 @@
 import type { BranchRow } from "../analysis/types";
 import type { StoredPeriod } from "../periods";
+import { totalPlatformCharges } from "@/lib/reporting-metrics";
 
 /**
  * Smart watch: flags branches whose platform charges are unusual for them.
@@ -107,7 +108,7 @@ export function metricAmount(platform: WatchPlatform, branch: BranchRow, metric:
       case "compensation":
         return positive(branch.keetaCompensationExVat);
       case "total_cost":
-        return positive(branch.keetaTotalCostExVat ?? branch.totalCharges);
+        return positive(totalPlatformCharges("keeta", branch) ?? branch.totalCharges);
     }
   }
   switch (metric) {

@@ -7,7 +7,7 @@ import {
   isOpenException,
 } from "@/lib/exceptions";
 import type { StoredPeriod } from "@/lib/periods";
-import { branchPlatformCharges } from "@/lib/reporting-metrics";
+import { branchPlatformCharges, periodPlatformCharges, platformCostPct, salesExVat } from "@/lib/reporting-metrics";
 
 export const periodSummaryAiExplanationSchema = z.object({
   executiveSummary: z.string().min(1).max(1200),
@@ -95,7 +95,7 @@ function platformSpecificMetrics(period: StoredPeriod): Record<string, number> {
             settlementVariance: finite(s.keetaExcelPayableVariance ?? s.keetaSettlementVariance),
             officialPayable: finite(s.keetaExcelPayable ?? s.keetaSourcePayable),
             // Charges ÷ sales excluding VAT, the same base as the shared platform_cost_pct in the headline.
-            platformCostPctOfNet: finite(s.keetaPlatformCostPct),
+            platformCostPctOfNet: finite(platformCostPct(periodPlatformCharges(period), salesExVat("keeta", s))),
           }
         : {
             paymentFeesExVat: finite(s.jahezPaymentFeesExVat),

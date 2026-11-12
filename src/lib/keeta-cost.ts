@@ -9,6 +9,9 @@ import { money } from "./format";
  * Display only: every figure comes from the audit summary. Each line is rounded to halalas
  * before adding, as Keeta's invoice does, so the parts add up to the displayed total.
  */
+/** The part of Keeta's deductions that is the restaurant's own item discounts («إعانة التاجر على الأصناف»). */
+export const KEETA_ITEM_DISCOUNTS_LABEL = "خصومات أصناف";
+
 export interface KeetaCostSplit {
   taxInvoice: number;
   outside: Array<{ label: string; amount: number }>;
@@ -18,7 +21,7 @@ export function keetaCostSplit(s: Summary): KeetaCostSplit | null {
   if (s.keetaCommissionInvoiceExVat === undefined) return null;
   const taxInvoice = roundMoney(roundMoney(s.keetaCommissionInvoiceExVat) + roundMoney(s.keetaMerchantAdExVat ?? 0));
   const parts = [
-    { label: "خصومات أصناف", amount: roundMoney(s.keetaProductCampaignExVat ?? 0) },
+    { label: KEETA_ITEM_DISCOUNTS_LABEL, amount: roundMoney(s.keetaProductCampaignExVat ?? 0) },
     { label: "أقساط POS", amount: roundMoney(s.keetaPosFeesExVat ?? 0) },
     { label: "تعويضات", amount: roundMoney(s.keetaCompensationExVat ?? 0) },
   ];

@@ -1,6 +1,6 @@
-import { keetaCostSplit } from "./keeta-cost";
+import { KEETA_ITEM_DISCOUNTS_LABEL, keetaCostSplit } from "./keeta-cost";
 import type { StoredPeriod } from "./periods";
-import { hungerStationAdvertisingExVat, periodPlatformCharges } from "./reporting-metrics";
+import { MERCHANT_FUNDED_DISCOUNTS_LABEL_AR, hungerStationAdvertisingExVat, merchantFundedDiscounts, periodPlatformCharges } from "./reporting-metrics";
 
 /**
  * From the platform charges behind platform cost % to the platform's invoice, line by line, so a reader can see why
@@ -37,8 +37,12 @@ export function costReconciliation(period: Pick<StoredPeriod, "platform" | "summ
       ...(Math.abs(advertising) >= 0.01
         ? [{ label: "الإعلانات (رسوم خدمة الترويج)", amount: advertising, kind: "less" as const, note: "على فاتورة الضريبة كبند مستقل عن العمولة" }]
         : []),
-      ...split.outside.map((part) => ({ label: part.label, amount: part.amount, kind: "less" as const, note: "تُخصم من المستحقات خارج فاتورة الضريبة" })),
+      // Item discounts the restaurant funds are not in the charges the % starts from; they are shown below, not subtracted.
+      ...split.outside
+        .filter((part) => part.label !== KEETA_ITEM_DISCOUNTS_LABEL)
+        .map((part) => ({ label: part.label, amount: part.amount, kind: "less" as const, note: "تُخصم من المستحقات خارج فاتورة الضريبة" })),
     ];
+    const merchantFunded = round2(merchantFundedDiscounts("keeta", s, true));
     const residual = round2(start.amount - steps.reduce((sum, line) => sum + line.amount, 0) - invoice);
     return {
       residual,
@@ -47,6 +51,9 @@ export function costReconciliation(period: Pick<StoredPeriod, "platform" | "summ
         ...steps,
         ...(Math.abs(residual) >= 0.01 ? [{ label: "فرق لم يُفسَّر", amount: residual, kind: "residual" as const }] : []),
         { label: "فاتورة العمولة بدون الضريبة", amount: invoice, kind: "total" },
+        ...(Math.abs(merchantFunded) >= 0.01
+          ? [{ label: MERCHANT_FUNDED_DISCOUNTS_LABEL_AR, amount: merchantFunded, kind: "info" as const, note: "إعانة التاجر على الأصناف · خصم تموّله أنت، خارج نسبة التكلفة" }]
+          : []),
       ],
     };
   }

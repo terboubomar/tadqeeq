@@ -107,7 +107,7 @@ const KEETA_COLUMNS: Column<BranchRow>[] = [
   { key: "keetaInputVat", header: "ضريبة المدخلات" },
   { key: "keetaTotalCostInclVat", header: "كل ما خصمته كيتا شامل الضريبة" },
   { key: "platformCostPctGross", header: "تكلفة المنصة % من المبيعات بدون الضريبة", type: "percent" },
-  { key: "keetaPlatformCostPct", header: "تكلفة كيتا % من المبيعات بدون الضريبة", type: "percent" },
+  { key: "keetaPlatformCostPct", header: "كل ما خصمته كيتا % من المبيعات بدون الضريبة", type: "percent" },
   { key: "keetaAvgOrderValueInclVat", header: "متوسط الطلب شامل الضريبة" },
 ];
 
