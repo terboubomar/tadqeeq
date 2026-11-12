@@ -37,6 +37,48 @@ export const Route = createFileRoute("/_authenticated/invoice-check")({
 
 const DEFAULT_TOLERANCE = 1; // ريال
 
+/** Differences at or below this (SAR) are rounding: the ledger says the line matches and does not print the amount. */
+const LEDGER_DIFFERENCE_THRESHOLD = 10;
+
+/** Shown next to a line only when it is not an independent recalculation, so most lines stay clean. */
+const EVIDENCE_CHIP: Record<string, string | undefined> = {
+  invoice_only: "من الفاتورة فقط",
+  invoice_derived: "مشتق من الفاتورة",
+  mixed: "فحص داخلي",
+  contract: "مع العقد",
+};
+
+const RESULT_TONE = {
+  good: "text-success",
+  bad: "text-destructive",
+  warn: "text-warning",
+  muted: "text-muted-foreground",
+} as const;
+
+type LedgerCheck = NonNullable<StoredPeriod["invoice"]["checks"]>[number];
+
+const MONEY_TO_RESTAURANT = new Set<string>(["collections", "settlement", "sales", "rejected_sales"]);
+
+/** One ledger line's verdict: a short label and, only above the threshold, the difference (invoice − recalculated). */
+function ledgerResult(check: LedgerCheck): { label: string; tone: keyof typeof RESULT_TONE; icon: typeof CheckCircle2; amount?: number } {
+  const evidence = check.evidence ?? "data";
+  if (evidence === "invoice_only") return { label: "يحتاج مستنداً للتحقق", tone: "warn", icon: AlertTriangle };
+  if (check.invoiced === undefined) return { label: "لم يُقرأ من الفاتورة", tone: "muted", icon: MinusCircle };
+  const diff = check.invoiced - check.computed;
+  const tolerance = check.tolerance ?? DEFAULT_TOLERANCE;
+  if (Math.abs(diff) <= Math.max(tolerance, LEDGER_DIFFERENCE_THRESHOLD)) return { label: "مطابق", tone: "good", icon: CheckCircle2 };
+  if (evidence === "mixed" || evidence === "invoice_derived") return { label: "فرق يحتاج مراجعة", tone: "warn", icon: AlertTriangle, amount: diff };
+  // On money owed to the restaurant (collections, net due, sales) a lower invoice figure is the bad side.
+  if (MONEY_TO_RESTAURANT.has(check.category)) {
+    return diff < 0
+      ? { label: "أقل من المحتسب", tone: "bad", icon: AlertTriangle, amount: diff }
+      : { label: "أكثر من المحتسب", tone: "good", icon: CheckCircle2, amount: diff };
+  }
+  return diff > 0
+    ? { label: "زيادة في الفاتورة", tone: "bad", icon: AlertTriangle, amount: diff }
+    : { label: "أقل من المحتسب", tone: "good", icon: CheckCircle2, amount: diff };
+}
+
 function InvoiceCheck() {
   const { selected, isLoading } = useSelectedPeriod();
 
@@ -98,7 +140,7 @@ function InvoiceCheckBody({ selected }: { selected: StoredPeriod }) {
   );
   const totalDiff = independentlyComparable.reduce((sum, check) => {
     const diff = (check.invoiced ?? check.computed) - check.computed;
-    const tolerance = check.tolerance ?? DEFAULT_TOLERANCE;
+    const tolerance = Math.max(check.tolerance ?? DEFAULT_TOLERANCE, LEDGER_DIFFERENCE_THRESHOLD);
     return sum + (Math.abs(diff) <= tolerance ? 0 : diff);
   }, 0);
   const needsReview = (check: (typeof checks)[number]) => {
@@ -110,7 +152,7 @@ function InvoiceCheckBody({ selected }: { selected: StoredPeriod }) {
       return false;
     }
     if (check.invoiced === undefined) return true;
-    return Math.abs(check.invoiced - check.computed) > (check.tolerance ?? DEFAULT_TOLERANCE);
+    return Math.abs(check.invoiced - check.computed) > Math.max(check.tolerance ?? DEFAULT_TOLERANCE, LEDGER_DIFFERENCE_THRESHOLD);
   };
   const flaggedCount = checks.filter(needsReview).length;
   const missingCount = checks.filter(
@@ -273,161 +315,109 @@ function InvoiceCheckBody({ selected }: { selected: StoredPeriod }) {
       ) : null}
 
       <Section title="دفتر المطابقة" summary={flaggedOnly ? "غير المطابقة فقط" : checks.length + " بند"}>
-        <p className="border-b border-border/70 px-5 py-2 text-[11.5px] text-muted-foreground">الحدود تختلف حسب نوع البند ومصدر الدليل.</p>
-        <div data-scroll className="overflow-x-auto">
-        <table className="w-full min-w-[780px] text-[13.5px]">
-          <thead className="bg-muted/40">
-            <tr>
-              <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
-                البند
-              </th>
-              <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
-                المحتسب من البيانات
-              </th>
-              <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
-                قيمة المقارنة / المستند الرسمي
-              </th>
-              <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
-                الفرق
-              </th>
-              <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
-                النتيجة
-              </th>
-              <th className="border-b border-border px-3.5 py-2.5 text-start text-[11.5px] font-semibold text-muted-foreground">
-                نوع التحقق
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibleChecks.map((check, index) => {
-              const evidence = check.evidence ?? "data";
-              const invoiceOnly = evidence === "invoice_only";
-              const invoiceDerived = evidence === "invoice_derived";
-              const mixed = evidence === "mixed";
-              const missing = check.invoiced === undefined && !invoiceOnly;
-              const diff =
-                check.invoiced !== undefined ? check.invoiced - check.computed : undefined;
-              const tolerance = check.tolerance ?? DEFAULT_TOLERANCE;
-              const roundingMatch =
-                diff !== undefined &&
-                check.label === "رسوم الدفع الإلكتروني" &&
-                Math.abs(diff) > 0.005 &&
-                Math.abs(diff) <= tolerance;
-              const over = diff !== undefined && diff > tolerance;
-              const under = diff !== undefined && diff < -tolerance;
-              const withinTolerance =
-                diff !== undefined && !invoiceOnly && !over && !under;
-              const exactMatch =
-                withinTolerance && Math.abs(diff) <= 0.005;
-              return (
-                <tr
-                  key={check.label}
-                  className={cn(
-                    "align-top",
-                    index % 2 ? "bg-background/55" : "bg-white",
-                    over && !mixed && "bg-destructive/[0.025]",
-                    (over || under) && mixed && "bg-warning/[0.035]",
-                  )}
-                >
-                  <td className="border-b border-border/60 px-3.5 py-2.5">
-                    <p className="font-semibold">{check.label}</p>
-                    {check.hint ? (
-                      <p className="mt-1 max-w-sm text-xs leading-6 text-muted-foreground">
-                        {check.hint}
-                      </p>
-                    ) : null}
-                  </td>
-                  <td className="whitespace-nowrap border-b border-border/60 px-3.5 py-2.5">
-                    <span className="num">{invoiceOnly ? "—" : money(check.computed)}</span>
-                  </td>
-                  <td className="whitespace-nowrap border-b border-border/60 px-3.5 py-2.5">
-                    <span className={missing ? "text-xs text-muted-foreground" : "num"}>
-                      {missing ? "لم يُقرأ من الفاتورة" : money(check.invoiced ?? 0)}
+        {/* Phones: one block per line instead of a table that would need sideways scrolling. */}
+        <ul className="divide-y divide-border/60 sm:hidden">
+          {visibleChecks.map((check) => {
+            const result = ledgerResult(check);
+            return (
+              <li key={check.code ?? check.label} className={cn("px-4 py-3", result.tone === "bad" && "bg-destructive/[0.03]")}>
+                <p className="text-[13.5px] font-semibold leading-6">{check.label}</p>
+                <dl className="mt-1.5 grid grid-cols-2 gap-2 text-[12.5px]">
+                  <div>
+                    <dt className="text-[11px] text-muted-foreground">المحتسب</dt>
+                    <dd className="num">{check.evidence === "invoice_only" ? "—" : money(check.computed)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] text-muted-foreground">الفاتورة</dt>
+                    <dd className={check.invoiced === undefined ? "text-muted-foreground" : "num"}>
+                      {check.invoiced === undefined ? "لم يُقرأ" : money(check.invoiced)}
+                    </dd>
+                  </div>
+                </dl>
+                <p className={cn("mt-1.5 flex flex-wrap items-center gap-1.5 text-[12.5px] font-semibold", RESULT_TONE[result.tone])}>
+                  <result.icon className="size-4 shrink-0" />
+                  {result.label}
+                  {result.amount !== undefined ? (
+                    <span>
+                      <span className="num" dir="ltr">
+                        {(result.amount > 0 ? "+" : "−") + money(Math.abs(result.amount))}
+                      </span>{" "}
+                      ر.س
                     </span>
-                  </td>
-                  <td className="whitespace-nowrap border-b border-border/60 px-3.5 py-2.5">
-                    {missing || invoiceOnly ? (
-                      "—"
-                    ) : (
-                      <span
-                        className={cn(
-                          "num font-bold",
-                          over ? "text-destructive" : under ? "text-success" : "text-foreground",
-                        )}
-                      >
-                        {money(diff ?? 0)}
+                  ) : null}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+        <div data-scroll className="hidden overflow-x-auto sm:block">
+          <table className="w-full min-w-[620px] text-[13.5px]">
+            <thead>
+              <tr className="text-[11.5px] text-muted-foreground">
+                <th className="border-b border-border px-4 py-2.5 text-start font-semibold">البند</th>
+                <th className="w-[150px] border-b border-border px-4 py-2.5 text-start font-semibold">المحتسب</th>
+                <th className="w-[150px] border-b border-border px-4 py-2.5 text-start font-semibold">الفاتورة</th>
+                <th className="w-[210px] border-b border-border px-4 py-2.5 text-start font-semibold">النتيجة</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleChecks.map((check) => {
+                const result = ledgerResult(check);
+                return (
+                  <tr key={check.code ?? check.label} className={cn("align-top", result.tone === "bad" && "bg-destructive/[0.03]")}>
+                    <td className="border-b border-border/60 px-4 py-3">
+                      <p className="font-semibold leading-6">
+                        {check.label}
+                        {EVIDENCE_CHIP[check.evidence ?? "data"] ? (
+                          <span className="ms-2 inline-block rounded-full bg-muted px-2 py-0.5 align-middle text-[10.5px] font-medium text-muted-foreground">
+                            {EVIDENCE_CHIP[check.evidence ?? "data"]}
+                          </span>
+                        ) : null}
+                      </p>
+                      {check.hint ? (
+                        <details className="group mt-0.5">
+                          <summary className="cursor-pointer list-none text-[11.5px] text-muted-foreground hover:text-foreground">
+                            <span className="group-open:hidden">كيف يُحسب؟</span>
+                            <span className="hidden group-open:inline">إخفاء</span>
+                          </summary>
+                          <p className="mt-1 max-w-md text-xs leading-6 text-muted-foreground">{check.hint}</p>
+                        </details>
+                      ) : null}
+                    </td>
+                    <td className="whitespace-nowrap border-b border-border/60 px-4 py-3">
+                      <span className="num">{check.evidence === "invoice_only" ? "—" : money(check.computed)}</span>
+                    </td>
+                    <td className="whitespace-nowrap border-b border-border/60 px-4 py-3">
+                      {check.invoiced === undefined ? (
+                        <span className="text-xs text-muted-foreground">لم يُقرأ</span>
+                      ) : (
+                        <span className="num">{money(check.invoiced)}</span>
+                      )}
+                    </td>
+                    <td className="border-b border-border/60 px-4 py-3">
+                      <span className={cn("flex items-center gap-1.5 text-[12.5px] font-semibold", RESULT_TONE[result.tone])}>
+                        <result.icon className="size-4 shrink-0" />
+                        {result.label}
                       </span>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap border-b border-border/60 px-3.5 py-2.5">
-                    {invoiceOnly ? (
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-warning">
-                        <AlertTriangle className="size-4" /> يحتاج تحقق
-                      </span>
-                    ) : missing ? (
-                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <MinusCircle className="size-4" /> بيانات مفقودة
-                      </span>
-                    ) : mixed && (over || under) ? (
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-warning">
-                        <AlertTriangle className="size-4" /> فرق داخلي يحتاج مراجعة
-                      </span>
-                    ) : invoiceDerived && (over || under) ? (
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-warning">
-                        <AlertTriangle className="size-4" /> فرق حسابي يحتاج مراجعة
-                      </span>
-                    ) : roundingMatch ? (
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-success">
-                        <CheckCircle2 className="size-4" /> مطابق ضمن تقريب هنقرستيشن
-                      </span>
-                    ) : over ? (
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-destructive">
-                        <AlertTriangle className="size-4" /> زيادة في المطالبة
-                      </span>
-                    ) : under ? (
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-success">
-                        <CheckCircle2 className="size-4" /> أقل من المحتسب
-                      </span>
-                    ) : exactMatch ? (
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-success">
-                        <CheckCircle2 className="size-4" /> مطابق
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-success">
-                        <CheckCircle2 className="size-4" /> مطابق ضمن هامش التقريب
-                      </span>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap border-b border-border/60 px-3.5 py-2.5">
-                    {invoiceOnly ? (
-                      <span className="rounded-full bg-warning/10 px-2 py-1 text-[11px] font-semibold text-warning">
-                        من الفاتورة فقط
-                      </span>
-                    ) : invoiceDerived ? (
-                      <span className="rounded-full bg-warning/10 px-2 py-1 text-[11px] font-semibold text-warning">
-                        مشتق من الفاتورة
-                      </span>
-                    ) : mixed ? (
-                      <span className="rounded-full bg-secondary px-2 py-1 text-[11px] font-semibold text-secondary-foreground">
-                        فحص داخلي
-                      </span>
-                    ) : evidence === "contract" ? (
-                      <span className="rounded-full bg-primary/10 px-2 py-1 text-[11px] font-semibold text-primary">
-                        تحقق مستقل + عقد
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-success/10 px-2 py-1 text-[11px] font-semibold text-success">
-                        تحقق مستقل
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                      {result.amount !== undefined ? (
+                        <span className={cn("mt-0.5 block text-[13px] font-bold", RESULT_TONE[result.tone])}>
+                          <span className="num" dir="ltr">
+                            {(result.amount > 0 ? "+" : "−") + money(Math.abs(result.amount))}
+                          </span>{" "}
+                          ر.س
+                        </span>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-        {!visibleChecks.length ? <p className="px-5 py-8 text-center text-sm text-muted-foreground">لا توجد بنود غير مطابقة — كل شيء ضمن هامش التسامح.</p> : null}
+        <p className="border-t border-border/70 px-4 py-2.5 text-[11.5px] leading-6 text-muted-foreground">
+          الفرق = الفاتورة − المحتسب، ويظهر فقط إذا زاد على {LEDGER_DIFFERENCE_THRESHOLD} ر.س.
+        </p>
+        {!visibleChecks.length ? <p className="px-5 py-8 text-center text-sm text-muted-foreground">لا توجد بنود غير مطابقة.</p> : null}
       </Section>
 
       {selected.invoice?.lineDetails?.length ? <InvoiceLinesSection period={selected} /> : null}

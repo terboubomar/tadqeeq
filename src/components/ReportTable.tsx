@@ -1,5 +1,5 @@
 import { Download, FileSpreadsheet, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,8 @@ export interface Column<T> {
   header: string;
   type?: "money" | "number" | "percent" | "text";
   className?: string;
+  /** A second, smaller line under the cell, from another field (empty values show nothing). */
+  subKey?: keyof T & string;
 }
 
 interface ReportTableProps<T> {
@@ -24,9 +26,29 @@ interface ReportTableProps<T> {
   caption?: string;
   /** Makes one column's cells a button, e.g. a branch name that opens its journal entry. */
   cellAction?: { key: keyof T & string; label: string; onClick: (row: T) => void };
+  /** CSV columns in place of the on-screen ones (e.g. a column the screen folds into another cell). */
+  csvColumns?: Column<T>[];
+  /** Excel workbook sheets in place of the one on-screen table (e.g. a summary and a detail sheet). */
+  xlsxSheets?: Array<{ name: string; columns: Column<T>[] }>;
+  /** Controls shown before the export buttons (e.g. a view switch). */
+  toolbar?: ReactNode;
+  /** One line under the table. */
+  footnote?: string;
 }
 
 function render<T>(row: T, column: Column<T>) {
+  const main = renderValue(row, column);
+  const sub = column.subKey ? row[column.subKey] : undefined;
+  if (sub === undefined || sub === null || sub === "") return main;
+  return (
+    <span className="block">
+      {main}
+      <span className="mt-0.5 block text-[11.5px] font-medium text-destructive">{String(sub)}</span>
+    </span>
+  );
+}
+
+function renderValue<T>(row: T, column: Column<T>) {
   const value = row[column.key];
   if (typeof value === "number") {
     if (column.type === "percent") return <span className="num">{percent(value)}</span>;
@@ -45,6 +67,10 @@ export function ReportTable<T extends Record<string, unknown>>({
   totals = true,
   caption,
   cellAction,
+  csvColumns,
+  xlsxSheets,
+  toolbar,
+  footnote,
 }: ReportTableProps<T>) {
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -86,10 +112,9 @@ export function ReportTable<T extends Record<string, unknown>>({
     return result;
   }, [filtered, columns, totals]);
 
-  const exportColumns = columns.map(
-    (column) =>
-      ({ key: column.key, header: column.header, type: column.type }) as ExportColumn<T>,
-  );
+  const toExport = (list: Column<T>[]) =>
+    list.map((column) => ({ key: column.key, header: column.header, type: column.type }) as ExportColumn<T>);
+  const exportColumns = toExport(columns);
 
   return (
     <section className="overflow-hidden rounded-[10px] border border-border bg-white">
@@ -99,6 +124,7 @@ export function ReportTable<T extends Record<string, unknown>>({
           {caption ? <p className="mt-1 text-xs text-muted-foreground">{caption}</p> : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {toolbar}
           {searchKey ? (
             <div className="relative">
               <Search className="absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -113,7 +139,7 @@ export function ReportTable<T extends Record<string, unknown>>({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => exportCsv(filtered, exportColumns, filename)}
+            onClick={() => exportCsv(filtered, csvColumns ? toExport(csvColumns) : exportColumns, filename)}
           >
             <Download className="size-4" />
             CSV
@@ -122,7 +148,12 @@ export function ReportTable<T extends Record<string, unknown>>({
             variant="outline"
             size="sm"
             onClick={() =>
-              exportXlsx([{ name: title, rows: filtered, columns: exportColumns }], filename)
+              exportXlsx(
+                xlsxSheets?.length
+                  ? xlsxSheets.map((sheet) => ({ name: sheet.name, rows: filtered, columns: toExport(sheet.columns) }))
+                  : [{ name: title, rows: filtered, columns: exportColumns }],
+                filename,
+              )
             }
           >
             <FileSpreadsheet className="size-4" />
@@ -207,7 +238,9 @@ export function ReportTable<T extends Record<string, unknown>>({
                     {index === 0 ? (
                       "الإجمالي"
                     ) : totalsRow[column.key] !== undefined ? (
-                      <span className="num text-primary">{money(totalsRow[column.key])}</span>
+                      <span className="num text-primary">
+                        {column.type === "number" ? count(totalsRow[column.key]!) : money(totalsRow[column.key])}
+                      </span>
                     ) : (
                       ""
                     )}
@@ -218,6 +251,7 @@ export function ReportTable<T extends Record<string, unknown>>({
           ) : null}
         </table>
       </div>
+      {footnote ? <p className="border-t border-border/70 px-4 py-2.5 text-[11.5px] leading-6 text-muted-foreground">{footnote}</p> : null}
     </section>
   );
 }
