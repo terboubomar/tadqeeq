@@ -8,7 +8,9 @@ import {
   PLATFORM_COST_DEFINITION,
   PLATFORM_COST_FORMULA,
   advertisingExVat,
-  branchPlatformCharges,
+  branchCostReconciliation,
+  branchPlatformCost,
+  unallocatedPlatformCharges,
   periodPlatformCharges,
   periodPlatformChargesExclAds,
   platformCostPct,
@@ -104,14 +106,40 @@ function invoiceLines(period: StoredPeriod) {
   }));
 }
 
-/** Invoice-only charges the invoice prints only in its consolidated summary: on no branch. */
+/**
+ * Charges excluding VAT on no branch: items the invoice prints only in its consolidated summary ("unallocated"),
+ * and invoice lines naming a branch that is not in the period ("unmatched_branch", with the name as printed).
+ */
 export function unallocatedCharges(period: StoredPeriod) {
-  return (period.invoice?.unallocatedCharges ?? []).map((item) => ({
-    line: item.label,
-    amount_sar: round(item.amount),
-    allocation: "unallocated" as const,
-    allocation_rule: ALLOCATION_RULE_EN.platform_level,
-  }));
+  return unallocatedPlatformCharges(period).map((item) =>
+    item.allocation === "unmatched_branch"
+      ? {
+          line: item.label,
+          amount_sar: round(item.amount),
+          allocation: "unmatched_branch" as const,
+          raw_branch_name: item.rawBranchName,
+          allocation_rule: "Names a branch that is not in this period's orders file; on no branch until the name is linked",
+        }
+      : {
+          line: item.label,
+          amount_sar: round(item.amount),
+          allocation: "unallocated" as const,
+          allocation_rule: ALLOCATION_RULE_EN.platform_level,
+        },
+  );
+}
+
+/** Branch platform costs + unallocated charges against the period's platform charges; residual 0 when they reconcile. */
+function costReconciliation(period: StoredPeriod) {
+  const check = branchCostReconciliation(period);
+  if (!check) return null;
+  return {
+    branches_platform_cost_sar: round(check.branches),
+    unallocated_charges_sar: round(check.unallocated),
+    total_platform_charges_sar: round(check.total),
+    residual_sar: check.residual,
+    reconciled: check.reconciled,
+  };
 }
 
 /** Branch invoice-only charges plus platform-level ones reconcile to the invoice-only total, with any residual. */
@@ -207,14 +235,11 @@ export function periodReadout(period: StoredPeriod, appUrl: string) {
         potential_recovery_sar: round(e.potentialRecovery),
       })),
     },
-    costliest_branches: packet.topBranches.map((b) => ({
-      branch: b.branch,
-      display_name: displayBranchName(b.branch),
-      orders: b.orders,
-      gross_sales_sar: round(b.grossSales),
-      platform_cost_sar: round(b.platformCost),
-      commission_pct: round(b.commissionPct),
-    })),
+    // The same rows as get_branch_performance (one branch cost function), five largest.
+    costliest_branches: branchPerformance(period)
+      .slice(0, 5)
+      .map((branch) => ({ ...branch, invoice_only_charges: undefined })),
+    branch_cost_reconciliation: costReconciliation(period),
     platform_details: Object.fromEntries(Object.entries(packet.platformMetrics).map(([key, value]) => [key, round(value)])),
     open_items: openItems(period),
     note: "All numbers come from Tadqeeq's accounting engine (SAR). Explain them; do not recalculate or change them.",
@@ -228,7 +253,8 @@ export function branchPerformance(period: StoredPeriod) {
   );
   return (period.branches ?? [])
     .map((b) => {
-      const cost = branchPlatformCharges(period, b);
+      const breakdown = branchPlatformCost(period, b);
+      const cost = breakdown?.platformCost ?? null;
       return {
         branch: b.branch,
         display_name: displayBranchName(b.branch),
@@ -238,6 +264,8 @@ export function branchPerformance(period: StoredPeriod) {
         commission_sar: round(b.commission),
         commission_pct: round(b.commissionPct),
         platform_cost_sar: round(cost),
+        advertising_ex_vat_sar: round(breakdown?.advertisingExVat),
+        platform_cost_excl_ads_sar: round(breakdown?.platformCostExclAds),
         platform_cost_pct: ratio(platformCostPct(cost, salesExVat(period.platform, b))),
         ...(period.platform === "keeta" ? { platform_cost_pct_of_net: ratio(b.keetaPlatformCostPct) } : {}),
         compensation_sar: round(b.compensation),

@@ -1,5 +1,6 @@
 import type { BranchRow } from "./analysis/types";
 import type { StoredPeriod } from "./periods";
+import { cpcLineAllocation } from "./reporting-metrics";
 
 /**
  * Journal entries for a period's delivery-app sales, per branch and for the whole period.
@@ -155,17 +156,9 @@ function addItems(extras: InvoiceExtras, items: Array<{ label: string; amount: n
   return next;
 }
 
-const nameKey = (name: string | undefined) => (name ?? "").replace(/\s+/g, " ").trim().toLocaleLowerCase();
-
 /** The branch row as the analysis stored it: pages may pass a copy renamed for display. */
 function storedBranch(period: StoredPeriod, b: BranchRow): BranchRow {
   return period.branches.find((row) => row.branchId === b.branchId && row.invoiceBranchName === b.invoiceBranchName) ?? b;
-}
-
-/** Whether a CPC invoice line names this branch (as the orders file or the commission invoice spells it). */
-function cpcNamesBranch(charge: { branch: string }, b: BranchRow): boolean {
-  const key = nameKey(charge.branch);
-  return key !== "" && (key === nameKey(b.branch) || key === nameKey(b.invoiceBranchName));
 }
 
 function hungerStationExtras(period: StoredPeriod, shown: BranchRow): InvoiceExtras {
@@ -178,8 +171,8 @@ function hungerStationExtras(period: StoredPeriod, shown: BranchRow): InvoiceExt
     // Saved before the invoice's items were kept apart: only their total is known.
     extras = { ...extras, other: b.invoiceOnlyBranchCharges ?? 0 };
   }
-  for (const charge of period.invoice?.cpcBranches ?? []) {
-    if (!cpcNamesBranch(charge, b)) continue;
+  for (const { line: charge, branch } of cpcLineAllocation(period)) {
+    if (!branch || branch.branch !== b.branch || (branch.invoiceBranchName ?? null) !== (b.invoiceBranchName ?? null)) continue;
     extras = { ...extras, advertising: extras.advertising + charge.amountExVat, advertisingVat: extras.advertisingVat + charge.vat };
   }
   return extras;
@@ -300,8 +293,8 @@ function amountsFor(period: StoredPeriod, branch: BranchRow): Amounts {
 function hungerStationUnallocated(period: StoredPeriod): Amounts | null {
   if (period.platform !== "hungerstation") return null;
   let extras = addItems(NO_EXTRAS, period.invoice?.unallocatedCharges ?? []);
-  for (const charge of period.invoice?.cpcBranches ?? []) {
-    if (period.branches.some((branch) => cpcNamesBranch(charge, branch))) continue;
+  for (const { line: charge, branch } of cpcLineAllocation(period)) {
+    if (branch) continue;
     extras = { ...extras, advertising: extras.advertising + charge.amountExVat, advertisingVat: extras.advertisingVat + charge.vat };
   }
   const charges = extras.marketing + extras.other + extras.devices + extras.subscription;

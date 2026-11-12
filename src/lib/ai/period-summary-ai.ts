@@ -7,6 +7,7 @@ import {
   isOpenException,
 } from "@/lib/exceptions";
 import type { StoredPeriod } from "@/lib/periods";
+import { branchPlatformCharges } from "@/lib/reporting-metrics";
 
 export const periodSummaryAiExplanationSchema = z.object({
   executiveSummary: z.string().min(1).max(1200),
@@ -168,10 +169,7 @@ export function buildPeriodSummaryAiPacket(
       orders: branch.orders,
       grossSales: branch.grossSales,
       netSales: branch.netSales,
-      platformCost:
-        period.platform === "keeta"
-          ? (branch.keetaTotalCostExVat ?? branch.totalCharges)
-          : branch.totalCharges,
+      platformCost: branchPlatformCharges(period, branch) ?? branch.totalCharges,
       commissionPct: branch.commissionPct,
     }))
     .sort((left, right) => right.platformCost - left.platformCost)
