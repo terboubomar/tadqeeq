@@ -40,6 +40,7 @@ describe("buildCompensationOverview", () => {
     expect(o.pendingAmount).toBe(50);
     expect(o.pendingCount).toBe(1);
     expect(o.readyCount).toBe(1);
+    expect(o.readyAmount).toBe(40);
     expect(o.rejectedCount).toBe(1);
     expect(o.avgDaysToRecover).toBeCloseTo(4);
   });

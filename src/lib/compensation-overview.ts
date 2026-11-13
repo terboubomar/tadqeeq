@@ -214,6 +214,8 @@ export interface CompensationOverview {
   pendingAmount: number;
   pendingCount: number;
   readyCount: number;
+  /** Claimed amount of the cases ready to send. */
+  readyAmount: number;
   rejectedCount: number;
   rejectedAmount: number;
   /** Claimed minus actually paid on recovered cases (partial refunds). */
@@ -296,6 +298,7 @@ export function buildCompensationOverview(
   let pending = 0;
   let pendingCount = 0;
   let rejectedAmount = 0;
+  let readyAmount = 0;
   let shortfall = 0;
   let recoverDays = 0;
   let recoverCount = 0;
@@ -310,6 +313,7 @@ export function buildCompensationOverview(
       pendingCount += 1;
     }
     if (item.status === "rejected") rejectedAmount += amount;
+    if (item.status === "ready") readyAmount += amount;
     if (isCaseRecovered(item)) {
       const paid = caseRecoveredAmount(item);
       recovered += paid;
@@ -429,6 +433,7 @@ export function buildCompensationOverview(
     pendingAmount: round2(pending),
     pendingCount,
     readyCount: statusCounts.ready,
+    readyAmount: round2(readyAmount),
     rejectedCount: statusCounts.rejected,
     rejectedAmount: round2(rejectedAmount),
     recoveryShortfall: round2(shortfall),

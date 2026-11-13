@@ -44,6 +44,7 @@ function CompensationOverviewPage() {
 
   const o = overview;
   const showTelegram = can("telegram.read");
+  const queueEmpty = o.readyCount === 0 && o.followUps.length === 0 && o.rejectedCount === 0;
   const change =
     o.previousRecoveredAmount && o.previousRecoveredAmount > 0
       ? (o.recoveredAmount - o.previousRecoveredAmount) / o.previousRecoveredAmount
@@ -94,111 +95,118 @@ function CompensationOverviewPage() {
         ) : null}
       </CompHeader>
 
-      <section aria-label="المؤشرات الرئيسية" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <Kpi
-          featured
-          // Nine tiles (with Telegram) fill the grid when the headline spans two rows and columns.
-          className={showTelegram ? "col-span-2 justify-center xl:row-span-2" : "col-span-2 xl:col-span-1"}
-          label="المبلغ المسترَد"
-          value={money(o.recoveredAmount)}
-          unit="ر.س"
-          hint={
-            change === null
-              ? `${count(o.statusCounts.recovered)} حالة مسترَدة`
-              : `${change >= 0 ? "+" : ""}${percent(change, 0)} عن الفترة السابقة`
-          }
-        />
-        <Kpi label="إجمالي المطالبات" value={money(o.claimedAmount)} unit="ر.س" hint={`${count(o.caseCount)} حالة`} />
-        <Kpi
-          label="نسبة الاسترداد"
-          value={o.recoveryRate === null ? "—" : percent(o.recoveryRate, 1)}
-          tone={o.recoveryRate === null ? undefined : "good"}
-          hint="من المبالغ المرسلة للمنصات"
-        >
-          <span className="min-h-2.5 flex-1" />
-          <div aria-hidden className="h-1 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-1 rounded-full bg-success"
-              style={{ width: `${Math.min(100, Math.round((o.recoveryRate ?? 0) * 100))}%` }}
-            />
-          </div>
-        </Kpi>
-        <Kpi
-          label="قيد المراجعة لدى المنصة"
-          value={money(o.pendingAmount)}
-          unit="ر.س"
-          hint={`${count(o.pendingCount)} حالة مرسلة أو مقبولة`}
-        />
-        <Kpi label="جاهزة للإرسال" value={count(o.readyCount)} />
-        <Kpi
-          label="مرفوضة"
-          value={count(o.rejectedCount)}
-          tone={o.rejectedCount ? "bad" : undefined}
-          hint={o.rejectedCount ? `${money(o.rejectedAmount)} ر.س` : undefined}
-        />
-        <Kpi
-          label="متوسط أيام الاسترداد"
-          value={o.avgDaysToRecover === null ? "—" : o.avgDaysToRecover.toFixed(1)}
-          unit={o.avgDaysToRecover === null ? undefined : "يوم"}
-          hint="من الإرسال للمنصة حتى تسجيل الاسترداد"
-        />
-        <Kpi
-          label="فرق الاسترداد الجزئي"
-          value={money(o.recoveryShortfall)}
-          unit="ر.س"
-          tone={o.recoveryShortfall > 0 ? "bad" : undefined}
-          hint="المطالَب ناقص المدفوع فعلياً في الحالات المسترَدة"
-        />
-        {showTelegram ? (
-          <Kpi
-            label="فروع مربوطة بـ Telegram"
-            value={
-              <>
-                {count(o.linkedBranches)}
-                <span className="text-sm font-normal text-muted-foreground"> / {count(o.totalConnections)}</span>
-              </>
-            }
-          />
-        ) : null}
+      <section aria-labelledby="needs-action" className="rounded-xl border border-border bg-card">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4">
+          <h2 id="needs-action" className="flex items-center gap-2 text-sm font-semibold">
+            <AlarmClock className="size-4 text-warning" />
+            يحتاج إجراء
+          </h2>
+        </div>
+        {queueEmpty ? (
+          <p className="px-4 pb-4 pt-2 text-sm text-muted-foreground">لا توجد حالات تنتظر إجراءً الآن.</p>
+        ) : (
+          <>
+            <div className="mt-3 grid grid-cols-3 gap-px overflow-hidden border-y border-border bg-border">
+              <QueueTile
+                label="جاهزة للإرسال"
+                hint="أرسلها للمنصة"
+                count={o.readyCount}
+                amount={o.readyAmount}
+                link={{ to: "/compensation/cases", search: { status: "ready" } }}
+              />
+              <QueueTile
+                label="تحتاج متابعة"
+                hint="تأخر الإرسال أو رد المنصة أو الدفع"
+                count={o.followUps.length}
+                amount={o.followUpAmount}
+                tone="warning"
+                link={{ to: "/compensation/cases", search: { followup: true } }}
+              />
+              <QueueTile
+                label="مرفوضة"
+                hint="راجع سبب الرفض"
+                count={o.rejectedCount}
+                amount={o.rejectedAmount}
+                tone="bad"
+                link={{ to: "/compensation/cases", search: { status: "rejected" } }}
+              />
+            </div>
+            {o.followUps.length ? (
+              <ul className="divide-y divide-border/70 px-4 pb-2">
+                {o.followUps.slice(0, 5).map((f) => (
+                  <li key={f.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
+                    <Link
+                      to="/compensation/cases"
+                      search={{ open: f.id }}
+                      className="num font-semibold underline-offset-4 hover:underline"
+                      dir="ltr"
+                    >
+                      {f.orderNumber}
+                    </Link>
+                    <PlatformName platform={f.platform} className="text-xs text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">{f.branchName || "—"}</span>
+                    <span className="text-xs font-semibold text-warning">{f.followUp.label}</span>
+                    <span className="ms-auto whitespace-nowrap font-semibold">
+                      <span className="num">{money(f.amount)}</span> <span className="text-xs font-normal text-muted-foreground">ر.س</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </>
+        )}
       </section>
 
-      {o.followUps.length ? (
-        <section className="rounded-xl border border-warning/40 bg-warning/5 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="flex items-center gap-2 text-sm font-semibold">
-              <AlarmClock className="size-4 text-warning" />
-              تحتاج متابعة اليوم
-              <span className="num rounded-full bg-warning/15 px-2 py-0.5 text-xs text-warning">{count(o.followUps.length)}</span>
-            </h2>
-            <span className="text-xs text-muted-foreground">
-              مبالغ معلّقة <span className="num font-semibold text-foreground">{money(o.followUpAmount)}</span> ر.س
-            </span>
-          </div>
-          <ul className="mt-3 divide-y divide-border/70">
-            {o.followUps.slice(0, 6).map((f) => (
-              <li key={f.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
-                <Link
-                  to="/compensation/cases"
-                  search={{ open: f.id }}
-                  className="num font-semibold underline-offset-4 hover:underline"
-                  dir="ltr"
-                >
-                  {f.orderNumber}
-                </Link>
-                <PlatformName platform={f.platform} className="text-xs text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">{f.branchName || "—"}</span>
-                <span className="text-xs font-semibold text-warning">{f.followUp.label}</span>
-                <span className="ms-auto whitespace-nowrap font-semibold"><span className="num">{money(f.amount)}</span> <span className="text-xs font-normal text-muted-foreground">ر.س</span></span>
-              </li>
-            ))}
-          </ul>
-          {o.followUps.length > 6 ? (
-            <Link to="/compensation/cases" search={{ followup: true }} className="mt-2 inline-block text-xs font-semibold text-primary">
-              عرض كل الحالات التي تحتاج متابعة ←
-            </Link>
-          ) : null}
-        </section>
-      ) : null}
+      <section aria-label="المؤشرات الرئيسية" className="space-y-2">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <Kpi
+            featured
+            label="المبلغ المسترَد"
+            value={money(o.recoveredAmount)}
+            unit="ر.س"
+            hint={
+              change === null
+                ? `${count(o.statusCounts.recovered)} حالة مسترَدة`
+                : `${change >= 0 ? "+" : ""}${percent(change, 0)} عن الفترة السابقة`
+            }
+          />
+          <Kpi label="إجمالي المطالبات" value={money(o.claimedAmount)} unit="ر.س" hint={`${count(o.caseCount)} حالة`} />
+          <Kpi
+            label="نسبة الاسترداد"
+            value={o.recoveryRate === null ? "—" : percent(o.recoveryRate, 1)}
+            tone={o.recoveryRate === null ? undefined : "good"}
+            hint="من المبالغ المرسلة للمنصات"
+          >
+            <span className="min-h-2.5 flex-1" />
+            <div aria-hidden className="h-1 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-1 rounded-full bg-success"
+                style={{ width: `${Math.min(100, Math.round((o.recoveryRate ?? 0) * 100))}%` }}
+              />
+            </div>
+          </Kpi>
+          <Kpi
+            label="قيد المراجعة لدى المنصة"
+            value={money(o.pendingAmount)}
+            unit="ر.س"
+            hint={`${count(o.pendingCount)} حالة مرسلة أو مقبولة`}
+          />
+        </div>
+        <p className="flex flex-wrap gap-x-5 gap-y-1 px-1 text-xs text-muted-foreground">
+          <span>
+            متوسط أيام الاسترداد{" "}
+            <span className="num font-semibold text-foreground">{o.avgDaysToRecover === null ? "—" : o.avgDaysToRecover.toFixed(1)}</span>
+            {o.avgDaysToRecover === null ? null : " يوم"}
+          </span>
+          <span>
+            فرق الاسترداد الجزئي{" "}
+            <span className={cn("num font-semibold", o.recoveryShortfall > 0 ? "text-destructive" : "text-foreground")}>
+              {money(o.recoveryShortfall)}
+            </span>{" "}
+            ر.س
+          </span>
+        </p>
+      </section>
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <section className="rounded-xl border border-border bg-card p-4">
@@ -248,9 +256,18 @@ function CompensationOverviewPage() {
       <section className="rounded-xl border border-border bg-card p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">أعلى الفروع في المطالبات</h2>
-          <Link to="/compensation/cases" className="text-xs font-semibold text-primary">
-            كل الحالات ←
-          </Link>
+          <div className="flex items-center gap-4 text-xs">
+            {showTelegram ? (
+              <span className="text-muted-foreground">
+                مربوطة بـ Telegram{" "}
+                <span className="num font-semibold text-foreground">{count(o.linkedBranches)}</span> من{" "}
+                <span className="num">{count(o.totalConnections)}</span>
+              </span>
+            ) : null}
+            <Link to="/compensation/cases" className="font-semibold text-primary">
+              كل الحالات ←
+            </Link>
+          </div>
         </div>
         {o.branches.length === 0 ? (
           <p className="mt-4 rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
@@ -334,5 +351,45 @@ function StatusCount({ label, value, good = false }: { label: string; value: num
       <span className={cn("num text-base font-semibold text-foreground", good && "text-success")}>{count(value)}</span>
       <span>{label}</span>
     </div>
+  );
+}
+
+function QueueTile({
+  label,
+  hint,
+  count: value,
+  amount,
+  tone,
+  link,
+}: {
+  label: string;
+  hint: string;
+  count: number;
+  amount: number;
+  tone?: "warning" | "bad";
+  link: { to: "/compensation/cases"; search: { status?: "ready" | "rejected"; followup?: boolean } };
+}) {
+  return (
+    <Link
+      to={link.to}
+      search={link.search}
+      aria-label={`${label}: ${value}`}
+      className="group flex min-w-0 flex-col gap-1 bg-card px-3 py-3 sm:px-4 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+    >
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="flex flex-wrap items-baseline gap-x-2">
+        <span
+          className={cn(
+            "num text-2xl font-semibold",
+            value > 0 && tone === "warning" && "text-warning",
+            value > 0 && tone === "bad" && "text-destructive",
+          )}
+        >
+          {count(value)}
+        </span>
+        <span className="num text-xs text-muted-foreground">{money(amount)} ر.س</span>
+      </span>
+      <span className="hidden text-[11px] text-muted-foreground group-hover:text-foreground sm:block">{hint} ←</span>
+    </Link>
   );
 }

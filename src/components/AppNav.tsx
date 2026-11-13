@@ -192,11 +192,19 @@ export function AppNavRail({ groups, pathname, badgeFor, workspaceName, line }: 
 }
 
 /** Wordmark and tagline at the top of the full sidebar and the phone menu. */
-export function AppNavBrand({ onNavigate }: { onNavigate?: () => void }) {
+export function AppNavBrand({
+  onNavigate,
+  to = "/dashboard",
+  tagline = "مراجعة فواتير التوصيل",
+}: {
+  onNavigate?: () => void;
+  to?: string;
+  tagline?: string;
+}) {
   return (
-    <Link to="/dashboard" onClick={onNavigate} className="block rounded-lg px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+    <Link to={to} onClick={onNavigate} className="block rounded-lg px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
       <LogoWordmark title="تدقيق" className="h-7 text-ink-foreground" />
-      <span className="mt-1.5 block text-xs text-ink-muted">مراجعة فواتير التوصيل</span>
+      <span className="mt-1.5 block text-xs text-ink-muted">{tagline}</span>
     </Link>
   );
 }
