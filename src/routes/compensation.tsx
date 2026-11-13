@@ -10,6 +10,8 @@ import { LockedFeatureCard } from "@/components/PlanUpgrade";
 import { useWorkspaceAccess, WorkspaceAccessProvider } from "@/components/WorkspaceAccessProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { loadSupabase } from "@/integrations/supabase/lazy-client";
+import { getEmailCodeStatus } from "@/lib/email-signin.functions";
+import { needsMfaCode } from "@/lib/mfa";
 import { isOpsHost } from "@/lib/ops";
 import { cn } from "@/lib/utils";
 import { WORKSPACE_ROLE_LABELS, type WorkspacePermission } from "@/lib/workspace-access";
@@ -17,10 +19,17 @@ import { NOINDEX } from "@/lib/seo";
 
 export const Route = createFileRoute("/compensation")({
   ssr: false,
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     if (isOpsHost(window.location.host)) throw redirect({ to: "/ops" });
-    const { data, error } = await (await loadSupabase()).auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
+    const supabase = await loadSupabase();
+    const { data, error } = await supabase.auth.getUser();
+    const back = { next: location.href };
+    if (error || !data.user) throw redirect({ to: "/auth", search: back });
+    // Same sign-in steps as the app (_authenticated): the authenticator code, then the emailed code for password sign-ins.
+    const { data: levels } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (needsMfaCode(levels)) throw redirect({ to: "/auth", search: back });
+    const emailCode = await getEmailCodeStatus().catch(() => ({ needed: false }));
+    if (emailCode.needed) throw redirect({ to: "/auth", search: back });
     return { user: data.user };
   },
   head: () => ({
