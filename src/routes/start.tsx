@@ -55,7 +55,7 @@ function StartPage() {
   async function signOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     void navigate({ to: "/auth", replace: true });
   }
 

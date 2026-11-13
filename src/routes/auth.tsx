@@ -232,7 +232,7 @@ function AuthPage() {
             <EmailCodeStep
               onDone={go}
               onCancel={async () => {
-                await supabase.auth.signOut();
+                await supabase.auth.signOut({ scope: "local" });
                 setEmailStep(false);
               }}
             />
@@ -240,7 +240,7 @@ function AuthPage() {
             <MfaCodeStep
               onDone={go}
               onCancel={async () => {
-                await supabase.auth.signOut();
+                await supabase.auth.signOut({ scope: "local" });
                 setMfaStep(false);
               }}
             />
