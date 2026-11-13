@@ -14,16 +14,19 @@ import { PRODUCTS } from "@/lib/products";
 export function CompHeader({
   title,
   sub,
+  parent,
   children,
 }: {
   title: string;
   sub?: string;
+  /** A section between «استرداد» and this page in the breadcrumb. */
+  parent?: { label: string; to: string };
   children?: ReactNode;
 }) {
   return (
     <div className="mb-5 space-y-4">
       <PageHeader
-        crumbs={[{ label: PRODUCTS.istirdad.name, to: "/compensation" }, { label: title }]}
+        crumbs={[{ label: PRODUCTS.istirdad.name, to: "/compensation" }, ...(parent ? [parent] : []), { label: title }]}
         title={title}
         subtitle={sub}
       />
