@@ -116,7 +116,11 @@ function PlatformWorkspace({
           sourceKind === "jahez_adjustments"
             ? `${result.businessDate} · ${count(result.rows)} حركة${result.unmatchedAdjustments ? ` · ${count(result.unmatchedAdjustments)} بلا طلب مطابق` : ""}`
             : `${result.businessDate} · ${count(result.orderCount)} طلب · ${sar(result.grossSales)}`;
-        const stored = result.status === "duplicate" ? facts + " · مرفوع مسبقاً وتم تحديثه" : facts;
+        const cases = result.compensationCases;
+        const caseNote = cases
+          ? `${cases.created ? ` · فُتحت ${count(cases.created)} حالة تعويض في استرداد` : ""}${cases.failed ? ` · تعذّر فتح ${count(cases.failed)} حالة` : ""}`
+          : "";
+        const stored = (result.status === "duplicate" ? facts + " · مرفوع مسبقاً وتم تحديثه" : facts) + caseNote;
         update(item.id, result.incomplete
           ? {
               state: "incomplete",

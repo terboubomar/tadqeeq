@@ -108,6 +108,8 @@ export interface OperationImportResult {
   incomplete: boolean;
   matchedAdjustments: number;
   unmatchedAdjustments: number;
+  /** Jahez adjustments files only: draft «استرداد» cases opened for orders with deductions. */
+  compensationCases?: { created: number; existing: number; failed: number; noPermission: boolean };
 }
 
 export interface OperationPlatformMonth {
