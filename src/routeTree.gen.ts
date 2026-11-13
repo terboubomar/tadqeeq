@@ -95,6 +95,7 @@ import { Route as ProductsSmartAlertsRouteImport } from './routes/products/smart
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AuthenticatedOperationsPlatformRouteImport } from './routes/_authenticated/operations_.$platform'
 import { Route as ApiPublicCspReportRouteImport } from './routes/api/public/csp-report'
+import { Route as ApiPublicEvidenceDownloadRouteImport } from './routes/api/public/evidence-download'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram-webhook'
 import { Route as OpsClientsWorkspaceIdRouteImport } from './routes/ops/clients_.$workspaceId'
 import { Route as AuthenticatedOperationsPlatformDateRouteImport } from './routes/_authenticated/operations_.$platform_.$date'
@@ -545,6 +546,12 @@ const ApiPublicCspReportRoute = ApiPublicCspReportRouteImport.update({
   path: '/api/public/csp-report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicEvidenceDownloadRoute =
+  ApiPublicEvidenceDownloadRouteImport.update({
+    id: '/api/public/evidence-download',
+    path: '/api/public/evidence-download',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicTelegramWebhookRoute =
   ApiPublicTelegramWebhookRouteImport.update({
     id: '/api/public/telegram-webhook',
@@ -677,6 +684,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/operations/$platform': typeof AuthenticatedOperationsPlatformRoute
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
+  '/api/public/evidence-download': typeof ApiPublicEvidenceDownloadRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/operations/$platform/$date': typeof AuthenticatedOperationsPlatformDateRoute
@@ -770,6 +778,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/operations/$platform': typeof AuthenticatedOperationsPlatformRoute
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
+  '/api/public/evidence-download': typeof ApiPublicEvidenceDownloadRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/operations/$platform/$date': typeof AuthenticatedOperationsPlatformDateRoute
@@ -867,6 +876,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/_authenticated/operations_/$platform': typeof AuthenticatedOperationsPlatformRoute
   '/api/public/csp-report': typeof ApiPublicCspReportRoute
+  '/api/public/evidence-download': typeof ApiPublicEvidenceDownloadRoute
   '/api/public/telegram-webhook': typeof ApiPublicTelegramWebhookRoute
   '/ops/clients_/$workspaceId': typeof OpsClientsWorkspaceIdRoute
   '/_authenticated/operations_/$platform_/$date': typeof AuthenticatedOperationsPlatformDateRoute
@@ -964,6 +974,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/operations/$platform'
     | '/api/public/csp-report'
+    | '/api/public/evidence-download'
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
     | '/operations/$platform/$date'
@@ -1057,6 +1068,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/operations/$platform'
     | '/api/public/csp-report'
+    | '/api/public/evidence-download'
     | '/api/public/telegram-webhook'
     | '/ops/clients/$workspaceId'
     | '/operations/$platform/$date'
@@ -1153,6 +1165,7 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/_authenticated/operations_/$platform'
     | '/api/public/csp-report'
+    | '/api/public/evidence-download'
     | '/api/public/telegram-webhook'
     | '/ops/clients_/$workspaceId'
     | '/_authenticated/operations_/$platform_/$date'
@@ -1212,6 +1225,7 @@ export interface RootRouteChildren {
   ProductsIndexRoute: typeof ProductsIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiPublicCspReportRoute: typeof ApiPublicCspReportRoute
+  ApiPublicEvidenceDownloadRoute: typeof ApiPublicEvidenceDownloadRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
   ApiPublicCronReportSchedulesRoute: typeof ApiPublicCronReportSchedulesRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
@@ -1824,6 +1838,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCspReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/evidence-download': {
+      id: '/api/public/evidence-download'
+      path: '/api/public/evidence-download'
+      fullPath: '/api/public/evidence-download'
+      preLoaderRoute: typeof ApiPublicEvidenceDownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/telegram-webhook': {
       id: '/api/public/telegram-webhook'
       path: '/api/public/telegram-webhook'
@@ -2041,6 +2062,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProductsIndexRoute: ProductsIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiPublicCspReportRoute: ApiPublicCspReportRoute,
+  ApiPublicEvidenceDownloadRoute: ApiPublicEvidenceDownloadRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
   ApiPublicCronReportSchedulesRoute: ApiPublicCronReportSchedulesRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
