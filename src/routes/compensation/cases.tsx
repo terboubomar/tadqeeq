@@ -43,9 +43,10 @@ import { cn } from "@/lib/utils";
 import { PlatformName } from "@/components/brand/PlatformLogo";
 
 export const Route = createFileRoute("/compensation/cases")({
-  validateSearch: (search: Record<string, unknown>): { followup?: boolean; open?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { followup?: boolean; open?: string; status?: CompensationCaseStatus } => ({
     followup: search["followup"] === true || search["followup"] === "1" || search["followup"] === "true" ? true : undefined,
     open: typeof search["open"] === "string" ? search["open"] : undefined,
+    status: (CASE_STATUSES as string[]).includes(search["status"] as string) ? (search["status"] as CompensationCaseStatus) : undefined,
   }),
   component: CasesPage,
 });
@@ -59,12 +60,12 @@ function CasesPage() {
   const { can, context } = useWorkspaceAccess();
   const queryClient = useQueryClient();
   const cases = useCompensationCases();
-  const [status, setStatus] = useState<CompensationCaseStatus | "all">("all");
   const [platform, setPlatform] = useState<CompensationPlatformKey | "all">("all");
   const [branch, setBranch] = useState("all");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const search = Route.useSearch();
+  const [status, setStatus] = useState<CompensationCaseStatus | "all">(search.status ?? "all");
   const [followUpOnly, setFollowUpOnly] = useState(Boolean(search.followup));
   const [dialog, setDialog] = useState<{ id: string; mode: "view" | "edit" } | null>(
     search.open ? { id: search.open, mode: "view" } : null,
