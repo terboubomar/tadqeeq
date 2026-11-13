@@ -4,6 +4,7 @@ import { requireWorkspacePermission } from "../server-auth.server";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL } from "../upload-validation";
 import { mapStoredOperationOrder, type StoredOperationOrder } from "./details";
 import { isIncompleteDay } from "./completeness";
+import { openJahezCasesFromAdjustments } from "./jahez-auto-cases.server";
 import { buildOperationMonth, monthBounds, type OperationImportRow } from "./month";
 import { buildHourlyGrid, ORDER_TIME_COLUMNS, type HourlyGrid, type HourlyOrderRow } from "./hourly";
 import { parseOperationFile } from "./parser";
@@ -101,7 +102,8 @@ async function matchedJahezOrders(
 }
 
 export async function importOperationFileOnServer(form: FormData): Promise<OperationImportResult> {
-  const { client, workspaceId } = await requireWorkspacePermission("imports.create");
+  const context = await requireWorkspacePermission("imports.create");
+  const { client, workspaceId } = context;
   const db = client as unknown as LooseClient;
   const file = readFile(form);
   const sourceKind = readSourceKind(form);
@@ -135,7 +137,11 @@ export async function importOperationFileOnServer(form: FormData): Promise<Opera
   });
   if (error) throw operationError(error);
   const result = data as { status: "saved" | "duplicate"; import_id: string; rows: number };
+  // Jahez has no appeal form: its deductions become draft cases in «استرداد» (skipped when one already exists).
+  const compensationCases =
+    parsed.sourceKind === "jahez_adjustments" ? await openJahezCasesFromAdjustments(parsed.adjustments, context) : undefined;
   return {
+    ...(compensationCases ? { compensationCases } : {}),
     status: result.status,
     importId: result.import_id,
     businessDate: parsed.businessDate,
