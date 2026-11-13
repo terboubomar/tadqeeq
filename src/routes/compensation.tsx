@@ -65,7 +65,6 @@ const SECTION_GROUPS: Array<{ title: string; items: SectionItem[] }> = [
       { to: "/compensation", label: "نظرة عامة", permission: "compensation.read" },
       { to: "/compensation/cases", label: "الحالات", permission: "compensation.read" },
       { to: "/compensation/evidence", label: "الأدلة وبناء الاعتراض", permission: "compensation.read" },
-      { to: "/compensation/scanner", label: "فحص ملف التعويضات", permission: "compensation.read" },
     ],
   },
   {
@@ -75,6 +74,9 @@ const SECTION_GROUPS: Array<{ title: string; items: SectionItem[] }> = [
 ];
 
 const SECTION_ITEMS = SECTION_GROUPS.flatMap((group) => group.items);
+
+/** The compensation-file scanner opens from «الحالات», so the sidebar keeps that section marked. */
+const navPathFor = (pathname: string) => (pathname === "/compensation/scanner" ? "/compensation/cases" : pathname);
 
 function CompensationShell() {
   const { context, can } = useWorkspaceAccess();
@@ -113,6 +115,7 @@ function CompensationShell() {
     title: group.title,
     items: group.items.filter((item) => can(item.permission)).map((item) => ({ to: item.to, label: item.label, locked: false })),
   })).filter((group) => group.items.length > 0);
+  const navPath = navPathFor(pathname);
   const current = SECTION_ITEMS.find((item) => (item.to === "/compensation" ? pathname === item.to : pathname.startsWith(item.to)));
   const denied = current ? !can(current.permission) : false;
   const workspaceLine = context.planName ? `باقة ${context.planName}` : WORKSPACE_ROLE_LABELS[context.role];
@@ -146,7 +149,7 @@ function CompensationShell() {
         >
           {sidebarHidden ? (
             <aside className="h-full w-[68px] px-3.5 pb-4 pt-5">
-              <AppNavRail groups={groups} pathname={pathname} badgeFor={badgeFor} workspaceName={context.workspaceName} line={workspaceLine} trial={context.trial} />
+              <AppNavRail groups={groups} pathname={navPath} badgeFor={badgeFor} workspaceName={context.workspaceName} line={workspaceLine} trial={context.trial} />
             </aside>
           ) : (
             <aside className="flex h-full w-[260px] flex-col pb-4 pt-5">
@@ -154,7 +157,7 @@ function CompensationShell() {
                 <AppNavBrand {...brand} />
               </div>
               <div className="mt-5 min-h-0 flex-1 overflow-y-auto px-3 pb-4">
-                <AppNavList groups={groups} pathname={pathname} badgeFor={badgeFor} />
+                <AppNavList groups={groups} pathname={navPath} badgeFor={badgeFor} />
               </div>
               <div className="border-t border-ink-2 px-3 pt-3">
                 <AppNavWorkspace workspaceName={context.workspaceName} line={workspaceLine} trial={context.trial} />
@@ -217,7 +220,7 @@ function CompensationShell() {
             <AppNavBrand {...brand} onNavigate={() => setMenuOpen(false)} />
           </div>
           <div className="mt-6 min-h-0 flex-1 overflow-y-auto px-3 pb-4">
-            <AppNavList groups={groups} pathname={pathname} badgeFor={badgeFor} onNavigate={() => setMenuOpen(false)} />
+            <AppNavList groups={groups} pathname={navPath} badgeFor={badgeFor} onNavigate={() => setMenuOpen(false)} />
           </div>
           <div className="border-t border-ink-2 px-3 py-3">
             <AppNavWorkspace workspaceName={context.workspaceName} line={workspaceLine} trial={context.trial} onNavigate={() => setMenuOpen(false)} />

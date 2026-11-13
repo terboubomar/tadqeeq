@@ -1,11 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlarmClock, Check, Download, Eye, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { AlarmClock, Check, Download, Eye, FileSpreadsheet, Loader2, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { COMPENSATION_CASES_KEY, formatTimestamp, useCompensationCases } from "@/components/compensation/queries";
-import { CompHeader, DraftBox, Field, StatusBadge, Timestamp } from "@/components/compensation/shared";
+import { CompHeader, DraftBox, EvidenceActions, Field, StatusBadge, Timestamp } from "@/components/compensation/shared";
 import { useWorkspaceAccess } from "@/components/WorkspaceAccessProvider";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { deleteCompensationCase, saveCompensationCase } from "@/lib/compensation-evidence.functions";
@@ -161,6 +161,12 @@ function CasesPage() {
         <Button type="button" variant="outline" size="sm" disabled={!filtered.length} onClick={exportRows}>
           <Download className="size-4" />
           تصدير Excel
+        </Button>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/compensation/scanner">
+            <FileSpreadsheet className="size-4" />
+            فحص ملف التعويضات
+          </Link>
         </Button>
         {can("compensation.manage") ? (
           <Link
@@ -417,8 +423,13 @@ function CasesPage() {
         ) : null}
       </section>
 
-      <Dialog open={Boolean(open)} onOpenChange={(v) => !v && setDialog(null)}>
-        <DialogContent dir="rtl" className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+      <Sheet open={Boolean(open)} onOpenChange={(v) => !v && setDialog(null)}>
+        {/* Opens from the left, the end side in RTL. */}
+        <SheetContent
+          side="left"
+          dir="rtl"
+          className="flex w-full flex-col gap-4 overflow-y-auto p-5 sm:max-w-xl [&>button]:left-4 [&>button]:right-auto"
+        >
           {open && dialog?.mode === "edit" ? (
             <CaseEdit key={open.id + "-edit"} item={open} onDone={() => setDialog({ id: open.id, mode: "view" })} />
           ) : open ? (
@@ -431,8 +442,8 @@ function CasesPage() {
               onDelete={() => setDeleteId(open.id)}
             />
           ) : null}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       <AlertDialog open={Boolean(toDelete)} onOpenChange={(v) => !v && setDeleteId(null)}>
         <AlertDialogContent dir="rtl">
@@ -556,14 +567,21 @@ function CaseView({
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle className="flex flex-wrap items-center gap-3 text-start">
+      <SheetHeader className="space-y-1 p-0 pe-8 text-start">
+        <SheetTitle className="flex flex-wrap items-center gap-3 text-start">
           <span className="num" dir="ltr">
             {item.orderNumber}
           </span>
           <StatusBadge status={item.status} />
-        </DialogTitle>
-      </DialogHeader>
+        </SheetTitle>
+        <SheetDescription className="flex flex-wrap items-center gap-x-2 text-start text-xs">
+          <PlatformName platform={item.platform} />
+          <span>·</span>
+          <span>{item.branchName || "—"}</span>
+          <span>·</span>
+          <span className="num font-semibold text-foreground">{money(item.compensationAmount)}</span> ر.س
+        </SheetDescription>
+      </SheetHeader>
 
       <ol aria-label="مراحل الحالة" className="flex flex-wrap items-center gap-1.5 text-xs">
         {CASE_WORKFLOW.map((step, index) => {
@@ -698,14 +716,10 @@ function CaseView({
         </p>
       ) : null}
 
-      <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-        <Info label="المنصة" value={<PlatformName platform={item.platform} />} />
-        <Info label="الفرع" value={item.branchName || "—"} />
-        <Info label="المبلغ" value={`${money(item.compensationAmount)} ر.س`} />
+      <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
         <Info label="مرجع المنصة" value={item.aggregatorCaseReference || "—"} />
         <Info label="تاريخ الإنشاء" value={formatTimestamp(item.createdAt)} />
         <Info label="آخر تحديث" value={formatTimestamp(item.updatedAt)} />
-        <Info label="الدليل" value={item.evidenceId ? "مرفق" : "لا يوجد"} />
         {isCaseRecovered(item) ? (
           <Info
             label="المسترَد فعلياً"
@@ -723,6 +737,25 @@ function CaseView({
           {workflow.rejectionReason}
         </p>
       ) : null}
+      <div className="text-sm">
+        <p className="text-xs font-semibold text-muted-foreground">السبب</p>
+        <p className="mt-1">{item.compensationReason}</p>
+        <p className="mt-3 text-xs font-semibold text-muted-foreground">شرح الموظف</p>
+        <p className="mt-1 whitespace-pre-wrap">{item.employeeExplanation}</p>
+      </div>
+      <section aria-label="الدليل" className="space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground">الدليل</p>
+        {item.evidenceId ? (
+          <EvidenceActions id={item.evidenceId} />
+        ) : (
+          <p className="text-sm text-muted-foreground">لا يوجد دليل مرفق.</p>
+        )}
+      </section>
+      <section aria-label="ملف الاعتراض" className="space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground">ملف الاعتراض</p>
+        <DraftBox title="العربية" value={item.draftAr} />
+        <DraftBox title="English" value={item.draftEn} dir="ltr" />
+      </section>
       {workflow.history.length ? (
         <div>
           <p className="text-xs font-semibold text-muted-foreground">سجل الحالة</p>
@@ -740,18 +773,8 @@ function CaseView({
           </ol>
         </div>
       ) : null}
-      <div className="text-sm">
-        <p className="text-xs font-semibold text-muted-foreground">السبب</p>
-        <p className="mt-1">{item.compensationReason}</p>
-        <p className="mt-3 text-xs font-semibold text-muted-foreground">شرح الموظف</p>
-        <p className="mt-1 whitespace-pre-wrap">{item.employeeExplanation}</p>
-      </div>
-      <div className="grid gap-3 lg:grid-cols-2">
-        <DraftBox title="العربية" value={item.draftAr} />
-        <DraftBox title="English" value={item.draftEn} dir="ltr" />
-      </div>
       {canManage || canDelete ? (
-        <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
+        <div className="mt-auto flex flex-wrap justify-end gap-2 border-t border-border pt-3">
           {canDelete ? (
             <Button type="button" variant="outline" className="text-destructive" onClick={onDelete}>
               <Trash2 className="size-4" />
@@ -803,11 +826,11 @@ function CaseEdit({ item, onDone }: { item: CompensationCaseRecord; onDone: () =
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <DialogHeader>
-        <DialogTitle className="text-start">
+      <SheetHeader className="p-0 pe-8 text-start">
+        <SheetTitle className="text-start">
           تعديل الحالة <span className="num" dir="ltr">{item.orderNumber}</span>
-        </DialogTitle>
-      </DialogHeader>
+        </SheetTitle>
+      </SheetHeader>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="المنصة">
           <select

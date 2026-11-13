@@ -12,6 +12,7 @@ function ScannerPage() {
   return (
     <div>
       <CompHeader
+        parent={{ label: "الحالات", to: "/compensation/cases" }}
         title="فحص ملف التعويضات"
         sub="ارفع ملف تعويضات المنصة لمطابقة كل طلب مع أدلة الفروع"
       />
