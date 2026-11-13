@@ -157,7 +157,7 @@ function HistoryPage() {
                     <Td mono>{money(period.summary?.grossSales ?? 0)}</Td>
                     <Td mono>{money(period.summary?.commission ?? 0)}</Td>
                     <Td mono>{percent(period.summary?.commissionPct ?? 0)}</Td>
-                    <Td mono>{money(period.summary?.totalCharges ?? 0)}</Td>
+                    <Td mono>{money(periodPlatformCharges(period) ?? period.summary?.totalCharges ?? 0)}</Td>
                     <Td className="px-1">
                       <div className="flex items-center">
                         {canRename ? (
