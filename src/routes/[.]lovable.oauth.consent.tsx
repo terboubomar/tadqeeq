@@ -4,7 +4,8 @@ import { useState } from "react";
 import { LogoWordmark } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { loadSupabase } from "@/integrations/supabase/lazy-client";
-import { needsMfaCode } from "@/lib/mfa";
+import { getEmailCodeStatus } from "@/lib/email-signin.functions";
+import { consentNeedsSignInStep } from "@/lib/mfa";
 
 type OAuthResult = { data: { redirect_url?: string; redirect_to?: string; client?: { name?: string } } | null; error: { message: string } | null };
 type OAuthApi = {
@@ -25,9 +26,11 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
     const supabase = await loadSupabase();
     const { data } = await supabase.auth.getSession();
     if (!data.session) throw redirect({ to: "/auth", search: { next: location.pathname + location.searchStr } });
-    // Claude / ChatGPT tokens stay at aal1, so approving them must pass the code for accounts that use it.
+    // Claude / ChatGPT tokens skip both code checks, so approving one needs the authenticator code (accounts that use
+    // it) and, for password sign-ins, the emailed code. If the email-code check fails, approval waits.
     const { data: levels } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (needsMfaCode(levels)) throw redirect({ to: "/auth", search: { next: location.pathname + location.searchStr } });
+    const emailCode = await getEmailCodeStatus().catch(() => null);
+    if (consentNeedsSignInStep(levels, emailCode)) throw redirect({ to: "/auth", search: { next: location.pathname + location.searchStr } });
   },
   loader: async ({ location }) => {
     const id = new URLSearchParams(location.search).get("authorization_id")!;

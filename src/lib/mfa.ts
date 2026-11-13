@@ -47,6 +47,17 @@ export function needsMfaCode(levels: { currentLevel: string | null; nextLevel: s
   return levels?.nextLevel === "aal2" && levels.currentLevel !== "aal2";
 }
 
+/**
+ * Linking an AI assistant: its token is exempt from the code checks, so the session approving it must have finished
+ * both steps. A failed email-code check (null) counts as not finished.
+ */
+export function consentNeedsSignInStep(
+  levels: { currentLevel: string | null; nextLevel: string | null } | null | undefined,
+  emailCode: { needed: boolean } | null,
+): boolean {
+  return needsMfaCode(levels) || emailCode === null || emailCode.needed;
+}
+
 export function hasVerifiedFactor(factors: { status?: string }[] | null | undefined): boolean {
   return (factors ?? []).some((factor) => factor.status === "verified");
 }

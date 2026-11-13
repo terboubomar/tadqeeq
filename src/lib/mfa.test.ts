@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { hasVerifiedFactor, mfaSatisfied, needsMfaCode, tokenClaims } from "./mfa";
+import { consentNeedsSignInStep, hasVerifiedFactor, mfaSatisfied, needsMfaCode, tokenClaims } from "./mfa";
 
 const token = (payload: Record<string, unknown>) =>
   `x.${Buffer.from(JSON.stringify(payload)).toString("base64url")}.y`;
@@ -35,5 +35,22 @@ describe("needsMfaCode", () => {
     expect(needsMfaCode({ currentLevel: "aal2", nextLevel: "aal2" })).toBe(false);
     expect(needsMfaCode({ currentLevel: "aal1", nextLevel: "aal1" })).toBe(false);
     expect(needsMfaCode(null)).toBe(false);
+  });
+});
+
+describe("consentNeedsSignInStep", () => {
+  const done = { currentLevel: "aal1", nextLevel: "aal1" };
+  test("a password sign-in without the emailed code cannot approve an AI assistant", () => {
+    expect(consentNeedsSignInStep(done, { needed: true })).toBe(true);
+  });
+  test("a failed email-code check blocks approval", () => {
+    expect(consentNeedsSignInStep(done, null)).toBe(true);
+  });
+  test("the authenticator code is still required for accounts that use it", () => {
+    expect(consentNeedsSignInStep({ currentLevel: "aal1", nextLevel: "aal2" }, { needed: false })).toBe(true);
+  });
+  test("a session that finished both steps can approve", () => {
+    expect(consentNeedsSignInStep(done, { needed: false })).toBe(false);
+    expect(consentNeedsSignInStep({ currentLevel: "aal2", nextLevel: "aal2" }, { needed: false })).toBe(false);
   });
 });
