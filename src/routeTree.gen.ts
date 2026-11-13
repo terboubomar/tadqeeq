@@ -54,6 +54,8 @@ import { Route as AuthenticatedSecurityRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedSubscribeRouteImport } from './routes/_authenticated/subscribe'
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
 import { Route as AuthenticatedTrendsRouteImport } from './routes/_authenticated/trends'
+import { Route as BlogIndexRouteImport } from './routes/blog/index'
+import { Route as BlogRealDeliveryAppCommissionRouteImport } from './routes/blog/real-delivery-app-commission'
 import { Route as CompensationIndexRouteImport } from './routes/compensation/index'
 import { Route as CompensationBranchesRouteImport } from './routes/compensation/branches'
 import { Route as CompensationCasesRouteImport } from './routes/compensation/cases'
@@ -334,6 +336,17 @@ const AuthenticatedTrendsRoute = AuthenticatedTrendsRouteImport.update({
   path: '/trends',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogRealDeliveryAppCommissionRoute =
+  BlogRealDeliveryAppCommissionRouteImport.update({
+    id: '/blog/real-delivery-app-commission',
+    path: '/blog/real-delivery-app-commission',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const CompensationIndexRoute = CompensationIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -643,6 +656,7 @@ export interface FileRoutesByFullPath {
   '/subscribe': typeof AuthenticatedSubscribeRoute
   '/team': typeof AuthenticatedTeamRoute
   '/trends': typeof AuthenticatedTrendsRoute
+  '/blog/real-delivery-app-commission': typeof BlogRealDeliveryAppCommissionRoute
   '/compensation/branches': typeof CompensationBranchesRoute
   '/compensation/cases': typeof CompensationCasesRoute
   '/compensation/evidence': typeof CompensationEvidenceRoute
@@ -676,6 +690,7 @@ export interface FileRoutesByFullPath {
   '/products/invoice-reconciliation': typeof ProductsInvoiceReconciliationRoute
   '/products/promotions-roi': typeof ProductsPromotionsRoiRoute
   '/products/smart-alerts': typeof ProductsSmartAlertsRoute
+  '/blog/': typeof BlogIndexRoute
   '/compensation/': typeof CompensationIndexRoute
   '/guides/': typeof GuidesIndexRoute
   '/marketplace/': typeof MarketplaceIndexRoute
@@ -737,6 +752,7 @@ export interface FileRoutesByTo {
   '/subscribe': typeof AuthenticatedSubscribeRoute
   '/team': typeof AuthenticatedTeamRoute
   '/trends': typeof AuthenticatedTrendsRoute
+  '/blog/real-delivery-app-commission': typeof BlogRealDeliveryAppCommissionRoute
   '/compensation/branches': typeof CompensationBranchesRoute
   '/compensation/cases': typeof CompensationCasesRoute
   '/compensation/evidence': typeof CompensationEvidenceRoute
@@ -770,6 +786,7 @@ export interface FileRoutesByTo {
   '/products/invoice-reconciliation': typeof ProductsInvoiceReconciliationRoute
   '/products/promotions-roi': typeof ProductsPromotionsRoiRoute
   '/products/smart-alerts': typeof ProductsSmartAlertsRoute
+  '/blog': typeof BlogIndexRoute
   '/compensation': typeof CompensationIndexRoute
   '/guides': typeof GuidesIndexRoute
   '/marketplace': typeof MarketplaceIndexRoute
@@ -835,6 +852,7 @@ export interface FileRoutesById {
   '/_authenticated/subscribe': typeof AuthenticatedSubscribeRoute
   '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/_authenticated/trends': typeof AuthenticatedTrendsRoute
+  '/blog/real-delivery-app-commission': typeof BlogRealDeliveryAppCommissionRoute
   '/compensation/branches': typeof CompensationBranchesRoute
   '/compensation/cases': typeof CompensationCasesRoute
   '/compensation/evidence': typeof CompensationEvidenceRoute
@@ -868,6 +886,7 @@ export interface FileRoutesById {
   '/products/invoice-reconciliation': typeof ProductsInvoiceReconciliationRoute
   '/products/promotions-roi': typeof ProductsPromotionsRoiRoute
   '/products/smart-alerts': typeof ProductsSmartAlertsRoute
+  '/blog/': typeof BlogIndexRoute
   '/compensation/': typeof CompensationIndexRoute
   '/guides/': typeof GuidesIndexRoute
   '/marketplace/': typeof MarketplaceIndexRoute
@@ -933,6 +952,7 @@ export interface FileRouteTypes {
     | '/subscribe'
     | '/team'
     | '/trends'
+    | '/blog/real-delivery-app-commission'
     | '/compensation/branches'
     | '/compensation/cases'
     | '/compensation/evidence'
@@ -966,6 +986,7 @@ export interface FileRouteTypes {
     | '/products/invoice-reconciliation'
     | '/products/promotions-roi'
     | '/products/smart-alerts'
+    | '/blog/'
     | '/compensation/'
     | '/guides/'
     | '/marketplace/'
@@ -1027,6 +1048,7 @@ export interface FileRouteTypes {
     | '/subscribe'
     | '/team'
     | '/trends'
+    | '/blog/real-delivery-app-commission'
     | '/compensation/branches'
     | '/compensation/cases'
     | '/compensation/evidence'
@@ -1060,6 +1082,7 @@ export interface FileRouteTypes {
     | '/products/invoice-reconciliation'
     | '/products/promotions-roi'
     | '/products/smart-alerts'
+    | '/blog'
     | '/compensation'
     | '/guides'
     | '/marketplace'
@@ -1124,6 +1147,7 @@ export interface FileRouteTypes {
     | '/_authenticated/subscribe'
     | '/_authenticated/team'
     | '/_authenticated/trends'
+    | '/blog/real-delivery-app-commission'
     | '/compensation/branches'
     | '/compensation/cases'
     | '/compensation/evidence'
@@ -1157,6 +1181,7 @@ export interface FileRouteTypes {
     | '/products/invoice-reconciliation'
     | '/products/promotions-roi'
     | '/products/smart-alerts'
+    | '/blog/'
     | '/compensation/'
     | '/guides/'
     | '/marketplace/'
@@ -1201,6 +1226,7 @@ export interface RootRouteChildren {
   StartRoute: typeof StartRoute
   TermsRoute: typeof TermsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  BlogRealDeliveryAppCommissionRoute: typeof BlogRealDeliveryAppCommissionRoute
   GuidesAccountingIntegrationsRoute: typeof GuidesAccountingIntegrationsRoute
   GuidesHungerstationCompensationRoute: typeof GuidesHungerstationCompensationRoute
   GuidesJahezCommissionRoute: typeof GuidesJahezCommissionRoute
@@ -1220,6 +1246,7 @@ export interface RootRouteChildren {
   ProductsInvoiceReconciliationRoute: typeof ProductsInvoiceReconciliationRoute
   ProductsPromotionsRoiRoute: typeof ProductsPromotionsRoiRoute
   ProductsSmartAlertsRoute: typeof ProductsSmartAlertsRoute
+  BlogIndexRoute: typeof BlogIndexRoute
   GuidesIndexRoute: typeof GuidesIndexRoute
   MarketplaceIndexRoute: typeof MarketplaceIndexRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
@@ -1550,6 +1577,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/trends'
       preLoaderRoute: typeof AuthenticatedTrendsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/blog/': {
+      id: '/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/real-delivery-app-commission': {
+      id: '/blog/real-delivery-app-commission'
+      path: '/blog/real-delivery-app-commission'
+      fullPath: '/blog/real-delivery-app-commission'
+      preLoaderRoute: typeof BlogRealDeliveryAppCommissionRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/compensation/': {
       id: '/compensation/'
@@ -2038,6 +2079,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  BlogRealDeliveryAppCommissionRoute: BlogRealDeliveryAppCommissionRoute,
   GuidesAccountingIntegrationsRoute: GuidesAccountingIntegrationsRoute,
   GuidesHungerstationCompensationRoute: GuidesHungerstationCompensationRoute,
   GuidesJahezCommissionRoute: GuidesJahezCommissionRoute,
@@ -2057,6 +2099,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProductsInvoiceReconciliationRoute: ProductsInvoiceReconciliationRoute,
   ProductsPromotionsRoiRoute: ProductsPromotionsRoiRoute,
   ProductsSmartAlertsRoute: ProductsSmartAlertsRoute,
+  BlogIndexRoute: BlogIndexRoute,
   GuidesIndexRoute: GuidesIndexRoute,
   MarketplaceIndexRoute: MarketplaceIndexRoute,
   ProductsIndexRoute: ProductsIndexRoute,

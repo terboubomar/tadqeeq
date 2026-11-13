@@ -29,6 +29,7 @@ Then use the generic skills for method: `seo-audit` (technical/on-page), `ai-seo
 | FAQs, feature list, explainer video, `CONTENT_UPDATED` | `src/lib/site-content.ts` |
 | Product names (مُطابِق، كاشِف، رادار، استرداد، عائد، رقيب، Tadqeeq AI) | `src/lib/products.ts`; never hard-code a product name |
 | Guides (articles) | data in `src/lib/guides.ts`, head/JSON-LD in `src/lib/guides-seo.ts`, UI in `src/components/guides/GuidePages.tsx`, routes in `src/routes/guides/` |
+| Blog (market articles, dated sources) | data in `src/lib/blog.ts`, head/JSON-LD (BlogPosting) in `src/lib/blog-seo.ts`, UI in `src/components/blog/BlogPages.tsx`, routes in `src/routes/blog/`; drafted with the `consultant` skill |
 | Product landing pages (/products, /products/<slug>) | data in `src/lib/product-pages.ts`, head/JSON-LD in `src/lib/product-pages-seo.ts`, UI in `src/components/products/ProductPages.tsx`, routes in `src/routes/products/`; also in llms-full.txt |
 | Legal pages | `src/lib/legal.ts`, `src/lib/legal-seo.ts`, `src/components/legal/LegalPage.tsx` |
 | Contact page (ContactPage JSON-LD) | `src/routes/contact.tsx`, `src/components/ContactPage.tsx` |
