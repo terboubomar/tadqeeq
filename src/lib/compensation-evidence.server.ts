@@ -716,8 +716,10 @@ function auditContextFor(
 
 export async function saveCompensationCaseOnServer(
   input: SaveCompensationCaseInput,
+  /** The MCP passes the assistant's token; the app's server function reads it from the request. */
+  accessToken?: string,
 ): Promise<CompensationCaseRecord> {
-  const context = await requireWorkspacePermission("compensation.manage");
+  const context = await requireWorkspacePermission("compensation.manage", accessToken);
   const { client, userId, workspaceId } = context;
   const db = dynamicDb(client);
   const orderNumber = input.orderNumber.trim();

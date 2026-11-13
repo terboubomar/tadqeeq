@@ -307,6 +307,7 @@ export function exceptionList(period: StoredPeriod, includeClosed: boolean) {
     .filter((e) => includeClosed || isOpenException(e))
     .sort((left, right) => right.reviewAmount - left.reviewAmount)
     .map((e) => ({
+      id: e.id,
       what: e.label,
       category: e.categoryLabel,
       ...(e.branch ? { branch: e.branch } : {}),

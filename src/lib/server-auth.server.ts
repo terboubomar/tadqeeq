@@ -329,10 +329,12 @@ async function countTrialUploads(ownerUserId: string): Promise<number> {
   return Math.max(periods.count ?? 0, events.count ?? 0);
 }
 
-export async function requireServerUserAnyStatus(): Promise<ServerUserAuth> {
-  const accessToken = parseAuthorizationBearer(
-    getRequestHeader("authorization"),
-  );
+/**
+ * The signed-in user behind the request's bearer token, or behind `token` when given (the MCP passes the
+ * assistant's verified token explicitly). The same checks apply either way.
+ */
+export async function requireServerUserAnyStatus(token?: string): Promise<ServerUserAuth> {
+  const accessToken = token ?? parseAuthorizationBearer(getRequestHeader("authorization"));
   const client = createServerUserClient(accessToken);
   const { data, error } = await client.auth.getUser(accessToken);
 
@@ -365,8 +367,8 @@ export async function requireServerUserAnyStatus(): Promise<ServerUserAuth> {
 }
 
 /** Signed-in user whose workspace is activated, or on the free trial (limited by its permissions). */
-export async function requireServerUser(): Promise<ServerUserAuth> {
-  const context = await requireServerUserAnyStatus();
+export async function requireServerUser(token?: string): Promise<ServerUserAuth> {
+  const context = await requireServerUserAnyStatus(token);
   if (context.onboardingStatus !== "active" && !context.trial && !context.isPlatformAdmin) {
     throw new Error("الحساب موقوف مؤقتاً — تواصل معنا لإعادة التفعيل.");
   }
@@ -375,8 +377,9 @@ export async function requireServerUser(): Promise<ServerUserAuth> {
 
 export async function requireWorkspacePermission(
   permission: WorkspacePermission,
+  token?: string,
 ): Promise<ServerUserAuth> {
-  const context = await requireServerUser();
+  const context = await requireServerUser(token);
   if (!context.permissions.includes(permission)) {
     logEvent("permission_denied", {
       permission,
