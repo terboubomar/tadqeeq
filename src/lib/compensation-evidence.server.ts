@@ -519,8 +519,10 @@ function jahezMatchesForPeriod(
 
 export async function searchCompensationEvidenceOnServer(
   orderNumberInput: string,
+  /** The MCP passes the assistant's token; the app's server function reads it from the request. */
+  accessToken?: string,
 ): Promise<CompensationEvidenceSearchResult> {
-  const context = await requireWorkspacePermission("compensation.read");
+  const context = await requireWorkspacePermission("compensation.read", accessToken);
   const { client, userId, workspaceId } = context;
   const userDb = dynamicDb(client);
   const orderNumber = orderNumberInput.trim();

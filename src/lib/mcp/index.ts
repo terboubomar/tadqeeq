@@ -16,19 +16,21 @@ import getInvoiceCheck from "./tools/get-invoice-check";
 import getDailyOperations from "./tools/get-daily-operations";
 import updateCompensationCaseStatus from "./tools/update-compensation-case-status";
 import updateExceptionStatus from "./tools/update-exception-status";
+import findOrderEvidence from "./tools/find-order-evidence";
+import createCompensationCase from "./tools/create-compensation-case";
 
 const projectRef = import.meta.env["VITE_SUPABASE_PROJECT_ID"] ?? "project-ref-unset";
 
 export default defineMcp({
   name: "tadqeeq",
   title: "Tadqeeq",
-  version: "0.6.0",
+  version: "0.7.0",
   instructions: [
     "Tadqeeq audits delivery-platform invoices (HungerStation, Keeta, Jahez) for Saudi restaurants. Answer in the user's language (usually Arabic).",
     "To audit new files: ask for the platform (and for HungerStation the card fee %), call start_audit, give the user the upload_url, and when they say they are done call get_audit_result.",
     "For past audits: list_periods, then get_period_summary, get_branch_performance or list_exceptions. For what the platform cost is made of use get_platform_cost; to compare with an earlier period use compare_periods. For the invoice reconciliation (مُطابِق) use get_invoice_check; for this month's daily figures (نَبض) use get_daily_operations.",
-    "For compensation claims («استرداد»): get_compensation_overview for what needs action, list_compensation_cases to find cases, get_compensation_case for one case and its dispute text.",
-    "Two tools change data: update_compensation_case_status and update_exception_status. Use them only when the user asks for that exact change, repeat what you will change, and report the result.",
+    "For compensation claims («استرداد»): get_compensation_overview for what needs action, list_compensation_cases to find cases, get_compensation_case for one case and its dispute text. To open a new claim: find_order_evidence, then create_compensation_case.",
+    "Three tools change data: create_compensation_case, update_compensation_case_status and update_exception_status. Use them only when the user asks for that exact change, repeat what you will change, and report the result.",
     "All money values are SAR from Tadqeeq's accounting engine. Explain them; never recalculate or invent numbers.",
     "Available on the الشاملة plan, or with the add-on on any plan. If a tool says the plan does not include it, or returns nothing, call get_account and tell the user.",
   ].join(" "),
@@ -54,5 +56,7 @@ export default defineMcp({
     getDailyOperations,
     updateCompensationCaseStatus,
     updateExceptionStatus,
+    findOrderEvidence,
+    createCompensationCase,
   ],
 });
