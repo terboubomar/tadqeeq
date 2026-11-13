@@ -64,7 +64,7 @@ export function WorkspaceAccessProvider({ children }: { children: ReactNode }) {
             className="mt-5"
             variant="outline"
             onClick={async () => {
-              await supabase.auth.signOut();
+              await supabase.auth.signOut({ scope: "local" });
               window.location.href = "/auth";
             }}
           >

@@ -94,7 +94,7 @@ function OpsLayout() {
   if (!me.data || !role) return <OpsSignIn onDone={() => qc.invalidateQueries({ queryKey: ["ops-me"] })} />;
 
   async function signOut() {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     qc.clear();
     window.location.href = "/ops";
   }
@@ -221,7 +221,7 @@ function OpsSignIn({ onDone }: { onDone: () => void }) {
       }
       const me = await getOpsMe({ data: {} });
       if (!me) {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: "local" });
         throw new Error("هذا الحساب ليس ضمن فريق العمليات.");
       }
       onDone();
