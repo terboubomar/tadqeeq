@@ -126,7 +126,6 @@ const FOOTER_GROUPS = [
       ["/guides/jahez-commission", "عمولة جاهز"],
       ["/guides/accounting-integrations", "ربط نظامك المحاسبي"],
       ["/guides", "كل الأدلة"],
-      ["/blog", "المدونة"],
     ],
   },
   {

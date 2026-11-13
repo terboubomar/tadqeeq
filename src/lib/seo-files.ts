@@ -19,7 +19,6 @@ import {
   TRIAL_FEATURES,
   type PublicPlan,
 } from "./plans";
-import { BLOG_POSTS, blogMarkdown } from "./blog";
 import { GUIDES, guideMarkdown } from "./guides";
 import { PRODUCT_PAGES } from "./product-pages";
 import { CONTENT_UPDATED, EXPLAINER_VIDEO, FAQS, FEATURES } from "./site-content";
@@ -192,10 +191,6 @@ ${PRODUCT_PAGES.map((page) => guideMarkdown(page, SITE_URL).replace(/^(#+) /gm, 
 ## Guides
 
 ${GUIDES.map((guide) => guideMarkdown(guide, SITE_URL).replace(/^(#+) /gm, "#$1 ")).join("\n\n")}
-
-## Blog
-
-${BLOG_POSTS.map((post) => blogMarkdown(post, SITE_URL).replace(/^(#+) /gm, "#$1 ")).join("\n\n")}
 
 ## Frequently asked questions
 
