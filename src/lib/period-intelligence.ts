@@ -7,7 +7,13 @@ import {
 } from "./exceptions";
 import type { BranchRow } from "./analysis/types";
 import type { StoredPeriod } from "./periods";
-import { platformCostPct, salesExVat, totalPlatformCharges } from "@/lib/reporting-metrics";
+import {
+  branchPlatformCharges,
+  periodPlatformCharges,
+  platformCostPct,
+  salesExVat,
+  totalPlatformCharges,
+} from "@/lib/reporting-metrics";
 
 export type ComparisonUnit = "sar" | "count" | "ratio";
 
@@ -125,15 +131,18 @@ function metric(
   };
 }
 
-function platformCostRate(totalCharges: number, grossSales: number): number {
-  return grossSales > 0 ? totalCharges / grossSales : 0;
+/** Platform cost ÷ sales without VAT, as on the dashboard; 0 when unknown. */
+function platformCostRate(platform: StoredPeriod["platform"], cost: number, figures: Parameters<typeof salesExVat>[1]): number {
+  return platformCostPct(cost, salesExVat(platform, figures)) ?? 0;
+}
+
+/** The dashboard's platform cost for a period: without VAT, merchant-funded discounts out, HungerStation CPC in. */
+function periodPlatformCost(period: StoredPeriod): number {
+  return periodPlatformCharges(period) ?? period.summary.totalCharges;
 }
 
 function branchPlatformCost(period: StoredPeriod, branch: BranchRow): number {
-  if (period.platform === "keeta") {
-    return totalPlatformCharges("keeta", branch) ?? branch.totalCharges;
-  }
-  return branch.totalCharges;
+  return branchPlatformCharges(period, branch) ?? branch.totalCharges;
 }
 
 function branchSnapshot(period: StoredPeriod, branch: BranchRow): BranchPeriodSnapshot {
@@ -143,7 +152,7 @@ function branchSnapshot(period: StoredPeriod, branch: BranchRow): BranchPeriodSn
     grossSales: branch.grossSales,
     netSales: branch.netSales,
     platformCost,
-    platformCostRate: platformCostRate(platformCost, branch.grossSales),
+    platformCostRate: platformCostRate(period.platform, platformCost, branch),
     commissionPct: branch.commissionPct,
   };
 }
@@ -463,15 +472,15 @@ export function buildPeriodComparison(
       "platform_cost",
       "إجمالي تكلفة المنصة",
       "sar",
-      current.summary.totalCharges,
-      previous.summary.totalCharges,
+      periodPlatformCost(current),
+      periodPlatformCost(previous),
     ),
     metric(
       "platform_cost_rate",
-      "تكلفة المنصة كنسبة من المبيعات الإجمالية",
+      "تكلفة المنصة كنسبة من المبيعات بدون الضريبة",
       "ratio",
-      platformCostRate(current.summary.totalCharges, current.summary.grossSales),
-      platformCostRate(previous.summary.totalCharges, previous.summary.grossSales),
+      platformCostRate(current.platform, periodPlatformCost(current), current.summary),
+      platformCostRate(previous.platform, periodPlatformCost(previous), previous.summary),
     ),
   ];
 

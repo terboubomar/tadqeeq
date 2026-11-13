@@ -238,3 +238,41 @@ describe("Period Intelligence V1", () => {
     );
   });
 });
+
+describe("Period Intelligence uses the dashboard's platform cost", () => {
+  const base = {
+    orders: 100,
+    commission: 150,
+    commissionPct: 0.15,
+  };
+
+  test("HungerStation adds the CPC invoice without VAT, at period and branch level, and divides by sales without VAT", () => {
+    const branch = { branch: "Malqa", branchId: "1", orders: 100, grossSales: 1150, netSales: 1000, commissionPct: 0.15, totalCharges: 200 };
+    const current = period({ ...base, id: "sep", platform: "hungerstation", start: "2026-09-01", end: "2026-09-30", grossSales: 1150, netSales: 1000, totalCharges: 200, branches: [branch] });
+    current.invoice = { lines: [], cpc: 57.5, cpcBranches: [{ branch: "Malqa", amountExVat: 50 }] } as unknown as StoredPeriod["invoice"];
+    const previous = period({ ...base, id: "aug", platform: "hungerstation", start: "2026-08-01", end: "2026-08-31", grossSales: 1150, netSales: 1000, totalCharges: 200, branches: [branch] });
+
+    const comparison = buildPeriodComparison(current, previous);
+    const cost = comparison.metrics.find((m) => m.key === "platform_cost");
+    const rate = comparison.metrics.find((m) => m.key === "platform_cost_rate");
+    expect(cost?.current).toBeCloseTo(250, 8);
+    expect(cost?.previous).toBeCloseTo(200, 8);
+    expect(rate?.current).toBeCloseTo(0.25, 8);
+    expect(rate?.previous).toBeCloseTo(0.2, 8);
+    expect(rate?.label).toBe("تكلفة المنصة كنسبة من المبيعات بدون الضريبة");
+    const malqa = comparison.branchMovements.find((b) => b.branch === "Malqa");
+    expect(malqa?.current?.platformCost).toBeCloseTo(250, 8);
+    expect(malqa?.current?.platformCostRate).toBeCloseTo(0.25, 8);
+  });
+
+  test("Keeta uses the cost without VAT and leaves out the merchant-funded item subsidy", () => {
+    const current = period({ ...base, id: "sep", platform: "keeta", start: "2026-09-01", end: "2026-09-30", grossSales: 1150, netSales: 1000, totalCharges: 300 });
+    Object.assign(current.summary, { keetaTotalCostExVat: 260, keetaProductCampaignExVat: 60, keetaSalesExVat: 1000 });
+    const previous = period({ ...base, id: "aug", platform: "keeta", start: "2026-08-01", end: "2026-08-31", grossSales: 1150, netSales: 1000, totalCharges: 300 });
+    Object.assign(previous.summary, { keetaTotalCostExVat: 260, keetaProductCampaignExVat: 60, keetaSalesExVat: 1000 });
+
+    const comparison = buildPeriodComparison(current, previous);
+    expect(comparison.metrics.find((m) => m.key === "platform_cost")?.current).toBeCloseTo(200, 8);
+    expect(comparison.metrics.find((m) => m.key === "platform_cost_rate")?.current).toBeCloseTo(0.2, 8);
+  });
+});
