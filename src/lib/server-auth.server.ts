@@ -11,7 +11,16 @@ import {
 } from "./workspace-access";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-import { EMAIL_CODE_REQUIRED_MESSAGE, emailCodeRequired, hasVerifiedFactor, MFA_REQUIRED_MESSAGE, mfaSatisfied, tokenClaims } from "./mfa";
+import { isAssistantLinkApproved } from "./assistant-link-check.server";
+import {
+  ASSISTANT_LINK_UNAPPROVED_MESSAGE,
+  EMAIL_CODE_REQUIRED_MESSAGE,
+  emailCodeRequired,
+  hasVerifiedFactor,
+  MFA_REQUIRED_MESSAGE,
+  mfaSatisfied,
+  tokenClaims,
+} from "./mfa";
 import { isEmailCodeVerified } from "./email-signin.server";
 import { logEvent } from "./observability";
 import {
@@ -339,6 +348,10 @@ export async function requireServerUserAnyStatus(): Promise<ServerUserAuth> {
   // Password sign-ins also need the code emailed to the account.
   if (emailCodeRequired(claims, withFactor) && !(await isEmailCodeVerified(data.user.id, claims.sessionId))) {
     throw new Error(EMAIL_CODE_REQUIRED_MESSAGE);
+  }
+  // AI-assistant tokens skip both codes, so the link itself must have been approved after them.
+  if (claims.clientId && !(await isAssistantLinkApproved(data.user.id, claims.clientId))) {
+    throw new Error(ASSISTANT_LINK_UNAPPROVED_MESSAGE);
   }
 
   const workspace = await loadWorkspaceContext(client, data.user.id);

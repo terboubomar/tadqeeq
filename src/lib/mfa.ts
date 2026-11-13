@@ -18,6 +18,9 @@ export interface TokenClaims {
 
 export const EMAIL_CODE_REQUIRED_MESSAGE = "أدخل الرمز المرسل إلى بريدك لإكمال تسجيل الدخول.";
 
+/** An AI-assistant token whose link was never approved from a fully signed-in session (migration 0067). */
+export const ASSISTANT_LINK_UNAPPROVED_MESSAGE = "ربط المساعد الذكي غير معتمد. اربطه من جديد بعد تسجيل الدخول برمز التحقق.";
+
 /** Reads the claims of an already verified Supabase access token (no signature check here). */
 export function tokenClaims(token: string): TokenClaims {
   try {

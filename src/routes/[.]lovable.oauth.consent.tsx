@@ -4,8 +4,9 @@ import { useState } from "react";
 import { LogoWordmark } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
 import { loadSupabase } from "@/integrations/supabase/lazy-client";
+import { approveAssistantLink } from "@/lib/assistant-link.functions";
 import { getEmailCodeStatus } from "@/lib/email-signin.functions";
-import { consentNeedsSignInStep } from "@/lib/mfa";
+import { consentNeedsSignInStep, EMAIL_CODE_REQUIRED_MESSAGE, MFA_REQUIRED_MESSAGE } from "@/lib/mfa";
 
 type OAuthResult = { data: { redirect_url?: string; redirect_to?: string; client?: { name?: string } } | null; error: { message: string } | null };
 type OAuthApi = {
@@ -55,6 +56,22 @@ function Consent() {
 
   async function decide(approve: boolean) {
     setBusy(true);
+    if (approve) {
+      // The server records the approval only after checking both sign-in codes; without that record the
+      // assistant's token is refused (migration 0067).
+      try {
+        await approveAssistantLink({ data: { authorizationId: authorization_id } });
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : "تعذّر اعتماد الربط.";
+        if (message === MFA_REQUIRED_MESSAGE || message === EMAIL_CODE_REQUIRED_MESSAGE) {
+          window.location.href = `/auth?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+          return;
+        }
+        setBusy(false);
+        setError(message);
+        return;
+      }
+    }
     const { data, error } = approve
       ? await (await oauth()).approveAuthorization(authorization_id)
       : await (await oauth()).denyAuthorization(authorization_id);

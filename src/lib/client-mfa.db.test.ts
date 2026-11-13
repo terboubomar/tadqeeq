@@ -49,7 +49,10 @@ describe("optional two-step sign-in in the database", () => {
     expect(await canRead(WITH_MFA, { aal: "aal2" })).toBe(true);
   });
 
-  test("OAuth tokens for Claude / ChatGPT are accepted", async () => {
-    expect(await canRead(WITH_MFA, { aal: "aal1", client_id: "mcp-client" })).toBe(true);
+  test("OAuth tokens for Claude / ChatGPT are accepted once the link was approved (migration 0067)", async () => {
+    const client = "00000000-0000-4000-8000-0000000044c1";
+    expect(await canRead(WITH_MFA, { aal: "aal1", client_id: client })).toBe(false);
+    await db.query("insert into public.assistant_link_approvals (user_id, client_id) values ($1, $2)", [WITH_MFA, client]);
+    expect(await canRead(WITH_MFA, { aal: "aal1", client_id: client })).toBe(true);
   });
 });

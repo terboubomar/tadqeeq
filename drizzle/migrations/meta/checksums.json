@@ -65,5 +65,6 @@
   "0063_zoho_connection": "6803bd395c3e26af155dab74d6a179725a17622bc65d58d4aa085dd3251c9843",
   "0064_odoo_connection": "b78ff5930acf94aa4ffdb825c4717ce3f054c2ff41717c9dfbddba697006fdab",
   "0065_quickbooks_connection": "b84e08e24923e80b00f8c9c9c48a1393c86bc766412e94c5d93724a31e796029",
-  "0066_tighten_client_role_grants": "fec5c88dadd78a42384f83c222d900215857c3302ba2b9c6eec550d12bc370e0"
+  "0066_tighten_client_role_grants": "fec5c88dadd78a42384f83c222d900215857c3302ba2b9c6eec550d12bc370e0",
+  "0067_assistant_link_approvals": "2440489b07b1b393497661b1566f9c958cd8b78eec98d65cc22ba58082abe5cc"
 }
