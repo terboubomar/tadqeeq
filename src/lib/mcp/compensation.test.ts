@@ -78,5 +78,6 @@ describe("MCP compensation readouts", () => {
     expect(detail.history).toEqual([{ status: "rejected", status_ar: "مرفوضة", at: "2026-11-05T10:00:00Z", note: "الدليل غير واضح" }]);
     expect(detail.dispute_text_ar).toBe("نص الاعتراض");
     expect(detail.dispute_text_en).toBe("Dispute text");
+    expect(detail.app_url).toMatch(/\/compensation\/cases\?open=3$/);
   });
 });

@@ -13,6 +13,7 @@ import {
   type OverviewRange,
 } from "@/lib/compensation-overview";
 
+import { APP_URL } from "./access";
 import { supabaseForUser } from "./supabase";
 
 /**
@@ -133,7 +134,13 @@ export function caseDetail(item: McpCase, now: Date = new Date()) {
     history: workflow.history.map((entry) => ({ status: entry.status, status_ar: caseStatusLabel(entry.status), at: entry.at, note: entry.note ?? null })),
     dispute_text_ar: item.draftAr,
     dispute_text_en: item.draftEn,
+    // Opens the case in استرداد (signed in), where its evidence can be previewed and downloaded.
+    app_url: caseAppUrl(item.id),
   };
+}
+
+export function caseAppUrl(caseId: string): string {
+  return `${APP_URL}/compensation/cases?open=${encodeURIComponent(caseId)}`;
 }
 
 export interface CaseFilter {
