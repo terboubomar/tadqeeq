@@ -15,6 +15,15 @@ import type { StoredPeriod } from "@/lib/periods";
 import { useSelectedPeriod } from "@/lib/use-period";
 import { cn } from "@/lib/utils";
 import { ALLOCATION_RULE_AR, invoiceOnlyAllocation } from "@/lib/invoice-only-allocation";
+import {
+  DEFAULT_TOLERANCE,
+  EVIDENCE_CHIP,
+  invoiceLedgerSummary,
+  LEDGER_DIFFERENCE_THRESHOLD,
+  ledgerNeedsReview,
+  ledgerVerdict,
+  type LedgerCheck,
+} from "@/lib/invoice-ledger";
 import { PLATFORM_COST_DEFINITION_AR, displayBranchName, vatBreakdown } from "@/lib/reporting-metrics";
 
 export const Route = createFileRoute("/_authenticated/invoice-check")({
@@ -35,19 +44,6 @@ export const Route = createFileRoute("/_authenticated/invoice-check")({
   component: InvoiceCheck,
 });
 
-const DEFAULT_TOLERANCE = 1; // ريال
-
-/** Differences at or below this (SAR) are rounding: the ledger says the line matches and does not print the amount. */
-const LEDGER_DIFFERENCE_THRESHOLD = 10;
-
-/** Shown next to a line only when it is not an independent recalculation, so most lines stay clean. */
-const EVIDENCE_CHIP: Record<string, string | undefined> = {
-  invoice_only: "من الفاتورة فقط",
-  invoice_derived: "مشتق من الفاتورة",
-  mixed: "فحص داخلي",
-  contract: "مع العقد",
-};
-
 const RESULT_TONE = {
   good: "text-success",
   bad: "text-destructive",
@@ -55,28 +51,12 @@ const RESULT_TONE = {
   muted: "text-muted-foreground",
 } as const;
 
-type LedgerCheck = NonNullable<StoredPeriod["invoice"]["checks"]>[number];
+const RESULT_ICON = { good: CheckCircle2, bad: AlertTriangle, warn: AlertTriangle, muted: MinusCircle } as const;
 
-const MONEY_TO_RESTAURANT = new Set<string>(["collections", "settlement", "sales", "rejected_sales"]);
-
-/** One ledger line's verdict: a short label and, only above the threshold, the difference (invoice − recalculated). */
+/** One ledger line's verdict (src/lib/invoice-ledger.ts) with its icon. */
 function ledgerResult(check: LedgerCheck): { label: string; tone: keyof typeof RESULT_TONE; icon: typeof CheckCircle2; amount?: number } {
-  const evidence = check.evidence ?? "data";
-  if (evidence === "invoice_only") return { label: "يحتاج مستنداً للتحقق", tone: "warn", icon: AlertTriangle };
-  if (check.invoiced === undefined) return { label: "لم يُقرأ من الفاتورة", tone: "muted", icon: MinusCircle };
-  const diff = check.invoiced - check.computed;
-  const tolerance = check.tolerance ?? DEFAULT_TOLERANCE;
-  if (Math.abs(diff) <= Math.max(tolerance, LEDGER_DIFFERENCE_THRESHOLD)) return { label: "مطابق", tone: "good", icon: CheckCircle2 };
-  if (evidence === "mixed" || evidence === "invoice_derived") return { label: "فرق يحتاج مراجعة", tone: "warn", icon: AlertTriangle, amount: diff };
-  // On money owed to the restaurant (collections, net due, sales) a lower invoice figure is the bad side.
-  if (MONEY_TO_RESTAURANT.has(check.category)) {
-    return diff < 0
-      ? { label: "أقل من المحتسب", tone: "bad", icon: AlertTriangle, amount: diff }
-      : { label: "أكثر من المحتسب", tone: "good", icon: CheckCircle2, amount: diff };
-  }
-  return diff > 0
-    ? { label: "زيادة في الفاتورة", tone: "bad", icon: AlertTriangle, amount: diff }
-    : { label: "أقل من المحتسب", tone: "good", icon: CheckCircle2, amount: diff };
+  const verdict = ledgerVerdict(check);
+  return { ...verdict, icon: RESULT_ICON[verdict.tone] };
 }
 
 function InvoiceCheck() {
@@ -95,74 +75,10 @@ function InvoiceCheckBody({ selected }: { selected: StoredPeriod }) {
   const [view, setView] = useState<"all" | "flagged">("all");
   const flaggedOnly = view === "flagged";
 
-  const checks = selected.invoice?.checks ?? [];
-  const hasPdfInvoice =
-    selected.platform === "hungerstation"
-      ? Boolean(selected.invoice?.lines?.length)
-      : selected.platform === "keeta"
-        ? Boolean(
-            selected.invoice?.keetaBranches?.length ||
-              selected.invoice?.salesCommission !== undefined ||
-              selected.invoice?.netDue !== undefined ||
-              selected.invoice?.keetaTaxInvoiceExVat !== undefined,
-          )
-        : Boolean(
-            selected.invoice?.jahezCommissionExVat !== undefined ||
-              selected.invoice?.totalIncVat !== undefined,
-          );
-  const hasKeetaExcelControl =
-    selected.platform === "keeta" &&
-    (selected.invoice?.keetaExcelInvoiceAmount !== undefined ||
-      selected.invoice?.keetaExcelPayable !== undefined);
-  const hasOfficialControl = hasPdfInvoice || hasKeetaExcelControl;
-  // Headline variance should only use one non-overlapping settlement control.
-  const headlineLabels =
-    selected.platform === "hungerstation"
-      ? new Set([
-          "عمولة المبيعات",
-          "رسوم الدفع الإلكتروني",
-          "عمولات أخرى القابلة للتحقق من البيانات",
-        ])
-      : selected.platform === "keeta"
-        ? new Set([
-            hasPdfInvoice
-              ? "صافي المستحق مقابل فاتورة كيتا"
-              : hasKeetaExcelControl
-                ? "صافي المستحق مقابل Invoice Details"
-                : "صافي التسوية مقابل Order Summary Payable",
-          ])
-        : new Set(["إجمالي فاتورة جاهز شامل الضريبة"]);
-  const independentlyComparable = checks.filter(
-    (check) =>
-      headlineLabels.has(check.label) &&
-      check.invoiced !== undefined &&
-      (check.evidence === "data" || check.evidence === "contract" || !check.evidence),
-  );
-  const totalDiff = independentlyComparable.reduce((sum, check) => {
-    const diff = (check.invoiced ?? check.computed) - check.computed;
-    const tolerance = Math.max(check.tolerance ?? DEFAULT_TOLERANCE, LEDGER_DIFFERENCE_THRESHOLD);
-    return sum + (Math.abs(diff) <= tolerance ? 0 : diff);
-  }, 0);
-  const needsReview = (check: (typeof checks)[number]) => {
-    if (
-      check.evidence === "invoice_only" ||
-      check.evidence === "invoice_derived" ||
-      check.evidence === "mixed"
-    ) {
-      return false;
-    }
-    if (check.invoiced === undefined) return true;
-    return Math.abs(check.invoiced - check.computed) > Math.max(check.tolerance ?? DEFAULT_TOLERANCE, LEDGER_DIFFERENCE_THRESHOLD);
-  };
-  const flaggedCount = checks.filter(needsReview).length;
-  const missingCount = checks.filter(
-    (check) => check.invoiced === undefined && check.evidence !== "invoice_only",
-  ).length;
+  const ledger = invoiceLedgerSummary(selected);
+  const { checks, hasPdfInvoice, hasKeetaExcelControl, hasOfficialControl, keetaExcelOnly, totalDiff, flaggedCount, flaggedPresent, missingCount, invoiceOnlyCount, matchedCount } = ledger;
+  const needsReview = ledgerNeedsReview;
   const visibleChecks = flaggedOnly ? checks.filter(needsReview) : checks;
-  const invoiceOnlyCount = checks.filter((check) => check.evidence === "invoice_only").length;
-  const flaggedPresent = checks.filter((check) => needsReview(check) && check.invoiced !== undefined).length;
-  const matchedCount = Math.max(checks.length - flaggedPresent - missingCount - invoiceOnlyCount, 0);
-  const keetaExcelOnly = selected.platform === "keeta" && !hasPdfInvoice && hasKeetaExcelControl;
   const overClaimed = totalDiff > DEFAULT_TOLERANCE;
   const vat = vatBreakdown(selected);
   const underClaimed = totalDiff < -DEFAULT_TOLERANCE;
