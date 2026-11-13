@@ -32,3 +32,6 @@ Tadqeeq is a production-critical product. It is not an MVP. Preserve existing be
 - Both are guidance inside these rules: keep Tadqeeq's own fonts, colour tokens and Arabic RTL layout, change only what the user asked for, and add no new UI or font libraries unless the user asks.
 - Homepage workflow and product-journey presentation stays independent of product definitions and accounting logic; why: visual revisions must preserve product destinations and financial behavior.
 
+## Market consultant
+
+- Before product, pricing, positioning, sales or roadmap decisions, consult the `consultant` skill (`.claude/skills/consultant`), which starts by checking the latest Saudi delivery-aggregator news; why: Tadqeeq's decisions follow the Saudi market.
