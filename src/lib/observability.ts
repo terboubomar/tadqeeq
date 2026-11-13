@@ -27,7 +27,9 @@ export type LogEvent =
   | "contact_message_email_failed"
   | "integration_connected"
   | "integration_disconnected"
-  | "integration_journals_sent";
+  | "integration_journals_sent"
+  | "evidence_link_download"
+  | "mcp_evidence_viewed";
 
 /** What kind of failure happened, so logs and support can tell them apart. */
 export type ErrorKind =
