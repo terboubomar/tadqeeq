@@ -23,6 +23,7 @@ import { supabaseForUser } from "./supabase";
 
 export interface McpCase {
   id: string;
+  periodId: string | null;
   orderNumber: string;
   platform: string;
   branchName: string | null;
@@ -43,6 +44,7 @@ const round = (value: number) => Math.round(value * 100) / 100;
 
 type CaseRow = {
   id: string;
+  period_id?: string | null;
   order_number: string;
   platform: string;
   branch_name: string | null;
@@ -62,6 +64,7 @@ type CaseRow = {
 export function mapCaseRow(row: CaseRow): McpCase {
   return {
     id: row.id,
+    periodId: row.period_id ?? null,
     orderNumber: row.order_number,
     platform: row.platform,
     branchName: row.branch_name,

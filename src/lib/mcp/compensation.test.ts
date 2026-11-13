@@ -8,6 +8,7 @@ const now = new Date("2026-11-13T12:00:00Z");
 
 function c(partial: Partial<McpCase> & { id: string }): McpCase {
   return {
+    periodId: null,
     orderNumber: "880" + partial.id,
     platform: "jahez",
     branchName: "فرع العليا",
