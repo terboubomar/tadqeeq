@@ -28,9 +28,6 @@ export function GuideShell({ children, wide = false }: { children: ReactNode; wi
             <Link to="/guides" className="hidden rounded-full px-3 py-2 font-semibold text-foreground/75 hover:bg-muted sm:block">
               الأدلة
             </Link>
-            <Link to="/blog" className="hidden rounded-full px-3 py-2 font-semibold text-foreground/75 hover:bg-muted sm:block">
-              المدونة
-            </Link>
             <Link to="/contact" className="hidden rounded-full px-3 py-2 font-semibold text-foreground/75 hover:bg-muted sm:block">
               تواصل معنا
             </Link>
@@ -61,9 +58,6 @@ export function GuideShell({ children, wide = false }: { children: ReactNode; wi
             </Link>
             <Link to="/guides" className="hover:text-foreground">
               كل الأدلة
-            </Link>
-            <Link to="/blog" className="hover:text-foreground">
-              المدونة
             </Link>
             <a href="/#faq" className="hover:text-foreground">
               الأسئلة الشائعة

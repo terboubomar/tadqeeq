@@ -48,8 +48,6 @@ export const PUBLIC_PAGES: PublicPage[] = [
   { path: "/guides/keeta-invoice", title: "كيف تراجع فاتورة كيتا؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
   { path: "/guides/hungerstation-compensation", title: "كيف تعترض على تعويضات هنقرستيشن؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
   { path: "/guides/jahez-commission", title: "كيف تتأكد من عمولة جاهز وصافي المطعم؟", lastmod: "2026-10-04", changefreq: "monthly", priority: 0.8 },
-  { path: "/blog", title: "مدونة تدقيق: سوق تطبيقات التوصيل في السعودية", lastmod: "2026-11-13", changefreq: "weekly", priority: 0.7 },
-  { path: "/blog/real-delivery-app-commission", title: "عمولتك الحقيقية في تطبيقات التوصيل", lastmod: "2026-11-13", changefreq: "monthly", priority: 0.8 },
   { path: "/guides/accounting-integrations", title: "ربط تدقيق بنظامك المحاسبي وإرسال القيود مباشرة", lastmod: "2026-10-17", changefreq: "monthly", priority: 0.7 },
   { path: "/products", title: "منتجات تدقيق", lastmod: "2026-10-14", changefreq: "monthly", priority: 0.8 },
   { path: "/products/invoice-reconciliation", title: "مُطابِق · مطابقة الفاتورة", lastmod: "2026-10-14", changefreq: "monthly", priority: 0.8 },
