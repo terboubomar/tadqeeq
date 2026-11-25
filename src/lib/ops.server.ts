@@ -3,7 +3,9 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 import { dataUrlBytes, sniffFile } from "./file-sniff";
-import { hasVerifiedFactor, tokenClaims } from "./mfa";
+import { isAssistantLinkApproved } from "./assistant-link-check.server";
+import { isEmailCodeVerified } from "./email-signin.server";
+import { emailCodeRequired, hasVerifiedFactor, tokenClaims } from "./mfa";
 import { buildRevenueMovements, type RevenueEvent, type RevenueMonth } from "./ops-revenue";
 import { buildOpsTasks, type OpsTask, type OpsTaskClient } from "./ops-tasks";
 import { isPlanAddon, PLAN_ADDONS, PLAN_REQUEST_EVENT, TRIAL_UPLOAD_EVENT, type PlanAddon, type PlanFeature } from "./plans";
@@ -52,7 +54,11 @@ async function currentUser() {
   if (!token) return null;
   const { data, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !data.user) return null;
-  return { user: data.user, aal: tokenClaims(token).aal };
+  const claims = tokenClaims(token);
+  // The same sign-in checks every other server call applies (src/lib/server-auth.server.ts).
+  if (emailCodeRequired(claims, hasVerifiedFactor(data.user.factors)) && !(await isEmailCodeVerified(data.user.id, claims.sessionId))) return null;
+  if (claims.clientId && !(await isAssistantLinkApproved(data.user.id, claims.clientId))) return null;
+  return { user: data.user, aal: claims.aal };
 }
 
 export async function getOpsMeOnServer(): Promise<OpsActor | null> {
