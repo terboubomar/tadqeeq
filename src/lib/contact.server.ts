@@ -15,8 +15,12 @@ async function sha256(text: string): Promise<string> {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/** All messages from everyone in an hour; stops floods that rotate addresses and emails. */
+const CONTACT_LIMIT_GLOBAL_HOUR = 100;
+
+/** The client IP the platform sets: Cloudflare's header, else the hop the last proxy appended (never the first, which the sender controls). */
 function clientIp(): string | null {
-  const forwarded = getRequestHeader("cf-connecting-ip") ?? getRequestHeader("x-forwarded-for")?.split(",")[0];
+  const forwarded = getRequestHeader("cf-connecting-ip") ?? getRequestHeader("x-forwarded-for")?.split(",").at(-1);
   return forwarded?.trim() || null;
 }
 
@@ -31,13 +35,18 @@ export async function submitContactMessageOnServer(input: ContactInput & { websi
   const ip = clientIp();
   const ipHash = ip ? await sha256(`tadqeeq-contact:${ip}`) : null;
   const since = new Date(Date.now() - 60 * 60_000).toISOString();
-  const [byIp, byEmail] = await Promise.all([
+  const [byIp, byEmail, all] = await Promise.all([
     ipHash
       ? db().from("contact_messages").select("id", { count: "exact", head: true }).eq("ip_hash", ipHash).gte("created_at", since)
       : Promise.resolve({ count: 0 }),
     db().from("contact_messages").select("id", { count: "exact", head: true }).eq("email", message.email).gte("created_at", since),
+    db().from("contact_messages").select("id", { count: "exact", head: true }).gte("created_at", since),
   ]);
-  if ((byIp.count ?? 0) >= CONTACT_LIMIT_PER_IP_HOUR || (byEmail.count ?? 0) >= CONTACT_LIMIT_PER_EMAIL_HOUR) {
+  if (
+    (byIp.count ?? 0) >= CONTACT_LIMIT_PER_IP_HOUR ||
+    (byEmail.count ?? 0) >= CONTACT_LIMIT_PER_EMAIL_HOUR ||
+    (all.count ?? 0) >= CONTACT_LIMIT_GLOBAL_HOUR
+  ) {
     throw new Error("وصلتنا رسائلك — سنرد عليك قريباً. يمكنك أيضاً مراسلتنا مباشرة على hello@tadqeeq.app.");
   }
 

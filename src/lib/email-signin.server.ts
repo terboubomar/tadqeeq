@@ -25,7 +25,11 @@ type LooseDb = {
   from: (table: string) => {
     select: (cols: string) => { eq: (c: string, v: string) => { maybeSingle: () => Promise<{ data: CodeRow | null; error: { message: string } | null }> } };
     upsert: (row: Partial<CodeRow>) => Promise<{ error: { message: string } | null }>;
-    update: (row: Partial<CodeRow>) => { eq: (c: string, v: string) => Promise<{ error: { message: string } | null }> };
+    update: (row: Partial<CodeRow>) => {
+      eq: (c: string, v: string) => Promise<{ error: { message: string } | null }> & {
+        eq: (c: string, v: number) => { select: (cols: string) => Promise<{ data: unknown[] | null; error: { message: string } | null }> };
+      };
+    };
   };
 };
 const db = () => supabaseAdmin as unknown as LooseDb;
@@ -131,8 +135,17 @@ export async function verifyEmailCode(accessToken: string, code: string) {
     throw new Error("انتهت صلاحية الرمز. اطلب رمزاً جديداً.");
   }
   if (row.attempts >= MAX_ATTEMPTS) throw new Error("محاولات كثيرة خاطئة. اطلب رمزاً جديداً.");
+  // Claim this try before comparing: only one request can move attempts from N to N+1, so parallel guesses
+  // cannot all pass the limit above.
+  const claimed = await db()
+    .from("email_signin_codes")
+    .update({ attempts: row.attempts + 1 })
+    .eq("session_id", me.sessionId)
+    .eq("attempts", row.attempts)
+    .select("session_id");
+  if (claimed.error) throw new Error(claimed.error.message);
+  if (!claimed.data?.length) throw new Error("حاول مرة أخرى بعد لحظة.");
   if ((await hashCode(me.sessionId, code.trim())) !== row.code_hash) {
-    await db().from("email_signin_codes").update({ attempts: row.attempts + 1 }).eq("session_id", me.sessionId);
     throw new Error("الرمز غير صحيح.");
   }
   const { error } = await db()
