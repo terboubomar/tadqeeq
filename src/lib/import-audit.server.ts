@@ -27,6 +27,7 @@ import {
 import { planRegistrySync } from "./branch-registry-sync";
 import type { RegistryBranch } from "./branch-registry";
 import { periodLabelMismatch, type LabelMismatch } from "./period-label-check";
+import { invoicePeriodMismatch, invoicePeriodMismatchMessage, readInvoicePeriod, type DateRange } from "./invoice-period-check";
 import { normalizePeriodLabel, type StoredPeriod } from "./periods";
 import { TRIAL_UPLOAD_EVENT } from "./plans";
 import { requireServerUser, type ServerUserClient } from "./server-auth.server";
@@ -334,6 +335,8 @@ export async function buildAnalysis(
   analysedFile: ArrayBuffer;
   /** Keeta: the sheets read by the low-memory reader (already renamed by confirmed matches). */
   analysedSheets: SheetSource | null;
+  /** The period the invoice PDF prints, when one was uploaded and its period could be read. */
+  invoicePeriod: DateRange | null;
 }> {
   const dataFile = formFile(form, "dataFile");
   const invoiceFile = formFile(form, "invoiceFile");
@@ -383,6 +386,7 @@ export async function buildAnalysis(
     : applyColumnAliases(platform, originalBuffer, aliases);
 
   let invoice;
+  let invoicePeriod: DateRange | null = null;
   if (invoiceFile) {
     const text = await extractPdfTextServer(
       await invoiceFile.arrayBuffer(),
@@ -394,6 +398,7 @@ export async function buildAnalysis(
         : platform === "keeta"
           ? parseKeetaInvoice(text)
           : parseJahezInvoice(text);
+    invoicePeriod = readInvoicePeriod(text);
   }
 
   let cpcInvoice;
@@ -458,6 +463,7 @@ export async function buildAnalysis(
     appliedAliases,
     analysedFile: dataBuffer,
     analysedSheets: sheets,
+    invoicePeriod,
     result,
     sources: [
       {
@@ -823,8 +829,9 @@ async function runImportAudit(
   let appliedAliases: ColumnAlias[];
   let analysedFile: ArrayBuffer;
   let analysedSheets: SheetSource | null;
+  let invoicePeriod: DateRange | null;
   try {
-    ({ result, sources, confirmedAliases, appliedAliases, analysedFile, analysedSheets } = await buildAnalysis(
+    ({ result, sources, confirmedAliases, appliedAliases, analysedFile, analysedSheets, invoicePeriod } = await buildAnalysis(
       form,
       platform,
       client,
@@ -865,6 +872,12 @@ async function runImportAudit(
     }
 
     throw cause;
+  }
+
+  // Stop when the order file and the invoice PDF cover different dates (e.g. October orders, September invoice).
+  const periodMismatch = invoicePeriodMismatch(invoicePeriod, result.summary.periodStart, result.summary.periodEnd);
+  if (periodMismatch) {
+    throw new Error(invoicePeriodMismatchMessage(periodMismatch));
   }
 
   if (platform === "hungerstation") {
