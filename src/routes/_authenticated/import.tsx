@@ -1233,7 +1233,7 @@ function RunDialog({
               <AlertTriangle className="mt-0.5 size-6 shrink-0 text-destructive" />
               <div className="min-w-0 flex-1 space-y-1.5">
                 <DialogTitle className="text-base text-destructive">لم يكتمل التحليل</DialogTitle>
-                <DialogDescription className="text-sm leading-6 text-foreground/85">{notice.message}</DialogDescription>
+                <DialogDescription className="whitespace-pre-line text-sm leading-6 text-foreground/85">{notice.message}</DialogDescription>
                 <p className="text-[12.5px] text-muted-foreground">لم يُحفظ شيء. صحّح الملف إن لزم ثم أعد المحاولة.</p>
               </div>
             </div>
