@@ -368,10 +368,8 @@ export async function createTelegramBranchConnectionOnServer(
     .maybeSingle();
   if (lookupError) throw new Error(lookupError.message);
 
-  const row = {
+  const updatableRow = {
     user_id: context.userId,
-    workspace_id: context.workspaceId,
-    branch_id: branchId,
     branch_key: branchKey,
     branch_name: branchName,
     connect_code_hash: codeHash,
@@ -379,11 +377,16 @@ export async function createTelegramBranchConnectionOnServer(
     active: true,
     updated_at: updatedAt,
   };
+  const row = {
+    ...updatableRow,
+    workspace_id: context.workspaceId,
+    branch_id: branchId,
+  };
 
   const mutation = existing
     ? db
         .from("telegram_branch_chats")
-        .update(row)
+        .update(updatableRow)
         .eq("id", existing.id)
         .eq("workspace_id", context.workspaceId)
     : db.from("telegram_branch_chats").insert(row);
