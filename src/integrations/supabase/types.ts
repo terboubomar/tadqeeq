@@ -277,6 +277,27 @@ export type Database = {
           },
         ]
       }
+      assistant_link_approvals: {
+        Row: {
+          approved_at: string
+          approved_session_id: string | null
+          client_id: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string
+          approved_session_id?: string | null
+          client_id: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string
+          approved_session_id?: string | null
+          client_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       audit_source_files: {
         Row: {
           created_at: string
@@ -2954,6 +2975,14 @@ export type Database = {
       }
       my_workspace_plan: { Args: { p_workspace_id: string }; Returns: Json }
       ops_role: { Args: never; Returns: string }
+      record_assistant_link_approval: {
+        Args: {
+          p_authorization_id: string
+          p_session_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       reserve_ai_call: {
         Args: {
           p_exception_id: string
