@@ -12,7 +12,7 @@
   "mcp": {
     "server": {
       "name": "tadqeeq",
-      "version": "0.2.0",
+      "version": "0.8.0",
       "title": "Tadqeeq"
     },
     "tools": [
@@ -166,7 +166,7 @@
       {
         "name": "get_branch_performance",
         "title": "Branch performance",
-        "description": "Every branch in one period: orders, sales, commission, platform cost and the invoice-only charges its invoice section lists, largest platform cost first. Charges the invoice prints only in its consolidated summary are listed once as unallocated_charges.",
+        "description": "Every branch in one period: orders, sales, commission, platform cost and the invoice-only charges its invoice section lists, largest platform cost first. platform_cost_sar includes advertising; advertising_ex_vat_sar and platform_cost_excl_ads_sar give both views. Charges on no branch are listed once as unallocated_charges: summary-only invoice items, and lines naming a branch not in the period (unmatched_branch).",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -235,6 +235,514 @@
           "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "object",
           "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_compensation_overview",
+        "title": "Compensation center overview",
+        "description": "«استرداد» (compensation center) overview: what needs action now (ready to send, cases waiting on a reply or payment, rejected), then amounts recovered vs claimed, the recovery rate, amounts under platform review, by platform and top branches. Use it for 'what should I chase today?' or 'how much have we recovered?'.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "range": {
+              "default": "quarter",
+              "description": "Cases created in the last 30 days, 90 days, this year, or all.",
+              "type": "string",
+              "enum": [
+                "30d",
+                "quarter",
+                "year",
+                "all"
+              ]
+            },
+            "platform": {
+              "default": "all",
+              "description": "Limit to one delivery platform.",
+              "type": "string",
+              "enum": [
+                "all",
+                "hungerstation",
+                "keeta",
+                "jahez"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_compensation_cases",
+        "title": "List compensation cases",
+        "description": "Compensation cases in «استرداد», most recently changed first, with status, amount, branch and any follow-up due. Filter by status, platform, branch or follow-up. Use the id with get_compensation_case.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "status": {
+              "description": "draft, ready, submitted, accepted, recovered, rejected or closed.",
+              "type": "string",
+              "enum": [
+                "draft",
+                "ready",
+                "submitted",
+                "accepted",
+                "recovered",
+                "rejected",
+                "closed"
+              ]
+            },
+            "platform": {
+              "description": "Delivery platform.",
+              "type": "string",
+              "enum": [
+                "hungerstation",
+                "keeta",
+                "jahez"
+              ]
+            },
+            "branch": {
+              "description": "Part of the branch name.",
+              "type": "string",
+              "maxLength": 120
+            },
+            "follow_up_only": {
+              "default": false,
+              "description": "Only cases waiting too long: ready but not sent, or no platform answer or payment.",
+              "type": "boolean"
+            },
+            "limit": {
+              "default": 25,
+              "description": "Maximum cases to return.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_compensation_case",
+        "title": "One compensation case",
+        "description": "One «استرداد» case: order, platform, branch, amount, status and history, rejection reason, whether evidence is attached, and the dispute text ready to send to the platform in Arabic and English.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "case_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Case id from list_compensation_cases or get_compensation_overview."
+            }
+          },
+          "required": [
+            "case_id"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_platform_cost",
+        "title": "Platform cost breakdown",
+        "description": "What a period's platform cost is made of (كاشِف): total without VAT, % of sales without VAT, cost per order, change vs the previous period, cost by type, every line with its source, plus merchant-funded discounts and other movements that are not part of the cost. Same figure as the dashboard.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "period_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Period id from list_periods."
+            }
+          },
+          "required": [
+            "period_id"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "compare_periods",
+        "title": "Compare two periods",
+        "description": "Compare a period with an earlier one of the same platform: sales, orders, commission, platform cost and its rate, platform-specific measures, differences to review, and the branches whose cost changed most. Without previous_period_id it uses the latest earlier period.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "period_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "The period to look at, from list_periods."
+            },
+            "previous_period_id": {
+              "description": "The earlier period to compare with (same platform).",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          "required": [
+            "period_id"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_invoice_check",
+        "title": "Invoice check (مُطابِق)",
+        "description": "The invoice reconciliation for a period (مُطابِق): each invoice line recalculated from the orders vs what the platform invoiced, the verdict, the difference when above 10 SAR, and the headline claim difference. Use it for 'did the platform invoice us correctly?'.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "period_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Period id from list_periods."
+            },
+            "flagged_only": {
+              "default": false,
+              "description": "Only lines that need review.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "period_id"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_daily_operations",
+        "title": "Daily operations (نبض)",
+        "description": "Daily operations for a month (نَبض) from the daily order files: orders, sales, platform charges and settlement so far per platform, the month-end forecast, missing or incomplete days, and the top branches. Use it for 'how is this month going?'.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "month": {
+              "description": "YYYY-MM; defaults to the current month.",
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}$"
+            },
+            "platform": {
+              "description": "Limit to one delivery platform.",
+              "type": "string",
+              "enum": [
+                "hungerstation",
+                "keeta",
+                "jahez"
+              ]
+            },
+            "include_days": {
+              "default": false,
+              "description": "Also list each uploaded day.",
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_compensation_case_status",
+        "title": "Move a compensation case to its next status",
+        "description": "Change one «استرداد» case's status, only when the user asked for that change in this conversation (for example 'mark order 885206 as sent'). Allowed steps follow the app: draft→ready→submitted→accepted/recovered/rejected, rejected→submitted/closed, recovered→closed, closed→draft. For recovered, pass the amount actually paid if it was partial. Uses the user's own permissions; the change appears in the case history.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "case_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Case id from list_compensation_cases."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "ready",
+                "submitted",
+                "accepted",
+                "recovered",
+                "rejected",
+                "closed"
+              ],
+              "description": "The new status."
+            },
+            "platform_reference": {
+              "description": "The platform's case reference, if the user gave one.",
+              "type": "string",
+              "maxLength": 120
+            },
+            "recovered_amount": {
+              "description": "SAR actually recovered (status recovered only); defaults to the full claim.",
+              "type": "number",
+              "minimum": 0
+            },
+            "note": {
+              "description": "A note for the history, such as the platform's rejection reason.",
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "case_id",
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_exception_status",
+        "title": "Update a difference's status",
+        "description": "Set the status of one difference found in a period (for example reviewing, claimable, contacted, disputed, recovered, rejected, closed), only when the user asked for that change in this conversation. For recovered, pass the amount recovered. Needs the user's permission to manage exceptions; the change is logged like in the app.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "period_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Period id from list_periods."
+            },
+            "exception_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "description": "Difference id from list_exceptions."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "new",
+                "reviewing",
+                "evidence_requested",
+                "classified",
+                "claimable",
+                "contacted",
+                "disputed",
+                "recovered",
+                "rejected",
+                "closed"
+              ],
+              "description": "The new status."
+            },
+            "note": {
+              "description": "A note for the record.",
+              "type": "string",
+              "maxLength": 2000
+            },
+            "recovered_amount": {
+              "description": "SAR recovered (status recovered only).",
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "period_id",
+            "exception_id",
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "find_order_evidence",
+        "title": "Find evidence for an order",
+        "description": "Before creating a compensation case: look up an order number in «استرداد». Returns the branch photos or videos sent to Tadqeeq's Telegram bot for that order (use the evidence id with create_compensation_case) and, for Jahez, matching compensation lines already in the platform's files.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "order_number": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 120,
+              "description": "The platform order number."
+            }
+          },
+          "required": [
+            "order_number"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_compensation_case",
+        "title": "Create a compensation case",
+        "description": "Open a new «استرداد» case for one order, only when the user asked for it. Tadqeeq writes the dispute text in Arabic and English from the reason, the explanation and the evidence. Call find_order_evidence first and pass the evidence id when there is one. One case per order and platform; a duplicate is refused. Starts as draft unless status ready is asked for.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "platform": {
+              "type": "string",
+              "enum": [
+                "hungerstation",
+                "keeta",
+                "jahez"
+              ],
+              "description": "Delivery platform."
+            },
+            "order_number": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 120,
+              "description": "The platform order number."
+            },
+            "amount_sar": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100000,
+              "description": "Compensation amount claimed, SAR."
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000,
+              "description": "Why compensation is due, e.g. 'الطلب سُلّم كاملاً والعميل اشتكى من نقص'."
+            },
+            "explanation": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 6000,
+              "description": "What the branch says happened."
+            },
+            "evidence_id": {
+              "description": "Evidence id from find_order_evidence.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "branch": {
+              "description": "Branch name, if there is no evidence to take it from.",
+              "type": "string",
+              "maxLength": 160
+            },
+            "status": {
+              "default": "draft",
+              "description": "ready = prepared and ready to send to the platform.",
+              "type": "string",
+              "enum": [
+                "draft",
+                "ready"
+              ]
+            }
+          },
+          "required": [
+            "platform",
+            "order_number",
+            "amount_sar",
+            "reason",
+            "explanation"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_evidence",
+        "title": "See a case's evidence",
+        "description": "Show the branch evidence for a compensation case or an evidence id: the photo itself (or a video's preview frame) so you can check it, plus a download link valid for 10 minutes that a browser can open without signing in to Tadqeeq, to attach the file when filing the appeal on the platform.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "case_id": {
+              "description": "Case id from list_compensation_cases.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "evidence_id": {
+              "description": "Evidence id from find_order_evidence.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
           "additionalProperties": false
         },
         "outputSchema": null
