@@ -279,126 +279,85 @@ function CasesPage() {
         ) : visible.length === 0 ? (
           <p className="p-10 text-center text-sm text-muted-foreground">لا توجد حالات مطابقة.</p>
         ) : (
-          <>
-          <ul className="divide-y divide-border/70 md:hidden">
-            {visible.map((r) => (
-              <li key={r.id}>
-                <button
-                  type="button"
-                  onClick={() => setDialog({ id: r.id, mode: "view" })}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-start"
+          <ul className="divide-y divide-border/70">
+            {visible.map((r) => {
+              const next = canManage ? nextCaseActions(r.status)[0] : undefined;
+              const partial = isCaseRecovered(r) && caseRecoveredAmount(r) < r.compensationAmount;
+              return (
+                <li
+                  key={r.id}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 transition-colors hover:bg-muted/30 md:grid md:grid-cols-[minmax(0,1fr)_8.5rem_7.5rem_auto]"
                 >
-                  <span className="min-w-0 flex-1">
-                    <span className="num block font-semibold" dir="ltr">
-                      {r.orderNumber}
+                  <button
+                    type="button"
+                    onClick={() => setDialog({ id: r.id, mode: "view" })}
+                    className="min-w-0 flex-1 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <span className="num font-semibold underline-offset-4 hover:underline" dir="ltr">
+                        {r.orderNumber}
+                      </span>
+                      <PlatformName platform={r.platform} className="text-xs text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">{r.branchName || "—"}</span>
+                      <span className={cn("text-xs", r.evidenceId ? "text-success" : "text-muted-foreground")}>
+                        {r.evidenceId ? "✓ دليل مرفق" : "بلا دليل"}
+                      </span>
                     </span>
-                    <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
-                      {[PLATFORM_LABELS[r.platform], r.branchName || "—", r.evidenceId ? "دليل مرفق" : "بلا دليل"].join(" · ")}
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground" title={r.compensationReason}>
+                      {r.compensationReason}
+                      <span className="hidden sm:inline">
+                        {" · "}
+                        <Timestamp value={r.updatedAt} />
+                      </span>
                     </span>
                     <FollowUpNote item={r} />
-                  </span>
-                  <span className="flex shrink-0 flex-col items-end gap-1">
-                    <span className="num text-[13px] font-semibold">{money(r.compensationAmount)}</span>
+                  </button>
+                  <span className="order-first md:order-none">
                     <StatusBadge status={r.status} />
                   </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[1100px] text-sm">
-              <thead className="bg-muted/50 text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3 text-start font-medium">رقم الطلب</th>
-                  <th className="px-2 py-3 text-start font-medium">المنصة</th>
-                  <th className="px-2 py-3 text-start font-medium">الفرع</th>
-                  <th className="px-2 py-3 text-start font-medium">السبب</th>
-                  <th className="px-2 py-3 text-start font-medium">المبلغ</th>
-                  <th className="px-2 py-3 text-start font-medium">الدليل</th>
-                  <th className="px-2 py-3 text-start font-medium">الحالة</th>
-                  <th className="px-2 py-3 text-start font-medium">آخر تحديث</th>
-                  <th className="px-2 py-3 text-start font-medium">الخطوة التالية</th>
-                  <th className="px-4 py-3 text-end font-medium">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((r) => (
-                  <tr key={r.id} className="border-t border-border/70 hover:bg-muted/30">
-                    <td className="px-4 py-3">
-                      <button
+                  <span className="whitespace-nowrap text-end font-semibold md:text-start">
+                    <span className="num">{money(r.compensationAmount)}</span>{" "}
+                    <span className="text-xs font-normal text-muted-foreground">ر.س</span>
+                    {partial ? (
+                      <span className="block text-[11px] font-normal text-warning">
+                        استُرد <span className="num">{money(caseRecoveredAmount(r))}</span>
+                      </span>
+                    ) : null}
+                  </span>
+                  <div className="flex w-full items-center justify-end gap-1 md:w-auto">
+                    {next ? (
+                      <Button
                         type="button"
-                        onClick={() => setDialog({ id: r.id, mode: "view" })}
-                        className="num font-semibold text-foreground underline-offset-4 hover:underline"
-                        dir="ltr"
+                        size="sm"
+                        className="h-8 min-w-24 text-xs"
+                        disabled={updateCase.isPending}
+                        onClick={() => {
+                          if (NEEDS_DETAILS.has(next.status)) setDialog({ id: r.id, mode: "view" });
+                          else updateCase.mutate({ item: r, patch: { status: next.status } });
+                        }}
                       >
-                        {r.orderNumber}
-                      </button>
-                    </td>
-                    <td className="whitespace-nowrap px-2"><PlatformName platform={r.platform} /></td>
-                    <td className="whitespace-nowrap px-2">{r.branchName || "—"}</td>
-                    <td className="max-w-[180px] truncate px-2" title={r.compensationReason}>
-                      {r.compensationReason}
-                    </td>
-                    <td className="whitespace-nowrap px-2">
-                      <span className="num">{money(r.compensationAmount)}</span>
-                      {isCaseRecovered(r) && caseRecoveredAmount(r) < r.compensationAmount ? (
-                        <span className="block text-[11px] text-warning">
-                          استُرد <span className="num">{money(caseRecoveredAmount(r))}</span>
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className={cn("whitespace-nowrap px-2", r.evidenceId ? "text-success" : "text-muted-foreground")}>
-                      {r.evidenceId ? "مرفق" : "لا يوجد"}
-                    </td>
-                    <td className="w-[150px] px-2 py-2.5">
-                      <StatusBadge status={r.status} />
-                      <FollowUpNote item={r} />
-                    </td>
-                    <td className="px-2 text-xs text-muted-foreground"><Timestamp value={r.updatedAt} /></td>
-                    <td className="px-2">
-                      {canManage && nextCaseActions(r.status)[0] ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          className="h-7 text-xs"
-                          disabled={updateCase.isPending}
-                          onClick={() => {
-                            const next = nextCaseActions(r.status)[0]!.status;
-                            if (NEEDS_DETAILS.has(next)) setDialog({ id: r.id, mode: "view" });
-                            else updateCase.mutate({ item: r, patch: { status: next } });
-                          }}
-                        >
-                          <Check className="size-3.5" />
-                          {nextCaseActions(r.status)[0]!.label}
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-4">
-                      <div className="flex justify-end gap-1">
-                        <IconAction label="عرض" onClick={() => setDialog({ id: r.id, mode: "view" })}>
-                          <Eye className="size-4" />
-                        </IconAction>
-                        {canManage ? (
-                          <IconAction label="تعديل" onClick={() => setDialog({ id: r.id, mode: "edit" })}>
-                            <Pencil className="size-4" />
-                          </IconAction>
-                        ) : null}
-                        {canDelete ? (
-                          <IconAction label="حذف" danger onClick={() => setDeleteId(r.id)}>
-                            <Trash2 className="size-4" />
-                          </IconAction>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          </>
+                        <Check className="size-3.5" />
+                        {next.label}
+                      </Button>
+                    ) : null}
+                    <IconAction label="عرض" onClick={() => setDialog({ id: r.id, mode: "view" })}>
+                      <Eye className="size-4" />
+                    </IconAction>
+                    {canManage ? (
+                      <IconAction label="تعديل" onClick={() => setDialog({ id: r.id, mode: "edit" })}>
+                        <Pencil className="size-4" />
+                      </IconAction>
+                    ) : null}
+                    {canDelete ? (
+                      <IconAction label="حذف" danger onClick={() => setDeleteId(r.id)}>
+                        <Trash2 className="size-4" />
+                      </IconAction>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
         {filtered.length > PAGE_SIZE ? (
           <div className="flex items-center justify-between border-t border-border px-4 py-3 text-xs text-muted-foreground">

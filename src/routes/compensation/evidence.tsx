@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, Loader2, Search, Send, Video } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Search, Send, Video } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
@@ -109,6 +109,9 @@ function EvidencePage() {
     reason.trim() &&
     explanation.trim();
 
+  const detailsReady = orderNumber.trim().length >= 3 && Boolean(platform) && Boolean(reason.trim()) && Boolean(explanation.trim());
+  const step = generatedCase ? 4 : searchMutation.data ? (detailsReady ? 3 : 2) : 1;
+
   return (
     <div className="space-y-5">
       <CompHeader
@@ -116,7 +119,11 @@ function EvidencePage() {
         sub="ابحث برقم الطلب، اختر دليل الفرع، وأنشئ ملف اعتراض جاهزاً للمنصة"
       />
 
-      <form onSubmit={submitSearch} className="flex flex-wrap gap-2">
+      <Stepper step={step} />
+
+      <section aria-labelledby="step-1" className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <StepHeading id="step-1" n={1} step={step} title="ابحث عن الطلب" hint="رقم الطلب كاملاً أو آخر 4 أرقام منه" />
+      <form onSubmit={submitSearch} className="mt-4 flex flex-wrap gap-2">
         <div className="relative min-w-[260px] flex-1">
           <Search className="absolute start-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -136,9 +143,12 @@ function EvidencePage() {
           بحث
         </Button>
       </form>
+      </section>
 
       {searchMutation.data ? (
-        <div className="grid gap-5 xl:grid-cols-2">
+        <section aria-labelledby="step-2-evidence" className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <StepHeading id="step-2-evidence" n={2} step={step} doneAt={3} title="اختر الدليل والمبلغ" hint="دليل الفرع من Telegram، وبيانات التعويض إن وُجدت" />
+        <div className="mt-4 grid gap-5 xl:grid-cols-2">
           <section>
             <h2 className="text-sm font-bold">
               دليل Telegram <span className="num font-normal text-muted-foreground">({searchMutation.data.evidence.length})</span>
@@ -231,13 +241,18 @@ function EvidencePage() {
             </div>
           </section>
         </div>
+        </section>
       ) : null}
 
-      <section className="rounded-xl border border-border bg-card p-5">
-        <h2 className="font-bold">ملف الاعتراض</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          يشرح الموظف الواقعة، ويبني تدقيق رسالة الاعتراض من البيانات المؤكدة.
-        </p>
+      <section aria-labelledby="step-2" className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <StepHeading
+          id="step-2"
+          n={searchMutation.data ? undefined : 2}
+          step={step}
+          doneAt={3}
+          title="بيانات المطالبة"
+          hint="يشرح الموظف الواقعة، ويبني تدقيق رسالة الاعتراض من البيانات المؤكدة."
+        />
 
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Field label="المنصة">
@@ -299,6 +314,17 @@ function EvidencePage() {
           />
         </label>
 
+      </section>
+
+      <section aria-labelledby="step-3" className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <StepHeading
+          id="step-3"
+          n={3}
+          step={step}
+          doneAt={4}
+          title="رسالة الاعتراض"
+          hint={generatedCase ? "جاهزة للنسخ وإرسالها للمنصة." : "تُنشأ بالعربية والإنجليزية من البيانات أعلاه."}
+        />
         {existingCases.length ? (
           <div role="alert" className="mt-4 flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
@@ -338,6 +364,68 @@ function EvidencePage() {
           </div>
         ) : null}
       </section>
+    </div>
+  );
+}
+
+const STEPS = ["ابحث عن الطلب", "اختر الدليل والمبلغ", "رسالة الاعتراض"];
+
+/** Progress across the three steps: search (1), evidence and details (2–3), dispute ready (4). */
+function Stepper({ step }: { step: number }) {
+  const at = step >= 4 ? 3 : step >= 2 ? 2 : 1;
+  return (
+    <ol aria-label="خطوات بناء الاعتراض" className="grid grid-cols-3 gap-2">
+      {STEPS.map((label, index) => {
+        const n = index + 1;
+        const done = n < at || step >= 4;
+        const current = n === at && step < 4;
+        return (
+          <li key={label} aria-current={current ? "step" : undefined} className="min-w-0">
+            <div className={cn("h-1.5 rounded-full", done ? "bg-success" : current ? "bg-primary" : "bg-muted")} />
+            <p className={cn("mt-1.5 truncate text-xs", current ? "font-semibold text-foreground" : "text-muted-foreground")}>
+              <span className="num">{n}</span> · {label}
+            </p>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function StepHeading({
+  id,
+  n,
+  step,
+  doneAt,
+  title,
+  hint,
+}: {
+  id: string;
+  n?: number;
+  step: number;
+  doneAt?: number;
+  title: string;
+  hint: string;
+}) {
+  const done = step >= (doneAt ?? (n ?? 0) + 1);
+  return (
+    <div className="flex items-start gap-3">
+      {n === undefined ? null : (
+      <span
+        className={cn(
+          "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold",
+          done ? "border-success bg-success text-success-foreground" : "border-primary text-primary",
+        )}
+      >
+        {done ? <Check className="size-3.5" /> : <span className="num">{n}</span>}
+      </span>
+      )}
+      <div className="min-w-0">
+        <h2 id={id} className="font-bold">
+          {title}
+        </h2>
+        <p className="mt-0.5 text-sm text-muted-foreground">{hint}</p>
+      </div>
     </div>
   );
 }
