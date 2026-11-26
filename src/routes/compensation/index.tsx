@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlarmClock, Plus } from "lucide-react";
+import { AlarmClock, Check, ChevronLeft, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -13,6 +13,7 @@ import {
   type CompensationPlatformKey,
   type OverviewRange,
 } from "@/lib/compensation-overview";
+import { buildCompensationQueue, type QueueKind, type QueueRow } from "@/lib/compensation-queue";
 import { count, money, percent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { PlatformName } from "@/components/brand/PlatformLogo";
@@ -29,6 +30,7 @@ function CompensationOverviewPage() {
   const cases = useCompensationCases();
   const connections = useTelegramConnections(can("telegram.read"));
 
+  const queue = useMemo(() => (cases.data ? buildCompensationQueue(cases.data) : null), [cases.data]);
   const overview = useMemo(
     () =>
       cases.data
@@ -38,13 +40,14 @@ function CompensationOverviewPage() {
   );
 
   if (cases.isLoading) return <Spinner className="size-5 text-muted-foreground" />;
-  if (cases.error || !overview) {
+  if (cases.error || !overview || !queue) {
     return <p className="text-sm text-destructive">{(cases.error as Error | null)?.message ?? "تعذّر التحميل"}</p>;
   }
 
   const o = overview;
   const showTelegram = can("telegram.read");
-  const queueEmpty = o.readyCount === 0 && o.followUps.length === 0 && o.rejectedCount === 0;
+  const supervisor = can("users.manage");
+  const noCases = (cases.data?.length ?? 0) === 0;
   const change =
     o.previousRecoveredAmount && o.previousRecoveredAmount > 0
       ? (o.recoveredAmount - o.previousRecoveredAmount) / o.previousRecoveredAmount
@@ -52,7 +55,88 @@ function CompensationOverviewPage() {
 
   return (
     <div className="space-y-5">
-      <CompHeader title="نظرة عامة" sub="المبالغ المطالَب بها والمسترَدة من منصات التوصيل">
+      <CompHeader title="اليوم" sub="ما يحتاج إجراءً الآن، ثم أرقام الاسترداد" />
+
+      {noCases ? (
+        <SetupChecklist linked={o.linkedBranches > 0} telegramKnown={showTelegram} />
+      ) : (
+        <>
+          {supervisor ? <SupervisorStrip s={queue.supervisor} /> : null}
+
+          <section aria-labelledby="waiting" className="rounded-xl border border-border bg-card">
+            <div className="flex flex-wrap items-end justify-between gap-3 px-4 pt-4">
+              <div>
+                <h2 id="waiting" className="text-xs text-muted-foreground">
+                  بانتظار الاسترداد
+                </h2>
+                <p className="mt-1 flex items-baseline gap-2">
+                  <span className="num text-3xl font-semibold">{money(queue.waitingAmount)}</span>
+                  <span className="text-sm text-muted-foreground">
+                    ر.س · <span className="num">{count(queue.waitingCount)}</span> حالة
+                  </span>
+                </p>
+              </div>
+            </div>
+            <ol
+              aria-label="مراحل الحالات"
+              className="mt-4 grid grid-cols-4 gap-px overflow-hidden border-t border-border bg-border"
+            >
+              <Stage label="مسودة" value={queue.stages.draft} status="draft" />
+              <Stage label="جاهزة" value={queue.stages.ready} status="ready" />
+              <Stage label="مرسلة" value={queue.stages.sent} status="submitted" />
+              <Stage label="مسترَدة" value={queue.stages.recovered} status="recovered" good />
+            </ol>
+          </section>
+
+          <section aria-labelledby="today" className="rounded-xl border border-border bg-card">
+            <div className="flex items-center justify-between gap-2 px-4 pt-4">
+              <h2 id="today" className="flex items-center gap-2 text-sm font-semibold">
+                <AlarmClock className="size-4 text-warning" />
+                يحتاج إجراء
+              </h2>
+              <div className="flex items-center gap-3">
+                <Link to="/compensation/cases" className="text-xs font-semibold text-primary">
+                  كل الحالات ←
+                </Link>
+                {can("compensation.manage") ? (
+                  <Link
+                    to="/compensation/evidence"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-ink px-4 text-xs font-semibold text-ink-foreground"
+                  >
+                    <Plus className="size-4" />
+                    حالة جديدة
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+            {queue.rows.length === 0 ? (
+              <p className="px-4 pb-4 pt-2 text-sm text-muted-foreground">
+                لا شيء ينتظر إجراءً الآن. أحسنت.
+              </p>
+            ) : (
+              <ul className="mt-2 divide-y divide-border/70">
+                {queue.rows.slice(0, 8).map((row) => (
+                  <QueueItem key={row.id} row={row} />
+                ))}
+              </ul>
+            )}
+            {queue.rows.length > 8 ? (
+              <p className="border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
+                و<span className="num">{count(queue.rows.length - 8)}</span> حالة أخرى في{" "}
+                <Link to="/compensation/cases" className="font-semibold text-primary">
+                  كل الحالات
+                </Link>
+              </p>
+            ) : null}
+          </section>
+        </>
+      )}
+
+      {noCases ? null : (
+      <>
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+        <h2 className="text-base font-semibold">التقارير</h2>
+        <div className="flex flex-wrap items-center gap-2">
         <div role="group" aria-label="الفترة" className="flex rounded-lg bg-muted p-1">
           {RANGES.map((r) => (
             <button
@@ -84,78 +168,8 @@ function CompensationOverviewPage() {
             ))}
           </select>
         </label>
-        {can("compensation.manage") ? (
-          <Link
-            to="/compensation/evidence"
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-ink px-4 text-xs font-semibold text-ink-foreground"
-          >
-            <Plus className="size-4" />
-            حالة جديدة
-          </Link>
-        ) : null}
-      </CompHeader>
-
-      <section aria-labelledby="needs-action" className="rounded-xl border border-border bg-card">
-        <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4">
-          <h2 id="needs-action" className="flex items-center gap-2 text-sm font-semibold">
-            <AlarmClock className="size-4 text-warning" />
-            يحتاج إجراء
-          </h2>
         </div>
-        {queueEmpty ? (
-          <p className="px-4 pb-4 pt-2 text-sm text-muted-foreground">لا توجد حالات تنتظر إجراءً الآن.</p>
-        ) : (
-          <>
-            <div className="mt-3 grid grid-cols-3 gap-px overflow-hidden border-y border-border bg-border">
-              <QueueTile
-                label="جاهزة للإرسال"
-                hint="أرسلها للمنصة"
-                count={o.readyCount}
-                amount={o.readyAmount}
-                link={{ to: "/compensation/cases", search: { status: "ready" } }}
-              />
-              <QueueTile
-                label="تحتاج متابعة"
-                hint="تأخر الإرسال أو رد المنصة أو الدفع"
-                count={o.followUps.length}
-                amount={o.followUpAmount}
-                tone="warning"
-                link={{ to: "/compensation/cases", search: { followup: true } }}
-              />
-              <QueueTile
-                label="مرفوضة"
-                hint="راجع سبب الرفض"
-                count={o.rejectedCount}
-                amount={o.rejectedAmount}
-                tone="bad"
-                link={{ to: "/compensation/cases", search: { status: "rejected" } }}
-              />
-            </div>
-            {o.followUps.length ? (
-              <ul className="divide-y divide-border/70 px-4 pb-2">
-                {o.followUps.slice(0, 5).map((f) => (
-                  <li key={f.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
-                    <Link
-                      to="/compensation/cases"
-                      search={{ open: f.id }}
-                      className="num font-semibold underline-offset-4 hover:underline"
-                      dir="ltr"
-                    >
-                      {f.orderNumber}
-                    </Link>
-                    <PlatformName platform={f.platform} className="text-xs text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">{f.branchName || "—"}</span>
-                    <span className="text-xs font-semibold text-warning">{f.followUp.label}</span>
-                    <span className="ms-auto whitespace-nowrap font-semibold">
-                      <span className="num">{money(f.amount)}</span> <span className="text-xs font-normal text-muted-foreground">ر.س</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </>
-        )}
-      </section>
+      </div>
 
       <section aria-label="المؤشرات الرئيسية" className="space-y-2">
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
@@ -341,6 +355,8 @@ function CompensationOverviewPage() {
           </>
         )}
       </section>
+      </>
+      )}
     </div>
   );
 }
@@ -354,42 +370,208 @@ function StatusCount({ label, value, good = false }: { label: string; value: num
   );
 }
 
-function QueueTile({
-  label,
-  hint,
-  count: value,
-  amount,
-  tone,
-  link,
-}: {
-  label: string;
-  hint: string;
-  count: number;
-  amount: number;
-  tone?: "warning" | "bad";
-  link: { to: "/compensation/cases"; search: { status?: "ready" | "rejected"; followup?: boolean } };
-}) {
+const ACTION: Record<QueueKind, { verb: string; tone: string }> = {
+  send: { verb: "أرسل", tone: "bg-ink text-ink-foreground" },
+  missing_evidence: { verb: "أكمل الدليل", tone: "border border-border bg-card text-foreground" },
+  follow_up: { verb: "تابِع", tone: "border border-warning/40 bg-warning/10 text-warning" },
+  rejected: {
+    verb: "راجِع",
+    tone: "border border-destructive/30 bg-destructive/10 text-destructive",
+  },
+};
+
+function QueueItem({ row }: { row: QueueRow }) {
+  const action = ACTION[row.kind];
   return (
-    <Link
-      to={link.to}
-      search={link.search}
-      aria-label={`${label}: ${value}`}
-      className="group flex min-w-0 flex-col gap-1 bg-card px-3 py-3 sm:px-4 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
-    >
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="flex flex-wrap items-baseline gap-x-2">
+    <li className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-sm">
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-x-2">
+          <span className="num font-semibold" dir="ltr">
+            {row.orderNumber}
+          </span>
+          <PlatformName platform={row.platform} className="text-xs text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">{row.branchName || "—"}</span>
+        </span>
         <span
           className={cn(
-            "num text-2xl font-semibold",
-            value > 0 && tone === "warning" && "text-warning",
-            value > 0 && tone === "bad" && "text-destructive",
+            "mt-0.5 block text-xs",
+            row.kind === "follow_up"
+              ? "font-semibold text-warning"
+              : row.kind === "rejected"
+                ? "text-destructive"
+                : "text-muted-foreground",
           )}
         >
+          {row.label}
+        </span>
+      </span>
+      <span className="whitespace-nowrap font-semibold">
+        <span className="num">{money(row.amount)}</span>{" "}
+        <span className="text-xs font-normal text-muted-foreground">ر.س</span>
+      </span>
+      <Link
+        to="/compensation/cases"
+        search={{ open: row.id }}
+        className={cn(
+          "inline-flex h-9 min-w-24 items-center justify-center gap-1 rounded-lg px-3 text-xs font-semibold transition-transform active:scale-[0.98]",
+          action.tone,
+        )}
+      >
+        {action.verb}
+        <ChevronLeft className="size-3.5" />
+      </Link>
+    </li>
+  );
+}
+
+function Stage({
+  label,
+  value,
+  status,
+  good = false,
+}: {
+  label: string;
+  value: number;
+  status: "draft" | "ready" | "submitted" | "recovered";
+  good?: boolean;
+}) {
+  return (
+    <li className="bg-card">
+      <Link
+        to="/compensation/cases"
+        search={{ status }}
+        aria-label={`${label}: ${value}`}
+        className="flex flex-col items-center gap-0.5 px-2 py-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+      >
+        <span className={cn("num text-xl font-semibold", good && value > 0 && "text-success")}>
           {count(value)}
         </span>
-        <span className="num text-xs text-muted-foreground">{money(amount)} ر.س</span>
+        <span className="text-[11.5px] text-muted-foreground">{label}</span>
+      </Link>
+    </li>
+  );
+}
+
+function SupervisorStrip({ s }: { s: ReturnType<typeof buildCompensationQueue>["supervisor"] }) {
+  const attention = s.late + s.missingEvidence;
+  return (
+    <section
+      aria-label="متابعة العمل"
+      className={cn(
+        "flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border px-4 py-3 text-sm",
+        attention > 0 ? "border-warning/40 bg-warning/5" : "border-success/30 bg-success/5",
+      )}
+    >
+      <span className="font-semibold">{attention > 0 ? "يحتاج انتباهك" : "العمل منتظم"}</span>
+      <Link
+        to="/compensation/cases"
+        search={{ followup: true }}
+        className={cn(
+          "underline-offset-4 hover:underline",
+          s.late > 0 && "font-semibold text-warning",
+        )}
+      >
+        <span className="num">{count(s.late)}</span> متأخرة
+      </Link>
+      <Link
+        to="/compensation/cases"
+        search={{ status: "draft" }}
+        className={cn(
+          "underline-offset-4 hover:underline",
+          s.missingEvidence > 0 && "font-semibold text-warning",
+        )}
+      >
+        <span className="num">{count(s.missingEvidence)}</span> بلا دليل
+      </Link>
+      <span className="text-muted-foreground">
+        هذا الأسبوع:{" "}
+        <span className="num font-semibold text-foreground">{count(s.sentThisWeek)}</span> مرسلة ·{" "}
+        <span className="num font-semibold text-success">{count(s.recoveredThisWeek)}</span> مسترَدة
+        (<span className="num">{money(s.recoveredThisWeekAmount)}</span> ر.س)
       </span>
-      <span className="hidden text-[11px] text-muted-foreground group-hover:text-foreground sm:block">{hint} ←</span>
-    </Link>
+    </section>
+  );
+}
+
+function SetupChecklist({ linked, telegramKnown }: { linked: boolean; telegramKnown: boolean }) {
+  const steps = [
+    {
+      title: "اربط قروب Telegram لفرع",
+      body: "أنشئ رمز ربط من «الفروع» وأرسل \u2066/connect\u2069 في قروب الفرع.",
+      done: telegramKnown && linked,
+      action: { to: "/compensation/branches" as const, label: "اربط قروباً" },
+    },
+    {
+      title: "الفرع يصوّر الطلب في القروب",
+      body: "صورة الفاتورة أو الملصق تكفي؛ يقرأ تدقيق رقم الطلب تلقائياً ويحفظ الدليل.",
+      done: false,
+      action: { to: "/compensation/evidence" as const, label: "شاهد الأدلة" },
+    },
+    {
+      title: "راجع المطالبة وأرسلها للمنصة",
+      body: "تظهر الحالة هنا جاهزة بالدليل ونص الاعتراض، وتتابع ردّ المنصة حتى الاسترداد.",
+      done: false,
+      action: null,
+    },
+  ];
+  const current = steps.findIndex((step) => !step.done);
+  return (
+    <section aria-labelledby="setup" className="rounded-xl border border-border bg-card p-5">
+      <p className="text-xs text-muted-foreground">
+        <span className="num">{count(steps.filter((step) => step.done).length)}</span> من{" "}
+        <span className="num">3</span>
+      </p>
+      <h2 id="setup" className="mt-1 text-lg font-semibold">
+        ابدأ استرداد تعويضاتك
+      </h2>
+      <ol className="mt-4 space-y-1">
+        {steps.map((step, index) => (
+          <li
+            key={step.title}
+            className={cn("flex gap-3 rounded-lg p-3", index === current && "bg-muted/60")}
+            aria-current={index === current ? "step" : undefined}
+          >
+            <span
+              className={cn(
+                "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border text-xs",
+                step.done
+                  ? "border-success bg-success text-success-foreground"
+                  : index === current
+                    ? "border-primary text-primary"
+                    : "border-border text-muted-foreground",
+              )}
+            >
+              {step.done ? (
+                <Check className="size-3.5" />
+              ) : (
+                <span className="num">{index + 1}</span>
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span
+                className={cn(
+                  "block text-sm font-semibold",
+                  index > current && current !== -1 && "text-muted-foreground",
+                )}
+              >
+                {step.title}
+              </span>
+              <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
+                {step.body}
+              </span>
+              {index === current && step.action ? (
+                <Link
+                  to={step.action.to}
+                  className="mt-3 inline-flex h-9 items-center gap-1 rounded-lg bg-ink px-4 text-xs font-semibold text-ink-foreground transition-transform active:scale-[0.98]"
+                >
+                  {step.action.label}
+                  <ChevronLeft className="size-3.5" />
+                </Link>
+              ) : null}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
